@@ -20,6 +20,10 @@ _Avoid_: guild, the Discord, server (alone)
 The members of Shor's team who moderate and administer the community.
 _Avoid_: admins, mods (each names a level within the staff, not the staff as a whole)
 
+**Staff role**:
+A Discord role that makes a member of the Discord server part of the staff.
+_Avoid_: admin role, mod role
+
 ### Tools
 
 **Admin Panel**:

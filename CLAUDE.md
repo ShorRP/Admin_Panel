@@ -23,7 +23,7 @@ The orchestrating skills are run by the user. When you see the moment for one, s
 
 ## Language
 
-Three things are in **French**: chat with the user, GitHub issues and their board (title, body, comments, and the board's descriptions and view names; see `docs/agents/issue-tracker.md`), and the panel's interface, which is French only, with no translation layer. Everything else is in **English**: docs, `GLOSSARY.md`, ADRs, PR text and PR comments, commit messages, and every word written into the codebase: file names, identifiers, logs.
+Three things are in **French**: chat with the user, GitHub issues and their board (title, body, comments, and the board's descriptions and view names; see `docs/agents/issue-tracker.md`), and the panel's interface, which is French only, with no translation layer. Everything else is in **English**: docs, `GLOSSARY.md`, ADRs, PR text and PR comments, commit messages, and every word written into the codebase: file names, identifiers, logs. URLs count as file names, since each segment is a folder under `src/app/`: `/blocked-words`, not `/mots-interdits`.
 
 ## No comments
 
@@ -41,6 +41,21 @@ What a comment would say goes elsewhere: the why of a change in its commit messa
 - **Docs as you go.** Docs are updated the moment they become true, in the same change. `GLOSSARY.md` is a glossary and nothing else; ADRs follow domain-modeling's bar. When docs contradict the code, fix them in the same change if it takes a few lines, otherwise list them in your report.
 - **Scope.** Each diff stays inside its ticket. Problems you spot nearby are loose ends: groom-backlog files them as tickets.
 - **Gotchas.** When a session hits a trap the environment doesn't reveal, add one line under **Gotchas**. Delete lines that stop being true.
+
+## Architecture
+
+How a feature is written end to end, as Gilles decided while grilling #47 on 2026-10-23. It was written before the code: each ticket that writes the code follows it.
+
+- **Folders.** `src/app/` only routes: its `page.tsx`, `layout.tsx` and `route.ts` call a domain folder named after a `GLOSSARY.md` term, such as `src/staff/` (login, session, staff role), `src/blocked-words/` or `src/audit-log/`. A domain folder holds its logic, its components, its `actions.ts` and their tests. `src/discord/` is the adapter to Discord's REST API.
+- **The Discord seam.** `src/discord/` exposes two interfaces, one method per endpoint the panel calls, typed with `discord-api-types`. `DiscordApi` uses the panel's application token and is bound at construction to one Discord server, so no method takes its ID: AutoMod rules, audit log, reading a member. `DiscordOAuth` uses the client ID and secret: authorize URL, code exchange, current user. The real implementations call `fetch`, with neither `@discordjs/rest` nor `@discordjs/core`. `src/discord/fake-discord.ts` keeps a Discord server's state in memory and, like Discord, adds an audit log entry on every write. Only tests import it: `pnpm dev` runs against the panel's development application, "Shor Panel Dev", and Gilles' test Discord server (#7).
+- **Entry points only wire.** Pages, layouts, `actions.ts`, Route Handlers and `proxy.ts` hold no logic of their own and never read `process.env`. Those that need Discord get the real clients from `createDiscordApi()` and `createDiscordOAuth()` and pass them on, as in `addBlockedWord(discord, staffMember, word)`; tests pass the fake instead, with no `vi.mock`. Only `src/discord/` reads Discord's variables, and `src/staff/` the staff role's. Vitest cannot render `async` Server Components (`node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md:9`), so what a page does lives in functions tested directly.
+- **The staff check.** Every page, and every Server Action that writes, starts with `requireStaffMember` from `src/staff/`, and every domain write takes the branded `StaffMember` it returns (ADR 0005).
+- **Writes** are Server Actions, in their domain folder's `actions.ts`, marked `'use server'`, and end with `refresh()`. Logging out is a Server Action too, which only ends the session. Route Handlers serve OAuth2 only: `/login` and `/login/callback`.
+- **Validation** uses zod 4 throughout the repo, config included. Domain functions validate what comes from the browser, such as an action's `FormData` or the callback's query string. Discord's responses are typed, not validated.
+- **Components** are Server Components. `'use client'` goes only on a leaf that needs browser state or events, in its domain folder, never on a page, a layout or anything that reaches `src/discord/`.
+- **Caching.** Nothing from Discord and nothing from the session goes through `use cache`, since the panel reads Discord back on every view (ADR 0002). Only the static shell prerenders; the part of a page that waits on Discord sits under `<Suspense>`, with a French fallback.
+- **`proxy.ts`** sends a request without a readable session to `/login`, on every route but `/login`, `/login/callback` and static files. It authorizes nothing.
+- **Imports** that leave their folder use `@/*`, mapped to `src/*`; imports within a folder stay relative. Vitest resolves the alias only with `resolve.tsconfigPaths: true`, which Vite 8.3.5 leaves off by default.
 
 ## Feedback loops
 
