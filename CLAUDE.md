@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-The Admin Panel is the web app Shor's staff use to administer the Discord server: a Discord login for the staff, blocked words kept in a Discord AutoMod rule, and an audit log. It will be a Next.js app in TypeScript, hosted on Vercel, that talks to Discord's REST API only (ADRs 0001 to 0004). As of 2026-10-23 the repo holds the docs and the tooling, and the app is not scaffolded yet.
+The Admin Panel is the web app Shor's staff use to administer the Discord server: a Discord login for the staff, blocked words kept in a Discord AutoMod rule, and an audit log. It will be a Next.js app in TypeScript, hosted on Vercel, that talks to Discord's REST API only (ADRs 0002 to 0004). As of 2026-10-23 the repo holds the docs and the tooling, and the app is not scaffolded yet.
 
 ## How we work
 

@@ -43,3 +43,7 @@ _Avoid_: allowlist
 **Blocked word**:
 A word or phrase the staff forbid in messages on the Discord server. Not the opposite of the whitelist.
 _Avoid_: blacklist, banned word, forbidden word
+
+**Warning**:
+A formal notice from the staff to a member of the Discord server, with its reason, kept on record even when the member contests it successfully.
+_Avoid_: strike
