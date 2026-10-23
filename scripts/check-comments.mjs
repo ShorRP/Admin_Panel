@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parse } from '@babel/parser'
+import { Parser, parseAllDocuments } from 'yaml'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -25,9 +26,10 @@ const DIRECTIVES = [
   /^\s*webpackIgnore:\s*true\s*$/,
 ]
 
-const HASH_EXTENSIONS = new Set(['.yml', '.yaml', '.toml', '.sh'])
+const HASH_EXTENSIONS = new Set(['.toml', '.sh'])
 const HASH_FILES = new Set(['.gitignore', '.gitattributes', '.npmrc', '.editorconfig', 'Dockerfile'])
 const SKIPPED_FILES = new Set(['pnpm-lock.yaml'])
+const FLOW_YAML_SCALARS = new Set(['scalar', 'single-quoted-scalar', 'double-quoted-scalar'])
 
 export function familyOf(file) {
   const base = path.basename(file)
@@ -38,6 +40,7 @@ export function familyOf(file) {
   if (extension === '.css' || extension === '.scss') return 'css'
   if (['.html', '.htm', '.svg', '.xml'].includes(extension)) return 'markup'
   if (extension === '.sql') return 'sql'
+  if (extension === '.yml' || extension === '.yaml') return 'yaml'
   if (HASH_EXTENSIONS.has(extension) || HASH_FILES.has(base) || base.startsWith('.env')) return 'hash'
   return null
 }
@@ -92,11 +95,30 @@ function delimitedComments(text, { line = [], block = [], quotes = [] }) {
   return found
 }
 
-function hashComments(text) {
+function flowYamlScalars(node) {
+  if (Array.isArray(node)) return node.flatMap(flowYamlScalars)
+  if (!node || typeof node !== 'object') return []
+  if (FLOW_YAML_SCALARS.has(node.type)) return [node]
+  return Object.values(node).flatMap(flowYamlScalars)
+}
+
+function maskFlowYamlScalars(text) {
+  const [error] = parseAllDocuments(text, { uniqueKeys: false }).flatMap(document => document.errors)
+  if (error) throw error
+  let masked = text
+  for (const scalar of flowYamlScalars([...new Parser().parse(text)])) {
+    const end = scalar.offset + scalar.source.length
+    masked = masked.slice(0, scalar.offset) + scalar.source.replace(/[^\r\n]/g, 'x') + masked.slice(end)
+  }
+  return masked
+}
+
+function hashComments(text, { allowShebang }) {
   const found = []
   let offset = 0
   for (const rawLine of text.split('\n')) {
-    const line = rawLine.replace(/\r$/, '')
+    const isShebang = allowShebang && offset === 0 && rawLine.startsWith('#!')
+    const line = isShebang ? '' : rawLine.replace(/\r$/, '')
     let quote = null
     for (let i = 0; i < line.length; i++) {
       const char = line[i]
@@ -134,8 +156,10 @@ export function findComments(text, file) {
       return delimitedComments(text, { block: [['<!--', '-->']] })
     case 'sql':
       return delimitedComments(text, { line: ['--'], block: [['/*', '*/']], quotes: ["'", '"'] })
+    case 'yaml':
+      return hashComments(maskFlowYamlScalars(text), { allowShebang: false })
     case 'hash':
-      return hashComments(text)
+      return hashComments(text, { allowShebang: extension === '.sh' })
     default:
       return []
   }
