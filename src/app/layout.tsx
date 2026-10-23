@@ -1,0 +1,15 @@
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+
+export const metadata: Metadata = {
+  title: 'Panel d’administration de Shor',
+  description: 'Le panel où le staff de Shor administre le serveur Discord.',
+}
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="fr">
+      <body>{children}</body>
+    </html>
+  )
+}

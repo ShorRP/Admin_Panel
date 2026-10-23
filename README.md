@@ -2,7 +2,7 @@
 
 The web app the staff of Shor, a Skyrim roleplay server, use to administer its Discord server without code or bot commands.
 
-The repository holds the project's docs and tooling; the app itself is not scaffolded yet. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
+The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. So far it serves a home page. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
 
 ## Docs
 
@@ -13,18 +13,54 @@ The repository holds the project's docs and tooling; the app itself is not scaff
 
 ## Requirements
 
-- Node 22 or later.
+- Node `^22.13.0 || ^24.0.0 || >=26.0.0`, the range `engines` sets in `package.json`.
 - pnpm, at the version `packageManager` pins in `package.json`.
 
 ## Commands
+
+Install the dependencies:
 
 ```bash
 pnpm install
 ```
 
+Serve the panel at http://localhost:3000, reloading on every change:
+
+```bash
+pnpm dev
+```
+
+Run the tooling's tests, then the panel's:
+
 ```bash
 pnpm test
 ```
+
+Check the types:
+
+```bash
+pnpm typecheck
+```
+
+Lint the repository:
+
+```bash
+pnpm lint
+```
+
+Build the panel for production:
+
+```bash
+pnpm build
+```
+
+Serve that build at http://localhost:3000:
+
+```bash
+pnpm start
+```
+
+Check that the repository holds no comments:
 
 ```bash
 pnpm check:comments
