@@ -2,7 +2,7 @@
 
 The web app the staff of Shor, a Skyrim roleplay server, use to administer its Discord server without code or bot commands.
 
-The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. So far it serves a home page. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
+The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. Its interface is built with Tailwind CSS 4 and with shadcn/ui components on Base UI, copied into [`src/ui/`](src/ui/), whose [`globals.css`](src/ui/globals.css) holds the theme. So far it serves a home page, on the theme's background and text, and `src/ui/` holds a button. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
 
 ## Docs
 
@@ -64,6 +64,18 @@ Check that the repository holds no comments:
 
 ```bash
 pnpm check:comments
+```
+
+Copy a shadcn/ui component into `src/ui/`, with the dependencies it needs, as `components.json` sets; `button` here:
+
+```bash
+pnpm exec shadcn add button
+```
+
+The copy then loses its comments and its English strings turn French. To see how a copied file differs from the registry's:
+
+```bash
+pnpm exec shadcn add button --diff
 ```
 
 ## Environment variables
