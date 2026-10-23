@@ -19,7 +19,7 @@ export function externalBlocker(body) {
   return match[1].split(/\*\*|\.\s/)[0].replace(/[.\s]+$/, '')
 }
 
-const isClosingComment = body => /^\s*Livré par #\d+/.test(body)
+const isClosingComment = body => /^\s*(?:Livré par #\d+|## Résolution\b)/.test(body)
 const isWayfinder = issue => issue.labels.some(label => label.startsWith('wayfinder:'))
 const isResolution = body => /^\s*## (?:Décisions|Réponse|Résolution)\b/.test(body)
 const hasRecord = issue => issue.comments.some(body => isClosingComment(body) || (isWayfinder(issue) && isResolution(body)))
