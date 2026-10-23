@@ -17,4 +17,4 @@ Facts from https://docs.discord.com/developers/resources/audit-log and https://d
 
 - The project stores no personal data for the MVP.
 - Changes made directly in Discord's settings appear in the same audit log under the person's own name, without the panel's reason.
-- When a database arrives, its audit rows take the shape of skymp-heavy-rp's `audit_logs` (ADR 0001).
+- When a database arrives, its audit rows identify the staff member by Discord ID.
