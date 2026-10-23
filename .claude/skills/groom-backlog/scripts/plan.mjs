@@ -43,6 +43,8 @@ export function desiredStatus(issue, lookup) {
   return 'Todo'
 }
 
+const editedSince = (issue, time) => Boolean(time && issue.lastEditedAt && new Date(issue.lastEditedAt) > new Date(time))
+
 const firstUncheckedItem = body => (body ?? '').match(/^[ \t>]*(?:[-*+]|\d+[.)])[ \t]+\[ \](.*)$/m)?.[1].trim() ?? null
 const hasUncheckedBox = body => firstUncheckedItem(body) !== null
 
@@ -228,7 +230,7 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
 
   const closing = []
   for (const issue of issues) {
-    const current = board.get(issue.number) ?? { status: null, priority: null, waitingOn: null, size: null }
+    const current = board.get(issue.number) ?? { status: null, priority: null, waitingOn: null, size: null, sizeSetAt: null }
     const status = desiredStatus(issue, lookup)
     if (status !== current.status) {
       ops.push({ op: 'setField', issue: issue.number, field: 'Status', value: status, why: statusWhy(issue, status) })
@@ -256,7 +258,12 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
       }
     } else {
       if (!current.priority) judgment.push({ kind: 'missing-priority', issue: issue.number })
-      if (hasSize && !current.size) judgment.push({ kind: 'missing-size', issue: issue.number })
+      if (hasSize) {
+        if (!current.size) judgment.push({ kind: 'missing-size', issue: issue.number })
+        else if (editedSince(issue, current.sizeSetAt)) {
+          judgment.push({ kind: 'outdated-size', issue: issue.number, detail: `${current.size} set ${current.sizeSetAt.slice(0, 16)}, body edited ${issue.lastEditedAt.slice(0, 16)}` })
+        }
+      }
       const idle = new Date(now) - new Date(issue.updatedAt) > staleDays * DAY_MS
       if (status === 'In progress' && !issue.linkedOpenPullRequests.length && idle) {
         judgment.push({ kind: 'stale', issue: issue.number, detail: `no activity since ${issue.updatedAt.slice(0, 10)}` })
