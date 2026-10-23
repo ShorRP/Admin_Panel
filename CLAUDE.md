@@ -19,7 +19,7 @@ The orchestrating skills are run by the user. When you see the moment for one, s
 - non-trivial change, not grilled yet → `/grill-with-docs`
 - grilled change too big for one session → `/to-spec`, then `/to-tickets`
 - effort too foggy to scope → `/wayfinder`
-- the answer lives in a teammate's head (the staff, loanspac) → `/to-questionnaire`
+- the answer lives in a teammate's head (the POs, the staff, loanspac) → `/to-questionnaire`
 
 ## Language
 
@@ -53,7 +53,7 @@ What a comment would say goes elsewhere: the why of a change in its commit messa
 
 - Commit messages read `Area: what changed`, in English.
 - The user is the sole author: commits carry no `Co-Authored-By` trailer, PRs carry no "Generated with" footer.
-- Only the owner merges into `main`, with a merge commit, never a squash. Vercel's Hobby plan has no team collaboration, and its forum reports blocked deploys when a private repo's commit author is not the owner's linked GitHub account; this is to be confirmed at the first deploy.
+- Only the maintainer, Gilles (`docs/agents/issue-tracker.md`, **People**), merges into `main`, with a merge commit, never a squash. Vercel's Hobby plan has no team collaboration, and its forum reports blocked deploys when a private repo's commit author is not the owner's linked GitHub account; this is to be confirmed at the first deploy.
 - Issues, PR descriptions and comments read like a teammate wrote them: direct, specific, complete, no filler.
 - A PR that only advances a ticket names it once, as `Part of #<n>`. GitHub closes, at merge, every issue that a PR description or commit message puts right after `close`, `fix` or `resolve` (any form), even inside a negation.
 - Once a PR merges, delete its local branch with `git branch -d` and run `git fetch --prune`. When `-d` refuses, the branch holds unmerged work: ask the user.

@@ -35,8 +35,8 @@ The approval loop of `/to-tickets` waits until it publishes.
 4. **Look past the script.** For each in-scope issue, run the checks of **Beyond the script** and append their ops.
 5. **Apply.** `backlog.mjs apply <plan.json>` re-reads the ids, saves another backup, and prints `ok` or `FAIL` per op. A `FAIL` about a missing scope stops the run: ask the user to run `gh auth refresh -s project` (it opens a browser), then apply again.
 6. **Verify.** Plan again. Done when `ops` is empty and every judgment item left is one your report explains. Otherwise, back to step 3.
-7. **Report**, in French: a table of ticket / change / why, verified facts apart from inferences; the backup path; the judgment items left and why; the Sizes you set, so the owner can correct them; the touched tickets you linked, closed or commented; the tickets filed from loose ends, and the loose ends dropped and why; the epics you created.
-8. **Grill the doubts.** When doubts wait, call the Skill tool for `grilling` and end the report with its first round: one question per doubt, with its facts and the recommended answer **Touched tickets**, **Loose ends** or **Structure** gives it. Ask the rounds that follow until the owner has settled each doubt, carry out what they approve, then run again from step 2. Done when no doubt waits.
+7. **Report**, in French: a table of ticket / change / why, verified facts apart from inferences; the backup path; the judgment items left and why; the Sizes you set, so the maintainer can correct them; the touched tickets you linked, closed or commented; the tickets filed from loose ends, and the loose ends dropped and why; the epics you created.
+8. **Grill the doubts.** When doubts wait, call the Skill tool for `grilling` and end the report with its first round: one question per doubt, with its facts and the recommended answer **Touched tickets**, **Loose ends** or **Structure** gives it. Ask the rounds that follow until the PO or the maintainer each doubt belongs to (`issue-tracker.md`, **People**) has settled it, carry out what they approve, then run again from step 2. Done when no doubt waits.
 
 ## Touched tickets
 
@@ -47,7 +47,7 @@ Compare what each one asks with what the work did, and settle it by the first ca
 1. **Delivered**: every criterion of its `Terminé quand` holds, or of its body when it has none. When an open PR carries the work, add `Closes #<n>` to its description (`gh pr edit`), and post the closing comment once the PR merges; when the work is already on `main`, close it as completed with the closing comment (`gh issue close <n> --comment`).
 2. **Obsolete**: the work removed what it asks about, and a check proves it (a `grep` that finds nothing, a test, a command output). Close it as not planned, with a comment giving the proof.
 3. **Advanced**: some of its criteria hold. Comment what is done and what remains, each with its source, and tick the boxes of its `Checklist` that the work completed. An epic closes only once every sub-issue is closed and every box of its body is checked (`issue-tracker.md`, **Project board**).
-4. **Changed facts**: something it states no longer holds: a moved `file:line` (once merged, the plan relocates those: **Moved citations**), a refuted `Faits vérifiés`, a Size the work proved wrong. Comment the new facts and leave the body as is, apart from a cleared outside blocker (**Outside blockers**). The Size stays the owner's to correct.
+4. **Changed facts**: something it states no longer holds: a moved `file:line` (once merged, the plan relocates those: **Moved citations**), a refuted `Faits vérifiés`, a Size the work proved wrong. Comment the new facts and leave the body as is, apart from a cleared outside blocker (**Outside blockers**). The Size stays the maintainer's to correct.
 5. **Unaffected**: the work only passes near it. Leave it.
 
 A case you cannot prove from facts waits as a doubt for step 8, with the case you would pick as the recommended answer.
@@ -67,7 +67,7 @@ A **loose end** is work this session found and left undone. The conversation is 
 Settle each one in this order:
 
 1. **Covered.** Search as **Duplicates** does (**Beyond the script**), issues closed as not planned included. An open issue that covers it gets a comment with the new facts, when it gains any. A closed one rejected it: drop it, citing the issue.
-2. **Clear.** Its facts carry a source (`file:line`, commit, command output) and you can write its `Terminé quand` without choosing for the owner: file it. `gh issue create`, in French by `issue-tracker.md` (**Writing an issue in French**): an area prefix, `Part of #<epic>` when it serves one, `Faits vérifiés` and `Inférences`, `Terminé quand`, `Hors périmètre`. One type label, and `ready-for-agent`, or `ready-for-human` when it takes a human (a decision, an access, a purchase).
+2. **Clear.** Its facts carry a source (`file:line`, commit, command output) and you can write its `Terminé quand` without choosing for a PO or the maintainer: file it. `gh issue create`, in French by `issue-tracker.md` (**Writing an issue in French**): an area prefix, `Part of #<epic>` when it serves one, `Faits vérifiés` and `Inférences`, `Terminé quand`, `Hors périmètre`. One type label, and `ready-for-agent`, or `ready-for-human` when it takes a human (a decision, an access, a purchase).
 3. **Doubt.** Anything else waits for the grilling of step 8. What the doubt is about picks the recommended answer:
    - whether it deserves a ticket, or what done means → file it, fold it into #n, or drop it;
    - a term missing from `GLOSSARY.md` or clashing with it → settle the term with `domain-modeling` during the grilling, as `/triage` does, then file it;
@@ -78,7 +78,7 @@ Written from a branch, a ticket or a comment cites that branch's lines. Each of 
 
 ## Structure
 
-A **structure candidate** is a milestone, a label or an epic that the tracker lacks and the session's work calls for. Its signals: a word the owner used to sort or sequence the work; a sequence of steps the owner described; new tickets sharing something no field expresses.
+A **structure candidate** is a milestone, a label or an epic that the tracker lacks and the session's work calls for. Its signals: a word a PO or the maintainer used to sort or sequence the work; a sequence of steps a PO or the maintainer described; new tickets sharing something no field expresses.
 
 - **Epic**: create it yourself whenever **Epic membership** (**Beyond the script**) calls for one.
 - **Milestone**: open tickets wait on a step in time that no milestone names yet, such as Shor's launch or an event the staff announce.
@@ -89,13 +89,13 @@ A milestone or a label changes the tracker's conventions, so it waits as a doubt
 - the new milestone or label: its name, its description, its place among the existing ones, and the tickets it takes;
 - the field that already carries the distinction, when one fits.
 
-Once the owner accepts it, create it, record it in `issue-tracker.md` and `config.json` in a PR of its own, then give it to its tickets.
+Once a PO accepts a milestone, or the maintainer a label, create it, record it in `issue-tracker.md` and `config.json` in a PR of its own, then give it to its tickets.
 
 ## Judgment items
 
 - **`missing-type`**: read the ticket and add one type label (`issue-tracker.md`, **Labels**). Epics carry one too.
 - **`missing-priority`**: set `Priority` by the definitions in `issue-tracker.md`, **Project board**. The milestone and the epic's other children are evidence.
-- **`missing-size`**: read the ticket up to its `Terminé quand` and set `Size` by the scale in `issue-tracker.md`, **Project board**. Epics take none. The planner only asks for a missing Size, so an estimate the owner corrected stays.
+- **`missing-size`**: read the ticket up to its `Terminé quand` and set `Size` by the scale in `issue-tracker.md`, **Project board**. Epics take none. The planner only asks for a missing Size, so an estimate the maintainer corrected stays.
 - **`missing-next-ticket`**: an open epic the plan does not close has no open child, against the rule of `issue-tracker.md` (**Project board**, Status), so the board shows neither its next step nor the right priority. That step is the first unchecked line of its checklist, which the item quotes, or, with none, what the epic's goal still lacks: settle it as a loose end (**Loose ends**), under the epic. A line whose ticket already closed only needs its box checked. Once the step has its ticket, put the `#n` at the head of its checklist line with `gh issue edit` (`- [ ] #12 : Mots interdits : …`). An epic whose goal looks met waits as a doubt, with closing it as the recommended answer.
 - **`waiting-on`**: a `needs-info` ticket. Read its latest comments and write, in French, who is awaited and for what (`staff : IDs du serveur et du rôle staff`).
 - **`state-conflict`**: keep the state the latest comment supports, remove the others.
@@ -123,7 +123,7 @@ Tickets cite their facts as `file:line`, and a merge that adds or removes lines 
 
 ## Guardrails
 
-- Before moving or relabelling what looks misplaced, find why it is there: a `## Décisions` section, a comment, `issue-tracker.md`. A recorded owner decision beats these rules: report the conflict instead of changing it.
+- Before moving or relabelling what looks misplaced, find why it is there: a `## Décisions` section, a comment, `issue-tracker.md`. A recorded decision of a PO or the maintainer beats these rules: report the conflict instead of changing it.
 - Delete nothing: no issue, label or field.
 - Comment, in French (`issue-tracker.md`, **Writing an issue in French**), only when a ticket enters `Blocked` or `needs-info` (what is awaited, from whom), when a Priority it already had changes, or when the session's work brings it new facts or closes it (**Touched tickets**, **Loose ends**). A first Priority, a Size and mechanical changes go without comment.
 

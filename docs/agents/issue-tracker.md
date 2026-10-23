@@ -4,6 +4,14 @@ Issues for this repo live as GitHub issues in `ShorRP/Admin_Panel`, on the **Adm
 
 The board covers this repository only. What the panel needs from ShorBot, from the staff or from the VPS admins is an outside blocker (**Blockers** below); an issue goes to `ShorRP/ShorBot` only with loanspac's agreement, since it is their repository.
 
+## People
+
+Roles as Gilles stated them on 2026-10-23:
+
+- **The POs**, Lyra-Gates (`Lyra-Gates`) and Anaisenkit, decide what the panel does and in what order: the MVP's content, a Priority the rules below leave open or one they want changed, new milestones, and what done means for a feature. Either of them can decide. When they disagree, they settle it between themselves, and the ticket waits with `PO : arbitrage` in **Waiting on**. Anaisenkit also brings the staff's needs, and develops on Shor too.
+- **The maintainer**, Gilles (`PothieuG`), decides how: the stack, the ADRs, Sizes, labels and the tracker's other conventions. Only the maintainer merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**).
+- **loanspac** (`LoanSpac`) develops ShorBot and owns its API (ADR 0003).
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
@@ -37,12 +45,12 @@ Issues are written in French: title, body and comments. Everything else (code, d
   A ticket tied to no step, such as tooling, tests, debt or a feature after the MVP, takes no milestone. An epic takes the earliest milestone among its open children. A new milestone waits for a step the staff announce, such as Shor's launch.
 - **Labels.** Each issue carries one type label: `enhancement`, `bug` or `documentation`. Unless it is an epic, it also carries one triage state, from the five roles in `triage-labels.md`. Epics carry `epic` instead of a triage state, and a type label like any issue. There are no area labels: the title prefix already names the area. No label repeats a milestone either.
 - **The planner mirrors these lists.** `.claude/skills/groom-backlog/config.json` holds the board's URL, the type labels and the milestones in order: change it together with this file.
-- **Project board.** The built-in workflows live under the project's **⋯** menu → **Workflows**; the owner turns them on by hand, as the API cannot: Auto-add to project (repository `ShorRP/Admin_Panel`), Auto-add sub-issues, Item added, Item closed, Pull request linked to issue, Pull request merged, Auto-close issue. The `groom-backlog` skill (`.claude/skills/groom-backlog`) keeps the rules below true.
+- **Project board.** The built-in workflows live under the project's **⋯** menu → **Workflows**; the maintainer turns them on by hand, as the API cannot: Auto-add to project (repository `ShorRP/Admin_Panel`), Auto-add sub-issues, Item added, Item closed, Pull request linked to issue, Pull request merged, Auto-close issue. The `groom-backlog` skill (`.claude/skills/groom-backlog`) keeps the rules below true.
   - **Status** follows from facts. `Done`: closed. `Blocked`: someone other than the agent must act first, because of `needs-triage`, `needs-info`, an open blocker, or a body opening with `Bloqué : …`. `In progress`: assigned, or an open PR closes it. `Todo`: the rest, `ready-for-human` included. An epic follows its children: `In progress` once one is closed or in progress, `Blocked` when every open one is, and `Done` when all are closed and its body holds no unchecked task-list box (`- [ ]`), at which point it closes too. Until it is done, an epic keeps an open child for its next step; `groom-backlog` flags an epic without one.
-  - **Waiting on**, a text field, says in French who or what a `Blocked` ticket waits for: `#12`, `propriétaire : triage`, `staff : IDs du serveur et du rôle staff`. It stays empty otherwise.
-  - **Priority.** `P0`: production broken, a security hole exposed, or a ticket that blocks two or more open tickets. `P1`: needed for the MVP, or the next step of an active epic. `P2`: later, comfort, or debt without a deadline. An epic takes the highest priority of its open children.
+  - **Waiting on**, a text field, says in French who or what a `Blocked` ticket waits for: `#12`, `mainteneur : triage`, `PO : contenu du MVP`, `staff : IDs du serveur et du rôle staff`. It stays empty otherwise.
+  - **Priority.** `P0`: production broken, a security hole exposed, or a ticket that blocks two or more open tickets. `P1`: needed for the MVP, or the next step of an active epic. `P2`: later, comfort, or debt without a deadline. An epic takes the highest priority of its open children. A PO may set another Priority; agents keep it and comment when they change one.
   - **Order.** The board and each epic's sub-issues sort by milestone, then by Priority, with tickets without a milestone last. Within a milestone and a priority, what unblocks the most comes first, then cheap fixes before large efforts.
-  - **Size** estimates the effort to reach the ticket's `Terminé quand`, decisions and review included. `XS`: a few lines, under an hour. `S`: one file or a handful of strings, half a day. `M`: a module and its tests, or a scoped investigation, one or two days. `L`: several modules or a migration, several days. `XL`: over a week, which usually means the ticket should become an epic. Agents set it on a ticket that has none, never on an epic, and never overwrite one: the owner corrects it.
+  - **Size** estimates the effort to reach the ticket's `Terminé quand`, decisions and review included. `XS`: a few lines, under an hour. `S`: one file or a handful of strings, half a day. `M`: a module and its tests, or a scoped investigation, one or two days. `L`: several modules or a migration, several days. `XL`: over a week, which usually means the ticket should become an epic. Agents set it on a ticket that has none, never on an epic, and never overwrite one: the maintainer corrects it.
 
 ## Pull requests as a triage surface
 

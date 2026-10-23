@@ -26,7 +26,7 @@ const hasRecord = issue => issue.comments.some(body => isClosingComment(body) ||
 
 export function waitingReasons(issue) {
   const reasons = []
-  if (issue.labels.includes('needs-triage')) reasons.push({ why: 'needs-triage', text: 'propriétaire : triage' })
+  if (issue.labels.includes('needs-triage')) reasons.push({ why: 'needs-triage', text: 'mainteneur : triage' })
   if (issue.labels.includes('needs-info')) reasons.push({ why: 'needs-info', text: null })
   const blockers = issue.blockedBy.filter(b => b.state === 'OPEN').map(b => `#${b.number}`)
   if (blockers.length) reasons.push({ why: `blocked by ${blockers.join(', ')}`, text: blockers.join(', ') })

@@ -170,7 +170,7 @@ test('waiting on: derived from blockers, triage and prose, cleared once unblocke
   const waiting = result.ops.filter(o => o.field === 'Waiting on').map(o => [o.issue, o.value])
   assert.deepEqual(waiting, [
     [1, '#32, #33'],
-    [2, 'propriétaire : triage'],
+    [2, 'mainteneur : triage'],
     [6, 'nécessite GitHub Pro sur le compte du propriétaire'],
     [7, null],
   ])
@@ -195,7 +195,7 @@ test('labels: an untriaged issue gets needs-triage, then waits on the owner', ()
   assert.deepEqual(opsFor(result, 3).map(o => [o.op, o.label ?? o.field, o.value]), [
     ['addLabel', 'needs-triage', undefined],
     ['setField', 'Status', 'Blocked'],
-    ['setField', 'Waiting on', 'propriétaire : triage'],
+    ['setField', 'Waiting on', 'mainteneur : triage'],
   ])
 })
 
