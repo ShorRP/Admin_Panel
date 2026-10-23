@@ -1,0 +1,16 @@
+{
+  "name": "shor-admin-panel",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "check:comments": "node scripts/check-comments.mjs"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.9"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+coverage/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.claude/worktrees/
+.claude/settings.local.json
