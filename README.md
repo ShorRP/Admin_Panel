@@ -37,4 +37,4 @@ None yet. They are documented here as they arrive, since `.env.example` holds no
 ## Related
 
 - [ShorBot](https://github.com/ShorRP/ShorBot): Shor's Discord bot, by loanspac.
-- [skymp-heavy-rp](https://github.com/vinicius3232/skymp-heavy-rp): the open-source SkyMP roleplay base ShorBot comes from. Shor itself does not run it: it has its own SkyMP server and launcher.
+- [skymp-heavy-rp](https://github.com/vinicius3232/skymp-heavy-rp): the open-source SkyMP roleplay base ShorBot comes from. Shor itself does not run it: it has its own SkyMP server and launcher (ADR 0001).
