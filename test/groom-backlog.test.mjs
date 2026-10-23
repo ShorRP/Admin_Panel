@@ -617,6 +617,42 @@ test('hook: tracker writes are recognized, reads and the skill itself are not', 
   for (const command of reads) assert.equal(isTrackerWrite(command), false, command)
 })
 
+test('hook: a gh write that asks for its help writes nothing, the same write without it still counts', () => {
+  const writes = [
+    'gh issue create --title x',
+    'gh pr merge 38 --merge',
+    'gh project item-edit --id X --field-id Y',
+    'gh api -X POST repos/o/r/issues/1/sub_issues -F sub_issue_id=2',
+  ]
+  for (const write of writes) {
+    assert.equal(isTrackerWrite(write), true, write)
+    for (const help of [`${write} --help`, `${write} -h`]) assert.equal(isTrackerWrite(help), false, help)
+  }
+  assert.equal(isTrackerWrite('gh help issue create'), false)
+})
+
+test('hook: only a help flag of its own asks for help, so a write next to a help request or quoting one still counts', () => {
+  const writes = [
+    'gh issue create --help && gh issue create --title x',
+    'gh issue create --title x --body "Run it with -h first"',
+    "gh issue create --title x --body 'Run it with --help first'",
+    'gh issue create --title x --body "Run \\"gh pr merge -h --merge\\" first"',
+    'gh issue create --body-file <(echo -h) --title x',
+  ]
+  for (const command of writes) assert.equal(isTrackerWrite(command), true, command)
+  assert.equal(isTrackerWrite('gh issue create --title x --body "Run `"gh pr merge -h --merge`" first"', 'PowerShell'), true)
+})
+
+test('hook: quotes are read from the start of the command, so a gh that is only quoted asks for no help and hides no write', () => {
+  const writes = [
+    'git commit -m "Tooling: skip gh help requests" && gh pr create --title x --body "The hook now ignores --help and -h."',
+    `echo 'gh x' && gh issue create --title 'Document the -h flag' --body y`,
+    `node -e 'run("gh issue create --help")'`,
+  ]
+  for (const command of writes) assert.equal(isTrackerWrite(command), true, command)
+  assert.equal(isTrackerWrite("gh issue edit 3 --body @'\nx\n'@\ngh issue edit 5 --title 'Hook ignores -h'", 'PowerShell'), true)
+})
+
 test('hook: a heredoc body is text handed to its command, so the gh writes and issues it only quotes do not count', () => {
   const writes = [
     "gh pr create --title x --body-file - <<'EOF'\nCloses #43\nEOF",

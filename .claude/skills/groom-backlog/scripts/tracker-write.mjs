@@ -38,7 +38,6 @@ function splitHereStrings(command) {
     const end = lines.findIndex((line, j) => j > i && line.startsWith(`${quote}@`))
     if (end === -1) continue
     bodies.push(...lines.slice(i + 1, end))
-    lines[end] = lines[end].slice(2)
     i = end - 1
   }
   return { script: script.join('\n'), bodies: bodies.join('\n') }
@@ -56,11 +55,33 @@ function isApiWrite(script, bodies) {
   return /\s(-f|-F|--field|--raw-field|--input)[\s=]/.test(api)
 }
 
+const HELP_FLAGS = new Set(['--help', '-h'])
+
+function shellQuoting(escape) {
+  const quoting = `'[^']*'|"(?:${escape}[\\s\\S]|[^"${escape}])*"|${escape}[\\s\\S]`
+  return {
+    quoting: new RegExp(quoting, 'g'),
+    tokens: new RegExp(`(\\bgh\\s(?:${quoting}|[^'"${escape};&|()\\n])*)|${quoting}|[\\s\\S]`, 'g'),
+  }
+}
+
+const QUOTING = { Bash: shellQuoting('\\\\'), PowerShell: shellQuoting('`') }
+
+function asksForHelp(invocation, quoting) {
+  return invocation.replace(quoting, '""').split(/\s+/).some(word => HELP_FLAGS.has(word))
+}
+
+function withoutHelpRequests(script, toolName) {
+  const { quoting, tokens } = toolName === 'PowerShell' ? QUOTING.PowerShell : QUOTING.Bash
+  return script.replace(tokens, (token, invocation) => invocation && asksForHelp(invocation, quoting) ? '' : token)
+}
+
 export function isTrackerWrite(command, toolName) {
-  const { script, bodies } = splitQuotedBodies(command, toolName)
+  const split = splitQuotedBodies(command, toolName)
+  const script = withoutHelpRequests(split.script, toolName)
   if (/groom-backlog[\\/]scripts[\\/]backlog\.mjs/.test(script)) return false
   if (WRITE_COMMANDS.some(pattern => pattern.test(script))) return true
-  return /\bgh\s+api\b/.test(script) && isApiWrite(script, bodies)
+  return /\bgh\s+api\b/.test(script) && isApiWrite(script, split.bodies)
 }
 
 export function touchedIssues(command, toolName) {
