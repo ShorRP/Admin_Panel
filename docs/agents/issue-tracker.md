@@ -8,7 +8,7 @@ The board covers this repository only. What the panel needs from ShorBot, from t
 
 Roles as Gilles stated them on 2026-10-23:
 
-- **The POs**, Lyra-Gates (`Lyra-Gates`) and Anaisenkit, decide what the panel does and in what order: the MVP's content, a Priority the rules below leave open or one they want changed, new milestones, and what done means for a feature. Either of them can decide. Anaisenkit also brings the staff's needs, and develops on Shor too.
+- **The POs**, Lyra-Gates (`Lyra-Gates`) and Anaisenkit, decide what the panel does and in what order: the MVP's content, a Priority the rules below leave open or one they want changed, new milestones, and what done means for a feature. Either of them can decide. When they disagree, they settle it between themselves, and the ticket waits with `PO : arbitrage` in **Waiting on**. Anaisenkit also brings the staff's needs, and develops on Shor too.
 - **The maintainer**, Gilles (`PothieuG`), decides how: the stack, the ADRs, Sizes, labels and the tracker's other conventions. Only the maintainer merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**).
 - **loanspac** (`LoanSpac`) develops ShorBot and owns its API (ADR 0003).
 
