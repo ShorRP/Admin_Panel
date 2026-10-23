@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-The Admin Panel is the web app Shor's staff use to administer the Discord server: a Discord login for the staff, blocked words kept in a Discord AutoMod rule (ADR 0002), and an audit log (ADR 0004). It will be a Next.js app in TypeScript, hosted on Vercel, that talks to Discord's REST API only (ADR 0003). As of 2026-10-23 the repo holds the docs and the tooling, and the app is not scaffolded yet.
+The Admin Panel is the web app Shor's staff use to administer the Discord server: a Discord login for the staff, blocked words kept in a Discord AutoMod rule (ADR 0002), and an audit log (ADR 0004). It is a Next.js app (App Router) in TypeScript under `src/app/`, to be hosted on Vercel, that talks to Discord's REST API only (ADR 0003). As of 2026-10-23 it serves a single French home page; the repo also holds the docs and the tooling.
 
 ## How we work
 
@@ -44,10 +44,12 @@ What a comment would say goes elsewhere: the why of a change in its commit messa
 
 ## Feedback loops
 
-- Tests: `pnpm test` runs `node --test` over `test/**/*.test.mjs`, the tooling's tests. One file: `node --test test/<name>.test.mjs`. The app's tests will run under Vitest, and Discord is always replaced by an in-memory fake: no test calls the real Discord.
-- Typecheck, lint, build: none yet. The scaffolding ticket adds `tsc --noEmit`, ESLint and `next build`, locally and in CI.
+- Tests: `pnpm test` runs the tooling's tests, `node --test` over `test/**/*.test.mjs`, then the panel's, Vitest over `src/**/*.test.{ts,tsx}`. Vitest runs in Node, without a DOM: a test renders a component with `react-dom/server`, as the server does. One file: `node --test test/<name>.test.mjs` or `pnpm exec vitest run <path>`. Discord is always replaced by an in-memory fake: no test calls the real Discord.
+- Typecheck: `pnpm typecheck` runs `next typegen`, which writes what a fresh clone lacks, the gitignored `next-env.d.ts` and the route types behind `PageProps` and `LayoutProps`, then `tsc --noEmit`.
+- Lint: `pnpm lint`, ESLint with `eslint-config-next`'s Core Web Vitals and TypeScript configs, over the whole repo.
+- Build: `pnpm build` (`next build`), which type-checks again. Dev server: `pnpm dev`.
 - Comments: `pnpm check:comments`.
-- CI: `.github/workflows/ci.yml`. It is advisory: branch protection and rulesets are refused on this private repository of a free organization (HTTP 403 « Upgrade to GitHub Pro or make this repository public », checked 2026-10-23). Never merge a PR whose CI is red.
+- CI: `.github/workflows/ci.yml` runs the comment check, the typecheck, the lint, the tests and the build. It is advisory: branch protection and rulesets are refused on this private repository of a free organization (HTTP 403 « Upgrade to GitHub Pro or make this repository public », checked 2026-10-23). Never merge a PR whose CI is red.
 
 ## Commits, PRs, issues
 
@@ -60,8 +62,12 @@ What a comment would say goes elsewhere: the why of a change in its commit messa
 
 ## Gotchas
 
-- `@babel/parser`, which the comment check uses, stays on 7.x: 8.x requires Node `^22.18.0 || >=24.11.0` (`npm view @babel/parser@8 engines`, 2026-10-23), narrower than the `>=22` that `engines` promises in `package.json`. CI would not catch the gap: its `node-version: 22` ran Node 22.23.3 on 2026-10-23 (run 39944674281), which 8.x accepts.
-- `typescript@7` on npm is the native compiler: its package exports no stable JavaScript API (only `./unstable/*`), so tooling that parses code cannot rely on it. That is why the comment check parses with Babel.
+- `@babel/parser`, which the comment check uses, stays on 7.x: 8.x requires Node `^22.18.0 || >=24.11.0` (`npm view @babel/parser@8 engines`, 2026-10-23), narrower than the `^22.13.0 || ^24.0.0 || >=26.0.0` that `engines` promises in `package.json`. CI would not catch the gap: its `node-version: 22` ran Node 22.23.3 on 2026-10-23 (run 39944674281), which 8.x accepts.
+- `engines.node` is the intersection of the ranges the toolchain declares: Vitest 5 wants `^22.12.0 || ^24.0.0 || >=26.0.0`, ESLint 10 `^20.19.0 || ^22.13.0 || >=24` (`npm view <package> engines`, 2026-10-23). Read a new dependency's `engines` before adding it: jsdom 30, for one, wants `^22.22.2 || ^24.15.0 || >=26.0.0`.
+- `typescript@7` on npm is the native compiler: its package exports no stable JavaScript API (only `./unstable/*`), so tooling that parses code cannot rely on it. That is why the comment check parses with Babel, and why TypeScript stays on `~6.0.3`: typescript-eslint, which `eslint-config-next/typescript` uses, accepts `typescript >=4.8.4 <6.1.0` (8.72.0, `npm view typescript-eslint peerDependencies`, 2026-10-23). Next.js alone would accept 7, through its `tsc` CLI (https://nextjs.org/docs/app/api-reference/config/typescript, updated 2026-08-25).
+- ESLint is on 10, since 9.x reached end-of-life on 2026-08-06 (https://eslint.org/version-support, read 2026-10-23). `eslint-config-next` supports 10 since 16.4.0 (https://nextjs.org/docs/app/api-reference/config/eslint, updated 2026-10-15), but three plugins it bundles, `eslint-plugin-import`, `eslint-plugin-jsx-a11y` and `eslint-plugin-react`, still cap their `eslint` peer at `^9`: hence the `peerDependencyRules` of `pnpm-workspace.yaml`. Drop each rule once its plugin lists 10.
+- pnpm 12 refuses a version published less than a day ago (`minimumReleaseAge`), and `pnpm add` of such a version writes it into `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` without asking. On 2026-10-23, `pnpm add` reported doing so for Next.js 16.4.3, on npm since 13:40 UTC that day (`npm view next time`), so the panel stayed on 16.4.2. Read `pnpm-workspace.yaml` after every `pnpm add`.
+- `next dev` writes an `AGENTS.md` for the coding agent it detects unless `next.config.ts` sets `agentRules: false` (`node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/agentRules.md`). The docs it would point to, which match the installed Next.js, are in `node_modules/next/dist/docs/`.
 - The hooks of `.claude/settings.json` need `pnpm install` first: without `node_modules`, the comment check cannot run and `gh pr create` is refused.
 - The API can show Auto-add to project `enabled` while it adds nothing: its filter, which the API hides, once held a stray `label:`. Only an issue that `github-project-automation` puts on the board proves it works (`docs/agents/issue-tracker.md`, **Board workflows**).
 - Writes to the project board need gh's `project` scope; `read:project` only lets `backlog.mjs plan` read it. When `apply` fails on a missing scope, run `gh auth refresh -s project`, which opens a browser.
