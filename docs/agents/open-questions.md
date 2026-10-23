@@ -12,6 +12,6 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 ## Which Discord server and which staff role?
 
 - **Question:** What are the IDs of Shor's Discord server and of the role, or roles, that make a member staff?
-- **Where it shows up:** the Admin Panel lets in only members holding the staff role, re-checked before every write. The IDs are configuration, so development can go on without them. ShorBot's expected features, as Gilles relayed them on 2026-10-23, name a Staff role (« les membres du rôle Staff ») and a role per category of its support tickets (« @[rôle en charge du problème] »). Whether those per-category roles also make a member staff is part of this question.
+- **Where it shows up:** the Admin Panel lets in only members holding the staff role, re-checked on every page view and every write (ADR 0005). The IDs are configuration, so development can go on without them. ShorBot's expected features, as Gilles relayed them on 2026-10-23, name a Staff role (« les membres du rôle Staff ») and a role per category of its support tickets (« @[rôle en charge du problème] »). Whether those per-category roles also make a member staff is part of this question.
 - **Who is likely to know:** Anaisenkit, or any staff member with Discord's Developer Mode on.
 - **Blocked on it:** the first production deploy.

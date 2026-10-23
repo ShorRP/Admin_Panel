@@ -18,13 +18,16 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 ├── GLOSSARY.md
 ├── docs/adr/
 │   ├── 0001-own-discord-admin-panel-not-skymp-web.md
-│   └── 0002-blocked-words-live-in-discord-automod.md
+│   ├── …
+│   └── NNNN-<decision>.md
 └── src/
 ```
 
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `GLOSSARY.md`. Don't drift to synonyms the glossary explicitly avoids. French issue prose uses the French equivalents listed in `docs/agents/issue-tracker.md` (**Writing an issue in French**).
+
+One folder speaks another language: `src/discord/` mirrors Discord's REST API, so its names follow Discord's (guild, member, auto-moderation rule). Every other folder, its identifiers and its tests use the glossary's terms, which avoid "guild" (decided while grilling #47, 2026-10-23).
 
 If the concept you need isn't in the glossary yet, that's a signal: either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
 
