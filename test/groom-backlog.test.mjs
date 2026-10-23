@@ -623,6 +623,19 @@ test('closing comment: a wayfinder ticket keeps its record in its resolution, un
   assert.deepEqual(result.judgment.map(j => j.issue), [90, 91])
 })
 
+test('closing comment: a ticket delivered without a PR keeps its record in a comment opening with "## Résolution"', () => {
+  const result = plan(snapshot({
+    issues: [],
+    closedIssues: [
+      closedIssue(7, { comments: ['## Résolution\n\nFait le 2026-10-23.'] }),
+      closedIssue(8, { comments: ['Les IDs arrivent.', '## Résolution (Gilles, 2026-10-23)\n\nLes IDs.'] }),
+      closedIssue(9, { comments: ['Fait, voir plus haut. ## Résolution'] }),
+      closedIssue(10),
+    ],
+  }))
+  assert.deepEqual(result.judgment.map(j => j.issue), [9, 10])
+})
+
 test('closing comment: tickets closed before the rule was adopted on 2026-10-10 are left alone', () => {
   const result = plan(snapshot({
     issues: [],

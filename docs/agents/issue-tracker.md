@@ -31,7 +31,7 @@ Issues are written in French: title, body and comments. Everything else (code, d
 - **Verbatim**: code spans and blocks, paths and `file:line`, identifiers, commands, URLs, SHAs, `#n` refs, label names, and every quoted string (UI text, a source passage), whatever its language.
 - **Domain terms** follow `GLOSSARY.md`. In French prose: Blocked word → « mot interdit », Audit log → « journal d'audit », Admin Panel → « le panel », Discord server → « le serveur Discord », Warning → « avertissement », the panel's Discord application → « l'application du panel » (never « le bot du panel »). Staff, Bot and Whitelist keep their names.
 - **Titles** keep an area prefix, in French: `Connexion : …`, `Mots interdits : …`, `Journal d'audit : …`, `Avertissements : …`, `Discord : …`, `Hébergement : …`, `Produit : …`, `Outillage : …`, `Tests : …`, `CI : …`, `Dépôt : …`, `Docs : …`.
-- **Facts and inferences** sit under `Faits vérifiés` and `Inférences`, marked `[F]` / `[I]`. Other recurring headings: `Questions ouvertes`, `Terminé quand`, `Hors périmètre`, `Décisions`, `Checklist`.
+- **Facts and inferences** sit under `Faits vérifiés` and `Inférences`, marked `[F]` / `[I]`. Other recurring headings: `Questions ouvertes`, `Terminé quand`, `Hors périmètre`, `Décisions`, `Checklist`, and `Résolution`, which opens the closing comment of a ticket delivered without a PR (groom-backlog, **Touched tickets**).
 - **Parsed text stays English**, because skills read it back: the `Blocked by: #<n>` and `Part of #<n>` lines, the `commit <sha>` that names the tree of a line's `file:line` citations (groom-backlog, **Moved citations**), and the wayfinder map's Notes / Decisions-so-far / Fog headings.
 
 ## Organizing the tracker
