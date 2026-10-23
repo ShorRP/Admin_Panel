@@ -27,8 +27,8 @@ The web application the staff use to administer the Discord server without code 
 _Avoid_: dashboard, painel, staff panel
 
 **Bot**:
-The Discord bot that acts on the Discord server for the staff.
-_Avoid_: ShorBot (the repository's name), client
+The Discord bot loanspac runs, which reacts to what happens on the Discord server. Not the Admin Panel's own Discord application, which acts only when a staff member uses the panel.
+_Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
 The Admin Panel's record of which staff member changed what, and when.

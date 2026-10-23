@@ -4,7 +4,9 @@ status: accepted
 
 # The Admin Panel never connects to Discord's gateway; event-driven features belong to ShorBot
 
-The Admin Panel only calls Discord's REST API. Any feature that must react to Discord events, such as automatic sanctions, message logs or reaction roles, is built in ShorBot, loanspac's bot, behind an HTTP API agreed with loanspac before either side writes code for it. Shor keeps a single bot. Decided by Gilles on 2026-10-23.
+The Admin Panel only calls Discord's REST API. Any feature that must react to Discord events, such as automatic sanctions, message logs or reaction roles, is built in ShorBot, loanspac's bot, behind an HTTP API agreed with loanspac before either side writes code for it. Shor keeps a single bot connected to the gateway. Decided by Gilles on 2026-10-23.
+
+The panel's own Discord application (ADR 0002) does put a bot user on the Discord server, but that user never connects to the gateway: it only makes REST calls, when a staff member uses the panel. The docs call it the panel's application, never a bot. Clarified by Gilles on 2026-10-23, while grilling #7.
 
 ## Considered Options
 
