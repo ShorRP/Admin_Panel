@@ -23,7 +23,7 @@ The orchestrating skills are run by the user. When you see the moment for one, s
 
 ## Language
 
-Three things are in **French**: chat with the user, GitHub issues (title, body, comments; see `docs/agents/issue-tracker.md`), and the panel's interface, which is French only, with no translation layer. Everything else is in **English**: docs, `GLOSSARY.md`, ADRs, PR text and PR comments, commit messages, and every word written into the codebase: file names, identifiers, logs.
+Three things are in **French**: chat with the user, GitHub issues and their board (title, body, comments, and the board's descriptions and view names; see `docs/agents/issue-tracker.md`), and the panel's interface, which is French only, with no translation layer. Everything else is in **English**: docs, `GLOSSARY.md`, ADRs, PR text and PR comments, commit messages, and every word written into the codebase: file names, identifiers, logs.
 
 ## No comments
 
@@ -65,6 +65,8 @@ What a comment would say goes elsewhere: the why of a change in its commit messa
 - The hooks of `.claude/settings.json` need `pnpm install` first: without `node_modules`, the comment check cannot run and `gh pr create` is refused.
 - The API can show Auto-add to project `enabled` while it adds nothing: its filter, which the API hides, once held a stray `label:`. Only an issue that `github-project-automation` puts on the board proves it works (`docs/agents/issue-tracker.md`, **Board workflows**).
 - Writes to the project board need gh's `project` scope; `read:project` only lets `backlog.mjs plan` read it. When `apply` fails on a missing scope, run `gh auth refresh -s project`, which opens a browser.
+- Several sessions can share this folder. On 2026-10-23, one session's `git switch -c` took the folder off the branch another session was working on, under its uncommitted changes (`git reflog`). Before switching branches here, read `git status` and `git reflog -3`; a change that needs its own branch goes in a `git worktree`.
+- A browser tab of the project board keeps its own copy of the views in `sessionStorage` (`projects-v2/session-store-v1/…/memex-views`), which survives F5. On 2026-10-23, a tab opened between two view changes kept showing the older grouping after a reload, while a new tab showed the saved one (inferred from the key's contents, not from GitHub's code). After a view changes, check it in a new tab.
 
 ## Agent skills
 
