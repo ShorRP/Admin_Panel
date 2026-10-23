@@ -19,6 +19,9 @@ export default defineConfig([
         patterns: [{
           regex: '^@/(?!ui/)',
           message: 'src/ui/ imports nothing through @/ but @/ui/*.',
+        }, {
+          regex: '^\\.',
+          message: 'src/ui/ imports itself through @/ui/*, never through a relative path.',
         }],
       }],
     },
