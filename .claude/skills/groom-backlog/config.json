@@ -1,0 +1,7 @@
+{
+  "project": "https://github.com/orgs/ShorRP/projects/1",
+  "typeLabels": ["enhancement", "bug", "documentation"],
+  "milestones": ["MVP"],
+  "closingCommentSince": "2026-10-23T00:00:00Z",
+  "staleDays": 7
+}

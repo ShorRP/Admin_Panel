@@ -1,0 +1,118 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { execFileSync, spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { findComments, checkFile, checkRepository, familyOf } from '../scripts/check-comments.mjs'
+
+const HOOK = fileURLToPath(new URL('../.claude/hooks/check-comments-before-pr.mjs', import.meta.url))
+const runHook = input => spawnSync(process.execPath, [HOOK], { input, encoding: 'utf8' })
+
+test('the PR hook lets every command but gh pr create through without a word', () => {
+  const result = runHook(JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'gh pr view 3' } }))
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+})
+
+test('the PR hook refuses a call it cannot read', () => {
+  const result = runHook('not json')
+  const output = JSON.parse(result.stdout).hookSpecificOutput
+  assert.equal(output.permissionDecision, 'deny')
+  assert.match(output.permissionDecisionReason, /could not read this call/)
+})
+
+const texts = (text, file) => findComments(text, file).map(range => text.slice(range.start, range.end))
+
+test('script files: line, block and doc comments are found', () => {
+  const source = [
+    '// header',
+    'const a = 1 // trailing',
+    '/* block */',
+    '/** doc */',
+    'export const b = a',
+  ].join('\n')
+  assert.deepEqual(texts(source, 'src/a.ts'), ['// header', '// trailing', '/* block */', '/** doc */'])
+})
+
+test('script files: comment markers inside strings, templates and regexes are code', () => {
+  const source = [
+    "const url = 'https://example.com/a'",
+    'const query = `// not a comment ${url} /* nor this */`',
+    'const pattern = /https:\\/\\/[^/]+\\/\\/x/',
+    'export { query, pattern }',
+  ].join('\n')
+  assert.deepEqual(texts(source, 'src/a.mjs'), [])
+})
+
+test('script files: a JSX comment is found, a shebang is not', () => {
+  const source = ['#!/usr/bin/env node', 'export const A = () => <div>{/* hidden */}</div>'].join('\n')
+  assert.deepEqual(texts(source, 'src/a.tsx'), ['/* hidden */'])
+})
+
+test('script files: indispensable tool directives are allowed', () => {
+  const source = [
+    '/// <reference types="next" />',
+    '// eslint-disable-next-line no-console',
+    'console.log(1)',
+    '// @ts-expect-error wrong on purpose',
+    'const n: number = "x"',
+    'await import(/* @vite-ignore */ n)',
+  ].join('\n')
+  assert.deepEqual(texts(source, 'src/a.ts'), [])
+})
+
+test('json files: comments are found, valid json has none', () => {
+  assert.deepEqual(texts('{ "a": "http://x" }', 'tsconfig.json'), [])
+  assert.deepEqual(texts('{\n  // why\n  "a": 1\n}', 'tsconfig.json'), ['// why'])
+})
+
+test('css, markup and sql comments are found outside strings', () => {
+  assert.deepEqual(texts('a { content: "/* no */" } /* yes */', 'app.css'), ['/* yes */'])
+  assert.deepEqual(texts('<p>x</p><!-- yes -->', 'page.html'), ['<!-- yes -->'])
+  assert.deepEqual(texts("select '--no' -- yes\n/* also */", 'q.sql'), ['-- yes', '/* also */'])
+})
+
+test('hash files: a # comment is found, a # inside a value or quotes is not', () => {
+  const yaml = [
+    '# header',
+    'name: CI # trailing',
+    'url: https://example.com/#anchor',
+    'run: echo "# not a comment"',
+    "label: 'a # b'",
+    'title: it\'s fine # still a comment',
+  ].join('\n')
+  assert.deepEqual(texts(yaml, '.github/workflows/ci.yml'), ['# header', '# trailing', '# still a comment'])
+  assert.deepEqual(texts('# why\nKEY=value', '.env.example'), ['# why'])
+  assert.deepEqual(texts('# why\nnode_modules/', '.gitignore'), ['# why'])
+})
+
+test('files without comments, or of a kind the check skips, report nothing', () => {
+  assert.equal(familyOf('README.md'), null)
+  assert.equal(familyOf('pnpm-lock.yaml'), null)
+  assert.deepEqual(texts('# Title', 'docs/a.md'), [])
+})
+
+test('a report line names the file, the line and the column', () => {
+  assert.deepEqual(checkFile('const a = 1\n  // why\n', 'src/a.js'), ['src/a.js:2:3 // why'])
+})
+
+test('a file that cannot be parsed is reported, since its comments cannot be checked', () => {
+  const [line] = checkFile('const = ;', 'src/broken.js')
+  assert.match(line, /^src\/broken\.js: cannot be parsed/)
+})
+
+test('the repository check covers tracked and untracked files, not ignored ones', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'check-comments-'))
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: dir })
+    fs.writeFileSync(path.join(dir, '.gitignore'), 'ignored.js\n')
+    fs.writeFileSync(path.join(dir, 'clean.js'), 'export const a = 1\n')
+    fs.writeFileSync(path.join(dir, 'dirty.js'), 'export const a = 1 // why\n')
+    fs.writeFileSync(path.join(dir, 'ignored.js'), '// ignored\n')
+    assert.deepEqual(checkRepository(dir), ['dirty.js:1:20 // why'])
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
