@@ -84,7 +84,7 @@ function trackerLocation(config) {
 }
 
 const FIELD_VALUES = `nodes {
-  ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } }
+  ... on ProjectV2ItemFieldSingleSelectValue { name updatedAt field { ... on ProjectV2FieldCommon { name } } }
   ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { name } } }
 }`
 
@@ -163,14 +163,16 @@ export function boardItems({ repoName, projectId, itemNodes, issueNodes }) {
   const items = []
   const itemIds = {}
   const add = (number, state, node) => {
-    const values = Object.fromEntries(node.fieldValues.nodes.filter(value => value.field).map(value => [value.field.name, value.name ?? value.text]))
+    const byField = Object.fromEntries(node.fieldValues.nodes.filter(value => value.field).map(value => [value.field.name, value]))
+    const valueOf = name => byField[name]?.name ?? byField[name]?.text ?? null
     items.push({
       issue: number,
       state,
-      status: values.Status ?? null,
-      priority: values.Priority ?? null,
-      waitingOn: values[WAITING_ON] ?? null,
-      size: values[SIZE] ?? null,
+      status: valueOf('Status'),
+      priority: valueOf('Priority'),
+      waitingOn: valueOf(WAITING_ON),
+      size: valueOf(SIZE),
+      sizeSetAt: byField[SIZE]?.updatedAt ?? null,
     })
     itemIds[number] = node.id
   }
@@ -268,15 +270,15 @@ function save(kind, data) {
   return file
 }
 
-function issueQuery(snapshot, number, fields) {
-  return graphql(`query($owner: String!, $name: String!, $number: Int!) {
+function issueQuery(snapshot, number, fields, request) {
+  return request(`query($owner: String!, $name: String!, $number: Int!) {
     repository(owner: $owner, name: $name) { issue(number: $number) { ${fields} } }
   }`, { owner: snapshot.repo.owner, name: snapshot.repo.name, number }).repository.issue
 }
 
-function applier(snapshot) {
+export function applier(snapshot, request = graphql) {
   const ids = snapshot.ids
-  const issueId = number => (ids.issues[number] ??= issueQuery(snapshot, number, 'id').id)
+  const issueId = number => (ids.issues[number] ??= issueQuery(snapshot, number, 'id', request).id)
   const itemId = number => {
     if (!ids.items[number]) throw new Error(`#${number} is not on the board`)
     return ids.items[number]
@@ -293,7 +295,7 @@ function applier(snapshot) {
 
   return {
     addToProject({ issue }) {
-      const data = graphql(`mutation($project: ID!, $content: ID!) {
+      const data = request(`mutation($project: ID!, $content: ID!) {
         addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } }
       }`, { project, content: issueId(issue) })
       ids.items[issue] = data.addProjectV2ItemById.item.id
@@ -301,94 +303,96 @@ function applier(snapshot) {
     setField({ issue, field: name, value }) {
       const target = field(name)
       const base = { project, item: itemId(issue), field: target.id }
+      const clear = () => request(`mutation($project: ID!, $item: ID!, $field: ID!) {
+        clearProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field }) { clientMutationId }
+      }`, base)
       if (value === null || value === undefined) {
-        graphql(`mutation($project: ID!, $item: ID!, $field: ID!) {
-          clearProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field }) { clientMutationId }
-        }`, base)
+        clear()
       } else if (target.options) {
         if (!target.options[value]) throw new Error(`"${value}" is not an option of ${name}`)
-        graphql(`mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+        if (name === SIZE) clear()
+        request(`mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
           updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { clientMutationId }
         }`, { ...base, option: target.options[value] })
       } else {
-        graphql(`mutation($project: ID!, $item: ID!, $field: ID!, $text: String!) {
+        request(`mutation($project: ID!, $item: ID!, $field: ID!, $text: String!) {
           updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { text: $text } }) { clientMutationId }
         }`, { ...base, text: String(value) })
       }
     },
     addLabel({ issue, label: name }) {
-      graphql(`mutation($issue: ID!, $label: ID!) {
+      request(`mutation($issue: ID!, $label: ID!) {
         addLabelsToLabelable(input: { labelableId: $issue, labelIds: [$label] }) { clientMutationId }
       }`, { issue: issueId(issue), label: label(name) })
     },
     removeLabel({ issue, label: name }) {
-      graphql(`mutation($issue: ID!, $label: ID!) {
+      request(`mutation($issue: ID!, $label: ID!) {
         removeLabelsFromLabelable(input: { labelableId: $issue, labelIds: [$label] }) { clientMutationId }
       }`, { issue: issueId(issue), label: label(name) })
     },
     ensurePartOf({ issue, parent }) {
-      const current = issueQuery(snapshot, issue, 'id body')
+      const current = issueQuery(snapshot, issue, 'id body', request)
       const body = withPartOf(current.body, parent)
       if (body === current.body) return
-      graphql(`mutation($issue: ID!, $body: String!) {
+      request(`mutation($issue: ID!, $body: String!) {
         updateIssue(input: { id: $issue, body: $body }) { clientMutationId }
       }`, { issue: current.id, body })
     },
     addSubIssue({ parent, child }) {
-      graphql(`mutation($parent: ID!, $child: ID!) {
+      request(`mutation($parent: ID!, $child: ID!) {
         addSubIssue(input: { issueId: $parent, subIssueId: $child, replaceParent: true }) { clientMutationId }
       }`, { parent: issueId(parent), child: issueId(child) })
     },
     moveSubIssue({ parent, child, after }) {
       let anchor = { after: after ? issueId(after) : null }
       if (!after) {
-        const first = issueQuery(snapshot, parent, 'subIssues(first: 1) { nodes { number id } }').subIssues.nodes[0]
+        const first = issueQuery(snapshot, parent, 'subIssues(first: 1) { nodes { number id } }', request).subIssues.nodes[0]
         if (!first || first.number === child) return
         anchor = { before: first.id }
       }
-      graphql(`mutation($parent: ID!, $child: ID!, $after: ID, $before: ID) {
+      request(`mutation($parent: ID!, $child: ID!, $after: ID, $before: ID) {
         reprioritizeSubIssue(input: { issueId: $parent, subIssueId: $child, afterId: $after, beforeId: $before }) { clientMutationId }
       }`, { parent: issueId(parent), child: issueId(child), ...anchor })
     },
     moveItem({ issue, after }) {
-      graphql(`mutation($project: ID!, $item: ID!, $after: ID) {
+      request(`mutation($project: ID!, $item: ID!, $after: ID) {
         updateProjectV2ItemPosition(input: { projectId: $project, itemId: $item, afterId: $after }) { clientMutationId }
       }`, { project, item: itemId(issue), after: after ? itemId(after) : null })
     },
     addBlockedBy({ issue, blocker }) {
-      graphql(`mutation($issue: ID!, $blocker: ID!) {
+      request(`mutation($issue: ID!, $blocker: ID!) {
         addBlockedBy(input: { issueId: $issue, blockingIssueId: $blocker }) { clientMutationId }
       }`, { issue: issueId(issue), blocker: issueId(blocker) })
     },
     removeBlockedBy({ issue, blocker }) {
-      graphql(`mutation($issue: ID!, $blocker: ID!) {
+      request(`mutation($issue: ID!, $blocker: ID!) {
         removeBlockedBy(input: { issueId: $issue, blockingIssueId: $blocker }) { clientMutationId }
       }`, { issue: issueId(issue), blocker: issueId(blocker) })
     },
     closeIssue({ issue, reason = 'COMPLETED' }) {
-      graphql(`mutation($issue: ID!) {
+      request(`mutation($issue: ID!) {
         closeIssue(input: { issueId: $issue, stateReason: ${reason === 'NOT_PLANNED' ? 'NOT_PLANNED' : 'COMPLETED'} }) { clientMutationId }
       }`, { issue: issueId(issue) })
     },
     setMilestone({ issue, milestone }) {
       if (!milestone) {
-        graphql(`mutation($issue: ID!) {
+        request(`mutation($issue: ID!) {
           updateIssue(input: { id: $issue, milestoneId: null }) { clientMutationId }
         }`, { issue: issueId(issue) })
         return
       }
       if (!ids.milestones[milestone]) throw new Error(`no open milestone "${milestone}"`)
-      graphql(`mutation($issue: ID!, $milestone: ID!) {
+      request(`mutation($issue: ID!, $milestone: ID!) {
         updateIssue(input: { id: $issue, milestoneId: $milestone }) { clientMutationId }
       }`, { issue: issueId(issue), milestone: ids.milestones[milestone] })
     },
     setTitle({ issue, title }) {
-      graphql(`mutation($issue: ID!, $title: String!) {
+      request(`mutation($issue: ID!, $title: String!) {
         updateIssue(input: { id: $issue, title: $title }) { clientMutationId }
       }`, { issue: issueId(issue), title })
     },
     comment({ issue, body }) {
-      graphql(`mutation($issue: ID!, $body: String!) {
+      request(`mutation($issue: ID!, $body: String!) {
         addComment(input: { subjectId: $issue, body: $body }) { clientMutationId }
       }`, { issue: issueId(issue), body })
     },

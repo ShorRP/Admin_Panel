@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { plan as planTracker, desiredStatus, externalBlocker, orderMoves, withPartOf, describe } from '../.claude/skills/groom-backlog/scripts/plan.mjs'
 import { isTrackerWrite, touchedIssues } from '../.claude/skills/groom-backlog/scripts/tracker-write.mjs'
-import { boardItems, gitReader, loadConfig, projectLocation } from '../.claude/skills/groom-backlog/scripts/backlog.mjs'
+import { applier, boardItems, gitReader, loadConfig, projectLocation } from '../.claude/skills/groom-backlog/scripts/backlog.mjs'
 import { parseDiff, applyDiff, citationsIn, relocations } from '../.claude/skills/groom-backlog/scripts/citations.mjs'
 
 const NOW = '2026-10-08T12:00:00Z'
@@ -82,7 +82,7 @@ function closedIssue(number, fields = {}) {
 }
 
 function item(number, fields = {}) {
-  return { issue: number, state: 'OPEN', status: 'Todo', priority: 'P1', waitingOn: null, size: 'M', ...fields }
+  return { issue: number, state: 'OPEN', status: 'Todo', priority: 'P1', waitingOn: null, size: 'M', sizeSetAt: null, ...fields }
 }
 
 function snapshot({ issues, items, closedIssues = [], pullRequests = [], fields } = {}) {
@@ -105,6 +105,13 @@ function snapshot({ issues, items, closedIssues = [], pullRequests = [], fields 
 
 const opsFor = (result, n) => result.ops.filter(o => o.issue === n || o.child === n)
 const kinds = (result, n) => result.judgment.filter(j => j.issue === n).map(j => j.kind)
+
+const BOARD_REPO = 'PothieuG/EsportCards'
+const BOARD_ID = 'PVT_board'
+const fieldValues = (values, setAt = {}) => ({ nodes: [{}, ...Object.entries(values).map(([name, value]) => ({ name: value, updatedAt: setAt[name], field: { name } }))] })
+const listedItem = (number, values, setAt) => ({ id: `PVTI_${number}`, content: { number, state: 'OPEN', repository: { nameWithOwner: BOARD_REPO } }, fieldValues: fieldValues(values, setAt) })
+const ticketItem = (number, project, values, setAt) => ({ id: `PVTI_${project}_${number}`, project: { id: project }, fieldValues: fieldValues(values, setAt) })
+const openTicket = (number, projectItems) => ({ number, state: 'OPEN', projectItems: { nodes: projectItems } })
 
 test('a tracker already in order plans nothing', () => {
   const result = plan(snapshot({ issues: [issue(1), issue(2)] }))
@@ -382,26 +389,20 @@ test('project: open issues are on the board, closed ones are Done', () => {
 })
 
 test('project: an item the board list does not show yet is read from its ticket, a ticket truly off the board is still added', () => {
-  const repoName = 'PothieuG/EsportCards'
-  const projectId = 'PVT_board'
-  const fieldValues = values => ({ nodes: [{}, ...Object.entries(values).map(([name, value]) => ({ name: value, field: { name } }))] })
-  const listed = (number, values) => ({ id: `PVTI_${number}`, content: { number, state: 'OPEN', repository: { nameWithOwner: repoName } }, fieldValues: fieldValues(values) })
-  const projectItem = (number, project, values) => ({ id: `PVTI_${project}_${number}`, project: { id: project }, fieldValues: fieldValues(values) })
-  const openIssue = (number, projectItems) => ({ number, state: 'OPEN', projectItems: { nodes: projectItems } })
   const fields = { Status: 'Todo', Priority: 'P1', Size: 'M' }
 
   const { items, itemIds } = boardItems({
-    repoName,
-    projectId,
-    itemNodes: [listed(1, fields)],
+    repoName: BOARD_REPO,
+    projectId: BOARD_ID,
+    itemNodes: [listedItem(1, fields)],
     issueNodes: [
-      openIssue(1, [projectItem(1, projectId, fields)]),
-      openIssue(150, [projectItem(150, 'PVT_other', {}), projectItem(150, projectId, { Status: 'Todo', Priority: 'P2', Size: 'S' })]),
-      openIssue(151, [projectItem(151, 'PVT_other', fields)]),
+      openTicket(1, [ticketItem(1, BOARD_ID, fields)]),
+      openTicket(150, [ticketItem(150, 'PVT_other', {}), ticketItem(150, BOARD_ID, { Status: 'Todo', Priority: 'P2', Size: 'S' })]),
+      openTicket(151, [ticketItem(151, 'PVT_other', fields)]),
     ],
   })
   assert.deepEqual(items, [item(1), item(150, { priority: 'P2', size: 'S' })])
-  assert.deepEqual(itemIds, { 1: 'PVTI_1', 150: `PVTI_${projectId}_150` })
+  assert.deepEqual(itemIds, { 1: 'PVTI_1', 150: `PVTI_${BOARD_ID}_150` })
 
   const result = plan(snapshot({ issues: [issue(1), issue(150), issue(151)], items }))
   assert.deepEqual(opsFor(result, 150), [])
@@ -410,12 +411,30 @@ test('project: an item the board list does not show yet is read from its ticket,
   assert.deepEqual(kinds(result, 151), ['missing-priority', 'missing-size'])
 })
 
+test('project: a Size carries the date it was set, read from the board or from the ticket', () => {
+  const statusSetAt = { Status: '2026-10-01T08:00:00Z' }
+  const { items } = boardItems({
+    repoName: BOARD_REPO,
+    projectId: BOARD_ID,
+    itemNodes: [listedItem(7, { Status: 'Todo', Size: 'XS' }, { ...statusSetAt, Size: '2026-10-23T08:56:48Z' })],
+    issueNodes: [
+      openTicket(8, [ticketItem(8, BOARD_ID, { Status: 'Todo', Size: 'S' }, { ...statusSetAt, Size: '2026-10-23T13:12:15Z' })]),
+      openTicket(9, [ticketItem(9, BOARD_ID, { Status: 'Todo' }, statusSetAt)]),
+    ],
+  })
+  assert.deepEqual(items.map(i => [i.issue, i.size, i.sizeSetAt]), [
+    [7, 'XS', '2026-10-23T08:56:48Z'],
+    [8, 'S', '2026-10-23T13:12:15Z'],
+    [9, null, null],
+  ])
+})
+
 test('priority: an open ticket without one goes to judgment', () => {
   const result = plan(snapshot({ issues: [issue(1)], items: [item(1, { priority: null })] }))
   assert.deepEqual(kinds(result, 1), ['missing-priority'])
 })
 
-test('size: an open ticket without one goes to judgment; epics and an estimate already set are left alone', () => {
+test('size: an open ticket without one goes to judgment; epics and an estimate on an unedited ticket are left alone', () => {
   const issues = [
     issue(1),
     issue(2),
@@ -435,6 +454,59 @@ test('size: an open ticket without one goes to judgment; epics and an estimate a
     fields: { Status: ['Todo', 'In progress', 'Done', 'Blocked'], Priority: ['P0', 'P1', 'P2'], 'Waiting on': 'TEXT' },
   }))
   assert.deepEqual(kinds(withoutField, 1), [])
+})
+
+test('size: an estimate older than the last edit of its ticket goes back to judgment; one made since, an unedited ticket and an epic are left alone', () => {
+  const issues = [
+    issue(1, { lastEditedAt: '2026-10-23T13:05:39Z' }),
+    issue(2, { lastEditedAt: '2026-10-23T08:00:00Z' }),
+    issue(3, { lastEditedAt: null }),
+    issue(4, { labels: ['enhancement', 'epic'], subIssues: [{ number: 5, state: 'OPEN' }], lastEditedAt: '2026-10-23T13:05:39Z' }),
+    issue(5, { parent: 4, body: 'Part of #4', lastEditedAt: '2026-10-23T13:05:39Z' }),
+  ]
+  const items = [
+    item(1, { size: 'XS', sizeSetAt: '2026-10-23T08:56:48Z' }),
+    item(2, { size: 'XS', sizeSetAt: '2026-10-23T08:56:48Z' }),
+    item(3, { size: 'XS', sizeSetAt: '2026-10-23T08:56:48Z' }),
+    item(4, { size: 'L', sizeSetAt: '2026-10-23T08:56:48Z' }),
+    item(5, { size: null }),
+  ]
+  const result = plan(snapshot({ issues, items }))
+  assert.deepEqual(result.judgment.filter(j => j.kind === 'outdated-size'), [
+    { kind: 'outdated-size', issue: 1, detail: 'XS set 2026-10-23T08:56, body edited 2026-10-23T13:05' },
+  ])
+  assert.deepEqual(kinds(result, 5), ['missing-size'])
+  assert.equal(result.ops.some(o => o.field === 'Size'), false)
+})
+
+test('apply: a Size is cleared before it is set, so its date marks the estimate even when the value stays', () => {
+  const calls = []
+  const request = (query, variables) => {
+    calls.push({ mutation: query.match(/(\w+)\(input/)[1], option: variables.option })
+    return {}
+  }
+  const ids = {
+    project: 'PVT_board',
+    issues: { 7: 'I_7' },
+    items: { 7: 'PVTI_7' },
+    labels: {},
+    milestones: {},
+    fields: {
+      Size: { id: 'F_size', options: { XS: 'o_xs', S: 'o_s' } },
+      Priority: { id: 'F_priority', options: { P0: 'o_p0', P1: 'o_p1' } },
+    },
+  }
+  const run = applier({ ids }, request)
+
+  run.setField({ issue: 7, field: 'Size', value: 'S' })
+  assert.deepEqual(calls, [
+    { mutation: 'clearProjectV2ItemFieldValue', option: undefined },
+    { mutation: 'updateProjectV2ItemFieldValue', option: 'o_s' },
+  ])
+
+  calls.length = 0
+  run.setField({ issue: 7, field: 'Priority', value: 'P0' })
+  assert.deepEqual(calls, [{ mutation: 'updateProjectV2ItemFieldValue', option: 'o_p0' }])
 })
 
 test('order: the board and each epic sort by priority, keeping the order within a priority', () => {
