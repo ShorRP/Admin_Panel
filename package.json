@@ -11,6 +11,7 @@
     "check:comments": "node scripts/check-comments.mjs"
   },
   "devDependencies": {
-    "@babel/parser": "^7.29.9"
+    "@babel/parser": "^7.29.9",
+    "yaml": "^2.9.1"
   }
 }

@@ -88,6 +88,34 @@ test('hash files: a # comment is found, a # inside a value or quotes is not', ()
   assert.deepEqual(texts('# why\nnode_modules/', '.gitignore'), ['# why'])
 })
 
+test('hash files: a shebang is allowed on the first line of a shell script, a #! anywhere else is a comment', () => {
+  assert.deepEqual(texts('#!/usr/bin/env bash\necho hi\n', 'run.sh'), [])
+  assert.deepEqual(texts('echo hi\n#!/usr/bin/env bash\n', 'run.sh'), ['#!/usr/bin/env bash'])
+  assert.deepEqual(texts('#! why\nkey: 1\n', 'x.yml'), ['#! why'])
+})
+
+test('yaml files: a quoted string spanning several lines is a value, up to its closing quote', () => {
+  assert.deepEqual(texts('key: "a\n  # b"\n', 'x.yml'), [])
+  assert.deepEqual(texts("key: 'a\n  # b' # why\nnext: 1", 'x.yml'), ['# why'])
+  assert.deepEqual(texts('key: !!str "a\n  # b"\n', 'x.yml'), [])
+  assert.deepEqual(texts("key: 'it''s\n  # b'\n", 'x.yml'), [])
+})
+
+test('yaml files: a quote outside a quoted string hides no comment', () => {
+  assert.deepEqual(texts("note: the '90s\n# why\nnext: 1 # also\n", 'x.yml'), ['# why', '# also'])
+  assert.deepEqual(texts("note: rock 'n roll # why\n", 'x.yml'), ['# why'])
+  assert.deepEqual(texts("{a: rock 'n, b: 'roll'} # why\n", 'x.yml'), ['# why'])
+  const workflow = ['steps:', '  - run: |', '      node -e "', '        1', '      "', '  # why', '  - run: echo "done"'].join('\n')
+  assert.deepEqual(texts(workflow, 'ci.yml'), ['# why'])
+})
+
+test('hash files other than yaml: every quote ends with its line', () => {
+  assert.deepEqual(texts('"odd name\n# why\n', '.gitignore'), ['# why'])
+  assert.deepEqual(texts("[*]\nx = 'a\n# why\n", '.editorconfig'), ['# why'])
+  assert.deepEqual(texts("GREETING='hello\n# why\nOTHER=1\n", '.env'), ['# why'])
+  assert.deepEqual(texts('python -c "\nprint(1)\n"\n# why\n', 'run.sh'), ['# why'])
+})
+
 test('files without comments, or of a kind the check skips, report nothing', () => {
   assert.equal(familyOf('README.md'), null)
   assert.equal(familyOf('pnpm-lock.yaml'), null)
@@ -101,6 +129,9 @@ test('a report line names the file, the line and the column', () => {
 test('a file that cannot be parsed is reported, since its comments cannot be checked', () => {
   const [line] = checkFile('const = ;', 'src/broken.js')
   assert.match(line, /^src\/broken\.js: cannot be parsed/)
+  const [yamlLine] = checkFile('k: "unclosed\n# why\n', 'broken.yml')
+  assert.match(yamlLine, /^broken\.yml: cannot be parsed/)
+  assert.deepEqual(checkFile('a: 1 # why\na: 2\n', 'twice.yml'), ['twice.yml:1:6 # why'])
 })
 
 test('the repository check covers tracked and untracked files, not ignored ones', () => {
