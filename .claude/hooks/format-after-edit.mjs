@@ -7,7 +7,7 @@ function isInside(root, file) {
   return !path.isAbsolute(relative) && relative.split(path.sep)[0] !== ".."
 }
 
-async function format(root, file) {
+async function formatProjectFile(root, file) {
   if (!isInside(root, file)) return
   process.chdir(root)
   const info = await prettier.getFileInfo(file, {
@@ -26,10 +26,9 @@ async function format(root, file) {
 
 let input = ""
 for await (const chunk of process.stdin) input += chunk
-const { cwd, tool_input: toolInput } = JSON.parse(input)
-const file = toolInput.file_path
+const file = JSON.parse(input).tool_input.file_path
 try {
-  await format(process.env.CLAUDE_PROJECT_DIR || cwd, file)
+  await formatProjectFile(process.env.CLAUDE_PROJECT_DIR, file)
 } catch (error) {
   process.stderr.write(
     `Prettier could not format ${file}: ${error.message.split("\n")[0]}\n`

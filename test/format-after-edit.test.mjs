@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url"
 const HOOK = fileURLToPath(
   new URL("../.claude/hooks/format-after-edit.mjs", import.meta.url)
 )
+const UNFORMATTED = "const a = 'x';\n"
+const FORMATTED = 'const a = "x"\n'
 
 function withProject(callback) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "format-after-edit-"))
@@ -42,10 +44,10 @@ test("the format hook formats the file an edit touched", () => {
   withProject((dir) => {
     const file = path.join(dir, "src", "a.ts")
     fs.mkdirSync(path.dirname(file))
-    fs.writeFileSync(file, "const a = 'x';\n")
+    fs.writeFileSync(file, UNFORMATTED)
     const result = runHook(dir, file)
     assert.equal(result.status, 0, result.stderr)
-    assert.equal(fs.readFileSync(file, "utf8"), 'const a = "x"\n')
+    assert.equal(fs.readFileSync(file, "utf8"), FORMATTED)
   })
 })
 
@@ -66,21 +68,21 @@ test("the format hook loads the project's plugins whatever directory the session
       JSON.stringify({ semi: false, plugins: ["probe-plugin"] })
     )
     const file = path.join(dir, "a.ts")
-    fs.writeFileSync(file, "const a = 'x';\n")
+    fs.writeFileSync(file, UNFORMATTED)
     const result = runHook(dir, file, os.tmpdir())
     assert.equal(result.status, 0, result.stderr)
-    assert.equal(fs.readFileSync(file, "utf8"), 'const a = "x"\n')
+    assert.equal(fs.readFileSync(file, "utf8"), FORMATTED)
   })
 })
 
 test("the format hook leaves a file Prettier does not know as it is, without failing", () => {
   withProject((dir) => {
     const file = path.join(dir, "notes.txt")
-    fs.writeFileSync(file, "const a = 'x';\n")
+    fs.writeFileSync(file, UNFORMATTED)
     const result = runHook(dir, file)
     assert.equal(result.status, 0, result.stderr)
     assert.equal(result.stderr, "")
-    assert.equal(fs.readFileSync(file, "utf8"), "const a = 'x';\n")
+    assert.equal(fs.readFileSync(file, "utf8"), UNFORMATTED)
   })
 })
 
@@ -91,10 +93,10 @@ test("the format hook leaves a file that .prettierignore or .gitignore lists as 
     for (const folder of ["copied", "built"]) {
       const file = path.join(dir, folder, "a.ts")
       fs.mkdirSync(path.dirname(file))
-      fs.writeFileSync(file, "const a = 'x';\n")
+      fs.writeFileSync(file, UNFORMATTED)
       const result = runHook(dir, file)
       assert.equal(result.status, 0, result.stderr)
-      assert.equal(fs.readFileSync(file, "utf8"), "const a = 'x';\n")
+      assert.equal(fs.readFileSync(file, "utf8"), UNFORMATTED)
     }
   })
 })
@@ -114,10 +116,10 @@ test("the format hook leaves a file outside the project as it is", () => {
   withProject((dir) => {
     withProject((elsewhere) => {
       const file = path.join(elsewhere, "a.ts")
-      fs.writeFileSync(file, "const a = 'x';\n")
+      fs.writeFileSync(file, UNFORMATTED)
       const result = runHook(dir, file)
       assert.equal(result.status, 0, result.stderr)
-      assert.equal(fs.readFileSync(file, "utf8"), "const a = 'x';\n")
+      assert.equal(fs.readFileSync(file, "utf8"), UNFORMATTED)
     })
   })
 })
