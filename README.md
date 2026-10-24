@@ -66,6 +66,24 @@ Check that the repository holds no comments:
 pnpm check:comments
 ```
 
+Lay out the repository with Prettier, sorting Tailwind classes and imports, as `prettier.config.mjs` sets:
+
+```bash
+pnpm format
+```
+
+Check that it is laid out, as CI does:
+
+```bash
+pnpm format:check
+```
+
+Have `git blame` skip the commits that only reformat, as GitHub's blame does, through `.git-blame-ignore-revs`:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 Copy a shadcn/ui component into `src/ui/`, with the dependencies it needs, as `components.json` sets; `button` here:
 
 ```bash

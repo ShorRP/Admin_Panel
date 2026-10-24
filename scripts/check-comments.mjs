@@ -27,7 +27,7 @@ const DIRECTIVES = [
 ]
 
 const HASH_EXTENSIONS = new Set(['.toml', '.sh'])
-const HASH_FILES = new Set(['.gitignore', '.gitattributes', '.npmrc', '.editorconfig', 'Dockerfile'])
+const HASH_FILES = new Set(['.gitignore', '.gitattributes', '.prettierignore', '.git-blame-ignore-revs', '.npmrc', '.editorconfig', 'Dockerfile'])
 const SKIPPED_FILES = new Set(['pnpm-lock.yaml'])
 const FLOW_YAML_SCALARS = new Set(['scalar', 'single-quoted-scalar', 'double-quoted-scalar'])
 

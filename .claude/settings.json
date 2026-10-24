@@ -24,6 +24,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-after-edit.mjs\"",
+            "timeout": 30
+          }
+        ]
       }
     ]
   }

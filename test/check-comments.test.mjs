@@ -86,6 +86,8 @@ test('hash files: a # comment is found, a # inside a value or quotes is not', ()
   assert.deepEqual(texts(yaml, '.github/workflows/ci.yml'), ['# header', '# trailing', '# still a comment'])
   assert.deepEqual(texts('# why\nKEY=value', '.env.example'), ['# why'])
   assert.deepEqual(texts('# why\nnode_modules/', '.gitignore'), ['# why'])
+  assert.deepEqual(texts('# why\npnpm-lock.yaml\n', '.prettierignore'), ['# why'])
+  assert.deepEqual(texts('# why\n4658adc4658adc4658adc4658adc4658adc4658a\n', '.git-blame-ignore-revs'), ['# why'])
 })
 
 test('hash files: a shebang is allowed on the first line of a shell script, a #! anywhere else is a comment', () => {
