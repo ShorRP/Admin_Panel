@@ -35,7 +35,7 @@ The Discord bot loanspac runs, which reacts to what happens on the Discord serve
 _Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
-The Admin Panel's record of which staff member changed what, and when.
+The Admin Panel's record of which staff member changed what, and when. Not the panel's logs, which say only why the panel failed.
 _Avoid_: logs, moderation log
 
 ### Moderation
