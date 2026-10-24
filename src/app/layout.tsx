@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-import type { ReactNode } from 'react'
-import '@/ui/globals.css'
+import type { ReactNode } from "react"
+import type { Metadata } from "next"
+
+import "@/ui/globals.css"
 
 export const metadata: Metadata = {
-  title: 'Panel d’administration de Shor',
-  description: 'Le panel où le staff de Shor administre le serveur Discord.',
+  title: "Panel d’administration de Shor",
+  description: "Le panel où le staff de Shor administre le serveur Discord.",
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
