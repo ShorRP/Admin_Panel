@@ -13,7 +13,9 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint",
     "test": "node --test \"test/**/*.test.mjs\" && vitest run",
-    "check:comments": "node scripts/check-comments.mjs"
+    "check:comments": "node scripts/check-comments.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@babel/parser": "^7.29.9",
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
@@ -34,6 +37,8 @@
     "eslint": "^10.13.0",
     "eslint-config-next": "^16.4.2",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "shadcn": "^4.22.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
