@@ -224,11 +224,21 @@ export function describeDiscordApiContract(
       ])
     })
 
-    test("a reason holds 1 to 512 characters, accented ones included", async () => {
+    test("a reason keeps its first 512 characters, accented ones included, and an empty one leaves none", async () => {
       const { discord } = connected()
       const created = await discord.createAutoModerationRule(
         keywordRule(["a"]),
         "é".repeat(512)
+      )
+      await discord.modifyAutoModerationRule(
+        created.id,
+        keywordChanges(["b"]),
+        `${"é".repeat(512)}z`
+      )
+      await discord.modifyAutoModerationRule(
+        created.id,
+        keywordChanges(["c"]),
+        ""
       )
 
       const creations = await discord.getAuditLog({
@@ -239,16 +249,15 @@ export function describeDiscordApiContract(
           ({ target_id }) => target_id === created.id
         )?.reason
       ).toBe("é".repeat(512))
-      await expect(
-        discord.modifyAutoModerationRule(
-          created.id,
-          keywordChanges(["b"]),
-          "é".repeat(513)
-        )
-      ).rejects.toMatchObject(REFUSED)
-      await expect(
-        discord.modifyAutoModerationRule(created.id, keywordChanges(["b"]), "")
-      ).rejects.toMatchObject(REFUSED)
+      const modifications = await discord.getAuditLog({
+        action_type: AuditLogEvent.AutoModerationRuleUpdate,
+        limit: 2,
+      })
+      expect(
+        modifications.audit_log_entries
+          .filter(({ target_id }) => target_id === created.id)
+          .map(({ reason }) => reason)
+      ).toEqual([undefined, "é".repeat(512)])
     })
 
     test("a rule holds up to 1,000 keywords of up to 60 characters, accented ones included", async () => {

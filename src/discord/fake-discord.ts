@@ -87,17 +87,11 @@ function refused(method: HttpMethod, route: DiscordRoute) {
   })
 }
 
-function checkReason(
-  reason: string | undefined,
-  method: HttpMethod,
-  route: DiscordRoute
-) {
-  if (
-    reason !== undefined &&
-    (lengthOf(reason) < 1 || lengthOf(reason) > MAX_REASON_LENGTH)
-  ) {
-    throw refused(method, route)
+function keptReason(reason: string | undefined) {
+  if (reason === undefined || reason === "") {
+    return undefined
   }
+  return Array.from(reason).slice(0, MAX_REASON_LENGTH).join("")
 }
 
 function checkKeywords(
@@ -320,7 +314,6 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     reason: string | undefined
   ) {
     const route = ROUTES.autoModerationRules
-    checkReason(reason, "POST", route)
     checkKeywords(rule.trigger_metadata, "POST", route)
     if (
       rule.trigger_type === AutoModerationRuleTriggerType.Keyword &&
@@ -360,7 +353,6 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     if (rule === undefined) {
       throw new DiscordError({ method: "PATCH", route, status: 404 })
     }
-    checkReason(reason, "PATCH", route)
     checkKeywords(changes.trigger_metadata, "PATCH", route)
     const modified: APIAutoModerationRule = structuredClone({
       ...rule,
@@ -383,12 +375,13 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     userId: Snowflake,
     reason: string | undefined
   ) {
+    const kept = keptReason(reason)
     this.entries.push({
       id: this.nextSnowflake(),
       action_type: actionType,
       target_id: targetId,
       user_id: userId,
-      ...(reason === undefined ? {} : { reason }),
+      ...(kept === undefined ? {} : { reason: kept }),
     })
   }
 }
