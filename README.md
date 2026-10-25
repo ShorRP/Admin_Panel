@@ -10,6 +10,8 @@ The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose in
 - [`docs/adr/`](docs/adr/): the decisions that shape it.
 - [`CLAUDE.md`](CLAUDE.md): how we work, for people and agents alike.
 - [`docs/agents/`](docs/agents/): the tracker's conventions and the open questions.
+- [`SECURITY.md`](SECURITY.md): how to report a vulnerability, privately.
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md): the notices of the code that comes from other projects, shadcn/ui's MIT license so far.
 
 ## Requirements
 
@@ -104,3 +106,7 @@ None yet. They are documented here as they arrive, since `.env.example` holds no
 
 - [ShorBot](https://github.com/ShorRP/ShorBot): Shor's Discord bot, by loanspac.
 - [skymp-heavy-rp](https://github.com/vinicius3232/skymp-heavy-rp): the open-source SkyMP roleplay base ShorBot comes from. Shor itself does not run it: it has its own SkyMP server and launcher (ADR 0001).
+
+## License
+
+None. The repository carries no license, so default copyright applies: "no one may reproduce, distribute, or create derivative works from your work", while GitHub's Terms of Service give its users "the right to view and fork your repository" (https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository, read 2026-10-25). [ADR 0007](docs/adr/0007-public-repository-for-vercel-hobby.md) says why. The code copied from shadcn/ui into `src/ui/` keeps its MIT license, whose notice is in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
