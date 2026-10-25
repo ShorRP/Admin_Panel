@@ -3,6 +3,7 @@ import "server-only"
 import { setTimeout as sleep } from "node:timers/promises"
 
 import { DiscordError, type HttpMethod } from "./discord-error"
+import { readJson } from "./read-json"
 import type { DiscordRoute } from "./routes"
 
 export type Fetch = typeof globalThis.fetch
@@ -104,8 +105,4 @@ function messageOf(body: ErrorBody | undefined) {
   return typeof body.error_description === "string"
     ? `${body.error}: ${body.error_description}`
     : body.error
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  return await response.json()
 }

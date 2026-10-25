@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "next.config.test.ts"],
     exclude: [...configDefaults.exclude, "src/**/*.contract.test.ts"],
     unstubEnvs: true,
   },
