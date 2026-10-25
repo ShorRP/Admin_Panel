@@ -16,7 +16,7 @@ status: accepted
 ## Consequences
 
 - Everything in the repository is public: its code, its history, its issues and their comments, and Actions' logs (https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility, read 2026-10-25). #100 scans the history for secrets and reads the issues before the switch.
-- The repository has no license, so its code can be read but not reused (inferred), where MIT would leave anyone free to reuse what was published, even after a return to private. `THIRD_PARTY_NOTICES.md` carries shadcn/ui's MIT notice for the code copied into `src/ui/` (#101).
+- The repository has no license, so its code can be read but not reused (https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository, read 2026-10-25), where MIT would leave anyone free to reuse what was published, even after a return to private. `THIRD_PARTY_NOTICES.md` carries shadcn/ui's MIT notice for the code copied into `src/ui/` (#101).
 - Vercel's limits page says a Hobby project connects to no repository of a Git organization, without telling public from private (https://vercel.com/docs/limits, updated 2026-09-16). #9 starts with that trial; if Vercel refuses, a short grilling picks between the first two options above, on the trial's facts.
 - Going private again would cost:
   - the Hobby deployment, which Vercel refuses to a private repository of an organization, so that moving the repository, Vercel's CLI or Pro would be needed;
