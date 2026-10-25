@@ -12,6 +12,28 @@ export default defineConfig([
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
   {
+    name: "admin-panel/test-doubles",
+    files: ["src/**"],
+    ignores: ["src/**/*.test.*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "(^|/)fake-discord$",
+              message: "Only test files import the fake Discord.",
+            },
+            {
+              regex: "(^|/)(answering-fetch|discord-api-contract)$",
+              message: "Only test files import the tests' helpers.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     name: "admin-panel/ui-imports",
     files: ["src/ui/**"],
     rules: {
