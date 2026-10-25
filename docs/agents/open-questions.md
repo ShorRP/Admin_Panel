@@ -21,4 +21,4 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 - **Question:** In which channel of Shor's Discord server should the staff report a problem with the panel, and does that channel exist yet?
 - **Where it shows up:** the panel's error messages tell the staff to report a problem in the staff's Discord channel, named in the text (`CLAUDE.md`, **Errors**, decided by Gilles while grilling #49 on 2026-10-23). The error pages need its name.
 - **Who is likely to know:** Anaisenkit, together with Lyra-Gates, the other PO, if the channel has to be created.
-- **Blocked on it:** the final text of the error pages, and so the first production deploy.
+- **Blocked on it:** the final text of the error pages and of `/login/failed`, which says « le salon du staff sur Discord » until then (`src/staff/login-failed.tsx`), and so the first production deploy.
