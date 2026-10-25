@@ -1,7 +1,11 @@
 import { inspect } from "node:util"
 import { expect, test } from "vitest"
 
-import { parseDiscordApiEnv, parseDiscordOAuthEnv } from "./env"
+import {
+  parseDiscordApiEnv,
+  parseDiscordOAuthEnv,
+  parseTestProxyEnv,
+} from "./env"
 
 function thrownBy(run: () => unknown) {
   try {
@@ -59,4 +63,14 @@ test("the redirect URI uses https: anywhere but on localhost", () => {
       })
     )
   ).toContain("DISCORD_REDIRECT_URI")
+})
+
+test("E2E_TEST_PROXY takes no value but 1, an empty one included, and its error leaves the value out", () => {
+  expect(thrownBy(() => parseTestProxyEnv({ E2E_TEST_PROXY: "" }))).toContain(
+    "E2E_TEST_PROXY"
+  )
+  const error = thrownBy(() => parseTestProxyEnv({ E2E_TEST_PROXY: "on-4f7c" }))
+
+  expect(error).toContain("E2E_TEST_PROXY")
+  expect(error).not.toContain("on-4f7c")
 })

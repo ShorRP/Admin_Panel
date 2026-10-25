@@ -21,8 +21,9 @@ export default defineConfig([
         {
           patterns: [
             {
-              regex: "(^|/)fake-discord$",
-              message: "Only test files import the fake Discord.",
+              regex: "(^|/)(fake-discord|http-adapter)$",
+              message:
+                "Only test files import the fake Discord and its HTTP adapter.",
             },
             {
               regex: "(^|/)(answering-fetch|discord-api-contract)$",
@@ -51,6 +52,26 @@ export default defineConfig([
                 "src/ui/ imports itself through @/ui/*, never through a relative path.",
             },
           ],
+        },
+      ],
+    },
+  },
+  {
+    name: "admin-panel/e2e-fixtures",
+    files: ["e2e/**"],
+    ignores: ["e2e/fixtures.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            "@playwright/test",
+            "next/experimental/testmode/playwright",
+          ].map((name) => ({
+            name,
+            message:
+              "End-to-end tests take test and expect from ./fixtures, which gives each one its fake Discord and checks the browser's console.",
+          })),
         },
       ],
     },
