@@ -2,7 +2,7 @@
 
 The web app the staff of Shor, a Skyrim roleplay server, use to administer its Discord server without code or bot commands.
 
-The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. Its interface is built with Tailwind CSS 4 and with shadcn/ui components on Base UI, copied into [`src/ui/`](src/ui/), whose [`globals.css`](src/ui/globals.css) holds the theme. So far it serves a home page, on the theme's background and text, and `src/ui/` holds a button. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
+The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. Its interface is built with Tailwind CSS 4 and with shadcn/ui components on Base UI, copied into [`src/ui/`](src/ui/), whose [`globals.css`](src/ui/globals.css) holds the theme. So far it serves a home page, on the theme's background and text, `src/ui/` holds a button, and [`src/discord/`](src/discord/) holds the panel's client for Discord's REST API, with an in-memory fake that the tests use instead. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
 
 ## Docs
 
@@ -36,6 +36,12 @@ Run the tooling's tests, then the panel's:
 
 ```bash
 pnpm test
+```
+
+Run the contract suite of the panel's Discord client against the real Discord, on the Discord server and with the token that `.env.local` names. It creates AutoMod rules, all named `Contract …`, deletes them, and touches no other rule; the Discord server needs room for one more keyword rule:
+
+```bash
+pnpm test:contract
 ```
 
 Check the types:
@@ -100,7 +106,13 @@ pnpm exec shadcn add button --diff
 
 ## Environment variables
 
-None yet. They are documented here as they arrive, since `.env.example` holds no comments.
+`pnpm dev` and `pnpm test:contract` read them from `.env.local`, which git ignores; [`.env.example`](.env.example) lists them, empty, and they are documented here, since it holds no comments. On Vercel, the project's settings hold them. The panel checks each variable the first time it needs it, and a build on Vercel checks them all, so a missing or invalid one fails that build. The error names the variable, never its value.
+
+- `DISCORD_CLIENT_ID`: the client ID of the panel's Discord application, "Shor Panel Dev" in development and on previews, "Shor Panel" in production. A snowflake, 17 to 20 digits.
+- `DISCORD_CLIENT_SECRET`: that application's client secret, from its OAuth2 page in Discord's Developer Portal.
+- `DISCORD_REDIRECT_URI`: where Discord sends a member back after they log in, `/login/callback` on the panel's own URL, such as `http://localhost:3000/login/callback`. It must be among the application's OAuth2 redirects, and use `https:` anywhere but on `localhost`.
+- `DISCORD_BOT_TOKEN`: the panel's application token, which Discord files under the application's Bot tab and which the panel sends as `Authorization: Bot`. The panel never connects to Discord's gateway with it ([ADR 0003](docs/adr/0003-event-driven-features-belong-to-shorbot.md)), and the application needs Manage Server and View Audit Log on the Discord server.
+- `DISCORD_GUILD_ID`: the ID of the Discord server the panel administers, Gilles' test Discord server in development and on previews, Shor's in production. A snowflake.
 
 ## Related
 
