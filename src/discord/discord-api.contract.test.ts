@@ -2,6 +2,7 @@ import { createDiscordApi } from "./discord-api"
 import {
   CONTRACT_RULE_PREFIX,
   describeDiscordApiContract,
+  patiently,
 } from "./discord-api-contract"
 import { parseDiscordApiEnv } from "./env"
 import { API_BASE, requestDiscord } from "./rest"
@@ -18,24 +19,27 @@ describeDiscordApiContract("Discord", () => {
     outsider: DISCORD_SYSTEM_USER_ID,
     async cleanUp() {
       const route = ROUTES.autoModerationRule
-      for (const rule of await discord.listAutoModerationRules()) {
+      const rules = await patiently(() => discord.listAutoModerationRules())
+      for (const rule of rules) {
         if (rule.name.startsWith(CONTRACT_RULE_PREFIX)) {
-          await requestDiscord(globalThis.fetch, {
-            method: "DELETE",
-            route,
-            url:
-              API_BASE +
-              fillRoute(route, {
-                "guild.id": env.guildId,
-                "auto_moderation_rule.id": rule.id,
-              }),
-            headers: {
-              Authorization: `Bot ${env.botToken}`,
-              "X-Audit-Log-Reason": encodeURIComponent(
-                "Contract suite: clean-up"
-              ),
-            },
-          })
+          await patiently(() =>
+            requestDiscord(globalThis.fetch, {
+              method: "DELETE",
+              route,
+              url:
+                API_BASE +
+                fillRoute(route, {
+                  "guild.id": env.guildId,
+                  "auto_moderation_rule.id": rule.id,
+                }),
+              headers: {
+                Authorization: `Bot ${env.botToken}`,
+                "X-Audit-Log-Reason": encodeURIComponent(
+                  "Contract suite: clean-up"
+                ),
+              },
+            })
+          )
         }
       }
     },

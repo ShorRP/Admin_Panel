@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises"
 import {
   AuditLogEvent,
   AutoModerationActionType,
@@ -10,6 +11,7 @@ import {
 import { describe, expect, onTestFinished, test } from "vitest"
 
 import type { DiscordApi } from "./discord-api"
+import { DiscordError } from "./discord-error"
 
 export const CONTRACT_RULE_PREFIX = "Contract "
 
@@ -49,6 +51,41 @@ function defined<T>(value: T | null | undefined): T {
   return value
 }
 
+const MAX_ATTEMPTS = 3
+
+export async function patiently<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await call()
+    } catch (error) {
+      if (
+        !(error instanceof DiscordError) ||
+        error.status !== 429 ||
+        error.retryAfter === undefined ||
+        attempt === MAX_ATTEMPTS
+      ) {
+        throw error
+      }
+      await sleep(error.retryAfter * 1000)
+    }
+  }
+}
+
+function patient(discord: DiscordApi): DiscordApi {
+  return {
+    getMember: (userId) => patiently(() => discord.getMember(userId)),
+    listAutoModerationRules: () =>
+      patiently(() => discord.listAutoModerationRules()),
+    createAutoModerationRule: (rule, reason) =>
+      patiently(() => discord.createAutoModerationRule(rule, reason)),
+    modifyAutoModerationRule: (ruleId, changes, reason) =>
+      patiently(() =>
+        discord.modifyAutoModerationRule(ruleId, changes, reason)
+      ),
+    getAuditLog: (query) => patiently(() => discord.getAuditLog(query)),
+  }
+}
+
 export function describeDiscordApiContract(
   name: string,
   connect: () => ContractTarget
@@ -56,7 +93,7 @@ export function describeDiscordApiContract(
   function connected() {
     const target = connect()
     onTestFinished(() => target.cleanUp())
-    return target
+    return { ...target, discord: patient(target.discord) }
   }
 
   describe(`${name}, through DiscordApi`, () => {
