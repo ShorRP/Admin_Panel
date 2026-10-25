@@ -17,6 +17,6 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.contract.test.ts"],
-    testTimeout: 60_000,
+    testTimeout: 120_000,
   },
 })
