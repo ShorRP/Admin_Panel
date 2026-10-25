@@ -2,11 +2,11 @@ import { expect, onTestFinished, test, vi } from "vitest"
 
 import { answering } from "@/discord/answering-fetch"
 import type { Fetch } from "./alert"
-import { monitorWith } from "./monitor"
+import { createMonitor, monitorWith } from "./monitor"
 
 function monitorOver(fetch: Fetch) {
   const sends: Promise<void>[] = []
-  const monitor = monitorWith({
+  const monitor = monitorWith(() => ({
     env: {
       alertWebhookUrl: "https://discord.com/api/webhooks/1234/a-webhook-token",
       environment: "production",
@@ -16,7 +16,7 @@ function monitorOver(fetch: Fetch) {
     waitUntil: (send) => {
       sends.push(send)
     },
-  })
+  }))
   return { monitor, sent: () => Promise.all(sends) }
 }
 
@@ -55,4 +55,20 @@ test("Monitor.warn writes the error, and sends no alert", async () => {
 
   expect(lines).toEqual([[error]])
   expect(webhook.requests).toHaveLength(0)
+})
+
+test("createMonitor reads the alert's variables only when it reports an error, after writing its line", () => {
+  vi.stubEnv("ALERT_WEBHOOK_URL", "https://example.com/not-a-webhook")
+  const errorLines = capturedLines("error")
+  const warnLines = capturedLines("warn")
+  const error = new Error("Invalid environment variables")
+
+  const monitor = createMonitor()
+  monitor.warn(error)
+
+  expect(warnLines).toEqual([[error]])
+  expect(() => {
+    monitor.error(error)
+  }).toThrow(/ALERT_WEBHOOK_URL/)
+  expect(errorLines).toEqual([[error]])
 })
