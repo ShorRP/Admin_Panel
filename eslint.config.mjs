@@ -26,6 +26,10 @@ export default defineConfig([
                 "Only test files import the fake Discord and its HTTP adapter.",
             },
             {
+              regex: "(^|/)in-memory-monitor$",
+              message: "Only test files import the in-memory Monitor.",
+            },
+            {
               regex: "(^|/)(answering-fetch|discord-api-contract)$",
               message: "Only test files import the tests' helpers.",
             },

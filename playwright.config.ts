@@ -21,6 +21,7 @@ export default defineConfig({
       DISCORD_REDIRECT_URI: `${ORIGIN}/login/callback`,
       DISCORD_BOT_TOKEN: "e2e-bot-token",
       DISCORD_GUILD_ID: "1100000000000000000",
+      ALERT_WEBHOOK_URL: "",
     },
   },
 })

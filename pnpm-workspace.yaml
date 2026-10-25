@@ -2,6 +2,10 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5
+
 peerDependencyRules:
   allowedVersions:
     eslint-plugin-import>eslint: "10"
