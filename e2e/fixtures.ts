@@ -42,16 +42,16 @@ export const test = base.extend<Fixtures>({
   logIn: async ({ page, discord }, use) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(async (user) => {
-      let state = ""
+      let authorization = new URLSearchParams()
       await page.route(
         "/login",
         async (route) => {
           const answer = await route.fetch({ maxRedirects: 0 })
-          const authorization = new URL(answer.headers()["location"] ?? "")
-          expect(authorization.origin + authorization.pathname).toBe(
+          const location = new URL(answer.headers()["location"] ?? "")
+          expect(location.origin + location.pathname).toBe(
             "https://discord.com/oauth2/authorize"
           )
-          state = authorization.searchParams.get("state") ?? ""
+          authorization = location.searchParams
           await route.fulfill({
             contentType: "text/html",
             headers: { "set-cookie": answer.headers()["set-cookie"] ?? "" },
@@ -63,8 +63,11 @@ export const test = base.extend<Fixtures>({
       await page.goto("/login")
       await page.goto(
         `/login/callback?${new URLSearchParams({
-          code: discord.issueOAuth2Code(user),
-          state,
+          code: discord.issueOAuth2Code(
+            user,
+            authorization.get("code_challenge") ?? ""
+          ),
+          state: authorization.get("state") ?? "",
         })}`
       )
     })

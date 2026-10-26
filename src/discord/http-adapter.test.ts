@@ -32,26 +32,50 @@ describeDiscordApiContract("The real DiscordApi over the HTTP adapter", () => ({
   cleanUp: () => Promise.resolve(),
 }))
 
+const CODE_VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+
+const GILLES = { id: "222222222222222222", username: "gilles" }
+
+function consentedCode(fake: FakeDiscord, codeVerifier: string) {
+  const authorization = new URL(
+    oauthOver(fake).authorizationUrl("a-state", codeVerifier)
+  )
+  return fake.issueOAuth2Code(
+    GILLES,
+    authorization.searchParams.get("code_challenge") ?? ""
+  )
+}
+
 test("the real DiscordOAuth logs a member in over the HTTP adapter", async () => {
   const fake = new FakeDiscord()
   const oauth = oauthOver(fake)
-  const code = fake.issueOAuth2Code({
-    id: "222222222222222222",
-    username: "gilles",
-  })
+  const code = consentedCode(fake, CODE_VERIFIER)
 
-  const token = await oauth.exchangeCode(code)
+  const token = await oauth.exchangeCode(code, CODE_VERIFIER)
 
-  expect(await oauth.getCurrentUser(token.access_token)).toMatchObject({
-    id: "222222222222222222",
-    username: "gilles",
-  })
+  expect(await oauth.getCurrentUser(token.access_token)).toMatchObject(GILLES)
 })
 
 test("a code the fake did not issue is refused over the HTTP adapter", async () => {
   await expect(
-    oauthOver(new FakeDiscord()).exchangeCode("a-code")
+    oauthOver(new FakeDiscord()).exchangeCode("a-code", CODE_VERIFIER)
   ).rejects.toMatchObject({ status: 400, unavailable: false })
+})
+
+test("a code exchanged with another code verifier, or with none, is refused as Discord refuses it", async () => {
+  const fake = new FakeDiscord()
+  const code = consentedCode(fake, CODE_VERIFIER)
+
+  await expect(
+    oauthOver(fake).exchangeCode(code, `${CODE_VERIFIER.slice(1)}x`)
+  ).rejects.toMatchObject({
+    status: 400,
+    discordMessage: "invalid_grant: Code challenge failed.",
+  })
+  await expect(oauthOver(fake).exchangeCode(code, "")).rejects.toMatchObject({
+    status: 400,
+    discordMessage: 'invalid_request: Missing "code_verifier"',
+  })
 })
 
 test("Discord unavailable reaches the real DiscordApi with its status", async () => {

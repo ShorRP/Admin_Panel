@@ -17,7 +17,7 @@ const STATE_COOKIE = "__Host-oauth-state"
 
 const STATE_TTL_S = 10 * 60
 
-const STATE_BYTES = 32
+const RANDOM_BYTES = 32
 
 const OPTIONAL_TEXT = z.string().min(1).optional().catch(undefined)
 
@@ -27,11 +27,14 @@ const CALLBACK_QUERY = z.object({
 })
 
 export function startLogin(oauth: DiscordOAuth) {
-  const state = randomBytes(STATE_BYTES).toString("base64url")
-  const response = NextResponse.redirect(oauth.authorizationUrl(state))
+  const state = randomBytes(RANDOM_BYTES).toString("base64url")
+  const codeVerifier = randomBytes(RANDOM_BYTES).toString("base64url")
+  const response = NextResponse.redirect(
+    oauth.authorizationUrl(state, codeVerifier)
+  )
   response.cookies.set({
     name: STATE_COOKIE,
-    value: state,
+    value: `${state}.${codeVerifier}`,
     ...HOST_COOKIE_ATTRIBUTES,
     maxAge: STATE_TTL_S,
   })
@@ -61,7 +64,8 @@ async function callbackRedirect(
   const { code, state } = CALLBACK_QUERY.parse(
     Object.fromEntries(request.nextUrl.searchParams)
   )
-  if (!sameState(state, request.cookies.get(STATE_COOKIE)?.value)) {
+  const started = startedLoginOf(request.cookies.get(STATE_COOKIE)?.value)
+  if (started === null || !sameState(state, started.state)) {
     monitor.warn(new Error("The login's state is missing or differs"))
     return redirectTo(request, "/login/failed")
   }
@@ -72,7 +76,10 @@ async function callbackRedirect(
     const { staffRoleId, sessionSecret } = parseStaffEnv(process.env)
     const discord = clients.discord()
     const oauth = clients.oauth()
-    const { access_token } = await oauth.exchangeCode(code)
+    const { access_token } = await oauth.exchangeCode(
+      code,
+      started.codeVerifier
+    )
     const user = await oauth.getCurrentUser(access_token)
     const staffMember = await findStaffMember(discord, staffRoleId, user.id)
     if (staffMember === null) {
@@ -91,8 +98,16 @@ async function callbackRedirect(
   }
 }
 
-function sameState(state: string | undefined, expected: string | undefined) {
-  if (state === undefined || expected === undefined) {
+function startedLoginOf(stateCookie: string | undefined) {
+  const [state, codeVerifier, ...rest] = stateCookie?.split(".") ?? []
+  if (!state || !codeVerifier || rest.length > 0) {
+    return null
+  }
+  return { state, codeVerifier }
+}
+
+function sameState(state: string | undefined, expected: string) {
+  if (state === undefined) {
     return false
   }
   const actual = Buffer.from(state)

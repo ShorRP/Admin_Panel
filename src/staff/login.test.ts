@@ -84,18 +84,24 @@ function callback(query: Record<string, string>, stateCookie?: string) {
 
 function startedLogin(discord: FakeDiscord) {
   const response = startLogin(discord)
-  const state = new URL(locationOf(response) ?? "").searchParams.get("state")
-  if (state === null) {
-    throw new Error("No state in the authorization URL")
+  const authorization = new URL(locationOf(response) ?? "").searchParams
+  const state = authorization.get("state")
+  const codeChallenge = authorization.get("code_challenge")
+  const stateCookie = cookiesOf(response).get("__Host-oauth-state")?.value
+  if (state === null || codeChallenge === null || stateCookie === undefined) {
+    throw new Error("No state, code challenge or state cookie")
   }
-  return { response, state }
+  return { response, state, codeChallenge, stateCookie }
 }
 
 async function loggedIn(discord: FakeDiscord, user: FakeUser) {
   const monitor = new InMemoryMonitor()
-  const { state } = startedLogin(discord)
+  const { state, codeChallenge, stateCookie } = startedLogin(discord)
   const response = await completeLogin(
-    callback({ code: discord.issueOAuth2Code(user), state }, state),
+    callback(
+      { code: discord.issueOAuth2Code(user, codeChallenge), state },
+      stateCookie
+    ),
     monitor,
     clientsOf(discord)
   )
@@ -109,7 +115,7 @@ function expectStateCookieDeleted(response: Response) {
   expect(cookie?.attributes.has("secure")).toBe(true)
 }
 
-test("logging in sends the browser to Discord with a fresh state, which a cookie keeps for 10 minutes", () => {
+test("logging in sends the browser to Discord with a fresh state and code challenge, which a cookie keeps for 10 minutes with their code verifier", () => {
   const discord = discordWithStaff()
   const first = startedLogin(discord)
   const second = startedLogin(discord)
@@ -119,8 +125,12 @@ test("logging in sends the browser to Discord with a fresh state, which a cookie
   )
   expect(first.state).toMatch(/^[A-Za-z0-9_-]{43}$/)
   expect(second.state).not.toBe(first.state)
+  expect(first.codeChallenge).toMatch(/^[A-Za-z0-9_-]{43}$/)
+  expect(second.codeChallenge).not.toBe(first.codeChallenge)
+  const [cookieState, codeVerifier] = first.stateCookie.split(".")
+  expect(cookieState).toBe(first.state)
+  expect(codeVerifier).toMatch(/^[A-Za-z0-9_-]{43}$/)
   const cookie = cookiesOf(first.response).get("__Host-oauth-state")
-  expect(cookie?.value).toBe(first.state)
   expect(Object.fromEntries(cookie?.attributes ?? [])).toMatchObject({
     path: "/",
     "max-age": "600",
@@ -158,16 +168,17 @@ test("a member without the staff role is refused, with no session and no report"
   expect(monitor.reports).toEqual([])
 })
 
-test("a missing or differing state fails the login, reported at warn without the state", async () => {
+test("a missing or differing state, or a state cookie without its code verifier, fails the login, reported at warn without either", async () => {
   const discord = discordWithStaff()
-  const { state } = startedLogin(discord)
-  const code = discord.issueOAuth2Code(ALDIS)
+  const { state, codeChallenge, stateCookie } = startedLogin(discord)
+  const code = discord.issueOAuth2Code(ALDIS, codeChallenge)
 
   for (const request of [
     callback({ code, state }),
-    callback({ code }, state),
-    callback({ code, state: `${state.slice(1)}x` }, state),
-    callback({ code, state: "short" }, state),
+    callback({ code }, stateCookie),
+    callback({ code, state: `${state.slice(1)}x` }, stateCookie),
+    callback({ code, state: "short" }, stateCookie),
+    callback({ code, state }, state),
   ]) {
     const monitor = new InMemoryMonitor()
     const response = await completeLogin(request, monitor, clientsOf(discord))
@@ -177,6 +188,7 @@ test("a missing or differing state fails the login, reported at warn without the
     expectStateCookieDeleted(response)
     expect(monitor.reports.map(({ level }) => level)).toEqual(["warn"])
     expect(inspect(monitor.reports)).not.toContain(state)
+    expect(inspect(monitor.reports)).not.toContain(stateCookie)
     expect(inspect(monitor.reports)).not.toContain(code)
   }
 })
@@ -184,10 +196,10 @@ test("a missing or differing state fails the login, reported at warn without the
 test("a login cancelled on Discord fails, with no report", async () => {
   const discord = discordWithStaff()
   const monitor = new InMemoryMonitor()
-  const { state } = startedLogin(discord)
+  const { state, stateCookie } = startedLogin(discord)
 
   const response = await completeLogin(
-    callback({ error: "access_denied", state }, state),
+    callback({ error: "access_denied", state }, stateCookie),
     monitor,
     clientsOf(discord)
   )
@@ -237,10 +249,10 @@ test("a panel error fails the login, reported at error without the member's Disc
 test("a code Discord refuses fails the login, reported at error", async () => {
   const discord = discordWithStaff()
   const monitor = new InMemoryMonitor()
-  const { state } = startedLogin(discord)
+  const { state, stateCookie } = startedLogin(discord)
 
   const response = await completeLogin(
-    callback({ code: "code-unknown", state }, state),
+    callback({ code: "code-unknown", state }, stateCookie),
     monitor,
     clientsOf(discord)
   )
@@ -266,10 +278,13 @@ test("a missing Discord variable fails the login, reported at error", async () =
   vi.stubEnv("DISCORD_BOT_TOKEN", undefined)
   const discord = discordWithStaff()
   const monitor = new InMemoryMonitor()
-  const { state } = startedLogin(discord)
+  const { state, codeChallenge, stateCookie } = startedLogin(discord)
 
   const response = await completeLogin(
-    callback({ code: discord.issueOAuth2Code(ALDIS), state }, state),
+    callback(
+      { code: discord.issueOAuth2Code(ALDIS, codeChallenge), state },
+      stateCookie
+    ),
     monitor,
     { discord: createDiscordApi, oauth: () => discord }
   )
