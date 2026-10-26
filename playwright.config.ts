@@ -4,6 +4,8 @@ const PORT = 3100
 
 const ORIGIN = `http://localhost:${PORT}`
 
+export const STAFF_ROLE_ID = "1300000000000000000"
+
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
@@ -22,6 +24,8 @@ export default defineConfig({
       DISCORD_BOT_TOKEN: "e2e-bot-token",
       DISCORD_GUILD_ID: "1100000000000000000",
       ALERT_WEBHOOK_URL: "",
+      STAFF_ROLE_ID,
+      SESSION_SECRET: "e2e-session-secret-of-32-chars-x",
     },
   },
 })

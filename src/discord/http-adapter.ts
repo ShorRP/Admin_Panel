@@ -78,10 +78,13 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     {
       method: "POST",
       route: ROUTES.oauth2Token,
-      answer: async (request) =>
-        await oauth.exchangeCode(
-          new URLSearchParams(await request.text()).get("code") ?? ""
-        ),
+      answer: async (request) => {
+        const body = new URLSearchParams(await request.text())
+        return await oauth.exchangeCode(
+          body.get("code") ?? "",
+          body.get("code_verifier") ?? ""
+        )
+      },
     },
     {
       method: "GET",

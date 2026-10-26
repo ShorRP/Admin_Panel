@@ -8,14 +8,14 @@ export type Monitor = {
 }
 
 export function createMonitor(): Monitor {
-  return monitorWith(createAlerting())
+  return monitorWith(createAlerting)
 }
 
-export function monitorWith(alerting: Alerting): Monitor {
+export function monitorWith(alerting: () => Alerting): Monitor {
   return {
     error(error) {
       console.error(error)
-      sendAlert(alerting, error)
+      sendAlert(alerting(), error)
     },
     warn(error) {
       console.warn(error)

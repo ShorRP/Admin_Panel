@@ -6,12 +6,16 @@ import type {
 } from "discord-api-types/v10"
 
 import { parseDiscordOAuthEnv, type DiscordOAuthEnv } from "./env"
+import { codeChallengeOf } from "./pkce"
 import { API_BASE, requestDiscordJson, type Fetch } from "./rest"
 import { ROUTES } from "./routes"
 
 export type DiscordOAuth = {
-  authorizationUrl(state: string): string
-  exchangeCode(code: string): Promise<RESTPostOAuth2AccessTokenResult>
+  authorizationUrl(state: string, codeVerifier: string): string
+  exchangeCode(
+    code: string,
+    codeVerifier: string
+  ): Promise<RESTPostOAuth2AccessTokenResult>
   getCurrentUser(accessToken: string): Promise<APIUser>
 }
 
@@ -28,7 +32,7 @@ export function restDiscordOAuth(
   fetch: Fetch
 ): DiscordOAuth {
   return {
-    authorizationUrl(state) {
+    authorizationUrl(state, codeVerifier) {
       const url = new URL(AUTHORIZATION_URL)
       url.search = new URLSearchParams({
         client_id: env.clientId,
@@ -37,11 +41,13 @@ export function restDiscordOAuth(
         scope: "identify",
         state,
         prompt: "consent",
+        code_challenge: codeChallengeOf(codeVerifier),
+        code_challenge_method: "S256",
       }).toString()
       return url.href
     },
 
-    async exchangeCode(code) {
+    async exchangeCode(code, codeVerifier) {
       const credentials = Buffer.from(
         `${env.clientId}:${env.clientSecret}`
       ).toString("base64")
@@ -57,6 +63,7 @@ export function restDiscordOAuth(
           grant_type: "authorization_code",
           code,
           redirect_uri: env.redirectUri,
+          code_verifier: codeVerifier,
         }).toString(),
       })
     },

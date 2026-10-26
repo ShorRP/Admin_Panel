@@ -11,10 +11,16 @@ const ENV = {
   redirectUri: "http://localhost:3000/login/callback",
 }
 
-test("the authorization URL asks Discord for identify alone, with the state and a consent screen", () => {
+const CODE_VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+
+const CODE_CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+
+test("the authorization URL asks Discord for identify alone, with the state, a consent screen and the code verifier's S256 challenge", () => {
   const { fetch } = answering()
 
-  const url = new URL(restDiscordOAuth(ENV, fetch).authorizationUrl("a-state"))
+  const url = new URL(
+    restDiscordOAuth(ENV, fetch).authorizationUrl("a-state", CODE_VERIFIER)
+  )
 
   expect(url.origin + url.pathname).toBe("https://discord.com/oauth2/authorize")
   expect(Object.fromEntries(url.searchParams)).toEqual({
@@ -24,6 +30,8 @@ test("the authorization URL asks Discord for identify alone, with the state and 
     scope: "identify",
     state: "a-state",
     prompt: "consent",
+    code_challenge: CODE_CHALLENGE,
+    code_challenge_method: "S256",
   })
 })
 
@@ -35,10 +43,13 @@ const TOKEN = {
   scope: "identify",
 }
 
-test("exchanging a code authenticates the panel and names the redirect URI", async () => {
+test("exchanging a code authenticates the panel and names the redirect URI and the code verifier", async () => {
   const { fetch, requests } = answering(Response.json(TOKEN))
 
-  const token = await restDiscordOAuth(ENV, fetch).exchangeCode("a-code")
+  const token = await restDiscordOAuth(ENV, fetch).exchangeCode(
+    "a-code",
+    CODE_VERIFIER
+  )
 
   expect(token).toEqual(TOKEN)
   const [request] = requests
@@ -57,6 +68,7 @@ test("exchanging a code authenticates the panel and names the redirect URI", asy
     grant_type: "authorization_code",
     code: "a-code",
     redirect_uri: "http://localhost:3000/login/callback",
+    code_verifier: CODE_VERIFIER,
   })
 })
 
@@ -72,7 +84,7 @@ test("a refused code fails with Discord's OAuth2 error, and never with the code"
   )
 
   const error = await restDiscordOAuth(ENV, fetch)
-    .exchangeCode("a-code-4b1d")
+    .exchangeCode("a-code-4b1d", CODE_VERIFIER)
     .catch((error: unknown) => error)
 
   expect(error).toBeInstanceOf(DiscordError)

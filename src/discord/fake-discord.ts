@@ -18,6 +18,7 @@ import {
 import type { DiscordApi } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
+import { codeChallengeOf } from "./pkce"
 import { ROUTES, type DiscordRoute } from "./routes"
 
 export type FakeUser = Pick<APIUser, "id" | "username"> & Partial<APIUser>
@@ -77,6 +78,15 @@ function apiMember(member: FakeMember): APIGuildMember {
   }
 }
 
+function refusedGrant(discordMessage: string) {
+  return new DiscordError({
+    method: "POST",
+    route: ROUTES.oauth2Token,
+    status: 400,
+    discordMessage,
+  })
+}
+
 function refused(method: HttpMethod, route: DiscordRoute) {
   return new DiscordError({
     method,
@@ -119,7 +129,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   private readonly members = new Map<Snowflake, APIGuildMember>()
   private readonly rules: APIAutoModerationRule[]
   private readonly entries: APIAuditLogEntry[]
-  private readonly codes = new Map<string, APIUser>()
+  private readonly codes = new Map<
+    string,
+    { user: APIUser; codeChallenge: string }
+  >()
   private readonly tokens = new Map<string, APIUser>()
   private readonly failures = new Map<FailingMethod, DiscordError>()
 
@@ -162,9 +175,9 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     )
   }
 
-  issueOAuth2Code(user: FakeUser) {
+  issueOAuth2Code(user: FakeUser, codeChallenge: string) {
     const code = `code-${this.nextSnowflake()}`
-    this.codes.set(code, apiUser(user))
+    this.codes.set(code, { user: apiUser(user), codeChallenge })
     return code
   }
 
@@ -229,7 +242,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     })
   }
 
-  authorizationUrl(state: string) {
+  authorizationUrl(state: string, codeVerifier: string) {
     const url = new URL("https://discord.com/oauth2/authorize")
     url.search = new URLSearchParams({
       client_id: this.applicationUser.id,
@@ -237,21 +250,25 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       scope: "identify",
       state,
       prompt: "consent",
+      code_challenge: codeChallengeOf(codeVerifier),
+      code_challenge_method: "S256",
     }).toString()
     return url.href
   }
 
-  exchangeCode(code: string) {
+  exchangeCode(code: string, codeVerifier: string) {
     return this.answer("exchangeCode", (): RESTPostOAuth2AccessTokenResult => {
-      const user = this.codes.get(code)
-      if (user === undefined) {
-        throw new DiscordError({
-          method: "POST",
-          route: ROUTES.oauth2Token,
-          status: 400,
-          discordMessage: "invalid_grant",
-        })
+      const issued = this.codes.get(code)
+      if (issued === undefined) {
+        throw refusedGrant("invalid_grant")
       }
+      if (codeVerifier === "") {
+        throw refusedGrant('invalid_request: Missing "code_verifier"')
+      }
+      if (codeChallengeOf(codeVerifier) !== issued.codeChallenge) {
+        throw refusedGrant("invalid_grant: Code challenge failed.")
+      }
+      const { user } = issued
       this.codes.delete(code)
       const accessToken = `access-token-${this.nextSnowflake()}`
       this.tokens.set(accessToken, user)
