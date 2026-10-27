@@ -20,6 +20,48 @@ test("E2E_TEST_PROXY turns Next.js's test proxy on", async () => {
   expect((await loadedConfig()).experimental).toEqual({ testProxy: true })
 })
 
+test("every route sends the Content Security Policy, nosniff and the referrer policy, without X-Powered-By", async () => {
+  vi.stubEnv("VERCEL", undefined)
+  vi.stubEnv("E2E_TEST_PROXY", undefined)
+  vi.stubEnv("NODE_ENV", "production")
+
+  const config = await loadedConfig()
+
+  expect(await config.headers?.()).toEqual([
+    {
+      source: "/:path*",
+      headers: [
+        {
+          key: "Content-Security-Policy",
+          value:
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        {
+          key: "Referrer-Policy",
+          value: "strict-origin-when-cross-origin",
+        },
+      ],
+    },
+  ])
+  expect(config.poweredByHeader).toBe(false)
+})
+
+test("in development, the Content Security Policy also lets React's eval run", async () => {
+  vi.stubEnv("VERCEL", undefined)
+  vi.stubEnv("E2E_TEST_PROXY", undefined)
+  vi.stubEnv("NODE_ENV", "development")
+
+  const config = await loadedConfig()
+
+  const [route] = (await config.headers?.()) ?? []
+  expect(route?.headers).toContainEqual({
+    key: "Content-Security-Policy",
+    value:
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+  })
+})
+
 test("a build on Vercel refuses E2E_TEST_PROXY", async () => {
   vi.stubEnv("VERCEL", "1")
   vi.stubEnv("DISCORD_BOT_TOKEN", "a-bot-token")
