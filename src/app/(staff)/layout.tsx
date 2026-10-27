@@ -3,6 +3,7 @@ import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
+import { StaffMemberNameSkeleton } from "@/staff/staff-member-name-skeleton"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
 
 export default function StaffLayout({ children }: { children: ReactNode }) {
@@ -10,9 +11,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
     <>
       <StatefulStaffHeader
         memberName={
-          <Suspense
-            fallback={<span role="status">Chargement de ton nom…</span>}
-          >
+          <Suspense fallback={<StaffMemberNameSkeleton />}>
             <StaffMemberName />
           </Suspense>
         }

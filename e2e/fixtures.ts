@@ -13,7 +13,8 @@ type Fixtures = {
   discordState: FakeDiscordState
   discord: FakeDiscord
   logIn: (user: FakeUser) => Promise<void>
-  checkAccessibility: () => Promise<void>
+  holdDiscord: () => () => void
+  checkAccessibility: (options?: { waitForLoad?: boolean }) => Promise<void>
   browserConsole: void
 }
 
@@ -78,10 +79,26 @@ export const test = base.extend<Fixtures>({
       )
     })
   },
+  holdDiscord: async ({ next }, use) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    await use(() => {
+      let release = () => {}
+      const held = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      next.onFetch(async () => {
+        await held
+        return undefined
+      })
+      return release
+    })
+  },
   checkAccessibility: async ({ page, colorScheme }, use) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    await use(async () => {
-      await page.waitForLoadState()
+    await use(async ({ waitForLoad = true } = {}) => {
+      if (waitForLoad) {
+        await page.waitForLoadState()
+      }
       const backgrounds = new Map<string, string>()
       for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme })
