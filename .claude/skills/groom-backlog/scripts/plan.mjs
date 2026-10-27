@@ -3,8 +3,9 @@ export const EPIC_LABEL = 'epic'
 export const PRIORITIES = ['P0', 'P1', 'P2']
 export const WAITING_ON = 'Waiting on'
 export const SIZE = 'Size'
+const STATUS_ORDER = ['In progress', 'Todo', 'Blocked']
 const DAY_MS = 24 * 60 * 60 * 1000
-const CONVENTION_KEYS = ['typeLabels', 'milestones', 'closingCommentSince', 'staleDays']
+const CONVENTION_KEYS = ['typeLabels', 'milestones', 'skillLabels', 'closingCommentSince', 'staleDays']
 
 export const isEpic = issue => issue.labels.includes(EPIC_LABEL) || issue.subIssues.length > 0
 
@@ -106,9 +107,39 @@ export function orderMoves(current, desired) {
   return desired.flatMap((id, i) => (stays.has(i) ? [] : [{ id, after: i === 0 ? null : desired[i - 1] }]))
 }
 
-const byMilestoneThenPriority = (milestones, milestoneOf, priorityOf) => {
-  const milestoneRank = rankIn(milestones)
-  return (a, b) => milestoneRank(milestoneOf(a)) - milestoneRank(milestoneOf(b)) || priorityRank(priorityOf(a)) - priorityRank(priorityOf(b))
+const compareRanks = (a, b) => {
+  const index = a.findIndex((rank, i) => rank !== b[i])
+  return index === -1 ? 0 : a[index] - b[index]
+}
+
+function implementationOrder(current, { ranks, blockersOf }) {
+  const position = new Map(current.map((id, i) => [id, i]))
+  const waiting = new Map(current.map(id => [id, new Set(blockersOf(id).filter(blocker => blocker !== id && position.has(blocker)))]))
+  const better = (a, b) => compareRanks(ranks(a), ranks(b)) || position.get(a) - position.get(b)
+  const onCycle = id => {
+    const seen = new Set()
+    const stack = [...waiting.get(id)]
+    while (stack.length) {
+      const next = stack.pop()
+      if (next === id) return true
+      if (seen.has(next)) continue
+      seen.add(next)
+      stack.push(...waiting.get(next))
+    }
+    return false
+  }
+  const order = []
+  const forced = []
+  const remaining = new Set(current)
+  while (remaining.size) {
+    const ready = [...remaining].filter(id => !waiting.get(id).size)
+    const next = (ready.length ? ready : [...remaining].filter(onCycle)).sort(better)[0]
+    if (!ready.length) forced.push({ id: next, before: [...waiting.get(next)] })
+    order.push(next)
+    remaining.delete(next)
+    for (const id of remaining) waiting.get(id).delete(next)
+  }
+  return { order, forced }
 }
 
 export function checkConventions(conventions) {
@@ -148,7 +179,7 @@ export function describe(op) {
 }
 
 export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
-  const { typeLabels, milestones, closingCommentSince, staleDays } = checkConventions(conventions)
+  const { typeLabels, milestones, skillLabels, closingCommentSince, staleDays } = checkConventions(conventions)
   const ops = []
   const judgment = []
   const hasWaitingOn = WAITING_ON in snapshot.project.fields
@@ -195,6 +226,7 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
 
   for (const issue of issues) {
     const states = issue.labels.filter(label => STATE_LABELS.includes(label))
+    const skills = issue.labels.filter(label => skillLabels.includes(label))
     if (isEpic(issue)) {
       if (!issue.labels.includes(EPIC_LABEL)) {
         ops.push({ op: 'addLabel', issue: issue.number, label: EPIC_LABEL, why: 'has sub-issues' })
@@ -204,6 +236,10 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
         ops.push({ op: 'removeLabel', issue: issue.number, label: state, why: 'an epic takes no triage state' })
         issue.labels.splice(issue.labels.indexOf(state), 1)
       }
+      for (const skill of skills) {
+        ops.push({ op: 'removeLabel', issue: issue.number, label: skill, why: 'an epic takes no skill label, its children do' })
+        issue.labels.splice(issue.labels.indexOf(skill), 1)
+      }
     } else if (!states.length) {
       ops.push({ op: 'addLabel', issue: issue.number, label: 'needs-triage', why: 'no triage state' })
       issue.labels.push('needs-triage')
@@ -212,6 +248,10 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
     }
     if (!issue.labels.some(label => typeLabels.includes(label))) judgment.push({ kind: 'missing-type', issue: issue.number })
     if (issue.labels.includes('wontfix')) judgment.push({ kind: 'wontfix-open', issue: issue.number })
+    if (!isEpic(issue)) {
+      if (skills.length > 1) judgment.push({ kind: 'skill-conflict', issue: issue.number, detail: skills.join(', ') })
+      else if (!skills.length && issue.labels.includes('ready-for-agent') && !isWayfinder(issue)) judgment.push({ kind: 'missing-skill', issue: issue.number })
+    }
   }
 
   const openChildren = epic => epic.subIssues.filter(child => child.state === 'OPEN').map(child => child.number)
@@ -277,17 +317,63 @@ export function plan(snapshot, { now = snapshot.takenAt, conventions } = {}) {
   }
   ops.push(...closing)
 
+  const blockersOf = number => (lookup(number)?.blockedBy ?? [])
+    .filter(blocker => blocker.state === 'OPEN' && lookup(blocker.number))
+    .map(blocker => blocker.number)
+  const blocks = new Map()
+  for (const issue of issues) {
+    for (const blocker of blockersOf(issue.number)) blocks.set(blocker, [...(blocks.get(blocker) ?? []), issue.number])
+  }
+  const downstream = number => {
+    const seen = new Set()
+    const stack = [...(blocks.get(number) ?? [])]
+    while (stack.length) {
+      const next = stack.pop()
+      if (next === number || seen.has(next)) continue
+      seen.add(next)
+      stack.push(...(blocks.get(next) ?? []))
+    }
+    return [...seen]
+  }
+  const milestoneRank = rankIn(milestones)
+  const statusRank = rankIn(STATUS_ORDER)
+  const sizeRank = rankIn(Array.isArray(snapshot.project.fields[SIZE]) ? snapshot.project.fields[SIZE] : [])
+  const ranked = new Map()
+  const ownRanks = number => {
+    const below = downstream(number)
+    const urgency = [number, ...below].map(n => [milestoneRank(milestoneOf(n)), priorityRank(priorityOf(n))]).sort(compareRanks)[0]
+    const issue = lookup(number)
+    const status = issue ? desiredStatus(issue, lookup) : board.get(number)?.status
+    return [...urgency, statusRank(status), -below.length, sizeRank(board.get(number)?.size ?? null)]
+  }
+  const ranks = number => {
+    if (!ranked.has(number)) {
+      const issue = lookup(number)
+      const children = issue && isEpic(issue) ? openChildren(issue).filter(lookup) : []
+      ranked.set(number, children.length ? children.map(ranks).sort(compareRanks)[0] : ownRanks(number))
+    }
+    return ranked.get(number)
+  }
+  const cycles = new Set()
+  const ordered = ids => {
+    const { order, forced } = implementationOrder(ids, { ranks, blockersOf })
+    for (const { id, before } of forced) {
+      if (cycles.has(id)) continue
+      cycles.add(id)
+      judgment.push({ kind: 'blocker-cycle', issue: id, detail: `breaks a cycle of blockers: ordered before ${before.map(n => `#${n}`).join(', ')}` })
+    }
+    return order
+  }
+  const orderWhy = 'blockers first, then milestone, priority, status, what it unblocks, size'
   for (const epic of snapshot.issues) {
     const open = epic.subIssues.filter(child => child.state === 'OPEN').map(child => child.number)
-    const desired = [...open].sort(byMilestoneThenPriority(milestones, milestoneOf, priorityOf))
-    for (const move of orderMoves(open, desired)) {
-      ops.push({ op: 'moveSubIssue', parent: epic.number, child: move.id, after: move.after, why: 'milestone, then priority order' })
+    for (const move of orderMoves(open, ordered(open))) {
+      ops.push({ op: 'moveSubIssue', parent: epic.number, child: move.id, after: move.after, why: orderWhy })
     }
   }
   const openItems = snapshot.items.filter(item => item.state === 'OPEN').map(item => item.issue)
-  const desiredBoard = [...openItems].sort(byMilestoneThenPriority(milestones, milestoneOf, priorityOf))
-  for (const move of orderMoves(openItems, desiredBoard)) {
-    ops.push({ op: 'moveItem', issue: move.id, after: move.after, why: 'milestone, then priority order' })
+  for (const move of orderMoves(openItems, ordered(openItems))) {
+    ops.push({ op: 'moveItem', issue: move.id, after: move.after, why: orderWhy })
   }
 
   for (const pullRequest of snapshot.openPullRequests) {

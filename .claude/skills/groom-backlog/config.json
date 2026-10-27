@@ -2,6 +2,7 @@
   "project": "https://github.com/orgs/ShorRP/projects/1",
   "typeLabels": ["enhancement", "bug", "documentation"],
   "milestones": ["MVP"],
+  "skillLabels": ["skill:implement", "skill:grill-with-docs", "skill:grill-me", "skill:to-questionnaire"],
   "closingCommentSince": "2026-10-23T00:00:00Z",
   "staleDays": 7
 }
