@@ -15,7 +15,7 @@ test("a staff member adds a blocked word, then removes it, each write showing it
 }) => {
   await logIn(ALDIS)
   await page.goto("/blocked-words")
-  await expect(page).toHaveTitle("Mots interdits")
+  await expect(page).toHaveTitle("Mots interdits – Panel de Shor")
   await expect(
     page.getByRole("heading", { level: 1, name: "Mots interdits" })
   ).toBeVisible()

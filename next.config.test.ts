@@ -62,6 +62,17 @@ test("in development, the Content Security Policy also lets React's eval run", a
   })
 })
 
+test("/ redirects to the blocked words, temporarily, so that a home page can come back", async () => {
+  vi.stubEnv("VERCEL", undefined)
+  vi.stubEnv("E2E_TEST_PROXY", undefined)
+
+  const config = await loadedConfig()
+
+  expect(await config.redirects?.()).toEqual([
+    { source: "/", destination: "/blocked-words", permanent: false },
+  ])
+})
+
 test("a build on Vercel refuses E2E_TEST_PROXY", async () => {
   vi.stubEnv("VERCEL", "1")
   vi.stubEnv("DISCORD_BOT_TOKEN", "a-bot-token")

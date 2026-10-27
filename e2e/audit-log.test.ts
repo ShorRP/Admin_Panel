@@ -40,7 +40,7 @@ test("a staff member reads the audit log, newest changes first, then the older o
 
   await logIn(ALDIS)
   await page.goto("/audit-log")
-  await expect(page).toHaveTitle("Journal d’audit")
+  await expect(page).toHaveTitle("Journal d’audit – Panel de Shor")
   await expect(
     page.getByRole("heading", { level: 1, name: "Journal d’audit" })
   ).toBeVisible()

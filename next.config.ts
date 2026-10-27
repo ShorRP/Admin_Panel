@@ -50,6 +50,10 @@ const nextConfig: NextConfig = {
         ],
       },
     ]),
+  redirects: () =>
+    Promise.resolve([
+      { source: "/", destination: "/blocked-words", permanent: false },
+    ]),
 }
 
 export default nextConfig

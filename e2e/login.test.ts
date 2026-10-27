@@ -18,23 +18,18 @@ function sessionCookiesIn(cookies: { name: string }[]) {
   return cookies.filter(({ name }) => name === "__Host-session")
 }
 
-test("a staff member logs in and lands on the panel", async ({
+test("a staff member logs in and lands on the blocked words, under a header that names them", async ({
   page,
   logIn,
   checkAccessibility,
 }) => {
   await logIn(ALDIS)
 
-  await expect(page).toHaveURL("/")
-  await expect(page).toHaveTitle("Panel d’administration de Shor")
+  await expect(page).toHaveURL("/blocked-words")
+  await expect(page).toHaveTitle("Mots interdits – Panel de Shor")
+  await expect(page.getByRole("banner")).toContainText("aldis")
   await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Panel d’administration de Shor",
-    })
-  ).toBeVisible()
-  await expect(
-    page.getByText("Le staff de Shor y administre le serveur Discord.")
+    page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
   await checkAccessibility()
 })
@@ -47,18 +42,21 @@ test("a member without the staff role is refused in French", async ({
   await logIn(BRYNJA)
 
   await expect(page).toHaveURL("/login/refused")
-  await expect(page).toHaveTitle(/^Accès refusé/)
+  await expect(page).toHaveTitle("Accès refusé – Panel de Shor")
   await expect(
     page.getByText(
       "Ce compte Discord n’a pas le rôle staff sur le serveur Discord de Shor."
     )
   ).toBeVisible()
+  await expect(page.getByRole("banner")).toHaveCount(0)
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
   await checkAccessibility()
 })
 
 test("a visitor without a session goes to /login", async ({ page }) => {
-  const response = await page.request.get("/", { maxRedirects: 0 })
+  const response = await page.request.get("/blocked-words", {
+    maxRedirects: 0,
+  })
 
   expect(response.status()).toBe(307)
   expect(response.headers()["location"]).toBe("/login")
@@ -71,9 +69,9 @@ test("a staff member who loses the staff role lands on /login/refused at the nex
   checkAccessibility,
 }) => {
   await logIn(ALDIS)
-  await expect(page).toHaveURL("/")
+  await expect(page).toHaveURL("/blocked-words")
   await expect(
-    page.getByText("Le staff de Shor y administre le serveur Discord.")
+    page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
   await checkAccessibility()
 
@@ -87,6 +85,7 @@ test("a staff member who loses the staff role lands on /login/refused at the nex
   await expect(
     page.getByText("Ta session sur le panel est terminée.")
   ).toBeVisible()
+  await expect(page.getByRole("banner")).toHaveCount(0)
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
   await checkAccessibility()
 })
