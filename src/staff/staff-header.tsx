@@ -19,7 +19,7 @@ export function StaffHeader({
 }) {
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2">
-      <a href="/" className="flex items-center gap-2 font-medium">
+      <a href="/" className="flex items-center gap-2 font-heading font-medium">
         <ShorLogo />
         Panel de Shor
       </a>

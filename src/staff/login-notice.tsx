@@ -9,7 +9,7 @@ export function LoginNotice({
 }) {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 p-4">
-      <h1 className="text-xl font-medium">{title}</h1>
+      <h1 className="font-heading text-xl font-medium">{title}</h1>
       {children}
     </main>
   )
