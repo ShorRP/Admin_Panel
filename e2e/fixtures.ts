@@ -82,11 +82,18 @@ export const test = base.extend<Fixtures>({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(async () => {
       await page.waitForLoadState()
+      const backgrounds = new Map<string, string>()
       for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme })
         await page.evaluate(() =>
           Promise.allSettled(
             document.getAnimations().map(({ finished }) => finished)
+          )
+        )
+        backgrounds.set(
+          scheme,
+          await page.evaluate(
+            () => getComputedStyle(document.body).backgroundColor
           )
         )
         const { violations } = await new AxeBuilder({ page })
@@ -103,6 +110,10 @@ export const test = base.extend<Fixtures>({
           `axe's WCAG 2.2 AA rules in ${scheme}`
         ).toEqual([])
       }
+      expect(
+        backgrounds.get("dark"),
+        "the page's background in dark, against light's"
+      ).not.toBe(backgrounds.get("light"))
       await page.emulateMedia({ colorScheme })
 
       const viewport = page.viewportSize()
