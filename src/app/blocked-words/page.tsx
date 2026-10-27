@@ -15,6 +15,11 @@ export default function BlockedWordsPage() {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-4">
       <h1 className="text-xl font-medium">Mots interdits</h1>
+      <p>
+        Les mots interdits ne s’appliquent ni au propriétaire du serveur
+        Discord, ni aux membres qui ont la permission « Administrateur » ou
+        « Gérer le serveur ».
+      </p>
       <StatefulAddBlockedWordForm />
       <Suspense fallback={<p role="status">Chargement des mots interdits…</p>}>
         <BlockedWordsFromDiscord />

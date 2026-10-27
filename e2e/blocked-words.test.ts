@@ -75,3 +75,14 @@ test("a refused blocked word stays in the field, which its message describes", a
   )
   await expect(field).toHaveValue(tooLong)
 })
+
+test("the page says whom the blocked words spare", async ({ page, logIn }) => {
+  await logIn(ALDIS)
+  await page.goto("/blocked-words")
+
+  await expect(
+    page.getByText(
+      "Les mots interdits ne s’appliquent ni au propriétaire du serveur Discord, ni aux membres qui ont la permission « Administrateur » ou « Gérer le serveur »."
+    )
+  ).toBeVisible()
+})
