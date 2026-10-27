@@ -33,9 +33,16 @@ const TEXT_PAIRS = [
   ["sidebar-foreground", "sidebar"],
   ["sidebar-primary-foreground", "sidebar-primary"],
   ["sidebar-accent-foreground", "sidebar-accent"],
+  ["success", "background"],
+  ["destructive", "background"],
 ] as const
 
 const css = readFileSync(new URL("./globals.css", import.meta.url), "utf8")
+
+const favicon = readFileSync(
+  new URL("../app/icon.svg", import.meta.url),
+  "utf8"
+)
 
 const light = customProperties(/^:root \{([^}]*)\}/m)
 
@@ -134,6 +141,20 @@ function themeColor(theme: Theme, layer: string): Color {
   return { ...color, alpha: (color.alpha * Number(opacity)) / 100 }
 }
 
+function hex({ srgb }: Color) {
+  return `#${srgb
+    .map((channel) =>
+      Math.round(channel * 255)
+        .toString(16)
+        .padStart(2, "0")
+    )
+    .join("")}`
+}
+
+function faviconFill(element: string) {
+  return new RegExp(`<${element}\\s[^>]*fill="([^"]*)"`).exec(favicon)?.[1]
+}
+
 function composite([bottom, ...above]: Color[]): Triple {
   if (bottom?.alpha !== 1) {
     throw new Error("The bottom layer must be opaque.")
@@ -174,6 +195,13 @@ test("the measure gives black at 50% on white 3.95:1, the ratio of #808080", () 
   expect(
     contrast([oklch("oklch(1 0 0)")], oklch("oklch(0 0 0 / 50%)"))
   ).toBeCloseTo(3.95, 1)
+})
+
+test("the favicon draws the logo in dark's primary, on a tile of light's primary", () => {
+  expect({ tile: faviconFill("rect"), logo: faviconFill("g") }).toEqual({
+    tile: hex(themeColor(themes.light, "primary")),
+    logo: hex(themeColor(themes.dark, "primary")),
+  })
 })
 
 describe.each(["light", "dark"] as const)("in %s", (scheme) => {
