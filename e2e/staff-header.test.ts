@@ -36,6 +36,7 @@ test("a staff member moves between sections through the header, which marks the 
   await expect(page).toHaveURL("/blocked-words")
   await expect(blockedWords).toHaveAttribute("aria-current", "page")
   await expect(auditLog).not.toHaveAttribute("aria-current")
+  await page.waitForLoadState()
 
   await header.getByRole("button", { name: "Se déconnecter" }).click()
   await expect(page).toHaveURL("/login/logged-out")
