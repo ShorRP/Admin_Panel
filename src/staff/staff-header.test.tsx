@@ -1,17 +1,30 @@
+import type { ReactElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import { ShorLogo } from "./shor-logo"
 import { StaffHeader } from "./staff-header"
 
 function links(html: string) {
   return Array.from(
-    html.matchAll(/<a([^>]*)>(.*?)<\/a>/g),
-    ([, attributes = "", text]) => ({
+    html.matchAll(/<a([^>]*)>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/a>/g),
+    ([, attributes = "", imageAttributes, imageDrawing, text]) => ({
       text,
       href: /\shref="([^"]*)"/.exec(attributes)?.[1],
       current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
+      image:
+        imageAttributes === undefined
+          ? undefined
+          : {
+              drawing: imageDrawing,
+              hidden: /\saria-hidden="true"/.test(imageAttributes),
+            },
     })
   )
+}
+
+function drawing(image: ReactElement) {
+  return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(image))?.[1]
 }
 
 function currentLinks(currentPath: string) {
@@ -32,6 +45,21 @@ test("the header links to the panel, then to each section", () => {
     { text: "Mots interdits", href: "/blocked-words" },
     { text: "Journal d’audit", href: "/audit-log" },
   ])
+})
+
+test("the link to the panel shows Shor's logo before its name, hidden from assistive technologies", () => {
+  const [panel] = links(
+    renderToStaticMarkup(
+      <StaffHeader currentPath="/blocked-words" memberName="aldis" />
+    )
+  )
+
+  expect(panel).toEqual({
+    text: "Panel de Shor",
+    href: "/",
+    current: undefined,
+    image: { drawing: drawing(<ShorLogo />), hidden: true },
+  })
 })
 
 test('the current section\'s link alone carries aria-current="page"', () => {
