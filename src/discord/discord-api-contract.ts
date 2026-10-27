@@ -143,6 +143,25 @@ export function describeDiscordApiContract(
       ])
     })
 
+    test("a rule's keywords can all be removed", async () => {
+      const { discord } = connected()
+      const created = await discord.createAutoModerationRule(
+        keywordRule(["contract"]),
+        "Contract: rule created"
+      )
+
+      await discord.modifyAutoModerationRule(
+        created.id,
+        keywordChanges([]),
+        "Contract: rule emptied"
+      )
+
+      const listed = (await discord.listAutoModerationRules()).find(
+        ({ id }) => id === created.id
+      )
+      expect(listed?.trigger_metadata.keyword_filter).toEqual([])
+    })
+
     test("each write adds an audit log entry with its reason, under the application, which is a member", async () => {
       const { discord } = connected()
       const created = await discord.createAutoModerationRule(
@@ -297,6 +316,24 @@ export function describeDiscordApiContract(
         discord.createAutoModerationRule(
           keywordRule(["é".repeat(61)]),
           "Contract: a keyword of 61 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+    })
+
+    test("a keyword's 60 characters count an emoji as one", async () => {
+      const { discord } = connected()
+
+      const created = await discord.createAutoModerationRule(
+        keywordRule(["😀".repeat(60)]),
+        "Contract: a keyword of 60 emoji"
+      )
+
+      expect(created.trigger_metadata.keyword_filter).toEqual(["😀".repeat(60)])
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          keywordChanges(["😀".repeat(61)]),
+          "Contract: a keyword of 61 emoji"
         )
       ).rejects.toMatchObject(REFUSED)
     })

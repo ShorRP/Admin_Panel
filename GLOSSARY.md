@@ -48,6 +48,10 @@ _Avoid_: allowlist
 A word or phrase the staff forbid in messages on the Discord server. Not the opposite of the whitelist.
 _Avoid_: blacklist, banned word, forbidden word
 
+**Panel's rule**:
+The AutoMod rule on the Discord server whose keywords are the blocked words, which the Admin Panel creates and keeps. Not the AutoMod rules the staff make in Discord, which the panel only shows.
+_Avoid_: blocked words rule, the rule (alone)
+
 **Warning**:
 A formal notice from the staff to a member of the Discord server, with its reason, kept on record even when the member contests it successfully.
 _Avoid_: strike
