@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { buttonVariants } from "@/ui/button"
 import {
@@ -68,6 +69,7 @@ export function AuditLog({ page }: { page: AuditLogPage }) {
               href="/audit-log"
               className={buttonVariants({ variant: "outline" })}
             >
+              <ArrowLeft aria-hidden data-icon="inline-start" />
               Revenir aux plus récents
             </Link>
           )}
@@ -76,6 +78,7 @@ export function AuditLog({ page }: { page: AuditLogPage }) {
               href={`/audit-log?before=${older}`}
               className={buttonVariants({ variant: "outline" })}
             >
+              <ArrowRight aria-hidden data-icon="inline-start" />
               Plus anciens
             </Link>
           )}

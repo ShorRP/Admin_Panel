@@ -1,3 +1,5 @@
+import { X } from "lucide-react"
+
 import { Button } from "@/ui/button"
 import { counted, frenchNumber } from "./french-text"
 import { MAX_BLOCKED_WORDS } from "./limits"
@@ -34,6 +36,7 @@ export function BlockedWordList({
                 <form action={action}>
                   <input type="hidden" name="word" value={word} />
                   <Button type="submit" variant="outline" disabled={pending}>
+                    <X aria-hidden data-icon="inline-start" />
                     Retirer
                   </Button>
                 </form>
