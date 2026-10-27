@@ -11,6 +11,7 @@ test("a staff member adds a blocked word, then removes it, each write showing it
   page,
   logIn,
   discord,
+  checkAccessibility,
 }) => {
   await logIn(ALDIS)
   await page.goto("/blocked-words")
@@ -21,6 +22,7 @@ test("a staff member adds a blocked word, then removes it, each write showing it
   await expect(
     page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
+  await checkAccessibility()
 
   const field = page.getByLabel("Mot ou expression")
   await field.fill("foo")
@@ -38,6 +40,7 @@ test("a staff member adds a blocked word, then removes it, each write showing it
   expect(await discord.listAutoModerationRules()).toMatchObject([
     { trigger_metadata: { keyword_filter: ["foo"] } },
   ])
+  await checkAccessibility()
 
   await page
     .getByRole("listitem")
@@ -56,11 +59,13 @@ test("a staff member adds a blocked word, then removes it, each write showing it
   expect(await discord.listAutoModerationRules()).toMatchObject([
     { trigger_metadata: { keyword_filter: [] } },
   ])
+  await checkAccessibility()
 })
 
 test("a refused blocked word stays in the field, which its message describes", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   const tooLong = "é".repeat(61)
   await logIn(ALDIS)
@@ -74,9 +79,14 @@ test("a refused blocked word stays in the field, which its message describes", a
     "Raccourcis ce mot : AutoMod n’accepte pas plus de 60 caractères."
   )
   await expect(field).toHaveValue(tooLong)
+  await checkAccessibility()
 })
 
-test("the page says whom the blocked words spare", async ({ page, logIn }) => {
+test("the page says whom the blocked words spare", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
   await logIn(ALDIS)
   await page.goto("/blocked-words")
 
@@ -85,4 +95,8 @@ test("the page says whom the blocked words spare", async ({ page, logIn }) => {
       "Les mots interdits ne s’appliquent ni au propriétaire du serveur Discord, ni aux membres qui ont la permission « Administrateur » ou « Gérer le serveur »."
     )
   ).toBeVisible()
+  await expect(
+    page.getByText("Aucun mot interdit pour l’instant.")
+  ).toBeVisible()
+  await checkAccessibility()
 })

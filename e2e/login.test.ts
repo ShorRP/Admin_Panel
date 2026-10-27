@@ -21,6 +21,7 @@ function sessionCookiesIn(cookies: { name: string }[]) {
 test("a staff member logs in and lands on the panel", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   await logIn(ALDIS)
 
@@ -35,11 +36,13 @@ test("a staff member logs in and lands on the panel", async ({
   await expect(
     page.getByText("Le staff de Shor y administre le serveur Discord.")
   ).toBeVisible()
+  await checkAccessibility()
 })
 
 test("a member without the staff role is refused in French", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   await logIn(BRYNJA)
 
@@ -51,6 +54,7 @@ test("a member without the staff role is refused in French", async ({
     )
   ).toBeVisible()
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
+  await checkAccessibility()
 })
 
 test("a visitor without a session goes to /login", async ({ page }) => {
@@ -64,18 +68,25 @@ test("a staff member who loses the staff role lands on /login/refused at the nex
   page,
   discord,
   logIn,
+  checkAccessibility,
 }) => {
   await logIn(ALDIS)
   await expect(page).toHaveURL("/")
+  await expect(
+    page.getByText("Le staff de Shor y administre le serveur Discord.")
+  ).toBeVisible()
+  await checkAccessibility()
 
   discord.removeMemberRole(ALDIS.id, STAFF_ROLE_ID)
   await page.reload()
 
   await expect(page).toHaveURL("/login/refused")
+  await checkAccessibility()
   await page.getByRole("button", { name: "Se déconnecter" }).click()
   await expect(page).toHaveURL("/login/logged-out")
   await expect(
     page.getByText("Ta session sur le panel est terminée.")
   ).toBeVisible()
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
+  await checkAccessibility()
 })
