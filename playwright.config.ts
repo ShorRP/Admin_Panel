@@ -10,7 +10,7 @@ export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
   forbidOnly: Boolean(process.env.CI),
-  use: { baseURL: ORIGIN },
+  use: { baseURL: ORIGIN, reducedMotion: "reduce" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: `pnpm exec next start --port ${PORT}`,
