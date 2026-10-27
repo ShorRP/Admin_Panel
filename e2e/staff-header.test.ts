@@ -53,7 +53,7 @@ test("a staff member moves between sections through the header, which marks the 
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 } })
 
-  test("a staff member opens the menu, moves to the other section, which closes it, then logs out from it", async ({
+  test("a staff member opens the menu, which comes from the right, moves to the other section, which closes it, then logs out from it", async ({
     page,
     logIn,
     checkAccessibility,
@@ -81,6 +81,16 @@ test.describe("on a 360 px screen", () => {
 
     await openMenu.click()
     await expect(menu).toBeVisible()
+    const edges = await menu.evaluate((element) => {
+      const { left, right } = element.getBoundingClientRect()
+      return {
+        left,
+        right,
+        viewportRight: document.documentElement.clientWidth,
+      }
+    })
+    expect(edges.right).toBe(edges.viewportRight)
+    expect(edges.left).toBeGreaterThan(0)
     await expect(blockedWords).toHaveAttribute("aria-current", "page")
     await expect(auditLog).not.toHaveAttribute("aria-current")
     await expect(menu).toContainText("aldis")

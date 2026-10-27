@@ -81,7 +81,7 @@ export function StaffHeader({
           <Menu aria-hidden />
           <span className="sr-only">Ouvrir le menu</span>
         </SheetTrigger>
-        <SheetContent side="left" className="motion-reduce:translate-x-0!">
+        <SheetContent side="right" className="motion-reduce:translate-x-0!">
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
