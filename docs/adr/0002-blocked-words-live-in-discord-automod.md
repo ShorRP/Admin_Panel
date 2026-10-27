@@ -20,3 +20,4 @@ The panel recognizes its rule by its name, « Mots interdits du panel », among 
 
 - A change made directly in Discord's AutoMod settings shows up in the panel but not in our audit log; Discord's own audit log records it.
 - AutoMod rules the staff create by hand in Discord are shown read-only.
+- Blocked words never apply to the server's owner, nor to members with Administrator or Manage Server: AutoMod spares them, as Discord's FAQ says, "Users with Admin and Manage Server permissions are always exempt from filter rules" (https://support.discord.com/hc/en-us/articles/4421269296535-AutoMod-FAQ, read 2026-10-26). On Gilles' test Discord server, which he owns, the panel's rule let his own message holding « machin » through, and blocked it from an account without those permissions (Gilles, 2026-10-27).
