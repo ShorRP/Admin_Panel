@@ -43,6 +43,12 @@ const TEST_CONVENTIONS = {
     "compliance",
   ],
   milestones: ["Premier déploiement", "Avant le lancement", "Croissance"],
+  skillLabels: [
+    "skill:implement",
+    "skill:grill-with-docs",
+    "skill:grill-me",
+    "skill:to-questionnaire",
+  ],
   closingCommentSince: "2026-10-10T00:00:00Z",
   staleDays: 7,
 }
@@ -53,7 +59,7 @@ const plan = (snapshot, options = {}) =>
 test("the planner refuses to run without the conventions it applies", () => {
   assert.throws(
     () => planTracker(snapshot({ issues: [] })),
-    /conventions lack typeLabels, milestones, closingCommentSince, staleDays/
+    /conventions lack typeLabels, milestones, skillLabels, closingCommentSince, staleDays/
   )
   assert.throws(
     () =>
@@ -114,7 +120,7 @@ function issue(number, fields = {}) {
     title: `Tests : ticket ${number}`,
     state: "OPEN",
     body: "",
-    labels: ["enhancement", "ready-for-agent"],
+    labels: ["enhancement", "ready-for-agent", "skill:implement"],
     milestone: null,
     assignees: [],
     parent: null,
@@ -396,8 +402,15 @@ test("labels: missing type, conflicting states and an open wontfix go to judgmen
   const result = plan(
     snapshot({
       issues: [
-        issue(1, { labels: ["ready-for-agent"] }),
-        issue(2, { labels: ["bug", "ready-for-agent", "ready-for-human"] }),
+        issue(1, { labels: ["ready-for-agent", "skill:implement"] }),
+        issue(2, {
+          labels: [
+            "bug",
+            "ready-for-agent",
+            "ready-for-human",
+            "skill:implement",
+          ],
+        }),
         issue(3, { labels: ["bug", "wontfix"] }),
       ],
     })
@@ -405,6 +418,60 @@ test("labels: missing type, conflicting states and an open wontfix go to judgmen
   assert.deepEqual(kinds(result, 1), ["missing-type"])
   assert.deepEqual(kinds(result, 2), ["state-conflict"])
   assert.deepEqual(kinds(result, 3), ["wontfix-open"])
+})
+
+test("skills: a ticket ready for an agent names the skill it starts with, one ready for a human only when a skill drives it", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(1, { labels: ["enhancement", "ready-for-agent"] }),
+        issue(2, { labels: ["enhancement", "ready-for-human"] }),
+        issue(3, {
+          labels: ["enhancement", "ready-for-human", "skill:grill-with-docs"],
+        }),
+        issue(4, {
+          labels: ["enhancement", "ready-for-agent", "wayfinder:task"],
+        }),
+        issue(5, { labels: ["bug", "needs-triage"] }),
+      ],
+    })
+  )
+  assert.deepEqual(
+    result.judgment.map((j) => [j.kind, j.issue]),
+    [["missing-skill", 1]]
+  )
+})
+
+test("skills: two skill labels conflict, and an epic drops its own since its children carry theirs", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(1, {
+          labels: [
+            "enhancement",
+            "ready-for-agent",
+            "skill:implement",
+            "skill:grill-me",
+          ],
+        }),
+        issue(2, {
+          labels: ["enhancement", "epic", "skill:grill-with-docs"],
+          subIssues: [{ number: 3, state: "OPEN" }],
+        }),
+        issue(3, { parent: 2, body: "Part of #2" }),
+      ],
+    })
+  )
+  assert.deepEqual(
+    result.judgment.map((j) => [j.kind, j.issue, j.detail]),
+    [["skill-conflict", 1, "skill:implement, skill:grill-me"]]
+  )
+  assert.deepEqual(
+    opsFor(result, 2)
+      .filter((o) => o.op.endsWith("Label"))
+      .map((o) => [o.op, o.label]),
+    [["removeLabel", "skill:grill-with-docs"]]
+  )
 })
 
 test("epics: no triage state, the label follows the children, status and priority roll up", () => {
@@ -1097,6 +1164,218 @@ test("order: a single item out of place moves once", () => {
   assert.deepEqual(orderMoves(["A", "B", "C"], ["C", "A", "B"]), [
     { id: "C", after: null },
   ])
+})
+
+const blockedBy = (...numbers) =>
+  numbers.map((number) => ({ number, state: "OPEN" }))
+const boardMoves = (result) =>
+  result.ops.filter((o) => o.op === "moveItem").map((o) => [o.issue, o.after])
+
+test("order: a ticket comes after the tickets that block it, whatever their priorities", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(1, {
+          labels: ["enhancement", "epic"],
+          subIssues: [3, 4].map((number) => ({ number, state: "OPEN" })),
+        }),
+        issue(3, { parent: 1, body: "Part of #1", blockedBy: blockedBy(4) }),
+        issue(4, { parent: 1, body: "Part of #1" }),
+      ],
+      items: [
+        item(1, { priority: "P0" }),
+        item(3, { status: "Blocked", priority: "P0", waitingOn: "#4" }),
+        item(4, { priority: "P2" }),
+      ],
+    })
+  )
+  assert.deepEqual(
+    result.ops
+      .filter((o) => o.op === "moveSubIssue")
+      .map((o) => [o.child, o.after]),
+    [[4, null]]
+  )
+})
+
+test("order: a blocker takes the milestone and the priority of what it blocks, so it comes right before it", () => {
+  const byPriority = plan(
+    snapshot({
+      issues: [issue(5), issue(6), issue(7, { blockedBy: blockedBy(6) })],
+      items: [
+        item(5, { priority: "P1" }),
+        item(6, { priority: "P2" }),
+        item(7, { status: "Blocked", priority: "P0", waitingOn: "#6" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(byPriority), [[5, 7]])
+  const byMilestone = plan(
+    snapshot({
+      issues: [
+        issue(8, { milestone: "Premier déploiement" }),
+        issue(10, {
+          milestone: "Avant le lancement",
+          blockedBy: blockedBy(9),
+        }),
+        issue(9),
+      ],
+      items: [
+        item(8),
+        item(10, { status: "Blocked", waitingOn: "#9" }),
+        item(9, { priority: "P2" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(byMilestone), [[9, 8]])
+})
+
+test("order: within a priority, work in progress comes first, then ready work, then blocked work", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(11, { labels: ["bug", "needs-info"] }),
+        issue(12),
+        issue(13, { assignees: ["PothieuG"] }),
+      ],
+      items: [
+        item(11, { status: "Blocked", waitingOn: "PO : logo" }),
+        item(12),
+        item(13, { status: "In progress" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(result), [
+    [13, null],
+    [12, 13],
+  ])
+})
+
+test("order: within a status, what unblocks the most comes first, then the smaller Size", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(14),
+        issue(15),
+        issue(16),
+        issue(17, { blockedBy: blockedBy(15) }),
+      ],
+      items: [
+        item(14, { priority: "P2", size: "S" }),
+        item(15, { priority: "P2", size: "L" }),
+        item(16, { priority: "P2", size: "XS" }),
+        item(17, { status: "Blocked", priority: "P2", waitingOn: "#15" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(result), [[14, 16]])
+})
+
+test("order: an epic reads as its implementation order, the longest chain of blockers ahead of the rest", () => {
+  const children = [134, 136, 137, 135, 132, 139, 140, 133, 138, 141]
+  const blockers = {
+    137: [135, 134],
+    138: [136, 134, 132],
+    139: [137, 134],
+    140: [139, 137],
+    141: [136, 140],
+  }
+  const fields = {
+    134: { priority: "P0", size: "M", status: "In progress" },
+    136: { priority: "P0", size: "S" },
+    137: { priority: "P0", size: "M" },
+    135: { size: "S" },
+    132: { size: "M" },
+    139: { size: "M" },
+    140: { size: "L" },
+    133: { size: "S" },
+    138: { size: "M" },
+    141: { size: "M" },
+  }
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(129, {
+          labels: ["enhancement", "epic"],
+          subIssues: children.map((number) => ({ number, state: "OPEN" })),
+        }),
+        ...children.map((number) =>
+          issue(number, {
+            parent: 129,
+            body: "Part of #129",
+            assignees: number === 134 ? ["PothieuG"] : [],
+            blockedBy: blockedBy(...(blockers[number] ?? [])),
+          })
+        ),
+      ],
+      items: [
+        item(129, { status: "In progress", priority: "P0", size: null }),
+        ...children.map((number) =>
+          item(number, {
+            priority: "P2",
+            status: blockers[number] ? "Blocked" : "Todo",
+            waitingOn: blockers[number]?.map((n) => `#${n}`).join(", "),
+            ...fields[number],
+          })
+        ),
+      ],
+    })
+  )
+  const order = result.ops
+    .filter((o) => o.op === "moveSubIssue")
+    .reduce((list, { child, after }) => {
+      const rest = list.filter((number) => number !== child)
+      if (after === null) return [child, ...rest]
+      return rest.flatMap((number) =>
+        number === after ? [number, child] : [number]
+      )
+    }, children)
+  assert.deepEqual(order, [134, 135, 136, 137, 132, 133, 139, 140, 138, 141])
+})
+
+test("order: an epic sits on the board where its next ticket sits", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(20),
+        issue(23),
+        issue(21, {
+          labels: ["enhancement", "epic"],
+          subIssues: [{ number: 22, state: "OPEN" }],
+        }),
+        issue(22, { parent: 21, body: "Part of #21" }),
+      ],
+      items: [
+        item(20, { priority: "P2", size: "S" }),
+        item(23, { priority: "P2", size: "M" }),
+        item(21, { priority: "P2", size: null }),
+        item(22, { priority: "P2", size: "XS" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(result), [
+    [21, null],
+    [22, 21],
+  ])
+})
+
+test("order: tickets that block each other go to judgment, and the order still comes out", () => {
+  const result = plan(
+    snapshot({
+      issues: [
+        issue(18, { blockedBy: blockedBy(19) }),
+        issue(19, { blockedBy: blockedBy(18) }),
+      ],
+      items: [
+        item(18, { status: "Blocked", waitingOn: "#19" }),
+        item(19, { status: "Blocked", waitingOn: "#18" }),
+      ],
+    })
+  )
+  assert.deepEqual(boardMoves(result), [])
+  assert.deepEqual(
+    result.judgment.map((j) => [j.kind, j.issue, j.detail]),
+    [["blocker-cycle", 18, "breaks a cycle of blockers: ordered before #19"]]
+  )
 })
 
 test("hygiene: stale work and PRs that close nothing go to judgment", () => {
