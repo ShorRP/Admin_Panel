@@ -1,4 +1,5 @@
 import { test as base, expect } from "next/experimental/testmode/playwright"
+import AxeBuilder from "@axe-core/playwright"
 
 import { DiscordError } from "@/discord/discord-error"
 import {
@@ -12,8 +13,13 @@ type Fixtures = {
   discordState: FakeDiscordState
   discord: FakeDiscord
   logIn: (user: FakeUser) => Promise<void>
+  checkAccessibility: () => Promise<void>
   browserConsole: void
 }
+
+const WCAG_22_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
+
+const SMALLEST_SCREEN_WIDTH = 360
 
 export { expect }
 
@@ -70,6 +76,49 @@ export const test = base.extend<Fixtures>({
           state: authorization.get("state") ?? "",
         })}`
       )
+    })
+  },
+  checkAccessibility: async ({ page, colorScheme }, use) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    await use(async () => {
+      await page.waitForLoadState()
+      for (const scheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: scheme })
+        await page.evaluate(() =>
+          Promise.allSettled(
+            document.getAnimations().map(({ finished }) => finished)
+          )
+        )
+        const { violations } = await new AxeBuilder({ page })
+          .withTags(WCAG_22_AA_TAGS)
+          .analyze()
+        expect(
+          violations.flatMap(({ id, nodes }) =>
+            nodes.map(({ target, failureSummary }) => ({
+              rule: id,
+              target: target.join(" "),
+              failureSummary,
+            }))
+          ),
+          `axe's WCAG 2.2 AA rules in ${scheme}`
+        ).toEqual([])
+      }
+      await page.emulateMedia({ colorScheme })
+
+      const viewport = page.viewportSize()
+      if (viewport === null) {
+        throw new Error("The page has no viewport to narrow.")
+      }
+      await page.setViewportSize({ ...viewport, width: SMALLEST_SCREEN_WIDTH })
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }))
+      await page.setViewportSize(viewport)
+      expect(
+        scrollWidth,
+        `the page's width at ${SMALLEST_SCREEN_WIDTH} px`
+      ).toBeLessThanOrEqual(clientWidth)
     })
   },
   browserConsole: [
