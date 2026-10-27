@@ -32,7 +32,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 
 - A limit reached pauses the panel, and in most cases the feature comes back only after 30 days (above). What happens on Hobby past the rate-limiting rule's 1,000,000 allowed requests is documented nowhere; the same pause, presumably (inferred).
 - The terms keep Hobby for "your personal or non-commercial use", and let Vercel "shut down and terminate projects or deployments using the Hobby plan without notice" (§4). The fair use guidelines require Pro or Enterprise for "All commercial usage", and add that "Asking for Donations does not fall under commercial usage" (https://vercel.com/docs/limits/fair-use-guidelines, updated 2026-09-14): hence « Does Shor make money? » in `docs/agents/open-questions.md`.
-- Vercel's limits page says a Hobby project connects to no organization's repository, and points to creating a team instead (https://vercel.com/docs/limits, updated 2026-09-16), whose dialog offers the Pro Trial (the trials page). If Vercel refuses #9's trial, #9 stops (`CLAUDE.md`, **If Vercel refuses**), and no trial is taken.
+- Vercel's limits page says a Hobby project connects to no organization's repository, and points to creating a team instead (https://vercel.com/docs/limits, updated 2026-09-16), whose dialog offers the Pro Trial (the trials page). On 2026-10-27, Vercel linked Gilles' Hobby project to this public repository all the same (`CLAUDE.md`, **The trial**).
 
 ## GitHub
 
