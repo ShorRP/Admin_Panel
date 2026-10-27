@@ -8,6 +8,8 @@ Every page and every domain write first reads the member from Discord with the p
 
 The check itself is a function of `src/staff/` that takes a Discord user ID and returns a `StaffMember`, or `null` for a member who is not on the Discord server or lacks the staff role. `requireStaffMember` reads the session, calls it, and redirects instead of returning a failure: to `/login` without a readable session, to `/login/refused` when it gets `null`. The login callback has no session yet, so it calls the function on the ID it has just read from `/users/@me` and redirects itself: to `/login/refused` on `null`, to `/login/failed` when Discord fails. The login pages under `/login` and the error pages run no check: they show nothing read from Discord. Clarified by Gilles on 2026-10-23, while grilling #49.
 
+After the MVP the check grows two ways, each settled by the grilling of the first feature that needs it (Gilles, 2026-10-27, while grilling the features that follow the MVP). Each section of the panel opens to a list of Discord roles, such as moderation to the moderators and the structure of the Discord server to its administrators, where one staff role opens every page today. And a few pages open to anyone with a Discord account, a banned one included, for the steps that concern them, such as contesting a warning or a ban.
+
 Facts behind it, read on 2026-10-23:
 
 - A Server Action is "reachable via a direct POST request, not just through your application's UI", and "a page-level authentication check does not extend to the Server Actions defined within it" (`node_modules/next/dist/docs/01-app/02-guides/data-security.md:281` and `:339`, Next.js 16.4.2).

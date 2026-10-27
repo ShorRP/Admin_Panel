@@ -97,7 +97,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 ## Planned
 
-- **Neon**, the store ADR 0004 plans for the audit log's history, through the Vercel Marketplace (#3): its entry comes with #3, which reads whether its free plan asks for a card on Hobby, since a Marketplace integration that bills takes a payment method of its own (**Vercel** above).
+- **Neon**, the store ADR 0004 picks for what the panel keeps after the MVP, on an account opened at Neon rather than through the Vercel Marketplace, whose Vercel-managed integration is "Paid through Vercel" (https://neon.com/docs/guides/vercel-overview, read 2026-10-27): its entry comes before that account opens, with the first feature that stores, which the grilling of the moderation wave settles (#27).
 
 ## Outside this ledger
 

@@ -22,3 +22,10 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 - **Where it shows up:** the panel's error messages tell the staff to report a problem in the staff's Discord channel, named in the text (`CLAUDE.md`, **Errors**, decided by Gilles while grilling #49 on 2026-10-23). The error pages need its name.
 - **Who is likely to know:** Anaisenkit, together with Lyra-Gates, the other PO, if the channel has to be created.
 - **Blocked on it:** the final text of the error pages and of `/login/failed`, which says « le salon du staff sur Discord » until then (`src/staff/login-failed.tsx`), and so the first production deploy.
+
+## How do Shor's whitelist and launcher work?
+
+- **Question:** Where does the whitelist live: in Shor's SkyMP server, in its launcher, in a Discord role, or elsewhere? Who grants it today, and how? Can anything outside the game read or change it, and does the game know a player's Discord account?
+- **Where it shows up:** the Admin Panel stays on Discord's side until this is known (Gilles, 2026-10-27, while grilling the features that follow the MVP). An application for the whitelist on the panel, a Linked Role fed by the game, and the game server's status all need the game's side. `GLOSSARY.md` defines the whitelist without saying where it is kept.
+- **Who is likely to know:** loanspac, who said Shor has its own SkyMP server and launcher (ADR 0001), and the POs.
+- **Blocked on it:** any feature of the panel that reads from or writes to the game.
