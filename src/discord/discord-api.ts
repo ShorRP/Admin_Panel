@@ -17,6 +17,7 @@ import { API_BASE, requestDiscordJson, type Fetch } from "./rest"
 import { fillRoute, ROUTES, type DiscordRoute } from "./routes"
 
 export type DiscordApi = {
+  readonly guildId: Snowflake
   getMember(userId: Snowflake): Promise<APIGuildMember | null>
   listAutoModerationRules(): Promise<APIAutoModerationRule[]>
   createAutoModerationRule(
@@ -70,6 +71,8 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
   }
 
   return {
+    guildId: env.guildId,
+
     async getMember(userId) {
       try {
         return await call<APIGuildMember>({

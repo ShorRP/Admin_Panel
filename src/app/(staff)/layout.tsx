@@ -3,16 +3,17 @@ import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
-import { StaffMemberNameSkeleton } from "@/staff/staff-member-name-skeleton"
+import { StaffMemberIdentity } from "@/staff/staff-member-identity"
+import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
 
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <StatefulStaffHeader
-        memberName={
-          <Suspense fallback={<StaffMemberNameSkeleton />}>
-            <StaffMemberName />
+        member={
+          <Suspense fallback={<StaffMemberIdentitySkeleton />}>
+            <CurrentStaffMemberIdentity />
           </Suspense>
         }
       />
@@ -21,8 +22,8 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
   )
 }
 
-async function StaffMemberName() {
+async function CurrentStaffMemberIdentity() {
   await connection()
-  const { name } = await requireStaffMember(createDiscordApi())
-  return name
+  const { name, avatarUrl } = await requireStaffMember(createDiscordApi())
+  return <StaffMemberIdentity name={name} avatarUrl={avatarUrl} />
 }

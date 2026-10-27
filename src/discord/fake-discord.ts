@@ -27,6 +27,7 @@ export type FakeMember = {
   user: FakeUser
   roles?: Snowflake[]
   nick?: string | null
+  avatar?: string | null
 }
 
 export type FakeDiscordState = {
@@ -70,6 +71,7 @@ function apiMember(member: FakeMember): APIGuildMember {
   return {
     user: apiUser(member.user),
     nick: member.nick ?? null,
+    avatar: member.avatar ?? null,
     roles: [...(member.roles ?? [])],
     joined_at: "2026-01-01T00:00:00.000000+00:00",
     deaf: false,

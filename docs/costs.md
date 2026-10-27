@@ -57,7 +57,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 ## Discord
 
-**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, and the webhook of the alerts (`CLAUDE.md`, **Monitoring**).
+**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, and the webhook of the alerts (`CLAUDE.md`, **Monitoring**); and its CDN, from which the staff's browsers load the members' avatars, with no token (`CLAUDE.md`, **Avatars**).
 
 **Why it cannot bill.** The Developer Terms name no fee for the APIs (https://support-dev.discord.com/hc/en-us/articles/8562894815383, effective 2024-07-08). The fee Discord takes from developers is a share of what a Premium App sells (https://support-dev.discord.com/hc/en-us/articles/17299902720919, updated 2026-06-11), and monetization is something a team owner enables (https://docs.discord.com/developers/monetization/enabling-monetization); the panel sells nothing.
 

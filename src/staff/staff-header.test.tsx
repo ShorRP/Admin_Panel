@@ -41,7 +41,7 @@ function drawing(image: ReactElement) {
 function currentLinks(currentPath: string) {
   return links(
     renderToStaticMarkup(
-      <StaffHeader currentPath={currentPath} memberName="aldis" />
+      <StaffHeader currentPath={currentPath} member="aldis" />
     )
   )
     .filter(({ current }) => current !== undefined)
@@ -50,7 +50,7 @@ function currentLinks(currentPath: string) {
 
 test("the header links to the panel, then to each section", () => {
   const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" memberName="aldis" />
+    <StaffHeader currentPath="/blocked-words" member="aldis" />
   )
 
   expect(links(html).map(({ text, href }) => ({ text, href }))).toEqual([
@@ -63,7 +63,7 @@ test("the header links to the panel, then to each section", () => {
 test("the link to the panel shows Shor's logo before its name, hidden from assistive technologies", () => {
   const [panel] = links(
     renderToStaticMarkup(
-      <StaffHeader currentPath="/blocked-words" memberName="aldis" />
+      <StaffHeader currentPath="/blocked-words" member="aldis" />
     )
   )
 
@@ -78,7 +78,7 @@ test("the link to the panel shows Shor's logo before its name, hidden from assis
 test("each section's link shows its icon before its name, hidden from assistive technologies", () => {
   const [, ...sections] = links(
     renderToStaticMarkup(
-      <StaffHeader currentPath="/blocked-words" memberName="aldis" />
+      <StaffHeader currentPath="/blocked-words" member="aldis" />
     )
   )
 
@@ -109,7 +109,7 @@ test("a path outside every section marks no link current", () => {
 
 test("the header names the staff member, then offers to log out after a hidden log-out icon", () => {
   const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" memberName="Brynja la Rouge" />
+    <StaffHeader currentPath="/blocked-words" member="Brynja la Rouge" />
   )
 
   expect(html).toContain(">Brynja la Rouge<")
@@ -128,7 +128,7 @@ test("the header names the staff member, then offers to log out after a hidden l
 
 test("a menu button shows a hidden menu icon, and names itself « Ouvrir le menu » to assistive technologies alone", () => {
   const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" memberName="aldis" />
+    <StaffHeader currentPath="/blocked-words" member="aldis" />
   )
 
   expect(
