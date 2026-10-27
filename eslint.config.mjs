@@ -12,6 +12,14 @@ export default defineConfig([
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
   {
+    name: "admin-panel/react-escaping",
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
+    rules: {
+      "react/no-danger": "error",
+      "react/jsx-no-script-url": ["error", [{ name: "Link", props: ["href"] }]],
+    },
+  },
+  {
     name: "admin-panel/test-doubles",
     files: ["src/**"],
     ignores: ["src/**/*.test.*"],
