@@ -16,6 +16,10 @@ _Avoid_: guild, the Discord, server (alone)
 
 ### People
 
+**Member**:
+A Discord account on the Discord server. A banned account is no longer one.
+_Avoid_: user (alone), player
+
 **Staff**:
 The members of Shor's team who moderate and administer the community.
 _Avoid_: admins, mods (each names a level within the staff, not the staff as a whole)
@@ -27,11 +31,11 @@ _Avoid_: admin role, mod role
 ### Tools
 
 **Admin Panel**:
-The web application the staff use to administer the Discord server without code or bot commands.
+The web application where the staff administer the Discord server without code or bot commands, and where anyone with a Discord account takes the few steps that concern them, such as contesting a warning or a ban.
 _Avoid_: dashboard, painel, staff panel
 
 **Bot**:
-The Discord bot loanspac runs, which reacts to what happens on the Discord server. Not the Admin Panel's own Discord application, which acts only when a staff member uses the panel.
+The Discord bot loanspac runs, which reacts to what happens on the Discord server. Not the Admin Panel's own Discord application, which acts only when someone uses the panel, on the web or through the buttons and commands it puts in Discord.
 _Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
