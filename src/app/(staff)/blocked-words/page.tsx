@@ -1,13 +1,15 @@
-import { Suspense, ViewTransition } from "react"
+import { ViewTransition } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
 
+import { BlockedWordListSkeleton } from "@/blocked-words/blocked-word-list-skeleton"
 import { OtherAutoModRules } from "@/blocked-words/other-auto-mod-rules"
 import { readBlockedWords } from "@/blocked-words/read-blocked-words"
 import { StatefulAddBlockedWordForm } from "@/blocked-words/stateful-add-blocked-word-form"
 import { StatefulBlockedWordList } from "@/blocked-words/stateful-blocked-word-list"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
+import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Mots interdits" }
 
@@ -26,11 +28,9 @@ export default function BlockedWordsPage() {
           « Gérer le serveur ».
         </p>
         <StatefulAddBlockedWordForm />
-        <Suspense
-          fallback={<p role="status">Chargement des mots interdits…</p>}
-        >
+        <SuspenseWithSkeleton skeleton={<BlockedWordListSkeleton />}>
           <BlockedWordsFromDiscord />
-        </Suspense>
+        </SuspenseWithSkeleton>
       </main>
     </ViewTransition>
   )

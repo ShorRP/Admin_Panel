@@ -137,6 +137,10 @@ for (const { title, prefersReducedMotion } of [
     }) => {
       await logIn(ALDIS)
       await expect(page).toHaveURL("/blocked-words")
+      await expect(
+        page.getByText("Aucun mot interdit pour l’instant.")
+      ).toBeVisible()
+      await page.waitForFunction(() => document.activeViewTransition === null)
       expect(
         await page.evaluate(
           () => matchMedia("(prefers-reduced-motion: reduce)").matches

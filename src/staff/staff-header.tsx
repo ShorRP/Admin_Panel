@@ -69,7 +69,7 @@ export function StaffHeader({
         </ul>
       </nav>
       <div className="ml-auto hidden min-w-0 items-center gap-2 md:flex">
-        <p className="wrap-anywhere">{memberName}</p>
+        <div className="wrap-anywhere">{memberName}</div>
         <LogOutForm />
       </div>
       <Sheet>
@@ -103,7 +103,7 @@ export function StaffHeader({
             </ul>
           </nav>
           <SheetFooter className="border-t">
-            <p className="wrap-anywhere">{memberName}</p>
+            <div className="wrap-anywhere">{memberName}</div>
             <LogOutForm />
           </SheetFooter>
         </SheetContent>

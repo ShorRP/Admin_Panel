@@ -1,11 +1,13 @@
-import { Suspense, ViewTransition } from "react"
+import { ViewTransition } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
 
 import { AuditLog } from "@/audit-log/audit-log"
+import { AuditLogSkeleton } from "@/audit-log/audit-log-skeleton"
 import { readAuditLog } from "@/audit-log/read-audit-log"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
+import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Journal d’audit" }
 
@@ -21,11 +23,9 @@ export default function AuditLogPage({
       <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         <h1 className="font-heading text-xl font-medium">Journal d’audit</h1>
         <p>L’historique couvre 45 jours. Heures de Paris.</p>
-        <Suspense
-          fallback={<p role="status">Chargement du journal d’audit…</p>}
-        >
+        <SuspenseWithSkeleton skeleton={<AuditLogSkeleton />}>
           <AuditLogFromDiscord searchParams={searchParams} />
-        </Suspense>
+        </SuspenseWithSkeleton>
       </main>
     </ViewTransition>
   )
