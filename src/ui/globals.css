@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource/eb-garamond/latin-500.css";
+
+@theme {
+  --font-heading: "EB Garamond", var(--font-serif);
+}
 
 @theme inline {
   --color-sidebar-ring: var(--sidebar-ring);

@@ -10,7 +10,10 @@ export function OtherAutoModRules({ rules }: { rules: OtherAutoModRule[] }) {
       aria-labelledby="other-auto-mod-rules"
       className="flex flex-col gap-2"
     >
-      <h2 id="other-auto-mod-rules" className="text-lg font-medium">
+      <h2
+        id="other-auto-mod-rules"
+        className="font-heading text-lg font-medium"
+      >
         Autres règles AutoMod du serveur
       </h2>
       <p>Elles se modifient dans Discord.</p>
