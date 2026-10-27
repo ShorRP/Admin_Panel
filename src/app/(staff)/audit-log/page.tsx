@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+import { Suspense, ViewTransition } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
 
@@ -13,13 +13,21 @@ export default function AuditLogPage({
   searchParams,
 }: PageProps<"/audit-log">) {
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
-      <h1 className="text-xl font-medium">Journal d’audit</h1>
-      <p>L’historique couvre 45 jours. Heures de Paris.</p>
-      <Suspense fallback={<p role="status">Chargement du journal d’audit…</p>}>
-        <AuditLogFromDiscord searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <ViewTransition
+      enter="section-crossfade"
+      exit="section-crossfade"
+      default="none"
+    >
+      <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
+        <h1 className="text-xl font-medium">Journal d’audit</h1>
+        <p>L’historique couvre 45 jours. Heures de Paris.</p>
+        <Suspense
+          fallback={<p role="status">Chargement du journal d’audit…</p>}
+        >
+          <AuditLogFromDiscord searchParams={searchParams} />
+        </Suspense>
+      </main>
+    </ViewTransition>
   )
 }
 

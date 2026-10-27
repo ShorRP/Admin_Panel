@@ -123,3 +123,60 @@
     @apply bg-background text-foreground;
   }
 }
+
+::view-transition-old(.section-crossfade),
+::view-transition-old(.fade-exit) {
+  animation: 150ms ease-out both view-fade-out;
+}
+
+::view-transition-new(.section-crossfade),
+::view-transition-new(.content-enter),
+::view-transition-new(.highlight-enter) {
+  animation: 250ms ease-out both view-fade-in;
+}
+
+::view-transition-new(.highlight-enter) {
+  animation-name: view-fade-in, view-highlight;
+}
+
+::view-transition-group(.slide) {
+  animation-duration: 250ms;
+  animation-timing-function: ease-out;
+}
+
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes view-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes view-rise {
+  from {
+    translate: 0 0.5rem;
+  }
+}
+
+@keyframes view-highlight {
+  from,
+  50% {
+    background-color: color-mix(in oklch, var(--primary) 15%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-new(.content-enter) {
+    animation-name: view-fade-in, view-rise;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*) {
+    animation-name: none;
+  }
+}
