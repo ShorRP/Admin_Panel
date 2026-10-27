@@ -1,3 +1,5 @@
+import { LoaderCircle, Plus } from "lucide-react"
+
 import { Button } from "@/ui/button"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
@@ -29,7 +31,21 @@ export function AddBlockedWordForm({
           className="max-w-xs flex-1"
         />
         <Button type="submit" disabled={pending}>
-          {pending ? "Ajout…" : "Ajouter"}
+          {pending ? (
+            <>
+              <LoaderCircle
+                aria-hidden
+                data-icon="inline-start"
+                className="motion-safe:animate-spin"
+              />
+              Ajout…
+            </>
+          ) : (
+            <>
+              <Plus aria-hidden data-icon="inline-start" />
+              Ajouter
+            </>
+          )}
         </Button>
       </div>
       <p role="status" className="text-sm">

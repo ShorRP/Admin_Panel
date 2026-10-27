@@ -1,3 +1,4 @@
+import { LoaderCircle, Plus, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -18,12 +19,23 @@ function field(html: string) {
   return /<input[^>]*name="word"[^>]*>/.exec(html)?.[0] ?? ""
 }
 
-function button(html: string) {
-  const [tag = "", text] = /<button[^>]*>(.*?)<\/button>/.exec(html) ?? []
-  return { text, disabled: /\sdisabled=""/.test(tag) }
+function drawing(Icon: LucideIcon) {
+  return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
-test("before any write, the form shows its labelled field, « Ajouter », and both regions empty", () => {
+function button(html: string) {
+  const [, tag = "", iconAttributes = "", iconDrawing, text] =
+    /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/.exec(html) ??
+    []
+  return {
+    icon: iconDrawing,
+    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+    text,
+    disabled: /\sdisabled=""/.test(tag),
+  }
+}
+
+test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and both regions empty", () => {
   const html = render(null)
 
   expect(html).toMatch(
@@ -31,7 +43,12 @@ test("before any write, the form shows its labelled field, « Ajouter », and bo
   )
   expect(field(html)).toContain('id="blocked-word"')
   expect(field(html)).toContain('value=""')
-  expect(button(html)).toEqual({ text: "Ajouter", disabled: false })
+  expect(button(html)).toEqual({
+    icon: drawing(Plus),
+    iconHidden: true,
+    text: "Ajouter",
+    disabled: false,
+  })
   expect(region(html, "status")).toBe("")
   expect(region(html, "alert")).toBe("")
 })
@@ -67,8 +84,10 @@ test("a word added shows its message in the status region, and leaves the field 
   expect(field(html)).toContain('value=""')
 })
 
-test("while the word is being added, the button reads « Ajout… » and is disabled", () => {
+test("while the word is being added, a hidden spinner takes the plus's place, and the button reads « Ajout… » and is disabled", () => {
   expect(button(render(null, true))).toEqual({
+    icon: drawing(LoaderCircle),
+    iconHidden: true,
     text: "Ajout…",
     disabled: true,
   })

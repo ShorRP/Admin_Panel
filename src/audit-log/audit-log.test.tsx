@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -33,11 +34,38 @@ function cells(html: string, tag: "th" | "td") {
   ).filter((row) => row.length > 0)
 }
 
+function drawing(Icon: LucideIcon) {
+  return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
+}
+
 function links(html: string) {
   return Array.from(
-    html.matchAll(/<a[^>]* href="([^"]*)"[^>]*>(.*?)<\/a>/g),
-    ([, href, text]) => ({ text, href: href?.replaceAll("&amp;", "&") })
+    html.matchAll(
+      /<a[^>]* href="([^"]*)"[^>]*>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/a>/g
+    ),
+    ([, href, iconAttributes = "", iconDrawing, text]) => ({
+      icon: iconDrawing,
+      iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+      text,
+      href: href?.replaceAll("&amp;", "&"),
+    })
   )
+}
+
+const NEWEST_LINK = {
+  icon: drawing(ArrowLeft),
+  iconHidden: true,
+  text: "Revenir aux plus récents",
+  href: "/audit-log",
+}
+
+function olderLink(cursor: string) {
+  return {
+    icon: drawing(ArrowRight),
+    iconHidden: true,
+    text: "Plus anciens",
+    href: `/audit-log?before=${cursor}`,
+  }
 }
 
 test("each change is a row of its date in Paris time, its staff member and what changed, under three headers", () => {
@@ -67,28 +95,24 @@ test("an empty audit log says so in one sentence, with no table", () => {
   expect(html).not.toContain("<table")
 })
 
-test("the newest page links to older changes only, when there are some", () => {
+test("the newest page links to older changes only, when there are some, after a hidden right arrow", () => {
   expect(links(render({ changes: [ADDITION] }))).toEqual([])
   expect(
     links(render({ changes: [ADDITION], older: "1563530499194880000" }))
-  ).toEqual([
-    { text: "Plus anciens", href: "/audit-log?before=1563530499194880000" },
-  ])
+  ).toEqual([olderLink("1563530499194880000")])
 })
 
-test("an older page links back to the newest changes, and on to older ones while there are some", () => {
+test("an older page links back to the newest changes after a hidden left arrow, and on to older ones while there are some", () => {
   const older = {
     changes: [ADDITION],
     before: "1563530499194880001",
   }
 
   expect(links(render({ ...older, older: "1563530499194880000" }))).toEqual([
-    { text: "Revenir aux plus récents", href: "/audit-log" },
-    { text: "Plus anciens", href: "/audit-log?before=1563530499194880000" },
+    NEWEST_LINK,
+    olderLink("1563530499194880000"),
   ])
-  expect(links(render(older))).toEqual([
-    { text: "Revenir aux plus récents", href: "/audit-log" },
-  ])
+  expect(links(render(older))).toEqual([NEWEST_LINK])
 })
 
 test("an older page with no change says only that none is older, and links back to the newest changes", () => {
@@ -96,7 +120,5 @@ test("an older page with no change says only that none is older, and links back 
 
   expect(html).toContain("<p>Aucun changement plus ancien.</p>")
   expect(html).not.toContain("45 derniers jours")
-  expect(links(html)).toEqual([
-    { text: "Revenir aux plus récents", href: "/audit-log" },
-  ])
+  expect(links(html)).toEqual([NEWEST_LINK])
 })

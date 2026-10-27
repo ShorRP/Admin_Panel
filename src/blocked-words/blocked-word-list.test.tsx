@@ -1,3 +1,4 @@
+import { X, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -23,6 +24,10 @@ function region(html: string, role: "status" | "alert") {
   return new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1]
 }
 
+function drawing(Icon: LucideIcon) {
+  return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
+}
+
 function items(html: string) {
   return Array.from(
     html.matchAll(/<li[^>]*>(.*?)<\/li>/g),
@@ -31,8 +36,12 @@ function items(html: string) {
         item
       )?.[1],
       buttons: Array.from(
-        item.matchAll(/<button[^>]*>(.*?)<\/button>/g),
-        ([tag, text]) => ({
+        item.matchAll(
+          /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/g
+        ),
+        ([, tag = "", iconAttributes = "", iconDrawing, text]) => ({
+          icon: iconDrawing,
+          iconHidden: /\saria-hidden="true"/.test(iconAttributes),
           text,
           disabled: /\sdisabled=""/.test(tag),
         })
@@ -41,13 +50,17 @@ function items(html: string) {
   )
 }
 
-test("each blocked word comes with its own « Retirer » form, after the count", () => {
+function removeButton(disabled: boolean) {
+  return { icon: drawing(X), iconHidden: true, text: "Retirer", disabled }
+}
+
+test("each blocked word comes with its own « Retirer » form, its text after a hidden cross, under the count", () => {
   const html = render(["abricot", "zèbre"])
 
   expect(html).toContain("2 mots interdits sur 1 000 possibles.")
   expect(items(html)).toEqual([
-    { word: "abricot", buttons: [{ text: "Retirer", disabled: false }] },
-    { word: "zèbre", buttons: [{ text: "Retirer", disabled: false }] },
+    { word: "abricot", buttons: [removeButton(false)] },
+    { word: "zèbre", buttons: [removeButton(false)] },
   ])
   expect(html).toContain(">abricot<")
   expect(html).toContain(">zèbre<")
@@ -71,8 +84,8 @@ test("while a removal is pending, every « Retirer » is disabled and the status
   const html = render(["abricot", "zèbre"], null, true)
 
   expect(items(html).flatMap(({ buttons }) => buttons)).toEqual([
-    { text: "Retirer", disabled: true },
-    { text: "Retirer", disabled: true },
+    removeButton(true),
+    removeButton(true),
   ])
   expect(region(html, "status")).toBe("Retrait en cours…")
 })
