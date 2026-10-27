@@ -23,6 +23,9 @@ test("a staff member moves between sections through the header, which marks the 
   await expect(page).toHaveURL("/blocked-words")
   await expect(blockedWords).toHaveAttribute("aria-current", "page")
   await expect(auditLog).not.toHaveAttribute("aria-current")
+  await expect(
+    header.getByRole("button", { name: "Ouvrir le menu" })
+  ).toBeHidden()
 
   await auditLog.click()
   await expect(page).toHaveURL("/audit-log")
@@ -47,6 +50,71 @@ test("a staff member moves between sections through the header, which marks the 
   ).toEqual([])
 })
 
+test.describe("on a 360 px screen", () => {
+  test.use({ viewport: { width: 360, height: 760 } })
+
+  test("a staff member opens the menu, which comes from the right, moves to the other section, which closes it, then logs out from it", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const header = page.getByRole("banner")
+    const openMenu = header.getByRole("button", { name: "Ouvrir le menu" })
+    const menu = page.getByRole("dialog", { name: "Menu" })
+    const sections = menu.getByRole("navigation", {
+      name: "Sections du panel",
+    })
+    const blockedWords = sections.getByRole("link", { name: "Mots interdits" })
+    const auditLog = sections.getByRole("link", { name: "Journal d’audit" })
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await expect(
+      header.getByRole("navigation", { name: "Sections du panel" })
+    ).toBeHidden()
+    await expect(
+      header.getByRole("link", { name: "Panel de Shor" })
+    ).toBeVisible()
+    await expect(
+      header.getByRole("button", { name: "Se déconnecter" })
+    ).toBeHidden()
+
+    await openMenu.click()
+    await expect(menu).toBeVisible()
+    const edges = await menu.evaluate((element) => {
+      const { left, right } = element.getBoundingClientRect()
+      return {
+        left,
+        right,
+        viewportRight: document.documentElement.clientWidth,
+      }
+    })
+    expect(edges.right).toBe(edges.viewportRight)
+    expect(edges.left).toBeGreaterThan(0)
+    await expect(blockedWords).toHaveAttribute("aria-current", "page")
+    await expect(auditLog).not.toHaveAttribute("aria-current")
+    await expect(menu).toContainText("aldis")
+    await checkAccessibility()
+
+    await auditLog.click()
+    await expect(page).toHaveURL("/audit-log")
+    await expect(menu).toBeHidden()
+    await checkAccessibility()
+
+    await openMenu.click()
+    await expect(auditLog).toHaveAttribute("aria-current", "page")
+    await expect(blockedWords).not.toHaveAttribute("aria-current")
+
+    await menu.getByRole("button", { name: "Se déconnecter" }).click()
+    await expect(page).toHaveURL("/login/logged-out")
+    expect(
+      (await page.context().cookies()).filter(
+        ({ name }) => name === "__Host-session"
+      )
+    ).toEqual([])
+  })
+})
+
 for (const { title, prefersReducedMotion } of [
   {
     title: "under reduced motion, every test's default",
@@ -62,7 +130,7 @@ for (const { title, prefersReducedMotion } of [
       test.use({ reducedMotion: "no-preference" })
     }
 
-    test("moving between sections fades the old content out and the new one in, moving nothing", async ({
+    test("moving between sections fades the old content out and the new one in, moving nothing but the current section's underline, which slides over unless motion is reduced", async ({
       page,
       logIn,
       checkAccessibility,
@@ -75,33 +143,68 @@ for (const { title, prefersReducedMotion } of [
         )
       ).toBe(prefersReducedMotion)
 
-      const keyframes = page.waitForFunction(
+      const transition = page.waitForFunction(
         () => {
-          const values = document.documentElement
+          const underline = "(current-section-underline)"
+          const effects = document.documentElement
             .getAnimations({ subtree: true })
             .flatMap(({ effect }) =>
               effect instanceof KeyframeEffect &&
               effect.pseudoElement?.startsWith("::view-transition") &&
               effect.getComputedTiming().duration !== 0
-                ? effect.getKeyframes().flatMap((keyframe) =>
-                    Object.entries(keyframe)
-                      .filter(
-                        ([key]) =>
-                          ![
-                            "offset",
-                            "computedOffset",
-                            "easing",
-                            "composite",
-                          ].includes(key)
-                      )
-                      .map(
-                        ([property, value]) =>
-                          `${effect.pseudoElement?.replace(/\(.*\)$/, "")} ${property} ${String(value)} at ${keyframe.computedOffset * 100}%`
-                      )
-                  )
+                ? [
+                    {
+                      pseudoElement: effect.pseudoElement,
+                      keyframes: effect.getKeyframes(),
+                    },
+                  ]
                 : []
             )
-          return values.length > 0 && [...new Set(values)].sort()
+          function properties(keyframe: ComputedKeyframe) {
+            return Object.entries(keyframe).filter(
+              ([key]) =>
+                !["offset", "computedOffset", "easing", "composite"].includes(
+                  key
+                )
+            )
+          }
+          function unique(values: string[]) {
+            return [...new Set(values)].sort()
+          }
+          return (
+            effects.length > 0 && {
+              content: unique(
+                effects
+                  .filter(
+                    ({ pseudoElement }) => !pseudoElement.endsWith(underline)
+                  )
+                  .flatMap(({ pseudoElement, keyframes }) =>
+                    keyframes.flatMap((keyframe) =>
+                      properties(keyframe).map(
+                        ([property, value]) =>
+                          `${pseudoElement.replace(/\(.*\)$/, "")} ${property} ${String(value)} at ${keyframe.computedOffset * 100}%`
+                      )
+                    )
+                  )
+              ),
+              underlineMoves: unique(
+                effects
+                  .filter(
+                    ({ pseudoElement }) =>
+                      pseudoElement === `::view-transition-group${underline}`
+                  )
+                  .flatMap(({ keyframes }) =>
+                    keyframes.flatMap((keyframe) =>
+                      properties(keyframe)
+                        .filter(([property, value]) =>
+                          keyframes.some((other) => other[property] !== value)
+                        )
+                        .map(([property]) => property)
+                    )
+                  )
+              ),
+            }
+          )
         },
         undefined,
         { polling: "raf" }
@@ -111,14 +214,55 @@ for (const { title, prefersReducedMotion } of [
         .getByRole("link", { name: "Journal d’audit" })
         .click()
 
-      expect(await (await keyframes).jsonValue()).toEqual([
-        "::view-transition-new opacity 0 at 0%",
-        "::view-transition-new opacity 1 at 100%",
-        "::view-transition-old opacity 0 at 100%",
-        "::view-transition-old opacity 1 at 0%",
-      ])
+      expect(await (await transition).jsonValue()).toEqual({
+        content: [
+          "::view-transition-new opacity 0 at 0%",
+          "::view-transition-new opacity 1 at 100%",
+          "::view-transition-old opacity 0 at 100%",
+          "::view-transition-old opacity 1 at 0%",
+        ],
+        underlineMoves: prefersReducedMotion ? [] : ["transform", "width"],
+      })
       await expect(page).toHaveURL("/audit-log")
       await checkAccessibility()
+    })
+
+    test.describe("on a 360 px screen", () => {
+      test.use({ viewport: { width: 360, height: 760 } })
+
+      test("the menu fades in, and slides in only with motion", async ({
+        page,
+        logIn,
+      }) => {
+        await logIn(ALDIS)
+        await expect(page).toHaveURL("/blocked-words")
+        await page.waitForLoadState()
+
+        const transitions = page.waitForFunction(
+          () => {
+            const properties = document
+              .getAnimations()
+              .flatMap((animation) =>
+                animation instanceof CSSTransition &&
+                animation.effect instanceof KeyframeEffect &&
+                animation.effect.target?.getAttribute("role") === "dialog"
+                  ? [animation.transitionProperty]
+                  : []
+              )
+            return properties.length > 0 && [...new Set(properties)].sort()
+          },
+          undefined,
+          { polling: "raf" }
+        )
+        await page
+          .getByRole("banner")
+          .getByRole("button", { name: "Ouvrir le menu" })
+          .click()
+
+        expect(await (await transitions).jsonValue()).toEqual(
+          prefersReducedMotion ? ["opacity"] : ["opacity", "translate"]
+        )
+      })
     })
   })
 }

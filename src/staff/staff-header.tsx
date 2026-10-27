@@ -1,13 +1,23 @@
-import type { ReactNode } from "react"
+import { ViewTransition, type ReactNode } from "react"
 import Link from "next/link"
+import { Ban, Menu, ScrollText } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { logOut } from "./actions"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/ui/sheet"
+import { LogOutForm } from "./log-out-form"
 import { ShorLogo } from "./shor-logo"
 
 const SECTIONS = [
-  { href: "/blocked-words", name: "Mots interdits" },
-  { href: "/audit-log", name: "Journal d’audit" },
+  { href: "/blocked-words", name: "Mots interdits", Icon: Ban },
+  { href: "/audit-log", name: "Journal d’audit", Icon: ScrollText },
 ] as const
 
 export function StaffHeader({
@@ -17,35 +27,87 @@ export function StaffHeader({
   currentPath: string
   memberName: ReactNode
 }) {
+  const sections = SECTIONS.map((section) => ({
+    ...section,
+    current: section.href === currentPath ? ("page" as const) : undefined,
+  }))
   return (
-    <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2">
-      <a href="/" className="flex items-center gap-2 font-heading font-medium">
+    <header className="flex min-h-14 items-center gap-x-6 border-b px-4">
+      <a
+        href="/"
+        className="flex shrink-0 items-center gap-2 font-heading font-medium whitespace-nowrap"
+      >
         <ShorLogo />
-        Panel de Shor
+        <span className="max-md:sr-only">Panel de Shor</span>
       </a>
-      <nav aria-label="Sections du panel">
-        <ul className="flex flex-wrap gap-x-4 gap-y-1">
-          {SECTIONS.map(({ href, name }) => (
-            <li key={href}>
+      <nav
+        aria-label="Sections du panel"
+        className="hidden shrink-0 self-stretch md:flex"
+      >
+        <ul className="flex gap-x-4">
+          {sections.map(({ href, name, Icon, current }) => (
+            <li key={href} className="flex">
               <Link
                 href={href}
-                aria-current={href === currentPath ? "page" : undefined}
-                className="underline-offset-4 hover:underline aria-[current=page]:font-medium aria-[current=page]:underline"
+                aria-current={current}
+                className="relative flex items-center gap-1.5 px-1 whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
               >
+                <Icon aria-hidden className="size-4" />
                 {name}
+                {current && (
+                  <ViewTransition
+                    name="current-section-underline"
+                    share="slide"
+                    default="none"
+                  >
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
+                  </ViewTransition>
+                )}
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 sm:ml-auto">
+      <div className="ml-auto hidden min-w-0 items-center gap-2 md:flex">
         <p className="wrap-anywhere">{memberName}</p>
-        <form action={logOut}>
-          <Button type="submit" variant="ghost">
-            Se déconnecter
-          </Button>
-        </form>
+        <LogOutForm />
       </div>
+      <Sheet>
+        <SheetTrigger
+          render={
+            <Button variant="ghost" size="icon" className="ml-auto md:hidden" />
+          }
+        >
+          <Menu aria-hidden />
+          <span className="sr-only">Ouvrir le menu</span>
+        </SheetTrigger>
+        <SheetContent side="right" className="motion-reduce:translate-x-0!">
+          <SheetHeader>
+            <SheetTitle>Menu</SheetTitle>
+          </SheetHeader>
+          <nav aria-label="Sections du panel">
+            <ul className="flex flex-col">
+              {sections.map(({ href, name, Icon, current }) => (
+                <li key={href}>
+                  <SheetClose
+                    nativeButton={false}
+                    role={undefined}
+                    render={<Link href={href} aria-current={current} />}
+                    className="flex items-center gap-2 border-l-2 border-transparent px-4 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                  >
+                    <Icon aria-hidden className="size-4" />
+                    {name}
+                  </SheetClose>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <SheetFooter className="border-t">
+            <p className="wrap-anywhere">{memberName}</p>
+            <LogOutForm />
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </header>
   )
 }
