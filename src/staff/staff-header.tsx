@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { Button } from "@/ui/button"
 import { logOut } from "./actions"
+import { ShorLogo } from "./shor-logo"
 
 const SECTIONS = [
   { href: "/blocked-words", name: "Mots interdits" },
@@ -18,7 +19,8 @@ export function StaffHeader({
 }) {
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2">
-      <a href="/" className="font-medium">
+      <a href="/" className="flex items-center gap-2 font-medium">
+        <ShorLogo />
         Panel de Shor
       </a>
       <nav aria-label="Sections du panel">
