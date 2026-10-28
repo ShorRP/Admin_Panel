@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "next dev",
-    "dev:tunnel": "node scripts/interactions-tunnel.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",

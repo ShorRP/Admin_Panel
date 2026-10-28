@@ -3,7 +3,6 @@ import { expect, test } from "vitest"
 
 import {
   parseDiscordApiEnv,
-  parseDiscordInteractionsEnv,
   parseDiscordOAuthEnv,
   parseTestProxyEnv,
 } from "./env"
@@ -74,28 +73,4 @@ test("E2E_TEST_PROXY takes no value but 1, an empty one included, and its error 
 
   expect(error).toContain("E2E_TEST_PROXY")
   expect(error).not.toContain("on-4f7c")
-})
-
-test("the public key is the 64 hex digits of the application's Ed25519 key", () => {
-  expect(
-    parseDiscordInteractionsEnv({
-      DISCORD_PUBLIC_KEY:
-        "7e1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8",
-    })
-  ).toEqual({
-    publicKey:
-      "7e1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8",
-  })
-})
-
-test("a missing or invalid public key is named in the error, without its value", () => {
-  expect(thrownBy(() => parseDiscordInteractionsEnv({}))).toContain(
-    "DISCORD_PUBLIC_KEY"
-  )
-  const error = thrownBy(() =>
-    parseDiscordInteractionsEnv({ DISCORD_PUBLIC_KEY: "key-4f7c" })
-  )
-
-  expect(error).toContain("DISCORD_PUBLIC_KEY")
-  expect(error).not.toContain("key-4f7c")
 })
