@@ -9,6 +9,8 @@ const ADDITION: AuditLogChange = {
   id: "1563530499194880000",
   date: new Date("2026-10-24T12:32:00.000Z"),
   memberName: "aldis",
+  avatarUrl:
+    "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
   description: "Ajout de « foo »",
 }
 
@@ -16,6 +18,7 @@ const DISCORD_CHANGE: AuditLogChange = {
   id: "1563530499194880001",
   date: new Date("2026-12-01T09:05:00.000Z"),
   memberName: "Bryn la Rouge",
+  avatarUrl: null,
   description: "Règle modifiée dans Discord",
 }
 
@@ -32,6 +35,28 @@ function cells(html: string, tag: "th" | "td") {
       ([, cell]) => cell
     )
   ).filter((row) => row.length > 0)
+}
+
+function text(html: string) {
+  return html.replace(/<[^>]*>/g, "")
+}
+
+function member(cell = "") {
+  const [, avatar = "", name] =
+    /^<div[^>]*>(.*)<div[^>]*>(.*)<\/div><\/div>$/.exec(cell) ?? []
+  return {
+    initials: text(avatar),
+    hidden: /^<\w+[^>]*\saria-hidden="true"/.test(avatar),
+    name,
+  }
+}
+
+function rows(html: string) {
+  return cells(html, "td").map(([date, cell, change]) => [
+    date,
+    member(cell).name,
+    change,
+  ])
 }
 
 function drawing(Icon: LucideIcon) {
@@ -72,7 +97,7 @@ test("each change is a row of its date in Paris time, its staff member and what 
   const html = render({ changes: [DISCORD_CHANGE, ADDITION] })
 
   expect(cells(html, "th")).toEqual([["Date", "Membre du staff", "Changement"]])
-  expect(cells(html, "td")).toEqual([
+  expect(rows(html)).toEqual([
     [
       '<time dateTime="2026-12-01T09:05:00.000Z">1 déc. 2026, 10:05</time>',
       "Bryn la Rouge",
@@ -83,6 +108,15 @@ test("each change is a row of its date in Paris time, its staff member and what 
       "aldis",
       "Ajout de « foo »",
     ],
+  ])
+})
+
+test("each change shows its staff member's initials, hidden from assistive technologies, before their name", () => {
+  const html = render({ changes: [DISCORD_CHANGE, ADDITION] })
+
+  expect(cells(html, "td").map(([, cell]) => member(cell))).toEqual([
+    { initials: "BL", hidden: true, name: "Bryn la Rouge" },
+    { initials: "A", hidden: true, name: "aldis" },
   ])
 })
 

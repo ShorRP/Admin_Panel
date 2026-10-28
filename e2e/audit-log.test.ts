@@ -5,14 +5,25 @@ import { expect, test } from "./fixtures"
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 test.use({
-  discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
+  discordState: {
+    members: [
+      {
+        user: ALDIS,
+        avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8",
+        roles: [STAFF_ROLE_ID],
+      },
+    ],
+  },
 })
+
+const ALDIS_AVATAR_URL =
+  "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64"
 
 function addition(word: string) {
   return `aldis (${ALDIS.id}) : ajout de « ${word} »`
 }
 
-test("a staff member reads the audit log, newest changes first, then the older ones", async ({
+test("a staff member reads the audit log, newest changes first, each beside its staff member's avatar, then the older ones", async ({
   page,
   logIn,
   discord,
@@ -37,6 +48,8 @@ test("a staff member reads the audit log, newest changes first, then the older o
     name: "Ajout de « mot0 »",
     exact: true,
   })
+  const newestRow = page.getByRole("row").filter({ has: newest })
+  const newestAvatar = newestRow.locator("img")
 
   await logIn(ALDIS)
   await page.goto("/audit-log")
@@ -47,9 +60,9 @@ test("a staff member reads the audit log, newest changes first, then the older o
   await expect(
     page.getByText("L’historique couvre 45 jours. Heures de Paris.")
   ).toBeVisible()
-  await expect(page.getByRole("row").filter({ has: newest })).toContainText(
-    "aldis"
-  )
+  await expect(newestRow).toContainText("aldis")
+  await expect(newestAvatar).toHaveAttribute("src", ALDIS_AVATAR_URL)
+  await expect(newestAvatar).toHaveAttribute("alt", "")
   await expect(oldest).toHaveCount(0)
   await checkAccessibility()
 
@@ -62,4 +75,8 @@ test("a staff member reads the audit log, newest changes first, then the older o
   await page.getByRole("link", { name: "Revenir aux plus récents" }).click()
   await expect(newest).toBeVisible()
   await expect(page).toHaveURL("/audit-log")
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  await expect(newestAvatar).toBeVisible()
+  await expect(newestRow.getByText("aldis", { exact: true })).toBeVisible()
 })
