@@ -13,6 +13,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { snowflakeDate } from "@/discord/snowflake-date"
+import { auditLogPages } from "./audit-log-pages"
 import { panelReasonOf } from "./audit-log-reason"
 
 export type AuditLogChange = {
@@ -39,8 +40,6 @@ const AUTO_MOD_RULE_EVENTS = [
 ]
 
 const CHANGES_PER_PAGE = 50
-
-const DISCORD_PAGE_SIZE = 100
 
 const LARGEST_SNOWFLAKE = BigInt("18446744073709551615")
 
@@ -115,29 +114,18 @@ async function panelRuleChanges(
   olderThan: Snowflake | null
 ) {
   const changes: ChangeWithMemberId[] = []
-  let discordCursor = olderThan
-  for (;;) {
-    const log = await discord.getAuditLog({
-      action_type: actionType,
-      limit: DISCORD_PAGE_SIZE,
-      ...(discordCursor === null ? {} : { before: discordCursor }),
-    })
+  for await (const log of auditLogPages(discord, actionType, olderThan)) {
     const users = new Map(log.users.map((user) => [user.id, user]))
     changes.push(
       ...log.audit_log_entries
         .filter((entry) => entry.target_id === ruleId)
         .map((entry) => changeOf(entry, users))
     )
-    const oldest = log.audit_log_entries.at(-1)
-    if (
-      changes.length > CHANGES_PER_PAGE ||
-      oldest === undefined ||
-      log.audit_log_entries.length < DISCORD_PAGE_SIZE
-    ) {
-      return changes
+    if (changes.length > CHANGES_PER_PAGE) {
+      break
     }
-    discordCursor = oldest.id
   }
+  return changes
 }
 
 function changeOf(
