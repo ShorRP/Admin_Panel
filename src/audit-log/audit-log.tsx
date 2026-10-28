@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { buttonVariants } from "@/ui/button"
+import { MemberAvatar } from "@/ui/member-avatar"
 import {
   Table,
   TableBody,
@@ -38,7 +39,7 @@ export function AuditLog({ page }: { page: AuditLogPage }) {
             </TableRow>
           </TableHeader>
           <TableBody className="max-sm:block">
-            {changes.map(({ id, date, memberName, description }) => (
+            {changes.map(({ id, date, memberName, avatarUrl, description }) => (
               <TableRow
                 key={id}
                 className="max-sm:flex max-sm:flex-col max-sm:py-2"
@@ -48,8 +49,11 @@ export function AuditLog({ page }: { page: AuditLogPage }) {
                     {parisTime.format(date)}
                   </time>
                 </TableCell>
-                <TableCell className="wrap-anywhere whitespace-normal max-sm:px-0 max-sm:py-0.5">
-                  {memberName}
+                <TableCell className="whitespace-normal max-sm:px-0 max-sm:py-0.5">
+                  <div className="flex items-center gap-2">
+                    <MemberAvatar name={memberName} avatarUrl={avatarUrl} />
+                    <div className="min-w-0 wrap-anywhere">{memberName}</div>
+                  </div>
                 </TableCell>
                 <TableCell className="wrap-anywhere whitespace-normal max-sm:px-0 max-sm:py-0.5">
                   {description}

@@ -11,12 +11,19 @@ import { z } from "zod"
 import { panelReasonOf } from "@/blocked-words/audit-log-reason"
 import { isPanelRule } from "@/blocked-words/panel-rule"
 import type { DiscordApi } from "@/discord/discord-api"
+import { DiscordError } from "@/discord/discord-error"
+import { memberAvatarUrl } from "@/discord/member-avatar-url"
 
 export type AuditLogChange = {
   id: Snowflake
   date: Date
   memberName: string
+  avatarUrl: string | null
   description: string
+}
+
+type ChangeWithMemberId = Omit<AuditLogChange, "avatarUrl"> & {
+  memberId: Snowflake | null
 }
 
 export type AuditLogPage = {
@@ -53,18 +60,52 @@ export async function readAuditLog(
   if (rule === undefined) {
     return { changes: [], before: cursor, older: null }
   }
-  const found: AuditLogChange[] = []
+  const found: ChangeWithMemberId[] = []
   for (const actionType of AUTO_MOD_RULE_EVENTS) {
     found.push(
       ...(await panelRuleChanges(discord, actionType, rule.id, cursor))
     )
   }
-  const changes = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
+  const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
+  const avatarUrls = await avatarUrlsByMemberId(
+    discord,
+    pageChanges.map(({ memberId }) => memberId)
+  )
   return {
-    changes,
+    changes: pageChanges.map(({ memberId, ...change }) => ({
+      ...change,
+      avatarUrl: memberId === null ? null : (avatarUrls.get(memberId) ?? null),
+    })),
     before: cursor,
     older:
-      found.length > CHANGES_PER_PAGE ? (changes.at(-1)?.id ?? null) : null,
+      found.length > CHANGES_PER_PAGE ? (pageChanges.at(-1)?.id ?? null) : null,
+  }
+}
+
+async function avatarUrlsByMemberId(
+  discord: DiscordApi,
+  memberIds: (Snowflake | null)[]
+) {
+  const distinct = new Set(memberIds.filter((id) => id !== null))
+  return new Map(
+    await Promise.all(
+      Array.from(
+        distinct,
+        async (id) => [id, await avatarUrlOf(discord, id)] as const
+      )
+    )
+  )
+}
+
+async function avatarUrlOf(discord: DiscordApi, memberId: Snowflake) {
+  try {
+    const member = await discord.getMember(memberId)
+    return member === null ? null : memberAvatarUrl(discord.guildId, member)
+  } catch (error) {
+    if (error instanceof DiscordError) {
+      return null
+    }
+    throw error
   }
 }
 
@@ -74,7 +115,7 @@ async function panelRuleChanges(
   ruleId: Snowflake,
   olderThan: Snowflake | null
 ) {
-  const changes: AuditLogChange[] = []
+  const changes: ChangeWithMemberId[] = []
   let discordCursor = olderThan
   for (;;) {
     const log = await discord.getAuditLog({
@@ -103,13 +144,14 @@ async function panelRuleChanges(
 function changeOf(
   entry: APIAuditLogEntry,
   users: Map<Snowflake, APIUser>
-): AuditLogChange {
+): ChangeWithMemberId {
   const moment = { id: entry.id, date: dateOf(entry.id) }
   const reason = entry.reason === undefined ? null : panelReasonOf(entry.reason)
   if (reason !== null) {
     return {
       ...moment,
       memberName: reason.staffMemberName,
+      memberId: reason.staffMemberId,
       description: capitalized(reason.change),
     }
   }
@@ -117,6 +159,7 @@ function changeOf(
   return {
     ...moment,
     memberName: user?.global_name ?? user?.username ?? "Membre inconnu",
+    memberId: entry.user_id,
     description: "Règle modifiée dans Discord",
   }
 }

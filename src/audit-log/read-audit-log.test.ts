@@ -217,6 +217,134 @@ test("each change carries the moment its audit log entry's ID holds", async () =
   ])
 })
 
+function panelAddition(id: string, word: string) {
+  return {
+    id,
+    action_type: AuditLogEvent.AutoModerationRuleCreate,
+    target_id: PANEL_RULE.id,
+    user_id: PANEL_RULE.creator_id,
+    reason: `aldis (${ALDIS.id}) : ajout de « ${word} »`,
+  }
+}
+
+function withAvatars(
+  changes: { memberName: string; avatarUrl: string | null }[]
+) {
+  return changes.map(({ memberName, avatarUrl }) => ({
+    memberName,
+    avatarUrl,
+  }))
+}
+
+test("a change made through the panel carries the avatar of the staff member its reason names, under the name the reason gave", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      {
+        user: ALDIS,
+        nick: "Aldis le Sage",
+        avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8",
+      },
+    ],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [panelAddition("1563530499194880000", "foo")],
+  })
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(withAvatars(changes)).toEqual([
+    {
+      memberName: "aldis",
+      avatarUrl:
+        "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
+    },
+  ])
+})
+
+test("a change made in Discord carries its author's avatar", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      { user: { ...BRYN, avatar: "0a1b2c3d4e5f60718293a4b5c6d7e8f9" } },
+    ],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [
+      {
+        id: "1563530499194880000",
+        action_type: AuditLogEvent.AutoModerationRuleUpdate,
+        target_id: PANEL_RULE.id,
+        user_id: BRYN.id,
+      },
+    ],
+  })
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(withAvatars(changes)).toEqual([
+    {
+      memberName: "Bryn la Rouge",
+      avatarUrl:
+        "https://cdn.discordapp.com/avatars/1400000000000000002/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
+    },
+  ])
+})
+
+test("a member whose lookup Discord refuses shows no avatar on any of their changes, and the audit log shows all the same", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: ALDIS, avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8" }],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [
+      panelAddition("1563530499194880000", "foo"),
+      panelAddition("1563530499194880001", "bar"),
+    ],
+  })
+  discord.failNext(
+    "getMember",
+    new DiscordError({
+      method: "GET",
+      route: ROUTES.guildMember,
+      status: 429,
+      retryAfter: 2.5,
+    })
+  )
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(withAvatars(changes)).toEqual([
+    { memberName: "aldis", avatarUrl: null },
+    { memberName: "aldis", avatarUrl: null },
+  ])
+})
+
+test("a staff member who has left the Discord server shows no avatar, under the name the reason gave", async () => {
+  const discord = new FakeDiscord({
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [panelAddition("1563530499194880000", "foo")],
+  })
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(withAvatars(changes)).toEqual([
+    { memberName: "aldis", avatarUrl: null },
+  ])
+})
+
+const BUG = new TypeError("Cannot read properties of undefined")
+
+class FakeDiscordWithBuggyMembers extends FakeDiscord {
+  override getMember(): Promise<never> {
+    return Promise.reject(BUG)
+  }
+}
+
+test("a member's lookup that fails with anything but a DiscordError is thrown", async () => {
+  const discord = new FakeDiscordWithBuggyMembers({
+    members: [{ user: ALDIS }],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [panelAddition("1563530499194880000", "foo")],
+  })
+
+  await expect(readAuditLog(discord, undefined)).rejects.toBe(BUG)
+})
+
 test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
   const discord = new FakeDiscord({
     autoModerationRules: [PANEL_RULE],
