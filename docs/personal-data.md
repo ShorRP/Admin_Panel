@@ -19,13 +19,11 @@ What the panel processes on `main`, and with the moderation section that stores 
 - **What the logs and the alerts carry**: no member's ID, name or IP (`CLAUDE.md`, **What is never logged**).
 - **Who else touches it**: Vercel, which hosts the panel and keeps its runtime logs one hour (`CLAUDE.md`, **Log lines**), and Discord.
 
-Discord's §5a already applies, so the panel owes a privacy policy without any store (inferred): #186 publishes it at `/privacy`.
+Discord's §5a already applies, so the panel owes a privacy policy without any store (inferred): #186 publishes it at `/privacy`. ShorBot, the Bot (ADR 0003), is another Discord application, which owes one too and has no public page, so `/privacy` becomes the one policy of Shor's Discord applications: #186 covers the panel, and ShorBot's part comes with its first feature in production, from the record of its processing that ShorBot keeps in its own repository (Gilles, 2026-10-28). This file stays the panel's.
 
 ## Planned
 
-Support tickets, which the panel takes over from ShorBot (ADR 0003), process more with or without a store. A ticket's channel holds what its member and the staff write, which Discord keeps until the ticket's closing deletes the channel, and whoever closes it types a reason, which goes into Discord's audit log as the deletion's reason, kept 45 days (Gilles, 2026-10-28).
-
-The store (#174) opens Neon for the warnings (#184), the staff's notes (#185), the archives of support tickets and the audit log beyond Discord's 45 days (#3). Before its first row, each point below holds, as the store's grilling decides (#175):
+The store (#174) opens Neon for the warnings (#184), the staff's notes (#185), the archives of support tickets, which ShorBot sends the panel as each ticket closes (ADR 0003, #197), and the audit log beyond Discord's 45 days (#3). Before its first row, each point below holds, as the store's grilling decides (#175):
 
 - **A legal basis**, likely legitimate interest, the GDPR's art. 6(1)(f), with its balance written down (inferred).
 - **Information.** `/privacy` grows to say what the store keeps, why, for how long, who sees it, and how to ask for access, correction or deletion (§5a). A note the member never sees is data not collected from them, which the GDPR's art. 14 covers (inferred).
@@ -37,4 +35,4 @@ The store (#174) opens Neon for the warnings (#184), the staff's notes (#185), t
 - **Backups.** Neon's Free plan keeps 6 hours of history and 1 manual snapshot, and "scheduled backups are not available on the Free plan" (https://neon.com/docs/introduction/plans).
 - **An impact assessment**, which the CNIL requires when a processing meets two of its nine criteria, among them « exclusion du bénéfice d'un droit/contrat » and « personnes vulnérables » (https://www.cnil.fr/fr/ce-quil-faut-savoir-sur-lanalyse-dimpact-relative-la-protection-des-donnees-aipd). Whether it applies waits on « Are there minors on Shor's Discord server? » (`docs/agents/open-questions.md`).
 - **A record of processing**, of which this file is likely the draft (inferred), naming whoever is responsible, which waits on « Who is responsible for the panel's personal data, and who answers requests? » (`docs/agents/open-questions.md`).
-- **Only what each feature needs**, as ADR 0004 already says. A support ticket's archive keeps who opened it, the kind of request, its dates, who closed it and the reason, but not the conversation, so the panel's application asks for no Message Content intent (Gilles, 2026-10-28).
+- **Only what each feature needs**, as ADR 0004 already says. A support ticket's archive keeps who opened it, the kind of request, its dates, who closed it and the reason, but not the conversation (Gilles, 2026-10-28).

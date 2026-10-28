@@ -154,8 +154,8 @@ pnpm exec shadcn add button --diff
 
 ## Related
 
-- [ShorBot](https://github.com/ShorRP/ShorBot): Shor's Discord bot, by loanspac.
-- [skymp-heavy-rp](https://github.com/vinicius3232/skymp-heavy-rp): the open-source SkyMP roleplay base ShorBot comes from. Shor itself does not run it: it has its own SkyMP server and launcher (ADR 0001).
+- [ShorBot](https://github.com/ShorRP/ShorBot): Shor's Discord bot, which serves the members on the Discord server, by loanspac, then by Gilles since 2026-10-28 ([ADR 0003](docs/adr/0003-event-driven-features-belong-to-shorbot.md)).
+- [skymp-heavy-rp](https://github.com/vinicius3232/skymp-heavy-rp): the open-source SkyMP roleplay base ShorBot's first version, in Node, came from. Shor itself does not run it: it has its own SkyMP server and launcher (ADR 0001).
 
 ## License
 
