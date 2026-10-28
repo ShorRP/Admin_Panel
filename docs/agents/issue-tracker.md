@@ -2,15 +2,15 @@
 
 Issues for this repo live as GitHub issues in `ShorRP/Admin_Panel`, on the **Admin Panel** project board of the ShorRP organization (https://github.com/orgs/ShorRP/projects/1). Use the `gh` CLI for all operations.
 
-The board covers this repository only. What the panel needs from ShorBot, from the staff or from the VPS admins is an outside blocker (**Blockers** below); an issue goes to `ShorRP/ShorBot` only with loanspac's agreement, since it is their repository.
+The board covers this repository only. ShorBot's issues go on a board of their own in the organization, which a session in ShorBot's repository sets up, since this board's planner, labels and conventions are the panel's (Gilles, 2026-10-28). What the panel needs from ShorBot, from the staff or from the VPS admins is an outside blocker (**Blockers** below).
 
 ## People
 
-Roles as Gilles stated them on 2026-10-23, then on 2026-10-27, while grilling the features that follow the MVP, when he took over what the POs decided until then:
+Roles as Gilles stated them on 2026-10-23, then on 2026-10-27, while grilling the features that follow the MVP, when he took over what the POs decided until then, and on 2026-10-28, when he took ShorBot over from loanspac:
 
-- **The maintainer**, Gilles (`PothieuG`), decides what the panel does, in what order, and how: its features, a Priority the rules below leave open, milestones, what done means for a feature, the stack, the ADRs, the Size scale, labels and the tracker's other conventions. Only the maintainer merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**).
+- **The maintainer**, Gilles (`PothieuG`), decides what the panel does, in what order, and how: its features, a Priority the rules below leave open, milestones, what done means for a feature, the stack, the ADRs, the Size scale, labels and the tracker's other conventions. Only the maintainer merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**). He also develops ShorBot, the Bot (ADR 0003).
 - **The POs**, Lyra-Gates (`Lyra-Gates`) and Anaisenkit (`anatiti269`), know what only Shor's team knows: the staff's needs, which Anaisenkit brings, Shor's identity, such as its logo, and Shor's own facts, such as its Discord server's IDs. Their answers are facts the maintainer decides from, not decisions. Anaisenkit also develops on Shor.
-- **loanspac** (`LoanSpac`), also called Spar or Spac, develops ShorBot and owns its API (ADR 0003).
+- **loanspac** (`LoanSpac`), also called Spar or Spac, developed ShorBot until 2026-10-28, and knows Shor's SkyMP server and launcher (`docs/agents/open-questions.md`).
 
 ## Conventions
 
@@ -37,7 +37,7 @@ Issues are written in French: title, body and comments. Everything else (code, d
 ## Organizing the tracker
 
 - **Epics.** A parent issue groups its children as native GitHub sub-issues and carries the `epic` label. The epic takes no triage state; its children do. List the epics with `gh issue list --label epic`.
-- **Blockers.** Record a blocker between two issues as a native dependency (the command is under **Wayfinding operations**), not only in prose. Prose is for blockers outside the tracker, such as a staff answer, loanspac, the VPS admins or an open question: the body opens with `Bloqué : …`, which the board's Status reads. When that blocker clears, the line becomes `Débloqué : …`.
+- **Blockers.** Record a blocker between two issues as a native dependency (the command is under **Wayfinding operations**), not only in prose. Prose is for blockers outside the tracker, such as a staff answer, loanspac, the VPS admins, an open question, or an issue of ShorBot, written `ShorRP/ShorBot#<n>`: the body opens with `Bloqué : …`, which the board's Status reads. When that blocker clears, the line becomes `Débloqué : …`.
 - **Open questions** stay in `docs/agents/open-questions.md`. A ticket blocked by one quotes it, and takes `needs-info` only when nothing in it can move until the answer arrives.
 - **Outside contributions.** The repository is public since 2026-10-27 (ADR 0007, #100), so an issue opened by someone outside the project reaches the board through Auto-add and takes `needs-triage` like any other. A pull request from outside is closed with a short comment, in English like any PR comment, that points to the issues, since pull requests are no request surface here (**Pull requests as a triage surface** below). GitHub's interaction limits, which last 6 months at most (https://docs.github.com/en/communities/moderating-comments-and-conversations/limiting-interactions-in-your-repository, read 2026-10-25), come only if spam does (Gilles, 2026-10-25, while grilling #57).
 - **Milestones order the work.** One milestone so far (decision of 2026-10-23):

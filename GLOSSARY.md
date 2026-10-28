@@ -39,7 +39,7 @@ The web application where the staff administer the Discord server without code o
 _Avoid_: dashboard, painel, staff panel
 
 **Bot**:
-The Discord bot loanspac runs, which reacts to what happens on the Discord server. Not the Admin Panel's own Discord application, which acts only when someone uses the panel, on the web or through the buttons and commands it puts in Discord.
+Shor's Discord bot, which reacts to what happens on the Discord server and serves its members there, such as their support tickets. Not the Admin Panel's own Discord application, which acts only when a staff member uses the panel.
 _Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
