@@ -147,9 +147,19 @@
   animation-name: view-fade-in, view-highlight;
 }
 
-::view-transition-group(.slide) {
+::view-transition-group(.slide),
+::view-transition-group(.slide-into-place) {
   animation-duration: 250ms;
   animation-timing-function: ease-out;
+}
+
+::view-transition-old(.slide-into-place) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(.slide-into-place) {
+  animation: none;
 }
 
 @keyframes view-fade-in {
