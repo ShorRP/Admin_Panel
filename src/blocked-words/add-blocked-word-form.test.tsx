@@ -1,4 +1,10 @@
-import { LoaderCircle, Plus, type LucideIcon } from "lucide-react"
+import {
+  CircleAlert,
+  CircleCheck,
+  LoaderCircle,
+  Plus,
+  type LucideIcon,
+} from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -12,7 +18,25 @@ function render(state: WriteResult | null, pending = false) {
 }
 
 function region(html: string, role: "status" | "alert") {
-  return new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1]
+  const content =
+    new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1] ?? ""
+  const [, iconAttributes = "", iconDrawing] =
+    /<svg([^>]*)>(.*?)<\/svg>/.exec(content) ?? []
+  return {
+    icon: iconDrawing,
+    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+    text: content.replace(/<[^>]*>/g, ""),
+  }
+}
+
+const EMPTY = { icon: undefined, iconHidden: false, text: "" }
+
+function successMessage(text: string) {
+  return { icon: drawing(CircleCheck), iconHidden: true, text }
+}
+
+function failureMessage(text: string) {
+  return { icon: drawing(CircleAlert), iconHidden: true, text }
 }
 
 function field(html: string) {
@@ -49,8 +73,8 @@ test("before any write, the form shows its labelled field, « Ajouter » after a
     text: "Ajouter",
     disabled: false,
   })
-  expect(region(html, "status")).toBe("")
-  expect(region(html, "alert")).toBe("")
+  expect(region(html, "status")).toEqual(EMPTY)
+  expect(region(html, "alert")).toEqual(EMPTY)
 })
 
 test("the field points to the alert region, and leaves validation to the panel", () => {
@@ -61,26 +85,30 @@ test("the field points to the alert region, and leaves validation to the panel",
   expect(field(html)).not.toMatch(/required|maxlength|pattern/i)
 })
 
-test("a refused word shows its message in the alert region, and stays in the field", () => {
+test("a refused word shows its message in the alert region, after a hidden alert icon, and stays in the field", () => {
   const html = render({
     ok: false,
     message: "« merde » est déjà un mot interdit.",
     word: "Merde",
   })
 
-  expect(region(html, "alert")).toBe("« merde » est déjà un mot interdit.")
-  expect(region(html, "status")).toBe("")
+  expect(region(html, "alert")).toEqual(
+    failureMessage("« merde » est déjà un mot interdit.")
+  )
+  expect(region(html, "status")).toEqual(EMPTY)
   expect(field(html)).toContain('value="Merde"')
 })
 
-test("a word added shows its message in the status region, and leaves the field empty", () => {
+test("a word added shows its message in the status region, after a hidden check, and leaves the field empty", () => {
   const html = render({
     ok: true,
     message: "« foo » est maintenant un mot interdit.",
   })
 
-  expect(region(html, "status")).toBe("« foo » est maintenant un mot interdit.")
-  expect(region(html, "alert")).toBe("")
+  expect(region(html, "status")).toEqual(
+    successMessage("« foo » est maintenant un mot interdit.")
+  )
+  expect(region(html, "alert")).toEqual(EMPTY)
   expect(field(html)).toContain('value=""')
 })
 
