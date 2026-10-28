@@ -4,6 +4,7 @@ import { Button } from "@/ui/button"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
 import type { WriteResult } from "./write-result"
+import { WriteResultMessage } from "./write-result-message"
 
 const FIELD_ID = "blocked-word"
 
@@ -49,10 +50,10 @@ export function AddBlockedWordForm({
         </Button>
       </div>
       <p role="status" className="text-sm">
-        {state?.ok === true ? state.message : ""}
+        {state?.ok === true && <WriteResultMessage result={state} />}
       </p>
       <p role="alert" id={ALERT_ID} className="text-sm">
-        {state?.ok === false ? state.message : ""}
+        {state?.ok === false && <WriteResultMessage result={state} />}
       </p>
     </form>
   )

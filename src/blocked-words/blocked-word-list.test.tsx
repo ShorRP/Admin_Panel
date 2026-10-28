@@ -1,4 +1,4 @@
-import { X, type LucideIcon } from "lucide-react"
+import { CircleAlert, CircleCheck, X, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -21,7 +21,25 @@ function render(
 }
 
 function region(html: string, role: "status" | "alert") {
-  return new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1]
+  const content =
+    new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1] ?? ""
+  const [, iconAttributes = "", iconDrawing] =
+    /<svg([^>]*)>(.*?)<\/svg>/.exec(content) ?? []
+  return {
+    icon: iconDrawing,
+    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+    text: content.replace(/<[^>]*>/g, ""),
+  }
+}
+
+const EMPTY = { icon: undefined, iconHidden: false, text: "" }
+
+function successMessage(text: string) {
+  return { icon: drawing(CircleCheck), iconHidden: true, text }
+}
+
+function failureMessage(text: string) {
+  return { icon: drawing(CircleAlert), iconHidden: true, text }
 }
 
 function drawing(Icon: LucideIcon) {
@@ -76,21 +94,24 @@ test("an empty list says so in one sentence, and keeps both regions", () => {
   expect(html).toContain("Aucun mot interdit pour l’instant.")
   expect(html).not.toContain("possibles")
   expect(items(html)).toEqual([])
-  expect(region(html, "status")).toBe("")
-  expect(region(html, "alert")).toBe("")
+  expect(region(html, "status")).toEqual(EMPTY)
+  expect(region(html, "alert")).toEqual(EMPTY)
 })
 
-test("while a removal is pending, every « Retirer » is disabled and the status reads « Retrait en cours… »", () => {
+test("while a removal is pending, every « Retirer » is disabled and the status reads « Retrait en cours… », with no icon", () => {
   const html = render(["abricot", "zèbre"], null, true)
 
   expect(items(html).flatMap(({ buttons }) => buttons)).toEqual([
     removeButton(true),
     removeButton(true),
   ])
-  expect(region(html, "status")).toBe("Retrait en cours…")
+  expect(region(html, "status")).toEqual({
+    ...EMPTY,
+    text: "Retrait en cours…",
+  })
 })
 
-test("a removal's message shows in the status region, and a failed one's in the alert region", () => {
+test("a removal's message shows in the status region after a hidden check, and a failed one's in the alert region after a hidden alert icon", () => {
   const removed = render(["zèbre"], {
     ok: true,
     message: "« abricot » n’est plus un mot interdit.",
@@ -101,10 +122,12 @@ test("a removal's message shows in the status region, and a failed one's in the 
     word: "abricot",
   })
 
-  expect(region(removed, "status")).toBe(
-    "« abricot » n’est plus un mot interdit."
+  expect(region(removed, "status")).toEqual(
+    successMessage("« abricot » n’est plus un mot interdit.")
   )
-  expect(region(removed, "alert")).toBe("")
-  expect(region(failed, "status")).toBe("")
-  expect(region(failed, "alert")).toBe("Discord n’a pas répondu.")
+  expect(region(removed, "alert")).toEqual(EMPTY)
+  expect(region(failed, "status")).toEqual(EMPTY)
+  expect(region(failed, "alert")).toEqual(
+    failureMessage("Discord n’a pas répondu.")
+  )
 })
