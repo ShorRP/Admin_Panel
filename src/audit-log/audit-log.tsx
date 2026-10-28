@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { buttonVariants } from "@/ui/button"
 import { MemberAvatar } from "@/ui/member-avatar"
+import { ParisTime } from "@/ui/paris-time"
 import {
   Table,
   TableBody,
@@ -12,12 +13,6 @@ import {
   TableRow,
 } from "@/ui/table"
 import type { AuditLogPage } from "./read-audit-log"
-
-const parisTime = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Europe/Paris",
-})
 
 export function AuditLog({ page }: { page: AuditLogPage }) {
   const { changes, before, older } = page
@@ -45,9 +40,7 @@ export function AuditLog({ page }: { page: AuditLogPage }) {
                 className="max-sm:flex max-sm:flex-col max-sm:py-2"
               >
                 <TableCell className="max-sm:px-0 max-sm:py-0.5">
-                  <time dateTime={date.toISOString()}>
-                    {parisTime.format(date)}
-                  </time>
+                  <ParisTime date={date} />
                 </TableCell>
                 <TableCell className="whitespace-normal max-sm:px-0 max-sm:py-0.5">
                   <div className="flex items-center gap-2">

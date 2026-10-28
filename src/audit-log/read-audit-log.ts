@@ -13,6 +13,7 @@ import { isPanelRule } from "@/blocked-words/panel-rule"
 import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
+import { snowflakeDate } from "@/discord/snowflake-date"
 
 export type AuditLogChange = {
   id: Snowflake
@@ -40,8 +41,6 @@ const AUTO_MOD_RULE_EVENTS = [
 const CHANGES_PER_PAGE = 50
 
 const DISCORD_PAGE_SIZE = 100
-
-const DISCORD_EPOCH = BigInt(1420070400000)
 
 const LARGEST_SNOWFLAKE = BigInt("18446744073709551615")
 
@@ -145,7 +144,7 @@ function changeOf(
   entry: APIAuditLogEntry,
   users: Map<Snowflake, APIUser>
 ): ChangeWithMemberId {
-  const moment = { id: entry.id, date: dateOf(entry.id) }
+  const moment = { id: entry.id, date: snowflakeDate(entry.id) }
   const reason = entry.reason === undefined ? null : panelReasonOf(entry.reason)
   if (reason !== null) {
     return {
@@ -162,10 +161,6 @@ function changeOf(
     memberId: entry.user_id,
     description: "Règle modifiée dans Discord",
   }
-}
-
-function dateOf(id: Snowflake) {
-  return new Date(Number((BigInt(id) >> BigInt(22)) + DISCORD_EPOCH))
 }
 
 function newestFirst(left: { id: Snowflake }, right: { id: Snowflake }) {

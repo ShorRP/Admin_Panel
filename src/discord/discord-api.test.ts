@@ -300,6 +300,81 @@ test("getAuditLog reads the entries the query asks for", async () => {
   )
 })
 
+test("searchMembers sends its query and its limit", async () => {
+  const { fetch, requests } = answering(Response.json([MEMBER]))
+
+  const found = await restDiscordApi(ENV, fetch).searchMembers({
+    query: "gil é",
+    limit: 26,
+  })
+
+  expect(found).toEqual([MEMBER])
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/members/search?query=gil+%C3%A9&limit=26`
+  )
+})
+
+test("getUser reads a user by ID", async () => {
+  const { fetch, requests } = answering(Response.json(MEMBER.user))
+
+  expect(await restDiscordApi(ENV, fetch).getUser(USER_ID)).toEqual(MEMBER.user)
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(`https://discord.com/api/v10/users/${USER_ID}`)
+})
+
+test("getUser answers null for an ID that names no account", async () => {
+  const { fetch } = answering(
+    Response.json({ message: "Unknown User", code: 10013 }, { status: 404 })
+  )
+
+  expect(await restDiscordApi(ENV, fetch).getUser(USER_ID)).toBeNull()
+})
+
+test("getBan reads a user's ban on the Discord server", async () => {
+  const ban = { user: MEMBER.user, reason: "spam" }
+  const { fetch, requests } = answering(Response.json(ban))
+
+  expect(await restDiscordApi(ENV, fetch).getBan(USER_ID)).toEqual(ban)
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/bans/${USER_ID}`
+  )
+})
+
+test("getBan answers null for a user who is not banned", async () => {
+  const { fetch } = answering(
+    Response.json({ message: "Unknown Ban", code: 10026 }, { status: 404 })
+  )
+
+  expect(await restDiscordApi(ENV, fetch).getBan(USER_ID)).toBeNull()
+})
+
+test("listBans reads the bans after a user, up to its limit", async () => {
+  const { fetch, requests } = answering(Response.json([]))
+
+  expect(
+    await restDiscordApi(ENV, fetch).listBans({
+      after: USER_ID,
+      limit: 1000,
+    })
+  ).toEqual([])
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/bans?after=${USER_ID}&limit=1000`
+  )
+})
+
+test("listRoles reads the Discord server's roles", async () => {
+  const { fetch, requests } = answering(Response.json([]))
+
+  expect(await restDiscordApi(ENV, fetch).listRoles()).toEqual([])
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/roles`
+  )
+})
+
 test("createDiscordApi validates Discord's variables when it is called", () => {
   vi.stubEnv("DISCORD_BOT_TOKEN", "a-bot-token")
   vi.stubEnv("DISCORD_GUILD_ID", "not-a-snowflake")

@@ -5,7 +5,7 @@ import {
   type RESTPostAPIAutoModerationRuleJSONBody,
 } from "discord-api-types/v10"
 
-import type { DiscordApi } from "./discord-api"
+import type { BansQuery, DiscordApi } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
 import { readJson } from "./read-json"
@@ -30,20 +30,48 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
   const endpoints: Endpoint[] = [
     {
       method: "GET",
-      route: ROUTES.guildMember,
-      async answer(_, param) {
-        const member = await api.getMember(param("user.id"))
-        if (member === null) {
-          throw new DiscordError({
-            method: "GET",
-            route: ROUTES.guildMember,
-            status: 404,
-            code: RESTJSONErrorCodes.UnknownMember,
-            discordMessage: "Unknown Member",
-          })
-        }
-        return member
+      route: ROUTES.guildMembersSearch,
+      answer: (request) => {
+        const search = new URL(request.url).searchParams
+        const limit = search.get("limit")
+        return api.searchMembers({
+          query: search.get("query") ?? "",
+          ...(limit === null ? {} : { limit: Number(limit) }),
+        })
       },
+    },
+    {
+      method: "GET",
+      route: ROUTES.guildMember,
+      answer: async (_, param) =>
+        found(
+          ROUTES.guildMember,
+          await api.getMember(param("user.id")),
+          RESTJSONErrorCodes.UnknownMember,
+          "Unknown Member"
+        ),
+    },
+    {
+      method: "GET",
+      route: ROUTES.guildBans,
+      answer: (request) =>
+        api.listBans(bansQuery(new URL(request.url).searchParams)),
+    },
+    {
+      method: "GET",
+      route: ROUTES.guildBan,
+      answer: async (_, param) =>
+        found(
+          ROUTES.guildBan,
+          await api.getBan(param("user.id")),
+          RESTJSONErrorCodes.UnknownBan,
+          "Unknown Ban"
+        ),
+    },
+    {
+      method: "GET",
+      route: ROUTES.guildRoles,
+      answer: () => api.listRoles(),
     },
     {
       method: "GET",
@@ -92,6 +120,17 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
       answer: (request) =>
         oauth.getCurrentUser(
           request.headers.get("Authorization")?.replace(/^Bearer /, "") ?? ""
+        ),
+    },
+    {
+      method: "GET",
+      route: ROUTES.user,
+      answer: async (_, param) =>
+        found(
+          ROUTES.user,
+          await api.getUser(param("user.id")),
+          RESTJSONErrorCodes.UnknownUser,
+          "Unknown User"
         ),
     },
   ]
@@ -146,6 +185,24 @@ function matchRoute(
   }
 }
 
+function found<T>(
+  route: DiscordRoute,
+  value: T | null,
+  code: RESTJSONErrorCodes,
+  discordMessage: string
+): T {
+  if (value === null) {
+    throw new DiscordError({
+      method: "GET",
+      route,
+      status: 404,
+      code,
+      discordMessage,
+    })
+  }
+  return value
+}
+
 function reasonOf(request: Request) {
   const reason = request.headers.get("X-Audit-Log-Reason")
   return reason === null ? "" : decodeURIComponent(reason)
@@ -167,6 +224,19 @@ function auditLogQuery(search: URLSearchParams) {
   if (before !== null) {
     query.before = before
   }
+  if (after !== null) {
+    query.after = after
+  }
+  if (limit !== null) {
+    query.limit = Number(limit)
+  }
+  return query
+}
+
+function bansQuery(search: URLSearchParams) {
+  const query: BansQuery = {}
+  const after = search.get("after")
+  const limit = search.get("limit")
   if (after !== null) {
     query.after = after
   }

@@ -4,8 +4,13 @@ import {
   RESTJSONErrorCodes,
   type APIAuditLog,
   type APIAutoModerationRule,
+  type APIBan,
   type APIGuildMember,
+  type APIRole,
+  type APIUser,
   type RESTGetAPIAuditLogQuery,
+  type RESTGetAPIGuildBansQuery,
+  type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type Snowflake,
@@ -30,7 +35,16 @@ export type DiscordApi = {
     reason: string
   ): Promise<APIAutoModerationRule>
   getAuditLog(query: RESTGetAPIAuditLogQuery): Promise<APIAuditLog>
+  searchMembers(
+    query: RESTGetAPIGuildMembersSearchQuery
+  ): Promise<APIGuildMember[]>
+  getUser(userId: Snowflake): Promise<APIUser | null>
+  getBan(userId: Snowflake): Promise<APIBan | null>
+  listBans(query: BansQuery): Promise<APIBan[]>
+  listRoles(): Promise<APIRole[]>
 }
+
+export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
 
 export function createDiscordApi(): DiscordApi {
   return restDiscordApi(parseDiscordApiEnv(process.env), globalThis.fetch)
@@ -40,7 +54,7 @@ type Call = {
   method: HttpMethod
   route: DiscordRoute
   params?: Record<string, string>
-  query?: RESTGetAPIAuditLogQuery
+  query?: Record<string, string | number | undefined>
   body?: object
   reason?: string
 }
@@ -74,21 +88,14 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
     guildId: env.guildId,
 
     async getMember(userId) {
-      try {
-        return await call<APIGuildMember>({
+      return await nullWhen(
+        RESTJSONErrorCodes.UnknownMember,
+        call<APIGuildMember>({
           method: "GET",
           route: ROUTES.guildMember,
           params: { "user.id": userId },
         })
-      } catch (error) {
-        if (
-          error instanceof DiscordError &&
-          error.code === RESTJSONErrorCodes.UnknownMember
-        ) {
-          return null
-        }
-        throw error
-      }
+      )
     },
 
     async listAutoModerationRules() {
@@ -121,8 +128,64 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
       return await call<APIAuditLog>({
         method: "GET",
         route: ROUTES.guildAuditLog,
-        query,
+        query: { ...query },
       })
     },
+
+    async searchMembers(query) {
+      return await call<APIGuildMember[]>({
+        method: "GET",
+        route: ROUTES.guildMembersSearch,
+        query: { ...query },
+      })
+    },
+
+    async getUser(userId) {
+      return await nullWhen(
+        RESTJSONErrorCodes.UnknownUser,
+        call<APIUser>({
+          method: "GET",
+          route: ROUTES.user,
+          params: { "user.id": userId },
+        })
+      )
+    },
+
+    async getBan(userId) {
+      return await nullWhen(
+        RESTJSONErrorCodes.UnknownBan,
+        call<APIBan>({
+          method: "GET",
+          route: ROUTES.guildBan,
+          params: { "user.id": userId },
+        })
+      )
+    },
+
+    async listBans(query) {
+      return await call<APIBan[]>({
+        method: "GET",
+        route: ROUTES.guildBans,
+        query: { ...query },
+      })
+    },
+
+    async listRoles() {
+      return await call<APIRole[]>({
+        method: "GET",
+        route: ROUTES.guildRoles,
+      })
+    },
+  }
+}
+
+async function nullWhen<T>(code: RESTJSONErrorCodes, answer: Promise<T>) {
+  try {
+    return await answer
+  } catch (error) {
+    if (error instanceof DiscordError && error.code === code) {
+      return null
+    }
+    throw error
   }
 }

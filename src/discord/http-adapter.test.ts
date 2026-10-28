@@ -8,6 +8,8 @@ import { FakeDiscord } from "./fake-discord"
 import { httpAdapter } from "./http-adapter"
 import { ROUTES } from "./routes"
 
+const OUTSIDER = { id: "222222222222222222", username: "outsider" }
+
 function apiOver(fake: FakeDiscord) {
   return restDiscordApi(
     { botToken: "a-bot-token", guildId: fake.guildId },
@@ -27,8 +29,8 @@ function oauthOver(fake: FakeDiscord) {
 }
 
 describeDiscordApiContract("The real DiscordApi over the HTTP adapter", () => ({
-  discord: apiOver(new FakeDiscord()),
-  outsider: "222222222222222222",
+  discord: apiOver(new FakeDiscord({ users: [OUTSIDER] })),
+  outsider: OUTSIDER.id,
   cleanUp: () => Promise.resolve(),
 }))
 

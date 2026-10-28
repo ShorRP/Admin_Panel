@@ -15,6 +15,8 @@ import { DiscordError } from "./discord-error"
 
 export const CONTRACT_RULE_PREFIX = "Contract "
 
+const NO_ACCOUNT_ID = "100000000000000000"
+
 export type ContractTarget = {
   discord: DiscordApi
   outsider: Snowflake
@@ -84,7 +86,26 @@ function patient(discord: DiscordApi): DiscordApi {
         discord.modifyAutoModerationRule(ruleId, changes, reason)
       ),
     getAuditLog: (query) => patiently(() => discord.getAuditLog(query)),
+    searchMembers: (query) => patiently(() => discord.searchMembers(query)),
+    getUser: (userId) => patiently(() => discord.getUser(userId)),
+    getBan: (userId) => patiently(() => discord.getBan(userId)),
+    listBans: (query) => patiently(() => discord.listBans(query)),
+    listRoles: () => patiently(() => discord.listRoles()),
   }
+}
+
+async function applicationMember(discord: DiscordApi) {
+  const created = await discord.createAutoModerationRule(
+    keywordRule(["contract"]),
+    "Contract: rule created"
+  )
+  const creations = await discord.getAuditLog({
+    action_type: AuditLogEvent.AutoModerationRuleCreate,
+  })
+  const creation = creations.audit_log_entries.find(
+    ({ target_id }) => target_id === created.id
+  )
+  return defined(await discord.getMember(defined(creation?.user_id)))
 }
 
 export function describeDiscordApiContract(
@@ -378,6 +399,60 @@ export function describeDiscordApiContract(
       const { discord, outsider } = connected()
 
       expect(await discord.getMember(outsider)).toBeNull()
+    })
+
+    test("a user is read by ID, on the Discord server or not", async () => {
+      const { discord, outsider } = connected()
+      const member = await applicationMember(discord)
+
+      expect(await discord.getUser(outsider)).toMatchObject({ id: outsider })
+      expect(await discord.getUser(member.user.id)).toMatchObject({
+        id: member.user.id,
+        username: member.user.username,
+      })
+    })
+
+    test("an ID that names no account is read as null", async () => {
+      const { discord } = connected()
+
+      expect(await discord.getUser(NO_ACCOUNT_ID)).toBeNull()
+    })
+
+    test("a search by the start of a member's username finds them, whatever its case", async () => {
+      const { discord } = connected()
+      const member = await applicationMember(discord)
+
+      const found = await discord.searchMembers({
+        query: member.user.username.slice(0, 3).toUpperCase(),
+        limit: 1000,
+      })
+
+      expect(found.map(({ user }) => user.id)).toContain(member.user.id)
+    })
+
+    test("a search that matches no member finds none", async () => {
+      const { discord } = connected()
+
+      expect(
+        await discord.searchMembers({ query: crypto.randomUUID(), limit: 1000 })
+      ).toEqual([])
+    })
+
+    test("a user who is not banned has no ban, and the bans read as a list", async () => {
+      const { discord, outsider } = connected()
+
+      expect(await discord.getBan(outsider)).toBeNull()
+      expect(await discord.listBans({ limit: 1000 })).toBeInstanceOf(Array)
+    })
+
+    test("the Discord server's roles include @everyone, whose ID is the Discord server's", async () => {
+      const { discord } = connected()
+
+      const roles = await discord.listRoles()
+
+      expect(roles.find(({ id }) => id === discord.guildId)).toMatchObject({
+        name: "@everyone",
+      })
     })
   })
 }

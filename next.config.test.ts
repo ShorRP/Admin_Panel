@@ -95,11 +95,23 @@ test("a build on Vercel needs the staff's variables", async () => {
   vi.stubEnv("DISCORD_REDIRECT_URI", "https://panel.example/login/callback")
   vi.stubEnv("E2E_TEST_PROXY", undefined)
   vi.stubEnv("STAFF_ROLE_ID", undefined)
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
   vi.stubEnv("SESSION_SECRET", "a-session-secret-of-32-chars-xxx")
 
   await expect(loadedConfig()).rejects.toThrow(/STAFF_ROLE_ID/)
 
   vi.stubEnv("STAFF_ROLE_ID", "1300000000000000000")
+  vi.stubEnv("MODERATION_ROLE_IDS", undefined)
+
+  await expect(loadedConfig()).rejects.toThrow(/MODERATION_ROLE_IDS/)
+
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", undefined)
+
+  await expect(loadedConfig()).rejects.toThrow(/BAN_ROLE_IDS/)
+
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
   vi.stubEnv("SESSION_SECRET", undefined)
 
   await expect(loadedConfig()).rejects.toThrow(/SESSION_SECRET/)
@@ -119,6 +131,8 @@ test("a production build on Vercel needs ALERT_WEBHOOK_URL", async () => {
   vi.stubEnv("DISCORD_REDIRECT_URI", "https://panel.example/login/callback")
   vi.stubEnv("E2E_TEST_PROXY", undefined)
   vi.stubEnv("STAFF_ROLE_ID", "1300000000000000000")
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
   vi.stubEnv("SESSION_SECRET", "a-session-secret-of-32-chars-xxx")
   vi.stubEnv("ALERT_WEBHOOK_URL", undefined)
 
