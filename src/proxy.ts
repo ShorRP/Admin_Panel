@@ -8,5 +8,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!login(?:/|$)|_next/|.*\\.[^/]+$).*)",
+  matcher: "/((?!login(?:/|$)|interactions$|_next/|.*\\.[^/]+$).*)",
 }

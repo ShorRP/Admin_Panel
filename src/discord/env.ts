@@ -32,6 +32,12 @@ const DISCORD_OAUTH_ENV = z
     redirectUri: env.DISCORD_REDIRECT_URI,
   }))
 
+const DISCORD_INTERACTIONS_ENV = z
+  .object({
+    DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i),
+  })
+  .transform((env) => ({ publicKey: env.DISCORD_PUBLIC_KEY }))
+
 const TEST_PROXY_ENV = z
   .object({
     VERCEL: z.string().optional(),
@@ -49,6 +55,8 @@ export type DiscordApiEnv = z.infer<typeof DISCORD_API_ENV>
 
 export type DiscordOAuthEnv = z.infer<typeof DISCORD_OAUTH_ENV>
 
+export type DiscordInteractionsEnv = z.infer<typeof DISCORD_INTERACTIONS_ENV>
+
 export type TestProxyEnv = z.infer<typeof TEST_PROXY_ENV>
 
 export function parseDiscordApiEnv(env: Env): DiscordApiEnv {
@@ -57,6 +65,10 @@ export function parseDiscordApiEnv(env: Env): DiscordApiEnv {
 
 export function parseDiscordOAuthEnv(env: Env): DiscordOAuthEnv {
   return parse(DISCORD_OAUTH_ENV, env)
+}
+
+export function parseDiscordInteractionsEnv(env: Env): DiscordInteractionsEnv {
+  return parse(DISCORD_INTERACTIONS_ENV, env)
 }
 
 export function parseTestProxyEnv(env: Env): TestProxyEnv {
