@@ -49,6 +49,7 @@ export function StaffHeader({
             <li key={href} className="flex">
               <Link
                 href={href}
+                prefetch={false}
                 aria-current={current}
                 className="relative flex items-center gap-1.5 px-1 whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
               >
@@ -91,7 +92,13 @@ export function StaffHeader({
                     <SheetClose
                       nativeButton={false}
                       role={undefined}
-                      render={<Link href={href} aria-current={current} />}
+                      render={
+                        <Link
+                          href={href}
+                          prefetch={false}
+                          aria-current={current}
+                        />
+                      }
                       className="flex items-center gap-2 border-l-2 border-transparent px-4 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                     >
                       <Icon aria-hidden className="size-4" />
