@@ -9,9 +9,10 @@ test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
 
-test("a staff member moves between sections through the header, which marks the current one, then logs out from it", async ({
+test("a staff member moves between sections through the header, which marks the current one and prefetches none, then logs out from it", async ({
   page,
   logIn,
+  prefetchedPaths,
   checkAccessibility,
 }) => {
   const header = page.getByRole("banner")
@@ -50,6 +51,7 @@ test("a staff member moves between sections through the header, which marks the 
       ({ name }) => name === "__Host-session"
     )
   ).toEqual([])
+  expect(prefetchedPaths).toEqual([])
 })
 
 test.describe("for a staff member with an avatar on the Discord server", () => {
@@ -100,9 +102,10 @@ test.describe("for a staff member with an avatar on the Discord server", () => {
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 } })
 
-  test("a staff member opens the menu, which comes from the right, moves to the other section, which closes it, then logs out from it", async ({
+  test("a staff member opens the menu, which comes from the right and prefetches no section, moves to the other section, which closes it, then logs out from it", async ({
     page,
     logIn,
+    prefetchedPaths,
     checkAccessibility,
   }) => {
     const header = page.getByRole("banner")
@@ -159,6 +162,7 @@ test.describe("on a 360 px screen", () => {
         ({ name }) => name === "__Host-session"
       )
     ).toEqual([])
+    expect(prefetchedPaths).toEqual([])
   })
 })
 

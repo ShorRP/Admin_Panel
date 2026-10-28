@@ -16,6 +16,7 @@ type Fixtures = {
   holdDiscord: () => () => void
   checkAccessibility: (options?: { waitForLoad?: boolean }) => Promise<void>
   discordCdnRequests: string[]
+  prefetchedPaths: string[]
   browserConsole: void
 }
 
@@ -163,6 +164,16 @@ export const test = base.extend<Fixtures>({
     },
     { auto: true },
   ],
+  prefetchedPaths: async ({ page }, use) => {
+    const paths: string[] = []
+    page.on("request", (request) => {
+      if (request.headers()["next-router-prefetch"] !== undefined) {
+        paths.push(new URL(request.url()).pathname)
+      }
+    })
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    await use(paths)
+  },
   browserConsole: [
     async ({ page }, use) => {
       const problems: string[] = []
