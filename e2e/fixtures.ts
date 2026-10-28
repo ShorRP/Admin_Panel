@@ -107,7 +107,11 @@ export const test = base.extend<Fixtures>({
       const backgrounds = new Map<string, string>()
       for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme })
-        await page.waitForFunction(() => document.getAnimations().length === 0)
+        await page.waitForFunction(() =>
+          document
+            .getAnimations()
+            .every(({ playState }) => playState === "finished")
+        )
         backgrounds.set(
           scheme,
           await page.evaluate(
