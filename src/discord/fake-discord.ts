@@ -6,16 +6,19 @@ import {
   type APIAuditLogEntry,
   type APIAutoModerationRule,
   type APIAutoModerationRuleTriggerMetadata,
+  type APIBan,
   type APIGuildMember,
+  type APIRole,
   type APIUser,
   type RESTGetAPIAuditLogQuery,
+  type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type RESTPostOAuth2AccessTokenResult,
   type Snowflake,
 } from "discord-api-types/v10"
 
-import type { DiscordApi } from "./discord-api"
+import type { BansQuery, DiscordApi } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
 import { codeChallengeOf } from "./pkce"
@@ -28,10 +31,22 @@ export type FakeMember = {
   roles?: Snowflake[]
   nick?: string | null
   avatar?: string | null
+  joined_at?: string
+  communication_disabled_until?: string | null
 }
+
+export type FakeBan = {
+  user: FakeUser
+  reason?: string | null
+}
+
+export type FakeRole = Pick<APIRole, "id" | "name"> & Partial<APIRole>
 
 export type FakeDiscordState = {
   members?: FakeMember[]
+  users?: FakeUser[]
+  bans?: FakeBan[]
+  roles?: FakeRole[]
   autoModerationRules?: APIAutoModerationRule[]
   auditLogEntries?: APIAuditLogEntry[]
 }
@@ -51,9 +66,15 @@ const MAX_REASON_LENGTH = 512
 
 const DEFAULT_AUDIT_LOG_LIMIT = 50
 
+const DEFAULT_SEARCH_LIMIT = 1
+
+const DEFAULT_BANS_LIMIT = 1000
+
 const DISCORD_EPOCH = BigInt(1420070400000)
 
 const NO_MEMBER_FLAGS: number = 0
+
+const NO_ROLE_FLAGS: number = 0
 
 function byId(left: { id: Snowflake }, right: { id: Snowflake }) {
   return BigInt(left.id) < BigInt(right.id) ? -1 : 1
@@ -73,11 +94,33 @@ function apiMember(member: FakeMember): APIGuildMember {
     nick: member.nick ?? null,
     avatar: member.avatar ?? null,
     roles: [...(member.roles ?? [])],
-    joined_at: "2026-01-01T00:00:00.000000+00:00",
+    joined_at: member.joined_at ?? "2026-01-01T00:00:00.000000+00:00",
+    communication_disabled_until: member.communication_disabled_until ?? null,
     deaf: false,
     mute: false,
     flags: NO_MEMBER_FLAGS,
   }
+}
+
+function apiRole(role: FakeRole): APIRole {
+  return {
+    color: 0,
+    colors: { primary_color: 0, secondary_color: null, tertiary_color: null },
+    hoist: false,
+    position: 0,
+    permissions: "0",
+    managed: false,
+    mentionable: false,
+    flags: NO_ROLE_FLAGS,
+    ...role,
+  }
+}
+
+function startsWithIgnoringCase(text: string | null, start: string) {
+  return (
+    text !== null &&
+    text.toLocaleLowerCase().startsWith(start.toLocaleLowerCase())
+  )
 }
 
 function refusedGrant(discordMessage: string) {
@@ -129,6 +172,9 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   })
   private increment = 0
   private readonly members = new Map<Snowflake, APIGuildMember>()
+  private readonly users = new Map<Snowflake, APIUser>()
+  private readonly bans = new Map<Snowflake, APIBan>()
+  private readonly roles: APIRole[]
   private readonly rules: APIAutoModerationRule[]
   private readonly entries: APIAuditLogEntry[]
   private readonly codes = new Map<
@@ -145,6 +191,19 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     ]) {
       this.members.set(member.user.id, apiMember(member))
     }
+    for (const user of state.users ?? []) {
+      this.users.set(user.id, apiUser(user))
+    }
+    for (const ban of state.bans ?? []) {
+      this.bans.set(ban.user.id, {
+        user: apiUser(ban.user),
+        reason: ban.reason ?? null,
+      })
+    }
+    this.roles = [
+      { id: this.guildId, name: "@everyone" },
+      ...(state.roles ?? []),
+    ].map(apiRole)
     this.rules = structuredClone(state.autoModerationRules ?? [])
     this.entries = structuredClone(state.auditLogEntries ?? [])
   }
@@ -242,6 +301,48 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         webhooks: [],
       }
     })
+  }
+
+  searchMembers({ query, limit }: RESTGetAPIGuildMembersSearchQuery) {
+    return this.answer("searchMembers", () =>
+      [...this.members.values()]
+        .filter(
+          ({ user, nick }) =>
+            startsWithIgnoringCase(user.username, query) ||
+            startsWithIgnoringCase(nick ?? null, query)
+        )
+        .slice(0, limit ?? DEFAULT_SEARCH_LIMIT)
+    )
+  }
+
+  getUser(userId: Snowflake) {
+    return this.answer(
+      "getUser",
+      () =>
+        this.members.get(userId)?.user ??
+        this.bans.get(userId)?.user ??
+        this.users.get(userId) ??
+        null
+    )
+  }
+
+  getBan(userId: Snowflake) {
+    return this.answer("getBan", () => this.bans.get(userId) ?? null)
+  }
+
+  listBans({ after, limit }: BansQuery) {
+    return this.answer("listBans", () =>
+      [...this.bans.values()]
+        .filter(
+          ({ user }) => after === undefined || BigInt(user.id) > BigInt(after)
+        )
+        .toSorted((left, right) => byId(left.user, right.user))
+        .slice(0, limit ?? DEFAULT_BANS_LIMIT)
+    )
+  }
+
+  listRoles() {
+    return this.answer("listRoles", () => this.roles)
   }
 
   authorizationUrl(state: string, codeVerifier: string) {

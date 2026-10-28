@@ -1,6 +1,7 @@
 import type { ReactElement } from "react"
-import { Ban, LogOut, Menu, ScrollText } from "lucide-react"
+import { Ban, Gavel, LogOut, Menu, ScrollText } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { prerender } from "react-dom/static"
 import { expect, test } from "vitest"
 
 import { ShorLogo } from "./shor-logo"
@@ -38,20 +39,28 @@ function drawing(image: ReactElement) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(image))?.[1]
 }
 
-function currentLinks(currentPath: string) {
-  return links(
-    renderToStaticMarkup(
-      <StaffHeader currentPath={currentPath} member="aldis" />
-    )
+async function header(
+  currentPath: string,
+  { member = "aldis", opensModeration = false } = {}
+) {
+  const { prelude } = await prerender(
+    <StaffHeader
+      currentPath={currentPath}
+      member={member}
+      opensModeration={Promise.resolve(opensModeration)}
+    />
   )
+  return await new Response(prelude).text()
+}
+
+async function currentLinks(currentPath: string) {
+  return links(await header(currentPath, { opensModeration: true }))
     .filter(({ current }) => current !== undefined)
     .map(({ text, href, current }) => ({ text, href, current }))
 }
 
-test("the header links to the panel, then to each section", () => {
-  const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" member="aldis" />
-  )
+test("the header links to the panel, then to each section", async () => {
+  const html = await header("/blocked-words")
 
   expect(links(html).map(({ text, href }) => ({ text, href }))).toEqual([
     { text: "Panel de Shor", href: "/" },
@@ -60,12 +69,8 @@ test("the header links to the panel, then to each section", () => {
   ])
 })
 
-test("the link to the panel shows Shor's logo before its name, hidden from assistive technologies", () => {
-  const [panel] = links(
-    renderToStaticMarkup(
-      <StaffHeader currentPath="/blocked-words" member="aldis" />
-    )
-  )
+test("the link to the panel shows Shor's logo before its name, hidden from assistive technologies", async () => {
+  const [panel] = links(await header("/blocked-words"))
 
   expect(panel).toEqual({
     text: "Panel de Shor",
@@ -75,12 +80,8 @@ test("the link to the panel shows Shor's logo before its name, hidden from assis
   })
 })
 
-test("each section's link shows its icon before its name, hidden from assistive technologies", () => {
-  const [, ...sections] = links(
-    renderToStaticMarkup(
-      <StaffHeader currentPath="/blocked-words" member="aldis" />
-    )
-  )
+test("each section's link shows its icon before its name, hidden from assistive technologies", async () => {
+  const [, ...sections] = links(await header("/blocked-words"))
 
   expect(sections.map(({ text, image }) => ({ text, image }))).toEqual([
     {
@@ -94,23 +95,55 @@ test("each section's link shows its icon before its name, hidden from assistive 
   ])
 })
 
-test('the current section\'s link alone carries aria-current="page"', () => {
-  expect(currentLinks("/blocked-words")).toEqual([
+test('the current section\'s link alone carries aria-current="page"', async () => {
+  expect(await currentLinks("/blocked-words")).toEqual([
     { text: "Mots interdits", href: "/blocked-words", current: "page" },
   ])
-  expect(currentLinks("/audit-log")).toEqual([
+  expect(await currentLinks("/audit-log")).toEqual([
     { text: "Journal d’audit", href: "/audit-log", current: "page" },
   ])
 })
 
-test("a path outside every section marks no link current", () => {
-  expect(currentLinks("/login/refused")).toEqual([])
+test("a path outside every section marks no link current", async () => {
+  expect(await currentLinks("/login/refused")).toEqual([])
 })
 
-test("the header names the staff member, then offers to log out after a hidden log-out icon", () => {
-  const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" member="Brynja la Rouge" />
+test("a staff member who opens the moderation section sees « Modération » last among the sections, after a hidden gavel icon", async () => {
+  const [, , , moderation, ...rest] = links(
+    await header("/blocked-words", { opensModeration: true })
   )
+
+  expect(moderation).toEqual({
+    text: "Modération",
+    href: "/records",
+    current: undefined,
+    image: { drawing: drawing(<Gavel />), hidden: true },
+  })
+  expect(rest).toEqual([])
+})
+
+test("a staff member who cannot open the moderation section sees no link to it", async () => {
+  expect(
+    links(await header("/blocked-words")).map(({ text }) => text)
+  ).not.toContain("Modération")
+})
+
+test("the moderation section is current on its search and on every record", async () => {
+  const moderation = {
+    text: "Modération",
+    href: "/records",
+    current: "page",
+  }
+
+  expect(await currentLinks("/records")).toEqual([moderation])
+  expect(await currentLinks("/records/1400000000000000001")).toEqual([
+    moderation,
+  ])
+  expect(await currentLinks("/recordsx")).toEqual([])
+})
+
+test("the header names the staff member, then offers to log out after a hidden log-out icon", async () => {
+  const html = await header("/blocked-words", { member: "Brynja la Rouge" })
 
   expect(html).toContain(">Brynja la Rouge<")
   expect(
@@ -126,10 +159,8 @@ test("the header names the staff member, then offers to log out after a hidden l
   )
 })
 
-test("a menu button shows a hidden menu icon, and names itself « Ouvrir le menu » to assistive technologies alone", () => {
-  const html = renderToStaticMarkup(
-    <StaffHeader currentPath="/blocked-words" member="aldis" />
-  )
+test("a menu button shows a hidden menu icon, and names itself « Ouvrir le menu » to assistive technologies alone", async () => {
+  const html = await header("/blocked-words")
 
   expect(
     buttons(html).filter(({ content }) => content?.includes("Ouvrir le menu"))

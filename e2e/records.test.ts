@@ -1,0 +1,157 @@
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import { expect, test } from "./fixtures"
+
+const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const BRYNJA = { id: "1400000000000000002", username: "brynja" }
+
+const LYRA = {
+  id: "1400000000000000003",
+  username: "lyra_gates",
+  global_name: "Lyra",
+}
+
+const CORVUS = { id: "1400000000000000004", username: "corvus" }
+
+const HALDOR = { id: "1400000000000000005", username: "haldor" }
+
+const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
+
+test.use({
+  discordState: {
+    roles: [GUARD],
+    members: [
+      { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+      { user: BRYNJA, roles: [STAFF_ROLE_ID] },
+      { user: LYRA, nick: "Lyra des Brumes", roles: [GUARD.id] },
+    ],
+    bans: [
+      {
+        user: CORVUS,
+        reason: "Aldis (1400000000000000001) : insultes répétées",
+      },
+    ],
+    users: [HALDOR],
+  },
+})
+
+test("a staff member who moderates finds an account by name through « Modération », then opens its record", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const moderation = page
+    .getByRole("banner")
+    .getByRole("navigation", { name: "Sections du panel" })
+    .getByRole("link", { name: "Modération" })
+  const found = page.getByRole("main").getByRole("link", { name: /^Lyra/ })
+
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await moderation.click()
+  await expect(page).toHaveURL("/records")
+  await expect(page).toHaveTitle("Modération – Panel de Shor")
+  await expect(moderation).toHaveAttribute("aria-current", "page")
+  await page.getByLabel("Compte").fill("LYR")
+  await page.getByRole("button", { name: "Chercher" }).click()
+  await expect(page).toHaveURL("/records?query=LYR")
+  await expect(found).toContainText("Lyra des Brumes")
+  await expect(found).toContainText("@lyra_gates")
+  await checkAccessibility()
+
+  await found.click()
+  await expect(page).toHaveURL(`/records/${LYRA.id}`)
+  await expect(page).toHaveTitle("Fiche – Panel de Shor")
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Lyra des Brumes" })
+  ).toBeVisible()
+  await expect(page.getByRole("main")).toContainText("Membre du serveur")
+  await expect(page.getByRole("main")).toContainText("Garde")
+  await expect(moderation).toHaveAttribute("aria-current", "page")
+  await checkAccessibility()
+})
+
+test("a mention or an ID opens its account's record directly, banned or absent, and an ID that names no account says so", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const main = page.getByRole("main")
+
+  await logIn(ALDIS)
+  await page.goto("/records")
+  await expect(page.getByLabel("Compte")).toHaveValue("")
+  await checkAccessibility()
+  await page.getByLabel("Compte").fill(`<@${CORVUS.id}>`)
+  await page.getByRole("button", { name: "Chercher" }).click()
+  await expect(page).toHaveURL(`/records/${CORVUS.id}`)
+  await expect(main).toContainText("Compte banni")
+  await expect(main).toContainText("insultes répétées")
+  await expect(main).toContainText("Aldis")
+  await checkAccessibility()
+
+  await page.goto("/records")
+  await page.waitForLoadState()
+  await page.getByLabel("Compte").fill(HALDOR.id)
+  await page.getByRole("button", { name: "Chercher" }).click()
+  await expect(page).toHaveURL(`/records/${HALDOR.id}`)
+  await expect(main).toContainText("Compte absent du serveur")
+  await checkAccessibility()
+
+  await page.goto("/records/1400000000000000009")
+  await expect(main).toContainText("Aucun compte Discord n’a cet ID.")
+  await checkAccessibility()
+})
+
+test("a staff member who does not moderate sees no « Modération », and the section's pages show the not-found page", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const header = page.getByRole("banner")
+
+  await logIn(BRYNJA)
+  await expect(page).toHaveURL("/blocked-words")
+  await expect(header).toContainText("brynja")
+  await page.waitForLoadState()
+  await expect(header.getByRole("link", { name: "Modération" })).toHaveCount(0)
+
+  await page.goto("/records")
+  await expect(
+    page.getByRole("heading", { name: "This page could not be found." })
+  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Modération" })).toHaveCount(0)
+  await checkAccessibility()
+
+  await page.goto(`/records/${LYRA.id}`)
+  await expect(
+    page.getByRole("heading", { name: "This page could not be found." })
+  ).toBeVisible()
+  await expect(page.getByText("Lyra des Brumes")).toHaveCount(0)
+  await checkAccessibility()
+})
+
+test("on a 360 px screen, a staff member who moderates reaches « Modération » through the menu, which then marks it", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const header = page.getByRole("banner")
+  const menu = page.getByRole("dialog", { name: "Menu" })
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.waitForLoadState()
+  await header.getByRole("button", { name: "Ouvrir le menu" }).click()
+  await menu.getByRole("link", { name: "Modération" }).click()
+  await expect(page).toHaveURL("/records")
+  await expect(menu).toBeHidden()
+  await checkAccessibility()
+
+  await header.getByRole("button", { name: "Ouvrir le menu" }).click()
+  await expect(menu.getByRole("link", { name: "Modération" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+})

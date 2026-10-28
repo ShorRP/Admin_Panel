@@ -1,12 +1,23 @@
 import { z } from "zod"
 
+const SNOWFLAKE = z.string().regex(/^\d{17,20}$/)
+
+const SNOWFLAKES = z
+  .string()
+  .transform((list) => list.split(",").map((id) => id.trim()))
+  .pipe(z.array(SNOWFLAKE))
+
 const STAFF_ENV = z
   .object({
-    STAFF_ROLE_ID: z.string().regex(/^\d{17,20}$/),
+    STAFF_ROLE_ID: SNOWFLAKE,
+    MODERATION_ROLE_IDS: SNOWFLAKES,
+    BAN_ROLE_IDS: SNOWFLAKES,
     SESSION_SECRET: z.string().min(32),
   })
   .transform((env) => ({
     staffRoleId: env.STAFF_ROLE_ID,
+    moderationRoleIds: env.MODERATION_ROLE_IDS,
+    banRoleIds: env.BAN_ROLE_IDS,
     sessionSecret: env.SESSION_SECRET,
   }))
 

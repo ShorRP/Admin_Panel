@@ -22,6 +22,8 @@ const BRYNJA = { id: "1400000000000000002", username: "brynja" }
 
 beforeEach(() => {
   vi.stubEnv("STAFF_ROLE_ID", STAFF_ROLE_ID)
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
   vi.stubEnv("SESSION_SECRET", SESSION_SECRET)
 })
 

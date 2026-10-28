@@ -5,6 +5,18 @@ import { usePathname } from "next/navigation"
 
 import { StaffHeader } from "./staff-header"
 
-export function StatefulStaffHeader({ member }: { member: ReactNode }) {
-  return <StaffHeader currentPath={usePathname()} member={member} />
+export function StatefulStaffHeader({
+  member,
+  opensModeration,
+}: {
+  member: ReactNode
+  opensModeration: Promise<boolean>
+}) {
+  return (
+    <StaffHeader
+      currentPath={usePathname()}
+      member={member}
+      opensModeration={opensModeration}
+    />
+  )
 }

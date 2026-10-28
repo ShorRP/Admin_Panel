@@ -12,6 +12,8 @@ const SESSION_SECRET = "a-session-secret-of-32-chars-xxx"
 
 beforeEach(() => {
   vi.stubEnv("STAFF_ROLE_ID", "1300000000000000000")
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
   vi.stubEnv("SESSION_SECRET", SESSION_SECRET)
 })
 

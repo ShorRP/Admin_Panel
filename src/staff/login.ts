@@ -73,7 +73,7 @@ async function callbackRedirect(
     return redirectTo(request, "/login/failed")
   }
   try {
-    const { staffRoleId, sessionSecret } = parseStaffEnv(process.env)
+    const env = parseStaffEnv(process.env)
     const discord = clients.discord()
     const oauth = clients.oauth()
     const { access_token } = await oauth.exchangeCode(
@@ -81,12 +81,12 @@ async function callbackRedirect(
       started.codeVerifier
     )
     const user = await oauth.getCurrentUser(access_token)
-    const staffMember = await findStaffMember(discord, staffRoleId, user.id)
+    const staffMember = await findStaffMember(discord, env, user.id)
     if (staffMember === null) {
       return redirectTo(request, "/login/refused")
     }
     const response = redirectTo(request, "/")
-    response.cookies.set(await sessionCookie(staffMember.id, sessionSecret))
+    response.cookies.set(await sessionCookie(staffMember.id, env.sessionSecret))
     return response
   } catch (error) {
     if (isPanelError(error)) {
