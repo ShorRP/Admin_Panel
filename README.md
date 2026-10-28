@@ -2,7 +2,7 @@
 
 The web app the staff of Shor, a Skyrim roleplay server, use to administer its Discord server without code or bot commands.
 
-The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. Its interface is built with Tailwind CSS 4 and with shadcn/ui components on Base UI, copied into [`src/ui/`](src/ui/), whose [`globals.css`](src/ui/globals.css) holds the theme. So far it serves, under a shared header, which only the staff reach, through a Discord login, the blocked words, the audit log and the records of the moderation section, `/records`, which opens only to the staff members who also hold a role of `MODERATION_ROLE_IDS`, and answers at `/interactions` the PING with which Discord checks the address of the panel's application, and [`src/discord/`](src/discord/) holds the panel's client for Discord's REST API, with an in-memory fake that the tests use instead, and an HTTP adapter through which that fake answers the panel's calls in the end-to-end tests, under [`e2e/`](e2e/), while [`src/monitoring/`](src/monitoring/) sends the panel's own errors to a private Discord channel, through a webhook. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
+The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose interface is in French only. Its interface is built with Tailwind CSS 4 and with shadcn/ui components on Base UI, copied into [`src/ui/`](src/ui/), whose [`globals.css`](src/ui/globals.css) holds the theme. So far it serves, under a shared header, which only the staff reach, through a Discord login, the blocked words, the audit log and the records of the moderation section, `/records`, which opens only to the staff members who also hold a role of `MODERATION_ROLE_IDS`, and [`src/discord/`](src/discord/) holds the panel's client for Discord's REST API, with an in-memory fake that the tests use instead, and an HTTP adapter through which that fake answers the panel's calls in the end-to-end tests, under [`e2e/`](e2e/), while [`src/monitoring/`](src/monitoring/) sends the panel's own errors to a private Discord channel, through a webhook. The repository also holds the project's docs and tooling. Work is tracked on the [Admin Panel board](https://github.com/orgs/ShorRP/projects/1).
 
 ## Docs
 
@@ -31,20 +31,6 @@ Serve the panel at http://localhost:3000, reloading on every change:
 ```bash
 pnpm dev
 ```
-
-Have "Shor Panel Dev" send its interactions, the clicks on the buttons and menus of the messages the panel posts, to that `pnpm dev`, through a Cloudflare quick tunnel, while `pnpm dev` runs in another terminal. The tunnel needs no Cloudflare account, and `cloudflared` installs once, on Windows:
-
-```bash
-winget install --id Cloudflare.cloudflared --exact
-```
-
-Then, in a terminal opened after the install, so that it finds `cloudflared`, with `DISCORD_BOT_TOKEN` and `DISCORD_PUBLIC_KEY` of "Shor Panel Dev" in `.env.local`:
-
-```bash
-pnpm dev:tunnel
-```
-
-It checks that the token and the public key are "Shor Panel Dev"'s, and that `pnpm dev` refuses an unsigned request to `/interactions`, opens the tunnel, then points the application's Interactions Endpoint URL at `/interactions` through it, which Discord accepts only once a PING signed by Discord gets its PONG. The tunnel's URL changes at every run, and while it runs anyone who has it reaches `pnpm dev`, whose pages still ask for the staff's login. Ctrl+C stops it; Discord should then remove the stale URL at its next check, with an email (inferred). Previews receive no interactions.
 
 Run the tooling's tests, then the panel's:
 
@@ -142,7 +128,6 @@ pnpm exec shadcn add button --diff
 - `DISCORD_CLIENT_SECRET`: that application's client secret, from its OAuth2 page in Discord's Developer Portal.
 - `DISCORD_REDIRECT_URI`: where Discord sends a member back after they log in, `/login/callback` on the panel's own URL, such as `http://localhost:3000/login/callback`. It must be among the application's OAuth2 redirects, and use `https:` anywhere but on `localhost`.
 - `DISCORD_BOT_TOKEN`: the panel's application token, which Discord files under the application's Bot tab and which the panel sends as `Authorization: Bot`. The panel never connects to Discord's gateway with it ([ADR 0003](docs/adr/0003-event-driven-features-belong-to-shorbot.md)), and the application needs Manage Server and View Audit Log on the Discord server, the latter also to read its bans.
-- `DISCORD_PUBLIC_KEY`: the public key of the panel's Discord application, from its General Information page in Discord's Developer Portal, with which the panel checks that an interaction sent to `/interactions` comes from Discord ([ADR 0003](docs/adr/0003-event-driven-features-belong-to-shorbot.md)). 64 hexadecimal digits. It is no secret, but it changes with the application: "Shor Panel Dev"'s in development and on previews, "Shor Panel"'s in production.
 - `DISCORD_GUILD_ID`: the ID of the Discord server the panel administers, Gilles' test Discord server in development and on previews, Shor's in production. A snowflake.
 - `ALERT_WEBHOOK_URL`: the URL of the Discord webhook to which the panel sends an alert for each of its own errors, a URL under `https://discord.com/api/webhooks/` that Discord gives for a webhook of a private channel, on Gilles' test Discord server. It holds the webhook's token, so it is a secret like the others. Production requires it, so a production build on Vercel fails without it. Leave it unset anywhere else, where the panel writes its errors to the console only, but to try an alert by hand; an empty value counts as unset.
 - `STAFF_ROLE_ID`: the ID of the Discord role that makes a member of the Discord server part of the staff, the only members the panel lets in. A snowflake.

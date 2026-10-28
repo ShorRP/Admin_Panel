@@ -10,9 +10,6 @@ export const MODERATION_ROLE_ID = "1300000000000000002"
 
 export const BAN_ROLE_ID = "1300000000000000003"
 
-export const DISCORD_PUBLIC_KEY =
-  "6dd2809298d28ce7e628cd0e3000310192b6b5241627ea6d537f141744424dce"
-
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
@@ -30,7 +27,6 @@ export default defineConfig({
       DISCORD_REDIRECT_URI: `${ORIGIN}/login/callback`,
       DISCORD_BOT_TOKEN: "e2e-bot-token",
       DISCORD_GUILD_ID: "1100000000000000000",
-      DISCORD_PUBLIC_KEY,
       ALERT_WEBHOOK_URL: "",
       STAFF_ROLE_ID,
       MODERATION_ROLE_IDS: MODERATION_ROLE_ID,

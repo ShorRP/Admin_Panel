@@ -2,7 +2,6 @@ import type { NextConfig } from "next"
 
 import {
   parseDiscordApiEnv,
-  parseDiscordInteractionsEnv,
   parseDiscordOAuthEnv,
   parseTestProxyEnv,
 } from "@/discord/env"
@@ -14,7 +13,6 @@ const { testProxy } = parseTestProxyEnv(process.env)
 if (process.env.VERCEL) {
   parseDiscordApiEnv(process.env)
   parseDiscordOAuthEnv(process.env)
-  parseDiscordInteractionsEnv(process.env)
   parseMonitoringEnv(process.env)
   parseStaffEnv(process.env)
 }
