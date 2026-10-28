@@ -34,6 +34,7 @@ export function BlockedWordList({
             key={word}
             enter="highlight-enter"
             exit="fade-exit"
+            update="slide-into-place"
             default="none"
           >
             <li className="flex items-center justify-between gap-2">
