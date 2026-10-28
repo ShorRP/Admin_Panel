@@ -1,0 +1,38 @@
+# Personal data
+
+What the Admin Panel processes about people, why, where and for how long, and what the GDPR and Discord's terms ask of it before it stores more, as Gilles decided while grilling #27 on 2026-10-28. A change that starts or stops processing a personal datum updates this file in the same change (`CLAUDE.md`, **Security**). Every page below was read on 2026-10-28; a date after a URL is the page's own. Nobody on the project is a lawyer: the inferences are a developer's reading of the sources, worth checking with the CNIL or a lawyer before the store opens.
+
+## What applies
+
+- **The GDPR.** Personal data is « toute information se rapportant à une personne physique identifiée ou identifiable » (art. 4(1)), and the Regulation leaves out a processing « par une personne physique dans le cadre d'une activité strictement personnelle ou domestique » (art. 2(2)(c)) (https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre1). A Discord ID names an account, so what the panel reads or keeps about one is personal data, and a staff that runs a community is no natural person acting privately, so the exemption likely does not cover it (inferred).
+- **The CNIL's guide for associations** (`cnil-guide_association.pdf`, dated 2021). Associations are subject to the GDPR, and legitimate interest is among their legal bases. What they tell people states the retention period and « au moins les droits d'accès, de rectification, d'effacement ». An association keeps a record of its processing, and of its former members: « Elle doit les supprimer trois ans après la fin de l'adhésion de la personne. » The CNIL publishes no guidance for moderation or sanction records.
+- **Discord's Developer Terms of Service** (Wayback Machine copy of 2026-09-27, « Last updated: June 6, 2024 ») cover "API Data", "any data… you obtain through the APIs (including personal data)". Every application keeps a privacy policy, links it from the Developer Portal, and makes it "easily accessible to users from your Application" (§5a). "Except to the extent you are required to retain API Data under applicable laws or regulations", it deletes that data once no longer necessary, when it stops, when Discord asks, or when "the applicable user requests you delete it", and gives "users an easily accessible way to ask for their API Data to be modified and deleted" (§5b). It encrypts the data at rest (§5c).
+- **Discord's Developer Policy** (Wayback Machine copy of 2026-10-27): "Do not contact users on Discord without their explicit permission. This includes frequently sending unsolicited direct messages and/or sending direct messages not directly related to maintaining or improving an Application's functionality" (§5), and "Do not use API Data for any purpose outside of what is necessary to provide your stated functionality" (§15). A direct message about a sanction the staff give is related to that functionality (inferred).
+
+## Today
+
+What the panel processes on `main`, and with the moderation section that stores nothing (#143):
+
+- **A staff member's Discord ID**, sealed in the `__Host-session` cookie, in their browser only, for 7 days at most (ADR 0005, `CLAUDE.md`, **The session**), to keep them logged in.
+- **What the panel reads from Discord and shows without keeping it**: the staff member's name and avatar in the header, the staff behind each change in the audit log (ADR 0004), and, with the moderation section, an account's names, avatar, roles, dates, standing and the audit log entries about it (#176, #177).
+- **What the panel writes into Discord, where Discord keeps it.** Every write's audit log reason names the staff member, as `Name (ID) : …` (ADR 0004), and Discord keeps audit log entries 45 days. A ban's reason stays in the Discord server's ban list while the ban lasts (inferred, #181). A sanction's direct message stays in the DM channel between the panel's application and the member, which the application can delete and the member cannot (inferred, #179).
+- **What the logs and the alerts carry**: no member's ID, name or IP (`CLAUDE.md`, **What is never logged**).
+- **Who else touches it**: Vercel, which hosts the panel and keeps its runtime logs one hour (`CLAUDE.md`, **Log lines**), and Discord.
+
+Discord's §5a already applies, so the panel owes a privacy policy without any store (inferred): #186 publishes it at `/privacy`.
+
+## Planned
+
+The store (#174) opens Neon for the warnings (#184), the staff's notes (#185) and the audit log beyond Discord's 45 days (#3). Before its first row, each point below holds, as the store's grilling decides (#175):
+
+- **A legal basis**, likely legitimate interest, the GDPR's art. 6(1)(f), with its balance written down (inferred).
+- **Information.** `/privacy` grows to say what the store keeps, why, for how long, who sees it, and how to ask for access, correction or deletion (§5a). A note the member never sees is data not collected from them, which the GDPR's art. 14 covers (inferred).
+- **A retention period** for each datum, since art. 5(1)(e) keeps data no longer than its purpose needs, which the code enforces by deleting what is past it. The CNIL's three years after a member leaves an association is a reference point, not a rule for sanctions (inferred).
+- **Deletion and correction on request**, which Discord's §5b exempts only for what a law requires to keep, weighed against keeping the trace of a ban (inferred).
+- **Encryption at rest** (§5c): what Neon does there is unchecked.
+- **The processor.** Neon's terms are the « Product Specific Schedule (Neon) », updated 2026-10-14, under Databricks' Master Cloud Services Agreement, which incorporates its DPA (https://neon.com/terms-of-service, https://www.databricks.com/legal/mcsa, updated 2026-02-20). No source names the Free plan.
+- **The region.** Neon has Frankfurt, `aws-eu-central-1`, and no Paris, and "The region is fixed when the project is created" (https://neon.com/docs/introduction/regions). Vercel's `fra1` is Frankfurt too, and Hobby runs functions in a single region, `iad1` unless set (https://vercel.com/docs/functions/configuring-functions/region, updated 2026-08-11).
+- **Backups.** Neon's Free plan keeps 6 hours of history and 1 manual snapshot, and "scheduled backups are not available on the Free plan" (https://neon.com/docs/introduction/plans).
+- **An impact assessment**, which the CNIL requires when a processing meets two of its nine criteria, among them « exclusion du bénéfice d'un droit/contrat » and « personnes vulnérables » (https://www.cnil.fr/fr/ce-quil-faut-savoir-sur-lanalyse-dimpact-relative-la-protection-des-donnees-aipd). Whether it applies waits on « Are there minors on Shor's Discord server? » (`docs/agents/open-questions.md`).
+- **A record of processing**, of which this file is likely the draft (inferred), naming whoever is responsible, which waits on « Who is responsible for the panel's personal data, and who answers requests? » (`docs/agents/open-questions.md`).
+- **Only what each feature needs**, as ADR 0004 already says.
