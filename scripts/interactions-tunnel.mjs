@@ -21,7 +21,7 @@ const LOCAL_ENV = z.object({
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i),
 })
 
-const REACHABLE_WITHIN_MS = 60_000
+const REACHABLE_WITHIN_MS = 120_000
 
 const TIMEOUT_MS = 15_000
 
