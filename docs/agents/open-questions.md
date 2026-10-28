@@ -12,9 +12,9 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 ## Which Discord server and which staff role?
 
 - **Question:** What are the IDs of Shor's Discord server and of the role, or roles, that make a member staff?
-- **Where it shows up:** the Admin Panel lets in only members holding the staff role, re-checked on every page view and every write (ADR 0005). The IDs are configuration, so development can go on without them. ShorBot's expected features, as Gilles relayed them on 2026-10-23, name a Staff role (« les membres du rôle Staff ») and a role per category of its support tickets (« @[rôle en charge du problème] »). Whether those per-category roles also make a member staff is part of this question. The moderation section narrows to two more lists, `MODERATION_ROLE_IDS` for the roles that moderate and `BAN_ROLE_IDS` for those that also ban (ADR 0005, #27): which roles go in each is part of it too.
+- **Where it shows up:** the Admin Panel lets in only members holding the staff role, re-checked on every page view and every write (ADR 0005). The IDs are configuration, so development can go on without them. ShorBot's expected features, as Gilles relayed them on 2026-10-23, name a Staff role (« les membres du rôle Staff ») and a role per category of its support tickets (« @[rôle en charge du problème] »). The tickets are the panel's since 2026-10-28, and each kind of request names its own list of roles, which see its tickets and which its first message mentions (ADR 0003; Gilles, 2026-10-28): which roles go in each list, and whether they also make a member staff, is part of this question. The moderation section narrows to two more lists, `MODERATION_ROLE_IDS` for the roles that moderate and `BAN_ROLE_IDS` for those that also ban (ADR 0005, #27): which roles go in each is part of it too.
 - **Who is likely to know:** Anaisenkit, or any staff member with Discord's Developer Mode on.
-- **Blocked on it:** the first production deploy, and the moderation section in production (#183).
+- **Blocked on it:** the first production deploy, the moderation section in production (#183), and the support tickets in production.
 
 ## Which channel do the staff report panel problems in?
 
@@ -30,12 +30,12 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 - **Who is likely to know:** loanspac, who said Shor has its own SkyMP server and launcher (ADR 0001), and the POs.
 - **Blocked on it:** any feature of the panel that reads from or writes to the game.
 
-## Where does a sanctioned member contest before #150?
+## Where does a banned account contest before #150?
 
-- **Question:** Until the panel's contestation pages exist (#150), where should a member who received a timeout, a kick or a ban turn to contest it? A banned member can no longer open a support ticket on the Discord server.
-- **Where it shows up:** the direct message the panel sends with a sanction says how to contest it, and nobody reads a reply to it, since the panel's application never connects to the gateway (ADR 0003; Gilles, 2026-10-28, while grilling #27).
-- **Who is likely to know:** the POs, Lyra-Gates and Anaisenkit.
-- **Blocked on it:** the final text of that direct message, which keeps a placeholder until then (#179).
+- **Question:** Until the panel's contestation page exists (#150), where should an account the staff banned turn to contest the ban? It can no longer open a support ticket on the Discord server.
+- **Where it shows up:** the direct message the panel sends with a sanction says how to contest it, and nobody reads a reply to it, since the panel's application never connects to the gateway (ADR 0003; Gilles, 2026-10-28, while grilling #27). A warning, a timeout and a kick are contested through a support ticket of the « Autre demande » category: the POs' list of the Bot's features says so for a warning (relayed by Gilles on 2026-10-23, #4), and Gilles extended it to the timeout and the kick on 2026-10-28. A timed-out member keeps only View Channel and Read Message History (https://docs.discord.com/developers/topics/permissions, read 2026-10-28), so they can write in a ticket only once the timeout ends (inferred), and a kicked member joins again through an invite.
+- **Who is likely to know:** Gilles, who decides it, and the POs for any way to reach the staff outside the Discord server.
+- **Blocked on it:** the final text of the ban's direct message, which keeps a placeholder until then (#181).
 
 ## Are there minors on Shor's Discord server?
 
