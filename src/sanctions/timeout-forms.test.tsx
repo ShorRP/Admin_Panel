@@ -1,15 +1,9 @@
-import {
-  CircleAlert,
-  CircleCheck,
-  Timer,
-  TimerOff,
-  type LucideIcon,
-} from "lucide-react"
+import { Timer, TimerOff, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import type { SanctionResult } from "./sanction-result"
 import { TimeoutForms } from "./timeout-forms"
-import type { TimeoutResult } from "./timeout-result"
 
 const LYRA_ID = "1400000000000000003"
 
@@ -21,7 +15,7 @@ function render({
   pending = false,
 }: {
   timedOutUntil?: Date | null
-  state?: TimeoutResult | null
+  state?: SanctionResult | null
   pending?: boolean
 } = {}) {
   return renderToStaticMarkup(
@@ -91,15 +85,6 @@ function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1] ?? ""
 }
 
-function region(html: string, role: "status" | "alert") {
-  const content =
-    new RegExp(`<p role="${role}"[^>]*>(.*?)</p>`).exec(html)?.[1] ?? ""
-  return {
-    icon: /<svg[^>]*>(.*?)<\/svg>/.exec(content)?.[1],
-    text: content.replace(/<[^>]*>/g, ""),
-  }
-}
-
 test("a member who is not timed out can be timed out for one of seven durations, none chosen, with a labelled reason and the direct message checked, and has nothing to lift", () => {
   const html = render()
 
@@ -159,7 +144,7 @@ test("each form names the member it acts on and the change it makes", () => {
   ])
 })
 
-test("every field points to the alert region, and leaves validation to the panel", () => {
+test("every field points to the alert region of the sanctions, and leaves validation to the panel", () => {
   const html = render({ timedOutUntil: TIMED_OUT_UNTIL })
   const fields = Array.from(
     html.matchAll(/<(?:input|textarea)(?![^>]*type="hidden")[^>]*>/g),
@@ -168,13 +153,12 @@ test("every field points to the alert region, and leaves validation to the panel
 
   expect(fields).toHaveLength(10)
   for (const field of fields) {
-    expect(field).toContain('aria-describedby="timeout-error"')
+    expect(field).toContain('aria-describedby="sanction-error"')
     expect(field).not.toMatch(/required|maxlength|pattern/i)
   }
-  expect(html).toMatch(/<p role="alert"[^>]* id="timeout-error"/)
 })
 
-test("a refused timeout shows its message in the alert region, and keeps the reason, the duration and the choice of the direct message", () => {
+test("a refused timeout keeps the reason, the duration and the choice of the direct message", () => {
   const html = render({
     state: {
       ok: false,
@@ -186,11 +170,6 @@ test("a refused timeout shows its message in the alert region, and keeps the rea
     },
   })
 
-  expect(region(html, "alert")).toEqual({
-    icon: drawing(CircleAlert),
-    text: "Saisis un motif.",
-  })
-  expect(region(html, "status").text).toBe("")
   expect(textarea(html, "time-out-reason").value).toBe("  ")
   expect(durations(html).filter(({ checked }) => checked)).toEqual([
     { label: "1 jour", value: "86400", checked: true },
@@ -212,35 +191,36 @@ test("a refused lift keeps its reason, and leaves the timeout form as it starts"
   expect(textarea(html, "lift-reason").value).toBe("Erreur de cible")
   expect(textarea(html, "time-out-reason").value).toBe("")
   expect(notify(html)).toMatch(/\schecked=""/)
-  expect(region(html, "alert").text).toBe(
-    "Lyra n’est pas en exclusion temporaire."
-  )
 })
 
-test("a change that landed shows its message in the status region, and leaves the forms as they start", () => {
+test("a change that landed, or a refused kick, leaves the forms as they start", () => {
+  const kick = render({
+    state: {
+      ok: false,
+      message: "Saisis un motif.",
+      change: "kick",
+      reason: "Spam",
+      notify: false,
+    },
+  })
+
+  expect(textarea(kick, "time-out-reason").value).toBe("")
+  expect(notify(kick)).toMatch(/\schecked=""/)
+
   const html = render({
     timedOutUntil: TIMED_OUT_UNTIL,
     state: { ok: true, message: "L’exclusion temporaire de Lyra est levée." },
   })
 
-  expect(region(html, "status")).toEqual({
-    icon: drawing(CircleCheck),
-    text: "L’exclusion temporaire de Lyra est levée.",
-  })
-  expect(region(html, "alert").text).toBe("")
   expect(textarea(html, "time-out-reason").value).toBe("")
   expect(textarea(html, "lift-reason").value).toBe("")
 })
 
-test("while a change is sent, both buttons are disabled and the status region says so", () => {
+test("while a change is sent, both buttons are disabled", () => {
   const html = render({ timedOutUntil: TIMED_OUT_UNTIL, pending: true })
 
   expect(forms(html).map(({ inside }) => button(inside).disabled)).toEqual([
     true,
     true,
   ])
-  expect(region(html, "status")).toEqual({
-    icon: undefined,
-    text: "Envoi en cours…",
-  })
 })

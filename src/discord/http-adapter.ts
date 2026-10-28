@@ -73,6 +73,12 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
         ),
     },
     {
+      method: "DELETE",
+      route: ROUTES.guildMember,
+      answer: async (request, param) =>
+        await api.removeMember(param("user.id"), reasonOf(request)),
+    },
+    {
       method: "GET",
       route: ROUTES.guildBans,
       answer: (request) =>
@@ -191,7 +197,10 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
         path === undefined ? undefined : matchRoute(endpoint.route, path)
       if (param !== undefined && request.method === endpoint.method) {
         try {
-          return Response.json(await endpoint.answer(request, param))
+          const answer = await endpoint.answer(request, param)
+          return answer === undefined
+            ? new Response(null, { status: 204 })
+            : Response.json(answer)
         } catch (error) {
           return answerFailure(error)
         }

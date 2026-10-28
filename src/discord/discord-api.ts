@@ -23,7 +23,13 @@ import {
 
 import { DiscordError, type HttpMethod } from "./discord-error"
 import { parseDiscordApiEnv, type DiscordApiEnv } from "./env"
-import { API_BASE, requestDiscordJson, type Fetch } from "./rest"
+import {
+  API_BASE,
+  requestDiscord,
+  requestDiscordJson,
+  type DiscordRequest,
+  type Fetch,
+} from "./rest"
 import { fillRoute, ROUTES, type DiscordRoute } from "./routes"
 
 export type DiscordApi = {
@@ -36,6 +42,7 @@ export type DiscordApi = {
     changes: MemberChanges,
     reason: string
   ): Promise<APIGuildMember>
+  removeMember(userId: Snowflake, reason: string): Promise<void>
   createDm(recipientId: Snowflake): Promise<DmChannel>
   createMessage(channelId: Snowflake, message: MessageBody): Promise<Message>
   listAutoModerationRules(): Promise<APIAutoModerationRule[]>
@@ -90,7 +97,14 @@ type Call = {
 }
 
 export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
-  async function call<T>({ method, route, params, query, body, reason }: Call) {
+  function discordRequest({
+    method,
+    route,
+    params,
+    query,
+    body,
+    reason,
+  }: Call): DiscordRequest {
     const url = new URL(
       API_BASE + fillRoute(route, { "guild.id": env.guildId, ...params })
     )
@@ -99,7 +113,7 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
         url.searchParams.set(name, String(value))
       }
     }
-    return await requestDiscordJson<T>(fetch, {
+    return {
       method,
       route,
       url: url.href,
@@ -111,7 +125,11 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
           : { "X-Audit-Log-Reason": encodeURIComponent(reason) }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    })
+    }
+  }
+
+  async function call<T>(request: Call) {
+    return await requestDiscordJson<T>(fetch, discordRequest(request))
   }
 
   return {
@@ -144,6 +162,18 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
         body: changes,
         reason,
       })
+    },
+
+    async removeMember(userId, reason) {
+      await requestDiscord(
+        fetch,
+        discordRequest({
+          method: "DELETE",
+          route: ROUTES.guildMember,
+          params: { "user.id": userId },
+          reason,
+        })
+      )
     },
 
     async createDm(recipientId) {

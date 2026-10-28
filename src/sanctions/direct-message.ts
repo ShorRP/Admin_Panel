@@ -13,6 +13,17 @@ const REFUSALS: number[] = [
   RESTJSONErrorCodes.OpeningDirectMessagesTooFast,
 ]
 
+export const DIRECT_MESSAGE_OUTCOMES: Record<
+  DirectMessageOutcome,
+  (name: string) => string
+> = {
+  sent: () => "Le message privé est parti.",
+  refused: (name) =>
+    `${name} n’a pas reçu le message privé : Discord l’a refusé.`,
+  unavailable: (name) =>
+    `${name} n’a peut-être pas reçu le message privé : Discord n’a pas répondu.`,
+}
+
 export async function sendDirectMessage(
   discord: DiscordApi,
   userId: Snowflake,

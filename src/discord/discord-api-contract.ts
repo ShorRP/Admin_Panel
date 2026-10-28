@@ -127,6 +127,8 @@ function patient(discord: DiscordApi): DiscordApi {
     getMember: (userId) => patiently(() => discord.getMember(userId)),
     modifyMember: (userId, changes, reason) =>
       patiently(() => discord.modifyMember(userId, changes, reason)),
+    removeMember: (userId, reason) =>
+      patiently(() => discord.removeMember(userId, reason)),
     createDm: (recipientId) => patiently(() => discord.createDm(recipientId)),
     createMessage: (channelId, message) =>
       patiently(() => discord.createMessage(channelId, message)),
