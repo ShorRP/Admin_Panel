@@ -7,8 +7,12 @@ The tooling Shor's staff use to run the community around Shor, a Skyrim roleplay
 ### Places
 
 **Shor**:
-The Skyrim multiplayer (SkyMP) roleplay server this project serves.
+The Skyrim multiplayer (SkyMP) roleplay this project serves, played on its game servers.
 _Avoid_: ShorRP (the GitHub organization's name), the game
+
+**Game server**:
+A SkyMP server that runs Shor. Shor has two: the main one and the test one.
+_Avoid_: server (alone)
 
 **Discord server**:
 The Discord community space around Shor, where no roleplay is played.
@@ -31,7 +35,7 @@ _Avoid_: admin role, mod role
 ### Tools
 
 **Admin Panel**:
-The web application where the staff administer the Discord server without code or bot commands, and where anyone with a Discord account takes the few steps that concern them, such as contesting a warning or a ban.
+The web application where the staff administer the Discord server without code or bot commands, and where anyone with a Discord account takes the few steps that concern them, such as contesting a ban.
 _Avoid_: dashboard, painel, staff panel
 
 **Bot**:
@@ -83,3 +87,9 @@ _Avoid_: profile (Discord's own), member page
 **Note**:
 A remark the staff keep about an account, which the Admin Panel never shows to that account.
 _Avoid_: comment
+
+### Support
+
+**Support ticket**:
+A private channel on the Discord server where one member and the staff in charge of that kind of request handle it, from its opening to its closing with a reason.
+_Avoid_: ticket (alone), which also names an issue of the tracker; support channel
