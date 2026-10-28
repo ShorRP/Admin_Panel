@@ -2,6 +2,7 @@ import { inspect } from "node:util"
 import { expect, test } from "vitest"
 
 import {
+  parseContractEnv,
   parseDiscordApiEnv,
   parseDiscordOAuthEnv,
   parseTestProxyEnv,
@@ -73,4 +74,17 @@ test("E2E_TEST_PROXY takes no value but 1, an empty one included, and its error 
 
   expect(error).toContain("E2E_TEST_PROXY")
   expect(error).not.toContain("on-4f7c")
+})
+
+test("the contract suite's member is a snowflake, named in the error without its value", () => {
+  expect(
+    parseContractEnv({ CONTRACT_MEMBER_ID: "1514367000280043596" })
+  ).toEqual({ memberId: "1514367000280043596" })
+  expect(thrownBy(() => parseContractEnv({}))).toContain("CONTRACT_MEMBER_ID")
+  const error = thrownBy(() =>
+    parseContractEnv({ CONTRACT_MEMBER_ID: "member-4f7c" })
+  )
+
+  expect(error).toContain("CONTRACT_MEMBER_ID")
+  expect(error).not.toContain("member-4f7c")
 })

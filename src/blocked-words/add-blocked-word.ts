@@ -2,9 +2,9 @@ import "server-only"
 
 import type { APIAutoModerationRule } from "discord-api-types/v10"
 
+import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { auditLogReason } from "./audit-log-reason"
 import { frenchNumber, quoted } from "./french-text"
 import { MAX_BLOCKED_WORDS, MAX_KEYWORD_RULES } from "./limits"
 import {

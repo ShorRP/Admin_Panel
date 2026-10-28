@@ -12,6 +12,7 @@ export type StaffMember = {
   readonly name: string
   readonly avatarUrl: string | null
   readonly opensModeration: boolean
+  readonly roleIds: string[]
   readonly [brand]: true
 }
 
@@ -33,6 +34,7 @@ export async function findStaffMember(
     opensModeration: moderationRoleIds.some((roleId) =>
       member.roles.includes(roleId)
     ),
+    roleIds: member.roles,
   } as StaffMember
 }
 

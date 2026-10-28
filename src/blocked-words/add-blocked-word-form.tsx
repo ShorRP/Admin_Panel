@@ -3,8 +3,8 @@ import { LoaderCircle, Plus } from "lucide-react"
 import { Button } from "@/ui/button"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
+import { WriteResultMessage } from "@/ui/write-result-message"
 import type { WriteResult } from "./write-result"
-import { WriteResultMessage } from "./write-result-message"
 
 const FIELD_ID = "blocked-word"
 

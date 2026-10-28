@@ -7,7 +7,7 @@ import type {
   Snowflake,
 } from "discord-api-types/v10"
 
-import { panelReasonOf } from "@/blocked-words/audit-log-reason"
+import { panelReasonOf } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"

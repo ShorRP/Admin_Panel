@@ -1,7 +1,7 @@
 import { cn } from "cn"
 import { CircleAlert, CircleCheck } from "lucide-react"
 
-import type { WriteResult } from "./write-result"
+type WriteResult = { ok: boolean; message: string }
 
 export function WriteResultMessage({ result }: { result: WriteResult }) {
   const Icon = result.ok ? CircleCheck : CircleAlert

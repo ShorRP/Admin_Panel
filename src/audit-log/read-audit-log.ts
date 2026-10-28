@@ -8,12 +8,12 @@ import {
 } from "discord-api-types/v10"
 import { z } from "zod"
 
-import { panelReasonOf } from "@/blocked-words/audit-log-reason"
 import { isPanelRule } from "@/blocked-words/panel-rule"
 import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { snowflakeDate } from "@/discord/snowflake-date"
+import { panelReasonOf } from "./audit-log-reason"
 
 export type AuditLogChange = {
   id: Snowflake

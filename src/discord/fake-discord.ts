@@ -1,8 +1,11 @@
 import {
   AuditLogEvent,
   AutoModerationRuleTriggerType,
+  ChannelType,
+  PermissionFlagsBits,
   RESTJSONErrorCodes,
   type APIAuditLog,
+  type APIAuditLogChange,
   type APIAuditLogEntry,
   type APIAutoModerationRule,
   type APIAutoModerationRuleTriggerMetadata,
@@ -18,7 +21,15 @@ import {
   type Snowflake,
 } from "discord-api-types/v10"
 
-import type { BansQuery, DiscordApi } from "./discord-api"
+import type {
+  BansQuery,
+  DiscordApi,
+  DmChannel,
+  Guild,
+  MemberChanges,
+  Message,
+  MessageBody,
+} from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
 import { codeChallengeOf } from "./pkce"
@@ -33,6 +44,7 @@ export type FakeMember = {
   avatar?: string | null
   joined_at?: string
   communication_disabled_until?: string | null
+  allowsDirectMessages?: boolean
 }
 
 export type FakeBan = {
@@ -43,6 +55,8 @@ export type FakeBan = {
 export type FakeRole = Pick<APIRole, "id" | "name"> & Partial<APIRole>
 
 export type FakeDiscordState = {
+  ownerId?: Snowflake
+  applicationRoles?: Snowflake[]
   members?: FakeMember[]
   users?: FakeUser[]
   bans?: FakeBan[]
@@ -63,6 +77,12 @@ const MAX_KEYWORDS = 1000
 const MAX_KEYWORD_LENGTH = 60
 
 const MAX_REASON_LENGTH = 512
+
+const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000
+
+const MAX_MESSAGE_LENGTH = 2000
+
+const DEFAULT_OWNER_ID = "1000000000000000000"
 
 const DEFAULT_AUDIT_LOG_LIMIT = 50
 
@@ -142,6 +162,37 @@ function refused(method: HttpMethod, route: DiscordRoute) {
   })
 }
 
+function missingPermissions(method: HttpMethod, route: DiscordRoute) {
+  return new DiscordError({
+    method,
+    route,
+    status: 403,
+    code: RESTJSONErrorCodes.MissingPermissions,
+    discordMessage: "Missing Permissions",
+  })
+}
+
+function cannotSendMessages(code: RESTJSONErrorCodes) {
+  return new DiscordError({
+    method: "POST",
+    route: ROUTES.channelMessages,
+    status: 403,
+    code,
+    discordMessage: "Cannot send messages to this user",
+  })
+}
+
+function timeoutChange(
+  previous: string | null,
+  end: string | null
+): APIAuditLogChange {
+  return {
+    key: "communication_disabled_until",
+    ...(previous === null ? {} : { old_value: previous }),
+    ...(end === null ? {} : { new_value: end }),
+  }
+}
+
 function keptReason(reason: string | undefined) {
   if (reason === undefined || reason === "") {
     return undefined
@@ -171,7 +222,13 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     bot: true,
   })
   private increment = 0
+  private readonly ownerId: Snowflake
   private readonly members = new Map<Snowflake, APIGuildMember>()
+  private readonly refusingDirectMessages = new Set<Snowflake>()
+  private readonly directChannels = new Map<
+    Snowflake,
+    { recipientId: Snowflake; messages: Message[] }
+  >()
   private readonly users = new Map<Snowflake, APIUser>()
   private readonly bans = new Map<Snowflake, APIBan>()
   private readonly roles: APIRole[]
@@ -185,11 +242,17 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   private readonly failures = new Map<FailingMethod, DiscordError>()
 
   constructor(state: FakeDiscordState = {}) {
+    this.ownerId = state.ownerId ?? DEFAULT_OWNER_ID
     for (const member of [
-      { user: this.applicationUser },
+      { user: this.applicationUser, roles: state.applicationRoles ?? [] },
       ...(state.members ?? []),
     ]) {
       this.members.set(member.user.id, apiMember(member))
+    }
+    for (const member of state.members ?? []) {
+      if (member.allowsDirectMessages === false) {
+        this.refusingDirectMessages.add(member.user.id)
+      }
     }
     for (const user of state.users ?? []) {
       this.users.set(user.id, apiUser(user))
@@ -242,8 +305,123 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     return code
   }
 
+  directMessagesTo(userId: Snowflake) {
+    return [...this.directChannels.values()]
+      .filter(({ recipientId }) => recipientId === userId)
+      .flatMap(({ messages }) => messages.map(({ content }) => content))
+  }
+
+  getGuild() {
+    return this.answer("getGuild", (): Guild => ({
+      id: this.guildId,
+      owner_id: this.ownerId,
+      roles: this.roles,
+    }))
+  }
+
+  getApplicationUser() {
+    return this.answer("getApplicationUser", () => this.applicationUser)
+  }
+
   getMember(userId: Snowflake) {
     return this.answer("getMember", () => this.members.get(userId) ?? null)
+  }
+
+  modifyMember(userId: Snowflake, changes: MemberChanges, reason: string) {
+    return this.answer("modifyMember", () => {
+      const route = ROUTES.guildMember
+      const member = this.members.get(userId)
+      if (member === undefined) {
+        throw new DiscordError({
+          method: "PATCH",
+          route,
+          status: 404,
+          code: RESTJSONErrorCodes.UnknownMember,
+          discordMessage: "Unknown Member",
+        })
+      }
+      const end = changes.communication_disabled_until
+      if (end === undefined) {
+        return member
+      }
+      if (
+        userId === this.ownerId ||
+        this.isAdministrator(member) ||
+        this.highestPosition(member) >=
+          this.highestPosition(this.memberOf(this.applicationUser.id))
+      ) {
+        throw missingPermissions("PATCH", route)
+      }
+      if (end !== null && Date.parse(end) - Date.now() > MAX_TIMEOUT_MS) {
+        throw refused("PATCH", route)
+      }
+      const previous = member.communication_disabled_until ?? null
+      member.communication_disabled_until = end
+      this.log(
+        AuditLogEvent.MemberUpdate,
+        userId,
+        this.applicationUser.id,
+        reason,
+        [timeoutChange(previous, end)]
+      )
+      return member
+    })
+  }
+
+  createDm(recipientId: Snowflake) {
+    return this.answer("createDm", (): DmChannel => {
+      for (const [id, channel] of this.directChannels) {
+        if (channel.recipientId === recipientId) {
+          return { id, type: ChannelType.DM }
+        }
+      }
+      if (
+        !this.members.has(recipientId) &&
+        !this.users.has(recipientId) &&
+        !this.bans.has(recipientId)
+      ) {
+        throw refused("POST", ROUTES.currentUserChannels)
+      }
+      const id = this.nextSnowflake()
+      this.directChannels.set(id, { recipientId, messages: [] })
+      return { id, type: ChannelType.DM }
+    })
+  }
+
+  createMessage(channelId: Snowflake, { content = "" }: MessageBody) {
+    return this.answer("createMessage", (): Message => {
+      const route = ROUTES.channelMessages
+      const channel = this.directChannels.get(channelId)
+      if (channel === undefined) {
+        throw new DiscordError({
+          method: "POST",
+          route,
+          status: 404,
+          code: RESTJSONErrorCodes.UnknownChannel,
+          discordMessage: "Unknown Channel",
+        })
+      }
+      if (content === "" || lengthOf(content) > MAX_MESSAGE_LENGTH) {
+        throw refused("POST", route)
+      }
+      if (!this.members.has(channel.recipientId)) {
+        throw cannotSendMessages(
+          RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds
+        )
+      }
+      if (this.refusingDirectMessages.has(channel.recipientId)) {
+        throw cannotSendMessages(
+          RESTJSONErrorCodes.CannotSendMessagesToThisUser
+        )
+      }
+      const message = {
+        id: this.nextSnowflake(),
+        channel_id: channelId,
+        content,
+      }
+      channel.messages.push(message)
+      return message
+    })
   }
 
   listAutoModerationRules() {
@@ -409,6 +587,23 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     return member
   }
 
+  private rolesOf(member: APIGuildMember) {
+    return this.roles.filter(
+      ({ id }) => id === this.guildId || member.roles.includes(id)
+    )
+  }
+
+  private highestPosition(member: APIGuildMember) {
+    return Math.max(...this.rolesOf(member).map(({ position }) => position))
+  }
+
+  private isAdministrator(member: APIGuildMember) {
+    return this.rolesOf(member).some(
+      ({ permissions }) =>
+        (BigInt(permissions) & PermissionFlagsBits.Administrator) !== BigInt(0)
+    )
+  }
+
   private nextSnowflake(): Snowflake {
     this.increment = (this.increment + 1) % 4096
     return (
@@ -493,7 +688,8 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     actionType: AuditLogEvent,
     targetId: Snowflake,
     userId: Snowflake,
-    reason: string | undefined
+    reason: string | undefined,
+    changes?: APIAuditLogChange[]
   ) {
     const kept = keptReason(reason)
     this.entries.push({
@@ -501,6 +697,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       action_type: actionType,
       target_id: targetId,
       user_id: userId,
+      ...(changes === undefined ? {} : { changes }),
       ...(kept === undefined ? {} : { reason: kept }),
     })
   }

@@ -1,8 +1,8 @@
 import "server-only"
 
+import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { auditLogReason } from "./audit-log-reason"
 import { quoted } from "./french-text"
 import { isPanelRule, keywordsOf, withKeywords } from "./panel-rule"
 import { submittedWord } from "./submitted-word"

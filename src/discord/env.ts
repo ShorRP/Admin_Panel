@@ -43,6 +43,10 @@ const TEST_PROXY_ENV = z
   })
   .transform((env) => ({ testProxy: env.E2E_TEST_PROXY === "1" }))
 
+const CONTRACT_ENV = z
+  .object({ CONTRACT_MEMBER_ID: SNOWFLAKE })
+  .transform((env) => ({ memberId: env.CONTRACT_MEMBER_ID }))
+
 type Env = Record<string, string | undefined>
 
 export type DiscordApiEnv = z.infer<typeof DISCORD_API_ENV>
@@ -50,6 +54,8 @@ export type DiscordApiEnv = z.infer<typeof DISCORD_API_ENV>
 export type DiscordOAuthEnv = z.infer<typeof DISCORD_OAUTH_ENV>
 
 export type TestProxyEnv = z.infer<typeof TEST_PROXY_ENV>
+
+export type ContractEnv = z.infer<typeof CONTRACT_ENV>
 
 export function parseDiscordApiEnv(env: Env): DiscordApiEnv {
   return parse(DISCORD_API_ENV, env)
@@ -61,6 +67,10 @@ export function parseDiscordOAuthEnv(env: Env): DiscordOAuthEnv {
 
 export function parseTestProxyEnv(env: Env): TestProxyEnv {
   return parse(TEST_PROXY_ENV, env)
+}
+
+export function parseContractEnv(env: Env): ContractEnv {
+  return parse(CONTRACT_ENV, env)
 }
 
 function parse<T>(schema: z.ZodType<T>, env: Env): T {

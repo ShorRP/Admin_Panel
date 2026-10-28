@@ -2,10 +2,10 @@ import { ViewTransition } from "react"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
+import { WriteResultMessage } from "@/ui/write-result-message"
 import { counted, frenchNumber } from "./french-text"
 import { MAX_BLOCKED_WORDS } from "./limits"
 import type { WriteResult } from "./write-result"
-import { WriteResultMessage } from "./write-result-message"
 
 export function BlockedWordList({
   words,

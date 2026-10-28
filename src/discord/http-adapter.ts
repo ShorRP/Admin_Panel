@@ -3,9 +3,15 @@ import {
   type RESTGetAPIAuditLogQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
+  type RESTPostAPICurrentUserCreateDMChannelJSONBody,
 } from "discord-api-types/v10"
 
-import type { BansQuery, DiscordApi } from "./discord-api"
+import type {
+  BansQuery,
+  DiscordApi,
+  MemberChanges,
+  MessageBody,
+} from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
 import { readJson } from "./read-json"
@@ -30,6 +36,11 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
   const endpoints: Endpoint[] = [
     {
       method: "GET",
+      route: ROUTES.guild,
+      answer: () => api.getGuild(),
+    },
+    {
+      method: "GET",
       route: ROUTES.guildMembersSearch,
       answer: (request) => {
         const search = new URL(request.url).searchParams
@@ -49,6 +60,16 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
           await api.getMember(param("user.id")),
           RESTJSONErrorCodes.UnknownMember,
           "Unknown Member"
+        ),
+    },
+    {
+      method: "PATCH",
+      route: ROUTES.guildMember,
+      answer: async (request, param) =>
+        await api.modifyMember(
+          param("user.id"),
+          await readJson<MemberChanges>(request),
+          reasonOf(request)
         ),
     },
     {
@@ -117,9 +138,32 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     {
       method: "GET",
       route: ROUTES.currentUser,
-      answer: (request) =>
-        oauth.getCurrentUser(
-          request.headers.get("Authorization")?.replace(/^Bearer /, "") ?? ""
+      answer: (request) => {
+        const authorization = request.headers.get("Authorization") ?? ""
+        return authorization.startsWith("Bot ")
+          ? api.getApplicationUser()
+          : oauth.getCurrentUser(authorization.replace(/^Bearer /, ""))
+      },
+    },
+    {
+      method: "POST",
+      route: ROUTES.currentUserChannels,
+      answer: async (request) =>
+        await api.createDm(
+          (
+            await readJson<RESTPostAPICurrentUserCreateDMChannelJSONBody>(
+              request
+            )
+          ).recipient_id
+        ),
+    },
+    {
+      method: "POST",
+      route: ROUTES.channelMessages,
+      answer: async (request, param) =>
+        await api.createMessage(
+          param("channel.id"),
+          await readJson<MessageBody>(request)
         ),
     },
     {

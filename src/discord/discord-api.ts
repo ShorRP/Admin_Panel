@@ -5,14 +5,19 @@ import {
   type APIAuditLog,
   type APIAutoModerationRule,
   type APIBan,
+  type APIDMChannel,
+  type APIGuild,
   type APIGuildMember,
+  type APIMessage,
   type APIRole,
   type APIUser,
   type RESTGetAPIAuditLogQuery,
   type RESTGetAPIGuildBansQuery,
   type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
+  type RESTPatchAPIGuildMemberJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
+  type RESTPostAPIChannelMessageJSONBody,
   type Snowflake,
 } from "discord-api-types/v10"
 
@@ -23,7 +28,16 @@ import { fillRoute, ROUTES, type DiscordRoute } from "./routes"
 
 export type DiscordApi = {
   readonly guildId: Snowflake
+  getGuild(): Promise<Guild>
+  getApplicationUser(): Promise<APIUser>
   getMember(userId: Snowflake): Promise<APIGuildMember | null>
+  modifyMember(
+    userId: Snowflake,
+    changes: MemberChanges,
+    reason: string
+  ): Promise<APIGuildMember>
+  createDm(recipientId: Snowflake): Promise<DmChannel>
+  createMessage(channelId: Snowflake, message: MessageBody): Promise<Message>
   listAutoModerationRules(): Promise<APIAutoModerationRule[]>
   createAutoModerationRule(
     rule: RESTPostAPIAutoModerationRuleJSONBody,
@@ -45,6 +59,22 @@ export type DiscordApi = {
 }
 
 export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
+
+export type Guild = Pick<APIGuild, "id" | "owner_id" | "roles">
+
+export type MemberChanges = Pick<
+  RESTPatchAPIGuildMemberJSONBody,
+  "communication_disabled_until"
+>
+
+export type DmChannel = Pick<APIDMChannel, "id" | "type">
+
+export type MessageBody = Pick<
+  RESTPostAPIChannelMessageJSONBody,
+  "content" | "allowed_mentions"
+>
+
+export type Message = Pick<APIMessage, "id" | "channel_id" | "content">
 
 export function createDiscordApi(): DiscordApi {
   return restDiscordApi(parseDiscordApiEnv(process.env), globalThis.fetch)
@@ -87,6 +117,14 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
   return {
     guildId: env.guildId,
 
+    async getGuild() {
+      return await call<APIGuild>({ method: "GET", route: ROUTES.guild })
+    },
+
+    async getApplicationUser() {
+      return await call<APIUser>({ method: "GET", route: ROUTES.currentUser })
+    },
+
     async getMember(userId) {
       return await nullWhen(
         RESTJSONErrorCodes.UnknownMember,
@@ -96,6 +134,33 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
           params: { "user.id": userId },
         })
       )
+    },
+
+    async modifyMember(userId, changes, reason) {
+      return await call<APIGuildMember>({
+        method: "PATCH",
+        route: ROUTES.guildMember,
+        params: { "user.id": userId },
+        body: changes,
+        reason,
+      })
+    },
+
+    async createDm(recipientId) {
+      return await call<APIDMChannel>({
+        method: "POST",
+        route: ROUTES.currentUserChannels,
+        body: { recipient_id: recipientId },
+      })
+    },
+
+    async createMessage(channelId, message) {
+      return await call<APIMessage>({
+        method: "POST",
+        route: ROUTES.channelMessages,
+        params: { "channel.id": channelId },
+        body: message,
+      })
     },
 
     async listAutoModerationRules() {

@@ -4,7 +4,9 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  ChannelType,
   RESTJSONErrorCodes,
+  type APIAuditLogEntry,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type Snowflake,
 } from "discord-api-types/v10"
@@ -20,6 +22,8 @@ const NO_ACCOUNT_ID = "100000000000000000"
 export type ContractTarget = {
   discord: DiscordApi
   outsider: Snowflake
+  member: Snowflake
+  deleteMessage(channelId: Snowflake, messageId: Snowflake): Promise<void>
   cleanUp(): Promise<void>
 }
 
@@ -44,6 +48,48 @@ function keywordRule(
 
 function keywordChanges(keywordFilter: string[]) {
   return { trigger_metadata: { keyword_filter: keywordFilter } }
+}
+
+const DAY_S = 86_400
+
+function secondsFromNow(seconds: number) {
+  return new Date((Math.floor(Date.now() / 1000) + seconds) * 1000)
+}
+
+function timeoutUntil(end: Date | null) {
+  return { communication_disabled_until: end?.toISOString() ?? null }
+}
+
+function timeoutEndOf(value: unknown) {
+  return typeof value === "string" ? new Date(value).toISOString() : null
+}
+
+async function liftTimeout(discord: DiscordApi, member: Snowflake) {
+  await discord.modifyMember(member, timeoutUntil(null), "Contract: clean-up")
+}
+
+function uniqueText(change: string) {
+  return `Contract: ${change} ${crypto.randomUUID().slice(0, 8)}`
+}
+
+async function memberUpdateWith(discord: DiscordApi, reason: string) {
+  const updates = await discord.getAuditLog({
+    action_type: AuditLogEvent.MemberUpdate,
+    limit: 100,
+  })
+  return updates.audit_log_entries.find((entry) => entry.reason === reason)
+}
+
+function timeoutChangeOf(entry: APIAuditLogEntry | undefined) {
+  const change = entry?.changes?.find(
+    ({ key }) => key === "communication_disabled_until"
+  )
+  return (
+    change && {
+      old_value: timeoutEndOf(change.old_value),
+      new_value: timeoutEndOf(change.new_value),
+    }
+  )
 }
 
 function defined<T>(value: T | null | undefined): T {
@@ -76,7 +122,14 @@ export async function patiently<T>(call: () => Promise<T>): Promise<T> {
 function patient(discord: DiscordApi): DiscordApi {
   return {
     guildId: discord.guildId,
+    getGuild: () => patiently(() => discord.getGuild()),
+    getApplicationUser: () => patiently(() => discord.getApplicationUser()),
     getMember: (userId) => patiently(() => discord.getMember(userId)),
+    modifyMember: (userId, changes, reason) =>
+      patiently(() => discord.modifyMember(userId, changes, reason)),
+    createDm: (recipientId) => patiently(() => discord.createDm(recipientId)),
+    createMessage: (channelId, message) =>
+      patiently(() => discord.createMessage(channelId, message)),
     listAutoModerationRules: () =>
       patiently(() => discord.listAutoModerationRules()),
     createAutoModerationRule: (rule, reason) =>
@@ -95,17 +148,9 @@ function patient(discord: DiscordApi): DiscordApi {
 }
 
 async function applicationMember(discord: DiscordApi) {
-  const created = await discord.createAutoModerationRule(
-    keywordRule(["contract"]),
-    "Contract: rule created"
+  return defined(
+    await discord.getMember((await discord.getApplicationUser()).id)
   )
-  const creations = await discord.getAuditLog({
-    action_type: AuditLogEvent.AutoModerationRuleCreate,
-  })
-  const creation = creations.audit_log_entries.find(
-    ({ target_id }) => target_id === created.id
-  )
-  return defined(await discord.getMember(defined(creation?.user_id)))
 }
 
 export function describeDiscordApiContract(
@@ -217,6 +262,7 @@ export function describeDiscordApiContract(
       const member = await discord.getMember(defined(creation?.user_id))
       expect(member?.user.id).toBe(creation?.user_id)
       expect(member?.roles).toBeInstanceOf(Array)
+      expect((await discord.getApplicationUser()).id).toBe(creation?.user_id)
     })
 
     test("the audit log reads newest first, before an entry, or oldest first after one", async () => {
@@ -453,6 +499,145 @@ export function describeDiscordApiContract(
       expect(roles.find(({ id }) => id === discord.guildId)).toMatchObject({
         name: "@everyone",
       })
+    })
+
+    test("the Discord server names its owner, a member, and holds its roles, @everyone included", async () => {
+      const { discord } = connected()
+
+      const guild = await discord.getGuild()
+
+      expect(guild.id).toBe(discord.guildId)
+      expect(await discord.getMember(guild.owner_id)).not.toBeNull()
+      expect(
+        guild.roles.find(({ id }) => id === discord.guildId)
+      ).toMatchObject({ name: "@everyone" })
+    })
+
+    test("the application reads itself as a bot user, which is a member", async () => {
+      const { discord } = connected()
+
+      const application = await discord.getApplicationUser()
+
+      expect(application.bot).toBe(true)
+      expect(await discord.getMember(application.id)).toMatchObject({
+        user: { id: application.id },
+      })
+    })
+
+    test("a timeout sets its end on the member, a new one replaces it, and lifting it clears it, each in the audit log with its reason", async () => {
+      const { discord, member } = connected()
+      onTestFinished(() => liftTimeout(discord, member))
+      const first = secondsFromNow(60)
+      const second = secondsFromNow(300)
+      const timeOut = uniqueText("timed out")
+      const replace = uniqueText("timeout replaced")
+      const lift = uniqueText("timeout lifted")
+
+      const timedOut = await discord.modifyMember(
+        member,
+        timeoutUntil(first),
+        timeOut
+      )
+      expect(timeoutEndOf(timedOut.communication_disabled_until)).toBe(
+        first.toISOString()
+      )
+      await discord.modifyMember(member, timeoutUntil(second), replace)
+      expect(
+        timeoutEndOf(
+          (await discord.getMember(member))?.communication_disabled_until
+        )
+      ).toBe(second.toISOString())
+      await discord.modifyMember(member, timeoutUntil(null), lift)
+
+      expect(
+        timeoutEndOf(
+          (await discord.getMember(member))?.communication_disabled_until
+        )
+      ).toBeNull()
+      const timeOutEntry = await memberUpdateWith(discord, timeOut)
+      expect(timeOutEntry).toMatchObject({
+        target_id: member,
+        user_id: (await discord.getApplicationUser()).id,
+      })
+      expect(timeoutChangeOf(timeOutEntry)?.new_value).toBe(first.toISOString())
+      expect(timeoutChangeOf(await memberUpdateWith(discord, replace))).toEqual(
+        { old_value: first.toISOString(), new_value: second.toISOString() }
+      )
+      expect(timeoutChangeOf(await memberUpdateWith(discord, lift))).toEqual({
+        old_value: second.toISOString(),
+        new_value: null,
+      })
+    })
+
+    test("a timeout ends at most 28 days later", async () => {
+      const { discord, member } = connected()
+      onTestFinished(() => liftTimeout(discord, member))
+
+      await expect(
+        discord.modifyMember(
+          member,
+          timeoutUntil(secondsFromNow(28 * DAY_S + 60)),
+          "Contract: a timeout of 28 days and a minute"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      const end = secondsFromNow(28 * DAY_S)
+      const timedOut = await discord.modifyMember(
+        member,
+        timeoutUntil(end),
+        "Contract: a timeout of 28 days"
+      )
+      expect(timeoutEndOf(timedOut.communication_disabled_until)).toBe(
+        end.toISOString()
+      )
+    })
+
+    test("the owner of the Discord server cannot be timed out", async () => {
+      const { discord } = connected()
+      const { owner_id } = await discord.getGuild()
+
+      await expect(
+        discord.modifyMember(
+          owner_id,
+          timeoutUntil(secondsFromNow(60)),
+          "Contract: the owner timed out"
+        )
+      ).rejects.toMatchObject({
+        status: 403,
+        code: RESTJSONErrorCodes.MissingPermissions,
+        unavailable: false,
+      })
+    })
+
+    test("a user who is not on the Discord server cannot be timed out, as Unknown Member", async () => {
+      const { discord, outsider } = connected()
+
+      await expect(
+        discord.modifyMember(
+          outsider,
+          timeoutUntil(secondsFromNow(60)),
+          "Contract: an outsider timed out"
+        )
+      ).rejects.toMatchObject({
+        status: 404,
+        code: RESTJSONErrorCodes.UnknownMember,
+        unavailable: false,
+      })
+    })
+
+    test("a direct message reaches a member through the channel the application opens with them", async () => {
+      const { discord, member, deleteMessage } = connected()
+      const content = uniqueText("a direct message, « é »")
+
+      const channel = await discord.createDm(member)
+      const message = await discord.createMessage(channel.id, {
+        content,
+        allowed_mentions: { parse: [] },
+      })
+      onTestFinished(() => deleteMessage(channel.id, message.id))
+
+      expect(channel.type).toBe(ChannelType.DM)
+      expect(message).toMatchObject({ channel_id: channel.id, content })
+      expect((await discord.createDm(member)).id).toBe(channel.id)
     })
   })
 }
