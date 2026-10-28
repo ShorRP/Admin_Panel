@@ -4,7 +4,7 @@ import { expect, test } from "vitest"
 import { FakeDiscord, type FakeUser } from "@/discord/fake-discord"
 import { readRecord } from "@/records/read-record"
 import { findStaffMember } from "@/staff/staff-member"
-import { readTimeoutOptions } from "./timeout-options"
+import { readSanctionOptions } from "./sanction-options"
 
 const STAFF = { id: "1300000000000000000", name: "Staff", position: 6 }
 
@@ -74,18 +74,18 @@ async function optionsFor(discord: FakeDiscord, account: FakeUser) {
   if (staffMember === null) {
     throw new Error("Aldis is no staff member")
   }
-  return await readTimeoutOptions(
+  return await readSanctionOptions(
     discord,
     staffMember,
     await readRecord(discord, account.id)
   )
 }
 
-test("a member below the staff member and the application can be timed out, and is not timed out yet", async () => {
+test("a member below the staff member and the application can be timed out or kicked, and is not timed out yet", async () => {
   expect(await optionsFor(discordWith(), LYRA)).toEqual({
     kind: "open",
     userId: LYRA.id,
-    timedOutUntil: null,
+    timeout: { kind: "open", timedOutUntil: null },
   })
 })
 
@@ -95,7 +95,10 @@ test("a timed-out member can be timed out again or lifted, until the end of thei
   ).toEqual({
     kind: "open",
     userId: LYRA.id,
-    timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
+    timeout: {
+      kind: "open",
+      timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
+    },
   })
 })
 
@@ -130,15 +133,19 @@ test("the panel cannot sanction a member whose highest role equals or exceeds th
   })
 })
 
-test("a member with the Administrator permission cannot be timed out", async () => {
+test("a member with the Administrator permission can be kicked, but not timed out, which the record says once", async () => {
   expect(await optionsFor(discordWith(), HALDOR)).toEqual({
-    kind: "refused",
-    reason:
-      "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement.",
+    kind: "open",
+    userId: HALDOR.id,
+    timeout: {
+      kind: "refused",
+      reason:
+        "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement.",
+    },
   })
 })
 
-test("an account that is not a member, banned, absent or unknown, has no timeout to offer", async () => {
+test("an account that is not a member, banned, absent or unknown, has no sanction to offer", async () => {
   const discord = discordWith()
 
   expect(await optionsFor(discord, ESKIL)).toEqual({ kind: "none" })

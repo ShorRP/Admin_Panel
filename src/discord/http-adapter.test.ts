@@ -1,3 +1,8 @@
+import {
+  AuditLogEvent,
+  PermissionFlagsBits,
+  RESTJSONErrorCodes,
+} from "discord-api-types/v10"
 import { expect, test } from "vitest"
 
 import { restDiscordApi } from "./discord-api"
@@ -163,5 +168,95 @@ test("a user who is not on the Discord server is answered as Discord answers, wi
   expect(await response.json()).toEqual({
     message: "Unknown Member",
     code: 10007,
+  })
+})
+
+const ADMINISTRATOR_ROLE = {
+  id: "333333333333333334",
+  name: "Intendant",
+  permissions: PermissionFlagsBits.Administrator.toString(),
+}
+
+const ABOVE_PANEL_ROLE = {
+  id: "333333333333333335",
+  name: "Ancien",
+  position: 2,
+}
+
+const ADMINISTRATOR = { id: "222222222222222225", username: "administrator" }
+
+const SENIOR = { id: "222222222222222226", username: "senior" }
+
+function kickableDiscord() {
+  return new FakeDiscord({
+    ownerId: OWNER.id,
+    roles: [PANEL_ROLE, ADMINISTRATOR_ROLE, ABOVE_PANEL_ROLE],
+    applicationRoles: [PANEL_ROLE.id],
+    members: [
+      { user: OWNER },
+      { user: MEMBER },
+      { user: ADMINISTRATOR, roles: [ADMINISTRATOR_ROLE.id] },
+      { user: SENIOR, roles: [ABOVE_PANEL_ROLE.id] },
+    ],
+    users: [OUTSIDER],
+  })
+}
+
+test("the real DiscordApi kicks a member over the HTTP adapter: their account stays, off the Discord server, and the audit log keeps the kick with its reason, under the application", async () => {
+  const fake = kickableDiscord()
+  const discord = apiOver(fake)
+
+  await discord.removeMember(MEMBER.id, "Spam")
+
+  expect(await discord.getMember(MEMBER.id)).toBeNull()
+  expect(await discord.getUser(MEMBER.id)).toMatchObject(MEMBER)
+  const { audit_log_entries } = await discord.getAuditLog({
+    action_type: AuditLogEvent.MemberKick,
+  })
+  expect(
+    audit_log_entries.map(({ target_id, user_id, reason }) => ({
+      target_id,
+      user_id,
+      reason,
+    }))
+  ).toEqual([
+    {
+      target_id: MEMBER.id,
+      user_id: fake.applicationUser.id,
+      reason: "Spam",
+    },
+  ])
+})
+
+test("a member with the Administrator permission, below the application's role, can be kicked", async () => {
+  const discord = apiOver(kickableDiscord())
+
+  await discord.removeMember(ADMINISTRATOR.id, "Spam")
+
+  expect(await discord.getMember(ADMINISTRATOR.id)).toBeNull()
+})
+
+test("the owner of the Discord server, and a member whose highest role equals or exceeds the application's, cannot be kicked, with Missing Permissions", async () => {
+  const discord = apiOver(kickableDiscord())
+
+  for (const userId of [OWNER.id, SENIOR.id]) {
+    await expect(discord.removeMember(userId, "Spam")).rejects.toMatchObject({
+      status: 403,
+      code: RESTJSONErrorCodes.MissingPermissions,
+    })
+    expect(await discord.getMember(userId)).not.toBeNull()
+  }
+  expect(
+    (await discord.getAuditLog({ action_type: AuditLogEvent.MemberKick }))
+      .audit_log_entries
+  ).toEqual([])
+})
+
+test("a user who is not on the Discord server cannot be kicked, as Unknown Member", async () => {
+  await expect(
+    apiOver(kickableDiscord()).removeMember(OUTSIDER.id, "Spam")
+  ).rejects.toMatchObject({
+    status: 404,
+    code: RESTJSONErrorCodes.UnknownMember,
   })
 })

@@ -4,19 +4,17 @@ import { Timer, TimerOff } from "lucide-react"
 import { Button } from "@/ui/button"
 import { Label } from "@/ui/label"
 import { Textarea } from "@/ui/textarea"
-import { WriteResultMessage } from "@/ui/write-result-message"
+import {
+  CHOICE_CLASS,
+  NATIVE_CONTROL_CLASS,
+  SANCTION_ALERT_ID,
+} from "./sanction-form"
+import type { SanctionResult } from "./sanction-result"
 import { TIMEOUT_DURATIONS } from "./timeout-durations"
-import type { TimeoutResult } from "./timeout-result"
-
-const ALERT_ID = "timeout-error"
 
 const TIME_OUT_REASON_ID = "time-out-reason"
 
 const LIFT_REASON_ID = "lift-reason"
-
-const CHOICE_CLASS = "flex items-center gap-2 text-sm"
-
-const NATIVE_CONTROL_CLASS = "size-4 shrink-0 accent-primary"
 
 export function TimeoutForms({
   userId,
@@ -27,7 +25,7 @@ export function TimeoutForms({
 }: {
   userId: Snowflake
   timedOutUntil: Date | null
-  state: TimeoutResult | null
+  state: SanctionResult | null
   pending: boolean
   action: (formData: FormData) => void
 }) {
@@ -50,7 +48,7 @@ export function TimeoutForms({
                   name="duration"
                   value={seconds}
                   defaultChecked={refusedTimeOut?.duration === seconds}
-                  aria-describedby={ALERT_ID}
+                  aria-describedby={SANCTION_ALERT_ID}
                   className={NATIVE_CONTROL_CLASS}
                 />
                 {label}
@@ -66,7 +64,7 @@ export function TimeoutForms({
             id={TIME_OUT_REASON_ID}
             name="reason"
             defaultValue={refusedTimeOut?.reason ?? ""}
-            aria-describedby={ALERT_ID}
+            aria-describedby={SANCTION_ALERT_ID}
           />
         </div>
         <label className={CHOICE_CLASS}>
@@ -74,7 +72,7 @@ export function TimeoutForms({
             type="checkbox"
             name="notify"
             defaultChecked={refusedTimeOut?.notify ?? true}
-            aria-describedby={ALERT_ID}
+            aria-describedby={SANCTION_ALERT_ID}
             className={NATIVE_CONTROL_CLASS}
           />
           Prévenir en message privé
@@ -94,7 +92,7 @@ export function TimeoutForms({
               id={LIFT_REASON_ID}
               name="reason"
               defaultValue={refusedLift?.reason ?? ""}
-              aria-describedby={ALERT_ID}
+              aria-describedby={SANCTION_ALERT_ID}
             />
           </div>
           <Button
@@ -108,14 +106,6 @@ export function TimeoutForms({
           </Button>
         </form>
       )}
-      <p role="status" className="text-sm">
-        {pending
-          ? "Envoi en cours…"
-          : state?.ok === true && <WriteResultMessage result={state} />}
-      </p>
-      <p role="alert" id={ALERT_ID} className="text-sm">
-        {state?.ok === false && <WriteResultMessage result={state} />}
-      </p>
     </div>
   )
 }

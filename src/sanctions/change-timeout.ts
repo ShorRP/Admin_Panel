@@ -8,14 +8,14 @@ import { DiscordError } from "@/discord/discord-error"
 import { memberName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
 import { formatParisTime } from "@/ui/paris-time"
-import { sendDirectMessage, type DirectMessageOutcome } from "./direct-message"
-import { readTimeoutRefusal } from "./sanction-refusal"
+import { DIRECT_MESSAGE_OUTCOMES, sendDirectMessage } from "./direct-message"
+import { readSanctionRefusals } from "./sanction-refusal"
+import type { TimeoutFields, TimeoutResult } from "./sanction-result"
 import {
   submittedTimeoutChange,
   type SubmittedTimeoutChange,
 } from "./submitted-timeout-change"
 import { timeoutDirectMessage } from "./timeout-direct-message"
-import type { TimeoutFields, TimeoutResult } from "./timeout-result"
 
 type AppliedChange = { name: string; member: APIGuildMember; end: Date | null }
 
@@ -23,17 +23,6 @@ const DISCORD_UNAVAILABLE = {
   "time-out":
     "Discord n’a pas répondu : l’exclusion temporaire est peut-être passée, peut-être pas. Recharge la page pour vérifier, puis réessaie.",
   lift: "Discord n’a pas répondu : la levée est peut-être passée, peut-être pas. Recharge la page pour vérifier, puis réessaie.",
-}
-
-const DIRECT_MESSAGE_OUTCOMES: Record<
-  DirectMessageOutcome,
-  (name: string) => string
-> = {
-  sent: () => "Le message privé est parti.",
-  refused: (name) =>
-    `${name} n’a pas reçu le message privé : Discord l’a refusé.`,
-  unavailable: (name) =>
-    `${name} n’a peut-être pas reçu le message privé : Discord n’a pas répondu.`,
 }
 
 export async function changeTimeout(
@@ -83,10 +72,12 @@ async function applyChange(
   if (member === null) {
     return "Ce compte n’est pas membre du serveur Discord."
   }
-  const refusal = await readTimeoutRefusal(discord, staffMember, {
-    id: member.user.id,
-    roleIds: member.roles,
-  })
+  const { everySanction, timeout } = await readSanctionRefusals(
+    discord,
+    staffMember,
+    { id: member.user.id, roleIds: member.roles }
+  )
+  const refusal = everySanction ?? timeout
   if (refusal !== null) {
     return refusal
   }

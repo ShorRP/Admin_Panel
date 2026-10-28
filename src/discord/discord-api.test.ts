@@ -375,6 +375,41 @@ test("listRoles reads the Discord server's roles", async () => {
   )
 })
 
+test("removeMember kicks the member with its reason, URL-encoded, and takes Discord's empty answer", async () => {
+  const { fetch, requests } = answering(new Response(null, { status: 204 }))
+
+  await expect(
+    restDiscordApi(ENV, fetch).removeMember(USER_ID, "kicked é")
+  ).resolves.toBeUndefined()
+
+  const [request] = requests
+  expect(request?.method).toBe("DELETE")
+  expect(request?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${USER_ID}`
+  )
+  expect(request?.headers.get("X-Audit-Log-Reason")).toBe("kicked%20%C3%A9")
+  expect(request?.headers.get("Content-Type")).toBeNull()
+  expect(await request?.text()).toBe("")
+})
+
+test("removeMember fails with Discord's code when Discord refuses the kick", async () => {
+  const { fetch } = answering(
+    Response.json(
+      { message: "Missing Permissions", code: 50013 },
+      { status: 403 }
+    )
+  )
+
+  await expect(
+    restDiscordApi(ENV, fetch).removeMember(USER_ID, "kicked")
+  ).rejects.toMatchObject({
+    method: "DELETE",
+    route: "/guilds/{guild.id}/members/{user.id}",
+    status: 403,
+    code: 50013,
+  })
+})
+
 test("createDiscordApi validates Discord's variables when it is called", () => {
   vi.stubEnv("DISCORD_BOT_TOKEN", "a-bot-token")
   vi.stubEnv("DISCORD_GUILD_ID", "not-a-snowflake")

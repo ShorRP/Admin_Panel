@@ -19,20 +19,23 @@ type SanctionTarget = {
   roleIds: Snowflake[]
 }
 
-export async function readTimeoutRefusal(
+type SanctionRefusals = {
+  everySanction: string | null
+  timeout: string | null
+}
+
+export async function readSanctionRefusals(
   discord: DiscordApi,
   staffMember: StaffMember,
   target: SanctionTarget
-) {
+): Promise<SanctionRefusals> {
   const hierarchy = await readHierarchy(discord)
-  const refusal = sanctionRefusal(hierarchy, staffMember, target)
-  if (refusal !== null) {
-    return refusal
+  return {
+    everySanction: sanctionRefusal(hierarchy, staffMember, target),
+    timeout: isAdministrator(hierarchy.discordServer, target.roleIds)
+      ? "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement."
+      : null,
   }
-  if (isAdministrator(hierarchy.discordServer, target.roleIds)) {
-    return "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement."
-  }
-  return null
 }
 
 async function readHierarchy(discord: DiscordApi): Promise<Hierarchy> {

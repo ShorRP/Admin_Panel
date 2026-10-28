@@ -174,6 +174,16 @@ function missingPermissions(method: HttpMethod, route: DiscordRoute) {
   })
 }
 
+function unknownMember(method: HttpMethod) {
+  return new DiscordError({
+    method,
+    route: ROUTES.guildMember,
+    status: 404,
+    code: RESTJSONErrorCodes.UnknownMember,
+    discordMessage: "Unknown Member",
+  })
+}
+
 function cannotSendMessages(code: RESTJSONErrorCodes) {
   return new DiscordError({
     method: "POST",
@@ -340,11 +350,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   }
 
   removeMemberAs(userId: Snowflake, memberId: Snowflake, reason?: string) {
-    const author = this.memberOf(userId)
-    const member = this.memberOf(memberId)
-    this.members.delete(memberId)
-    this.users.set(memberId, member.user)
-    this.log(AuditLogEvent.MemberKick, memberId, author.user.id, reason)
+    this.kick(this.memberOf(memberId), this.memberOf(userId).user.id, reason)
   }
 
   createBanAs(userId: Snowflake, bannedId: Snowflake, reason?: string) {
@@ -429,13 +435,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       const route = ROUTES.guildMember
       const member = this.members.get(userId)
       if (member === undefined) {
-        throw new DiscordError({
-          method: "PATCH",
-          route,
-          status: 404,
-          code: RESTJSONErrorCodes.UnknownMember,
-          discordMessage: "Unknown Member",
-        })
+        throw unknownMember("PATCH")
       }
       const end = changes.communication_disabled_until
       if (end === undefined) {
@@ -444,8 +444,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       if (
         userId === this.ownerId ||
         this.isAdministrator(member) ||
-        this.highestPosition(member) >=
-          this.highestPosition(this.memberOf(this.applicationUser.id))
+        !this.isBelowApplication(member)
       ) {
         throw missingPermissions("PATCH", route)
       }
@@ -460,6 +459,19 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         { changes: [changeTimeout(member, end)] }
       )
       return member
+    })
+  }
+
+  removeMember(userId: Snowflake, reason: string) {
+    return this.answer("removeMember", () => {
+      const member = this.members.get(userId)
+      if (member === undefined) {
+        throw unknownMember("DELETE")
+      }
+      if (userId === this.ownerId || !this.isBelowApplication(member)) {
+        throw missingPermissions("DELETE", ROUTES.guildMember)
+      }
+      this.kick(member, this.applicationUser.id, reason)
     })
   }
 
@@ -692,6 +704,23 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
 
   private highestPosition(member: APIGuildMember) {
     return Math.max(...this.rolesOf(member).map(({ position }) => position))
+  }
+
+  private isBelowApplication(member: APIGuildMember) {
+    return (
+      this.highestPosition(member) <
+      this.highestPosition(this.memberOf(this.applicationUser.id))
+    )
+  }
+
+  private kick(
+    member: APIGuildMember,
+    userId: Snowflake,
+    reason: string | undefined
+  ) {
+    this.members.delete(member.user.id)
+    this.users.set(member.user.id, member.user)
+    this.log(AuditLogEvent.MemberKick, member.user.id, userId, reason)
   }
 
   private isAdministrator(member: APIGuildMember) {

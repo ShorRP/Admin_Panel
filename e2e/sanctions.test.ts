@@ -35,6 +35,7 @@ test("a moderator finds a member, opens their record, times them out with the di
   checkAccessibility,
 }) => {
   const main = page.getByRole("main")
+  const timeout = main.getByRole("region", { name: "Exclusion temporaire" })
   const status = main.getByRole("status")
   const history = main.getByRole("region", {
     name: "Historique des sanctions",
@@ -61,14 +62,14 @@ test("a moderator finds a member, opens their record, times them out with the di
   )
   await checkAccessibility()
 
-  await main.getByRole("radio", { name: "1 heure" }).check()
-  await main
+  await timeout.getByRole("radio", { name: "1 heure" }).check()
+  await timeout
     .getByLabel("Motif de l’exclusion temporaire")
     .fill("Insultes répétées")
   await expect(
-    main.getByRole("checkbox", { name: "Prévenir en message privé" })
+    timeout.getByRole("checkbox", { name: "Prévenir en message privé" })
   ).toBeChecked()
-  await main.getByRole("button", { name: "Exclure temporairement" }).click()
+  await timeout.getByRole("button", { name: "Exclure temporairement" }).click()
   await expect(status).toHaveText(
     /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\. Le message privé est parti\.$/
   )
@@ -109,17 +110,18 @@ test("a refused timeout stays in its form, with its message", async ({
   checkAccessibility,
 }) => {
   const main = page.getByRole("main")
+  const timeout = main.getByRole("region", { name: "Exclusion temporaire" })
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
   await page.goto(`/records/${LYRA.id}`)
   await page.waitForLoadState()
-  await main.getByRole("radio", { name: "28 jours" }).check()
-  await main.getByLabel("Motif de l’exclusion temporaire").fill("  ")
-  await main
+  await timeout.getByRole("radio", { name: "28 jours" }).check()
+  await timeout.getByLabel("Motif de l’exclusion temporaire").fill("  ")
+  await timeout
     .getByRole("checkbox", { name: "Prévenir en message privé" })
     .uncheck()
-  await main.getByRole("button", { name: "Exclure temporairement" }).click()
+  await timeout.getByRole("button", { name: "Exclure temporairement" }).click()
 
   await expect(main.getByRole("alert")).toHaveText("Saisis un motif.")
   await expect(main.getByRole("radio", { name: "28 jours" })).toBeChecked()
@@ -127,8 +129,49 @@ test("a refused timeout stays in its form, with its message", async ({
     "  "
   )
   await expect(
-    main.getByRole("checkbox", { name: "Prévenir en message privé" })
+    timeout.getByRole("checkbox", { name: "Prévenir en message privé" })
   ).not.toBeChecked()
   await expect(main).toContainText("Membre du serveur")
+  await checkAccessibility()
+})
+
+test("a moderator kicks a member from their record with the direct message, and the record then says the account is absent, its history showing the kick", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  const main = page.getByRole("main")
+  const kick = main.getByRole("region", { name: "Expulsion" })
+  const entries = main
+    .getByRole("region", { name: "Historique des sanctions" })
+    .getByRole("listitem")
+
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.goto(`/records/${LYRA.id}`)
+  await page.waitForLoadState()
+  await kick.getByLabel("Motif de l’expulsion").fill("Spam répété")
+  await expect(
+    kick.getByRole("checkbox", { name: "Prévenir en message privé" })
+  ).toBeChecked()
+  await kick.getByRole("button", { name: "Expulser" }).click()
+
+  await expect(main.getByRole("status")).toHaveText(
+    "L’expulsion de Lyra des Brumes a eu lieu. Le message privé est parti."
+  )
+  await expect(main).toContainText("Compte absent du serveur")
+  await expect(
+    main.getByRole("heading", { name: "Sanctions", exact: true })
+  ).toBeVisible()
+  await expect(main.getByRole("button", { name: "Expulser" })).toHaveCount(0)
+  await expect(entries).toHaveCount(1)
+  await expect(entries.first()).toContainText("Expulsion")
+  await expect(entries.first()).toContainText("par aldis, depuis le panel")
+  await expect(entries.first()).toContainText("Motif : Spam répété")
+  expect(discord.directMessagesTo(LYRA.id)).toEqual([
+    expect.stringContaining("Motif : Spam répété"),
+  ])
+  expect(await discord.getMember(LYRA.id)).toBeNull()
   await checkAccessibility()
 })

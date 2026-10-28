@@ -7,9 +7,9 @@ import { readRecord } from "@/records/read-record"
 import { RecordDetails } from "@/records/record-details"
 import { RecordDetailsSkeleton } from "@/records/record-details-skeleton"
 import { readSanctionHistory } from "@/sanctions/read-sanction-history"
-import { RecordSanctions } from "@/sanctions/record-sanctions"
 import { SanctionHistory } from "@/sanctions/sanction-history"
-import { readTimeoutOptions } from "@/sanctions/timeout-options"
+import { readSanctionOptions } from "@/sanctions/sanction-options"
+import { StatefulRecordSanctions } from "@/sanctions/stateful-record-sanctions"
 import { requireModerationAccess } from "@/staff/require-staff-member"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
@@ -43,13 +43,13 @@ async function RecordFromDiscord({
   const { userId } = await params
   const record = await readRecord(discord, userId)
   const [options, history] = await Promise.all([
-    readTimeoutOptions(discord, staffMember, record),
+    readSanctionOptions(discord, staffMember, record),
     readSanctionHistory(discord, record),
   ])
   return (
     <>
       <RecordDetails record={record} />
-      <RecordSanctions options={options} />
+      <StatefulRecordSanctions options={options} />
       <SanctionHistory history={history} />
     </>
   )
