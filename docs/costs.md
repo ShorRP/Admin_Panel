@@ -57,7 +57,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 ## Discord
 
-**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, and the webhook of the alerts (`CLAUDE.md`, **Monitoring**); and its CDN, from which the staff's browsers load the members' avatars, with no token (`CLAUDE.md`, **Avatars**).
+**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, the interactions Discord sends them over HTTP (ADR 0003), and the webhook of the alerts (`CLAUDE.md`, **Monitoring**); and its CDN, from which the staff's browsers load the members' avatars, with no token (`CLAUDE.md`, **Avatars**).
 
 **Why it cannot bill.** The Developer Terms name no fee for the APIs (https://support-dev.discord.com/hc/en-us/articles/8562894815383, effective 2024-07-08). The fee Discord takes from developers is a share of what a Premium App sells (https://support-dev.discord.com/hc/en-us/articles/17299902720919, updated 2026-06-11), and monetization is something a team owner enables (https://docs.discord.com/developers/monetization/enabling-monetization); the panel sells nothing.
 
@@ -94,6 +94,18 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 **Used for** writing the panel, under Gilles' own Claude subscription, a fixed price he chose; the repository's hooks and skills run on his machine.
 
 **What would make it bill beyond that.** Usage credits, which apply to "Claude Code terminal usage" too. They bill only once someone clicks « Enable », sets up a payment method and prepays, and they take a monthly spend limit (https://support.claude.com/en/articles/12429409-extra-usage-for-paid-claude-plans, undated).
+
+## Cloudflare's quick tunnels
+
+Read on 2026-10-28, for #194.
+
+**Used for** `pnpm dev:tunnel`, which runs `cloudflared tunnel --url http://localhost:3000` on Gilles' machine, so that « Shor Panel Dev » sends its interactions to `pnpm dev` (ADR 0003). Production and previews use no tunnel. `cloudflared` is open source and maintained by Cloudflare (https://developers.cloudflare.com/tunnel/downloads/, updated 2026-09-11), and installs through winget as `Cloudflare.cloudflared`, 2026.10.5, under Apache-2.0 (`winget show --id Cloudflare.cloudflared`).
+
+**Why it cannot bill.** A quick tunnel opens no account: "You do not need a Cloudflare account or domain" (https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/, updated 2026-09-30), so no payment method can sit anywhere. The disclaimer `cloudflared` prints puts such tunnels under Cloudflare's Online Services Terms of Use (https://github.com/cloudflare/cloudflared/blob/2026.10.5/cmd/cloudflared/tunnel/quick_tunnel.go), which cover the services offered without an account or a subscription and name no fee (https://www.cloudflare.com/website-terms/, effective 2025-08-01).
+
+**What would make it bill.** A Cloudflare account, which a named tunnel needs, and a plan or an add-on on it. The dev tunnel needs neither.
+
+**What it can cost otherwise: the interactions of `pnpm dev`.** A quick tunnel has no uptime guarantee, serves at most 200 requests in flight and answers the next ones with a `429`, gets a new hostname at each run, and is meant for testing and development only (the quick tunnels page). The terms let Cloudflare suspend or end access to these services at any time (the terms of use). A tunnel stopped or refused stops only the interactions of « Shor Panel Dev »: Discord removes a URL that fails its checks, and says so by email and system DM (https://docs.discord.com/developers/interactions/overview), until the next `pnpm dev:tunnel`.
 
 ## Planned
 

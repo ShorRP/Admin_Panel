@@ -17,8 +17,9 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", SESSION_SECRET)
 })
 
-test("everything under /login and static files get through without the proxy", () => {
+test("everything under /login, Discord's interactions and static files get through without the proxy", () => {
   for (const url of [
+    "/interactions",
     "/login",
     "/login/callback?code=a-code&state=a-state",
     "/login/refused",
@@ -34,7 +35,14 @@ test("everything under /login and static files get through without the proxy", (
 })
 
 test("any other route goes through the proxy", () => {
-  for (const url of ["/", "/blocked-words", "/audit-log", "/login-help"]) {
+  for (const url of [
+    "/",
+    "/blocked-words",
+    "/audit-log",
+    "/login-help",
+    "/interactions-help",
+    "/interactions/a-page",
+  ]) {
     expect(unstable_doesMiddlewareMatch({ config, url }), url).toBe(true)
   }
 })
