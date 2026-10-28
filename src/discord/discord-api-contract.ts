@@ -73,6 +73,7 @@ export async function patiently<T>(call: () => Promise<T>): Promise<T> {
 
 function patient(discord: DiscordApi): DiscordApi {
   return {
+    guildId: discord.guildId,
     getMember: (userId) => patiently(() => discord.getMember(userId)),
     listAutoModerationRules: () =>
       patiently(() => discord.listAutoModerationRules()),

@@ -20,7 +20,7 @@ test("E2E_TEST_PROXY turns Next.js's test proxy on", async () => {
   expect((await loadedConfig()).experimental).toEqual({ testProxy: true })
 })
 
-test("every route sends the Content Security Policy, nosniff and the referrer policy, without X-Powered-By", async () => {
+test("every route sends the Content Security Policy, which lets in images from Discord's CDN, nosniff and the referrer policy, without X-Powered-By", async () => {
   vi.stubEnv("VERCEL", undefined)
   vi.stubEnv("E2E_TEST_PROXY", undefined)
   vi.stubEnv("NODE_ENV", "production")
@@ -34,7 +34,7 @@ test("every route sends the Content Security Policy, nosniff and the referrer po
         {
           key: "Content-Security-Policy",
           value:
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.discordapp.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
         },
         { key: "X-Content-Type-Options", value: "nosniff" },
         {
@@ -58,7 +58,7 @@ test("in development, the Content Security Policy also lets React's eval run", a
   expect(route?.headers).toContainEqual({
     key: "Content-Security-Policy",
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.discordapp.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
   })
 })
 

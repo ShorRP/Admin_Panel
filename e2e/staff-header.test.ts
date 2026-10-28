@@ -3,6 +3,8 @@ import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
+const BRYNJA = { id: "1400000000000000002", username: "brynja" }
+
 test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
@@ -48,6 +50,51 @@ test("a staff member moves between sections through the header, which marks the 
       ({ name }) => name === "__Host-session"
     )
   ).toEqual([])
+})
+
+test.describe("for a staff member with an avatar on the Discord server", () => {
+  test.use({
+    discordState: {
+      members: [
+        {
+          user: { ...BRYNJA, avatar: "6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c" },
+          avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8",
+          roles: [STAFF_ROLE_ID],
+        },
+      ],
+    },
+  })
+
+  test("the header shows that avatar from Discord's CDN beside the member's name, then beside the menu button on a 360 px screen, where the name moves into the menu", async ({
+    page,
+    logIn,
+    discordCdnRequests,
+    checkAccessibility,
+  }) => {
+    const header = page.getByRole("banner")
+    const avatar = header.locator("img")
+    const avatarUrl =
+      "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000002/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64"
+
+    await logIn(BRYNJA)
+    await expect(page).toHaveURL("/blocked-words")
+    await expect(avatar).toBeVisible()
+    await expect(avatar).toHaveAttribute("src", avatarUrl)
+    await expect(avatar).toHaveAttribute("alt", "")
+    expect(
+      await avatar.evaluate((image: HTMLImageElement) => image.naturalWidth)
+    ).toBe(64)
+    expect(discordCdnRequests).toContain(avatarUrl)
+    await expect(header.getByText("brynja", { exact: true })).toBeVisible()
+    await checkAccessibility()
+
+    await page.setViewportSize({ width: 360, height: 760 })
+    await expect(avatar).toBeVisible()
+    await expect(
+      header.getByRole("button", { name: "Ouvrir le menu" })
+    ).toBeVisible()
+    await expect(header.getByText("brynja", { exact: true })).toBeHidden()
+  })
 })
 
 test.describe("on a 360 px screen", () => {

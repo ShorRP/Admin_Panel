@@ -22,10 +22,10 @@ const SECTIONS = [
 
 export function StaffHeader({
   currentPath,
-  memberName,
+  member,
 }: {
   currentPath: string
-  memberName: ReactNode
+  member: ReactNode
 }) {
   const sections = SECTIONS.map((section) => ({
     ...section,
@@ -68,46 +68,46 @@ export function StaffHeader({
           ))}
         </ul>
       </nav>
-      <div className="ml-auto hidden min-w-0 items-center gap-2 md:flex">
-        <div className="wrap-anywhere">{memberName}</div>
-        <LogOutForm />
+      <div className="ml-auto flex min-w-0 items-center gap-2 max-md:**:data-[slot=staff-member-name]:hidden">
+        {member}
+        <LogOutForm className="max-md:hidden" />
+        <Sheet>
+          <SheetTrigger
+            render={
+              <Button variant="ghost" size="icon" className="md:hidden" />
+            }
+          >
+            <Menu aria-hidden />
+            <span className="sr-only">Ouvrir le menu</span>
+          </SheetTrigger>
+          <SheetContent side="right" className="motion-reduce:translate-x-0!">
+            <SheetHeader>
+              <SheetTitle>Menu</SheetTitle>
+            </SheetHeader>
+            <nav aria-label="Sections du panel">
+              <ul className="flex flex-col">
+                {sections.map(({ href, name, Icon, current }) => (
+                  <li key={href}>
+                    <SheetClose
+                      nativeButton={false}
+                      role={undefined}
+                      render={<Link href={href} aria-current={current} />}
+                      className="flex items-center gap-2 border-l-2 border-transparent px-4 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                    >
+                      <Icon aria-hidden className="size-4" />
+                      {name}
+                    </SheetClose>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <SheetFooter className="border-t">
+              {member}
+              <LogOutForm />
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </div>
-      <Sheet>
-        <SheetTrigger
-          render={
-            <Button variant="ghost" size="icon" className="ml-auto md:hidden" />
-          }
-        >
-          <Menu aria-hidden />
-          <span className="sr-only">Ouvrir le menu</span>
-        </SheetTrigger>
-        <SheetContent side="right" className="motion-reduce:translate-x-0!">
-          <SheetHeader>
-            <SheetTitle>Menu</SheetTitle>
-          </SheetHeader>
-          <nav aria-label="Sections du panel">
-            <ul className="flex flex-col">
-              {sections.map(({ href, name, Icon, current }) => (
-                <li key={href}>
-                  <SheetClose
-                    nativeButton={false}
-                    role={undefined}
-                    render={<Link href={href} aria-current={current} />}
-                    className="flex items-center gap-2 border-l-2 border-transparent px-4 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
-                  >
-                    <Icon aria-hidden className="size-4" />
-                    {name}
-                  </SheetClose>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <SheetFooter className="border-t">
-            <div className="wrap-anywhere">{memberName}</div>
-            <LogOutForm />
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </header>
   )
 }

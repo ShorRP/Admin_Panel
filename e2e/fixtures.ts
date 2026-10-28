@@ -15,12 +15,16 @@ type Fixtures = {
   logIn: (user: FakeUser) => Promise<void>
   holdDiscord: () => () => void
   checkAccessibility: (options?: { waitForLoad?: boolean }) => Promise<void>
+  discordCdnRequests: string[]
   browserConsole: void
 }
 
 const WCAG_22_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
 const SMALLEST_SCREEN_WIDTH = 360
+
+const LOCAL_AVATAR =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#423020"/></svg>'
 
 export { expect }
 
@@ -145,6 +149,20 @@ export const test = base.extend<Fixtures>({
       ).toBeLessThanOrEqual(clientWidth)
     })
   },
+  discordCdnRequests: [
+    async ({ page }, use) => {
+      const requests: string[] = []
+      await page.route("https://cdn.discordapp.com/**", async (route) => {
+        requests.push(route.request().url())
+        await route.fulfill({
+          contentType: "image/svg+xml",
+          body: LOCAL_AVATAR,
+        })
+      })
+      await use(requests)
+    },
+    { auto: true },
+  ],
   browserConsole: [
     async ({ page }, use) => {
       const problems: string[] = []

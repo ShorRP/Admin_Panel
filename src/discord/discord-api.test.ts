@@ -47,6 +47,12 @@ test("getMember reads the member with the panel's application token", async () =
   )
 })
 
+test("the API is bound to the Discord server its configuration names", () => {
+  const { fetch } = answering(Response.json(MEMBER))
+
+  expect(restDiscordApi(ENV, fetch).guildId).toBe(GUILD_ID)
+})
+
 test("getMember answers null for a user who is not on the Discord server", async () => {
   const { fetch } = answering(
     Response.json({ message: "Unknown Member", code: 10007 }, { status: 404 })
