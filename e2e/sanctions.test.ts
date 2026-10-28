@@ -28,7 +28,7 @@ test.use({
   },
 })
 
-test("a moderator finds a member, opens their record, times them out with the direct message, then lifts the timeout", async ({
+test("a moderator finds a member, opens their record, times them out with the direct message, then lifts the timeout, each in the record's history", async ({
   page,
   logIn,
   discord,
@@ -36,6 +36,10 @@ test("a moderator finds a member, opens their record, times them out with the di
 }) => {
   const main = page.getByRole("main")
   const status = main.getByRole("status")
+  const history = main.getByRole("region", {
+    name: "Historique des sanctions",
+  })
+  const entries = history.getByRole("listitem")
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -45,11 +49,16 @@ test("a moderator finds a member, opens their record, times them out with the di
   await page.getByRole("button", { name: "Chercher" }).click()
   await main.getByRole("link", { name: /^Lyra/ }).click()
   await expect(page).toHaveURL(`/records/${LYRA.id}`)
-  await expect(main.getByRole("heading", { name: "Sanctions" })).toBeVisible()
+  await expect(
+    main.getByRole("heading", { name: "Sanctions", exact: true })
+  ).toBeVisible()
   await expect(main).toContainText("Membre du serveur")
   await expect(
     main.getByRole("button", { name: "Lever l’exclusion temporaire" })
   ).toHaveCount(0)
+  await expect(history).toContainText(
+    "Aucune sanction ni levée dans l’historique."
+  )
   await checkAccessibility()
 
   await main.getByRole("radio", { name: "1 heure" }).check()
@@ -71,6 +80,10 @@ test("a moderator finds a member, opens their record, times them out with the di
   expect(discord.directMessagesTo(LYRA.id)).toEqual([
     expect.stringContaining("Motif : Insultes répétées"),
   ])
+  await expect(entries).toHaveCount(1)
+  await expect(entries.first()).toContainText("Exclusion temporaire jusqu’au")
+  await expect(entries.first()).toContainText("par aldis, depuis le panel")
+  await expect(entries.first()).toContainText("Motif : Insultes répétées")
   await checkAccessibility()
 
   await main.getByLabel("Motif de la levée").fill("Erreur de cible")
@@ -84,6 +97,9 @@ test("a moderator finds a member, opens their record, times them out with the di
   await expect(
     main.getByRole("button", { name: "Lever l’exclusion temporaire" })
   ).toHaveCount(0)
+  await expect(entries).toHaveCount(2)
+  await expect(entries.first()).toContainText("Levée de l’exclusion temporaire")
+  await expect(entries.first()).toContainText("Motif : Erreur de cible")
   await checkAccessibility()
 })
 

@@ -1,5 +1,6 @@
 import {
   AuditLogEvent,
+  AutoModerationActionType,
   AutoModerationRuleTriggerType,
   ChannelType,
   PermissionFlagsBits,
@@ -16,6 +17,7 @@ import {
   type RESTGetAPIAuditLogQuery,
   type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
+  type RESTPatchAPIGuildMemberJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type RESTPostOAuth2AccessTokenResult,
   type Snowflake,
@@ -182,14 +184,29 @@ function cannotSendMessages(code: RESTJSONErrorCodes) {
   })
 }
 
-function timeoutChange(
-  previous: string | null,
+function changeTimeout(
+  member: APIGuildMember,
   end: string | null
 ): APIAuditLogChange {
+  const previous = member.communication_disabled_until ?? null
+  member.communication_disabled_until = end
   return {
     key: "communication_disabled_until",
     ...(previous === null ? {} : { old_value: previous }),
     ...(end === null ? {} : { new_value: end }),
+  }
+}
+
+function changeNick(
+  member: APIGuildMember,
+  nick: string | null
+): APIAuditLogChange {
+  const previous = member.nick ?? null
+  member.nick = nick
+  return {
+    key: "nick",
+    ...(previous === null ? {} : { old_value: previous }),
+    ...(nick === null ? {} : { new_value: nick }),
   }
 }
 
@@ -299,6 +316,86 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     )
   }
 
+  modifyMemberAs(
+    userId: Snowflake,
+    memberId: Snowflake,
+    {
+      nick,
+      communication_disabled_until: end,
+    }: Pick<
+      RESTPatchAPIGuildMemberJSONBody,
+      "communication_disabled_until" | "nick"
+    >,
+    reason?: string
+  ) {
+    const author = this.memberOf(userId)
+    const member = this.memberOf(memberId)
+    this.log(AuditLogEvent.MemberUpdate, memberId, author.user.id, reason, {
+      changes: [
+        ...(nick === undefined ? [] : [changeNick(member, nick)]),
+        ...(end === undefined ? [] : [changeTimeout(member, end)]),
+      ],
+    })
+    return structuredClone(member)
+  }
+
+  removeMemberAs(userId: Snowflake, memberId: Snowflake, reason?: string) {
+    const author = this.memberOf(userId)
+    const member = this.memberOf(memberId)
+    this.members.delete(memberId)
+    this.users.set(memberId, member.user)
+    this.log(AuditLogEvent.MemberKick, memberId, author.user.id, reason)
+  }
+
+  createBanAs(userId: Snowflake, bannedId: Snowflake, reason?: string) {
+    const author = this.memberOf(userId)
+    const user = this.knownUser(bannedId)
+    if (user === undefined) {
+      throw new Error(`No account ${bannedId} on the fake Discord`)
+    }
+    this.members.delete(bannedId)
+    this.users.delete(bannedId)
+    this.bans.set(bannedId, { user, reason: keptReason(reason) ?? null })
+    this.log(AuditLogEvent.MemberBanAdd, bannedId, author.user.id, reason)
+  }
+
+  removeBanAs(userId: Snowflake, bannedId: Snowflake, reason?: string) {
+    const author = this.memberOf(userId)
+    const ban = this.bans.get(bannedId)
+    if (ban === undefined) {
+      throw new Error(`No ban of ${bannedId} on the fake Discord server`)
+    }
+    this.bans.delete(bannedId)
+    this.users.set(bannedId, ban.user)
+    this.log(AuditLogEvent.MemberBanRemove, bannedId, author.user.id, reason)
+  }
+
+  timeOutByAutoModeration(ruleId: Snowflake, memberId: Snowflake) {
+    const rule = this.rules.find(({ id }) => id === ruleId)
+    const seconds = rule?.actions.find(
+      ({ type }) => type === AutoModerationActionType.Timeout
+    )?.metadata?.duration_seconds
+    if (rule === undefined || seconds === undefined) {
+      throw new Error(`No AutoMod rule ${ruleId} that times out on the fake`)
+    }
+    const member = this.memberOf(memberId)
+    member.communication_disabled_until = new Date(
+      Date.now() + seconds * 1000
+    ).toISOString()
+    this.log(
+      AuditLogEvent.AutoModerationUserCommunicationDisabled,
+      memberId,
+      memberId,
+      undefined,
+      {
+        options: {
+          auto_moderation_rule_name: rule.name,
+          auto_moderation_rule_trigger_type: `${rule.trigger_type}` as const,
+        },
+      }
+    )
+  }
+
   issueOAuth2Code(user: FakeUser, codeChallenge: string) {
     const code = `code-${this.nextSnowflake()}`
     this.codes.set(code, { user: apiUser(user), codeChallenge })
@@ -355,14 +452,12 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       if (end !== null && Date.parse(end) - Date.now() > MAX_TIMEOUT_MS) {
         throw refused("PATCH", route)
       }
-      const previous = member.communication_disabled_until ?? null
-      member.communication_disabled_until = end
       this.log(
         AuditLogEvent.MemberUpdate,
         userId,
         this.applicationUser.id,
         reason,
-        [timeoutChange(previous, end)]
+        { changes: [changeTimeout(member, end)] }
       )
       return member
     })
@@ -473,9 +568,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         guild_scheduled_events: [],
         integrations: [],
         threads: [],
-        users: [...this.members.values()]
-          .map((member) => member.user)
-          .filter((user) => userIds.has(user.id)),
+        users: [...userIds].flatMap((id) => {
+          const user = id === null ? undefined : this.knownUser(id)
+          return user === undefined ? [] : [user]
+        }),
         webhooks: [],
       }
     })
@@ -494,14 +590,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   }
 
   getUser(userId: Snowflake) {
-    return this.answer(
-      "getUser",
-      () =>
-        this.members.get(userId)?.user ??
-        this.bans.get(userId)?.user ??
-        this.users.get(userId) ??
-        null
-    )
+    return this.answer("getUser", () => this.knownUser(userId) ?? null)
   }
 
   getBan(userId: Snowflake) {
@@ -577,6 +666,14 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       }
       return user
     })
+  }
+
+  private knownUser(userId: Snowflake) {
+    return (
+      this.members.get(userId)?.user ??
+      this.bans.get(userId)?.user ??
+      this.users.get(userId)
+    )
   }
 
   private memberOf(userId: Snowflake) {
@@ -689,7 +786,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     targetId: Snowflake,
     userId: Snowflake,
     reason: string | undefined,
-    changes?: APIAuditLogChange[]
+    details: Pick<APIAuditLogEntry, "changes" | "options"> = {}
   ) {
     const kept = keptReason(reason)
     this.entries.push({
@@ -697,7 +794,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       action_type: actionType,
       target_id: targetId,
       user_id: userId,
-      ...(changes === undefined ? {} : { changes }),
+      ...details,
       ...(kept === undefined ? {} : { reason: kept }),
     })
   }
