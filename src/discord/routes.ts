@@ -1,4 +1,5 @@
 export const ROUTES = {
+  guild: "/guilds/{guild.id}",
   guildMembersSearch: "/guilds/{guild.id}/members/search",
   guildMember: "/guilds/{guild.id}/members/{user.id}",
   guildBans: "/guilds/{guild.id}/bans",
@@ -11,6 +12,9 @@ export const ROUTES = {
   oauth2Token: "/oauth2/token",
   currentUser: "/users/@me",
   user: "/users/{user.id}",
+  currentUserChannels: "/users/@me/channels",
+  channelMessages: "/channels/{channel.id}/messages",
+  channelMessage: "/channels/{channel.id}/messages/{message.id}",
 } as const
 
 export type DiscordRoute = (typeof ROUTES)[keyof typeof ROUTES]

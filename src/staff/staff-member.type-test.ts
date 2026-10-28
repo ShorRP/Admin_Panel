@@ -5,6 +5,7 @@ type HandWritten = {
   name: string
   avatarUrl: string | null
   opensModeration: boolean
+  roleIds: string[]
 }
 
 export const handWrittenIsStaffMember: HandWritten extends StaffMember

@@ -6,6 +6,8 @@ import { createDiscordApi } from "@/discord/discord-api"
 import { readRecord } from "@/records/read-record"
 import { RecordDetails } from "@/records/record-details"
 import { RecordDetailsSkeleton } from "@/records/record-details-skeleton"
+import { RecordSanctions } from "@/sanctions/record-sanctions"
+import { readTimeoutOptions } from "@/sanctions/timeout-options"
 import { requireModerationAccess } from "@/staff/require-staff-member"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
@@ -35,7 +37,15 @@ async function RecordFromDiscord({
 }: Pick<PageProps<"/records/[userId]">, "params">) {
   await connection()
   const discord = createDiscordApi()
-  await requireModerationAccess(discord)
+  const staffMember = await requireModerationAccess(discord)
   const { userId } = await params
-  return <RecordDetails record={await readRecord(discord, userId)} />
+  const record = await readRecord(discord, userId)
+  return (
+    <>
+      <RecordDetails record={record} />
+      <RecordSanctions
+        options={await readTimeoutOptions(discord, staffMember, record)}
+      />
+    </>
+  )
 }
