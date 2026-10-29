@@ -3,13 +3,14 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  type RESTGetAPIAuditLogQuery,
 } from "discord-api-types/v10"
 import { expect, onTestFinished, test, vi } from "vitest"
 
 import { addBlockedWord } from "@/blocked-words/add-blocked-word"
 import { removeBlockedWord } from "@/blocked-words/remove-blocked-word"
 import { DiscordError } from "@/discord/discord-error"
-import { FakeDiscord } from "@/discord/fake-discord"
+import { FakeDiscord, type FakeDiscordState } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { changeTimeout } from "@/sanctions/change-timeout"
 import { findStaffMember, type StaffMember } from "@/staff/staff-member"
@@ -90,7 +91,11 @@ const LYRA = {
 }
 
 function discordWithModerator() {
-  return new FakeDiscord({
+  return new FakeDiscord(moderatorState())
+}
+
+function moderatorState(): FakeDiscordState {
+  return {
     roles: [
       { id: STAFF_ROLE_ID, name: "Staff", position: 6 },
       { id: MODERATION_ROLE_ID, name: "Modération", position: 5 },
@@ -107,7 +112,7 @@ function discordWithModerator() {
       { user: BRYN, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
       { user: LYRA, roles: [GUARD_ROLE.id] },
     ],
-  })
+  }
 }
 
 function sanctionChanges(changes: AuditLogChange[]) {
@@ -142,7 +147,7 @@ test("a timeout given through the panel shows among the changes to the blocked w
   await changeTimeout(discord, moderator, timeOutForm("Insultes répétées"))
   await addBlockedWord(discord, moderator, form("bar"))
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(changes).toEqual([
     expect.objectContaining({ kind: "rule", description: "Ajout de « bar »" }),
@@ -179,7 +184,7 @@ test("timeouts, kicks and bans made in Discord, and their lifting, show under th
   discord.createBanAs(BRYN.id, LYRA.id, "Retour sous un autre nom")
   discord.removeBanAs(BRYN.id, LYRA.id)
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   const byBryn = {
     memberName: "Bryn la Rouge",
@@ -224,7 +229,7 @@ test("AutoMod's timeouts never show, nor a change to a member but their timeout"
   discord.timeOutByAutoModeration(insults.id, LYRA.id)
   discord.modifyMemberAs(BRYN.id, LYRA.id, { nick: "Lyra des Brumes" })
 
-  expect(changesOf(await readAuditLog(discord, undefined))).toEqual([])
+  expect(changesOf(await readAuditLog(discord, {}))).toEqual([])
 })
 
 test("a sanction against an account the audit log does not name shows it as « Compte inconnu »", async () => {
@@ -240,7 +245,7 @@ test("a sanction against an account the audit log does not name shows it as « 
     ],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(sanctionChanges(changes)).toEqual([
     {
@@ -265,8 +270,8 @@ test("a page holds the 50 newest changes, to the blocked words and to sanctions 
     )
   }
 
-  const newest = await readAuditLog(discord, undefined)
-  const older = await readAuditLog(discord, newest.older)
+  const newest = await readAuditLog(discord, {})
+  const older = await readAuditLog(discord, { before: newest.older })
 
   expect(changesOf(newest)).toHaveLength(50)
   expect(sanctionChanges(changesOf(newest))[0]?.reason).toBe("Motif 30")
@@ -284,7 +289,7 @@ test("the blocked words added and removed through the panel show newest first, u
   await addBlockedWord(discord, staffMember, form("bar"))
   await removeBlockedWord(discord, staffMember, form("foo"))
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Retrait de « foo »" },
@@ -312,7 +317,7 @@ test("a change made in Discord to the panel's rule shows under its author's Disc
     enabled: true,
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Règle modifiée dans Discord" },
@@ -347,7 +352,7 @@ test("changes to other AutoMod rules never show, however many there are", async 
     })
   }
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Ajout de « bar »" },
@@ -359,7 +364,7 @@ test("before the panel's rule exists, no change to an AutoMod rule shows", async
   const discord = discordWithStaff()
   discord.createAutoModerationRuleAs(ALDIS.id, LINKS_RULE)
 
-  expect(changesOf(await readAuditLog(discord, undefined))).toEqual([])
+  expect(changesOf(await readAuditLog(discord, {}))).toEqual([])
 })
 
 test("a page holds the 50 newest changes, and its cursor leads to the older ones", async () => {
@@ -369,8 +374,8 @@ test("a page holds the 50 newest changes, and its cursor leads to the older ones
     await addBlockedWord(discord, staffMember, form(`mot${index}`))
   }
 
-  const newest = await readAuditLog(discord, undefined)
-  const older = await readAuditLog(discord, newest.older)
+  const newest = await readAuditLog(discord, {})
+  const older = await readAuditLog(discord, { before: newest.older })
 
   expect(newest.before).toBeNull()
   expect(changesOf(newest)).toHaveLength(50)
@@ -390,7 +395,7 @@ test("with 50 changes or fewer, there is no older page", async () => {
     await addBlockedWord(discord, staffMember, form(`mot${index}`))
   }
 
-  const newest = await readAuditLog(discord, undefined)
+  const newest = await readAuditLog(discord, {})
 
   expect(changesOf(newest)).toHaveLength(50)
   expect(newest.older).toBeNull()
@@ -408,7 +413,7 @@ test("an invalid cursor counts as absent, and the newest changes show", async ()
     "18446744073709551616",
     ["1563530499194880000", "1563530499194880001"],
   ]) {
-    const page = await readAuditLog(discord, before)
+    const page = await readAuditLog(discord, { before })
     expect(page.before).toBeNull()
     expect(shown(changesOf(page))).toEqual([
       { memberName: "aldis", description: "Ajout de « foo »" },
@@ -445,7 +450,7 @@ test("each change carries the moment its audit log entry's ID holds", async () =
     ],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(changes.map(({ date }) => date)).toEqual([
     new Date("2026-10-24T12:32:00.000Z"),
@@ -484,7 +489,7 @@ test("a change made through the panel carries the avatar of the staff member its
     auditLogEntries: [panelAddition("1563530499194880000", "foo")],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(withAvatars(changes)).toEqual([
     {
@@ -511,7 +516,7 @@ test("a change made in Discord carries its author's avatar", async () => {
     ],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(withAvatars(changes)).toEqual([
     {
@@ -541,7 +546,7 @@ test("a member whose lookup Discord refuses shows no avatar on any of their chan
     })
   )
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(withAvatars(changes)).toEqual([
     { memberName: "aldis", avatarUrl: null },
@@ -555,7 +560,7 @@ test("a staff member who has left the Discord server shows no avatar, under the 
     auditLogEntries: [panelAddition("1563530499194880000", "foo")],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(withAvatars(changes)).toEqual([
     { memberName: "aldis", avatarUrl: null },
@@ -577,7 +582,7 @@ test("a member's lookup that fails with anything but a DiscordError is thrown", 
     auditLogEntries: [panelAddition("1563530499194880000", "foo")],
   })
 
-  await expect(readAuditLog(discord, undefined)).rejects.toBe(BUG)
+  await expect(readAuditLog(discord, {})).rejects.toBe(BUG)
 })
 
 test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
@@ -599,7 +604,7 @@ test("a change made in Discord by an account the audit log does not name shows u
     ],
   })
 
-  const changes = changesOf(await readAuditLog(discord, undefined))
+  const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
     {
@@ -622,9 +627,9 @@ test("renamed in Discord, the panel's rule takes its history with it, which star
     name: "Anciens mots interdits",
   })
 
-  const renamed = await readAuditLog(discord, undefined)
+  const renamed = await readAuditLog(discord, {})
   await addBlockedWord(discord, staffMember, form("bar"))
-  const created = await readAuditLog(discord, undefined)
+  const created = await readAuditLog(discord, {})
 
   expect(changesOf(renamed)).toEqual([])
   expect(shown(changesOf(created))).toEqual([
@@ -657,7 +662,7 @@ test("a page's changes sit under the day of Paris they were made on, newest day 
   await addBlockedWordAt(discord, staffMember, "bar", "2026-10-27T23:01:00Z")
   await addBlockedWordAt(discord, staffMember, "baz", "2026-10-28T09:00:00Z")
 
-  expect(onParisDays(await readAuditLog(discord, undefined))).toEqual([
+  expect(onParisDays(await readAuditLog(discord, {}))).toEqual([
     {
       date: "2026-10-28",
       descriptions: ["Ajout de « baz »", "Ajout de « bar »"],
@@ -682,8 +687,8 @@ test("a day cut between two pages heads both: the newest page ends on it, and th
     )
   }
 
-  const newest = await readAuditLog(discord, undefined)
-  const older = await readAuditLog(discord, newest.older)
+  const newest = await readAuditLog(discord, {})
+  const older = await readAuditLog(discord, { before: newest.older })
 
   expect(
     onParisDays(newest).map(({ date, descriptions }) => [
@@ -710,5 +715,173 @@ test("a failed read of the audit log is thrown", async () => {
   })
   discord.failNext("getAuditLog", unavailable)
 
-  await expect(readAuditLog(discord, undefined)).rejects.toBe(unavailable)
+  await expect(readAuditLog(discord, {})).rejects.toBe(unavailable)
 })
+
+async function discordWithEveryKindOfChange() {
+  const discord = discordWithModerator()
+  await addEveryKindOfChange(discord)
+  return discord
+}
+
+async function addEveryKindOfChange(discord: FakeDiscord) {
+  await addBlockedWord(discord, await staffMemberOn(discord), form("foo"))
+  const [rule] = await discord.listAutoModerationRules()
+  if (rule === undefined) {
+    throw new Error("Adding a blocked word created no panel rule")
+  }
+  discord.modifyAutoModerationRuleAs(BRYN.id, rule.id, { enabled: false })
+  discord.modifyMemberAs(
+    BRYN.id,
+    LYRA.id,
+    { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+    "Spam"
+  )
+  discord.modifyMemberAs(BRYN.id, LYRA.id, {
+    communication_disabled_until: null,
+  })
+  discord.removeMemberAs(BRYN.id, LYRA.id, "Provocations")
+  discord.createBanAs(BRYN.id, LYRA.id, "Retour sous un autre nom")
+  discord.removeBanAs(BRYN.id, LYRA.id)
+}
+
+function kindsOf(page: AuditLogPage) {
+  return changesOf(page).map((change) => {
+    if (change.kind === "rule") {
+      return change.madeInDiscord ? "rule changed in Discord" : "blocked word"
+    }
+    return change.sanctionChange.kind
+  })
+}
+
+test.each([
+  ["blocked-words", ["rule changed in Discord", "blocked word"]],
+  ["timeouts", ["timeout-lift", "timeout"]],
+  ["kicks", ["kick"]],
+  ["bans", ["ban-lift", "ban"]],
+])(
+  "a page of the type %s holds only its changes, and says its type",
+  async (type, kinds) => {
+    const discord = await discordWithEveryKindOfChange()
+
+    const page = await readAuditLog(discord, { type })
+
+    expect(page.type).toBe(type)
+    expect(kindsOf(page)).toEqual(kinds)
+  }
+)
+
+const EVERY_KIND = [
+  "ban-lift",
+  "ban",
+  "kick",
+  "timeout-lift",
+  "timeout",
+  "rule changed in Discord",
+  "blocked word",
+]
+
+test("with no type, a page holds every kind of change, and says it has no type", async () => {
+  const discord = await discordWithEveryKindOfChange()
+
+  const page = await readAuditLog(discord, {})
+
+  expect(page.type).toBeNull()
+  expect(kindsOf(page)).toEqual(EVERY_KIND)
+})
+
+test("an invalid type counts as absent, and every kind of change shows", async () => {
+  const discord = await discordWithEveryKindOfChange()
+
+  for (const type of ["", "all", "Timeouts", "timeout", ["timeouts", "bans"]]) {
+    const page = await readAuditLog(discord, { type })
+    expect(page.type).toBeNull()
+    expect(kindsOf(page)).toEqual(EVERY_KIND)
+  }
+})
+
+test("a type's page holds its 50 newest changes, and its cursor leads to that type's older ones", async () => {
+  const discord = discordWithModerator()
+  const staffMember = await staffMemberOn(discord)
+  for (let index = 1; index <= 30; index++) {
+    await addBlockedWord(discord, staffMember, form(`mot${index}`))
+    discord.modifyMemberAs(
+      BRYN.id,
+      LYRA.id,
+      { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+      `Motif ${index}`
+    )
+    discord.modifyMemberAs(BRYN.id, LYRA.id, {
+      communication_disabled_until: null,
+    })
+  }
+
+  const newest = await readAuditLog(discord, { type: "timeouts" })
+  const older = await readAuditLog(discord, {
+    type: "timeouts",
+    before: newest.older,
+  })
+
+  expect(kindsOf(newest)).toHaveLength(50)
+  expect(sanctionChanges(changesOf(newest)).at(-1)?.reason).toBe("Motif 6")
+  expect(older.type).toBe("timeouts")
+  expect(older.before).toBe(newest.older)
+  expect(older.older).toBeNull()
+  expect(new Set(kindsOf(older))).toEqual(new Set(["timeout-lift", "timeout"]))
+  expect(sanctionChanges(changesOf(older)).at(-1)?.reason).toBe("Motif 1")
+  expect(kindsOf(older)).toHaveLength(10)
+})
+
+const UNAVAILABLE = new DiscordError({
+  method: "GET",
+  route: ROUTES.guildAuditLog,
+  status: 503,
+})
+
+class FakeDiscordAnsweringOnly extends FakeDiscord {
+  answered: { events: AuditLogEvent[]; rules: boolean } | null = null
+
+  override getAuditLog(query: RESTGetAPIAuditLogQuery) {
+    const { answered } = this
+    return answered === null ||
+      (query.action_type !== undefined &&
+        answered.events.includes(query.action_type))
+      ? super.getAuditLog(query)
+      : Promise.reject(UNAVAILABLE)
+  }
+
+  override listAutoModerationRules() {
+    return this.answered === null || this.answered.rules
+      ? super.listAutoModerationRules()
+      : Promise.reject(UNAVAILABLE)
+  }
+}
+
+test.each([
+  {
+    type: "blocked-words",
+    events: [
+      AuditLogEvent.AutoModerationRuleCreate,
+      AuditLogEvent.AutoModerationRuleUpdate,
+    ],
+    rules: true,
+  },
+  { type: "timeouts", events: [AuditLogEvent.MemberUpdate], rules: false },
+  { type: "kicks", events: [AuditLogEvent.MemberKick], rules: false },
+  {
+    type: "bans",
+    events: [AuditLogEvent.MemberBanAdd, AuditLogEvent.MemberBanRemove],
+    rules: false,
+  },
+])(
+  "a page of the type $type asks Discord for that type's entries alone, and for the AutoMod rules only for the blocked words",
+  async ({ type, events, rules }) => {
+    const discord = new FakeDiscordAnsweringOnly(moderatorState())
+    await addEveryKindOfChange(discord)
+    discord.answered = { events, rules }
+
+    const page = await readAuditLog(discord, { type })
+
+    expect(changesOf(page)).not.toEqual([])
+  }
+)

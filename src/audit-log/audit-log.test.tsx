@@ -15,6 +15,7 @@ import { expect, test } from "vitest"
 
 import type { SanctionChange } from "@/sanctions/sanction-events"
 import { AuditLog } from "./audit-log"
+import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
 
 const ADDITION: AuditLogChange = {
@@ -53,12 +54,21 @@ const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
 }
 
 function render(page: Partial<AuditLogPage>, opensModeration = false) {
-  return renderToStaticMarkup(
-    <AuditLog
-      page={{ days: [], before: null, older: null, ...page }}
-      opensModeration={opensModeration}
-    />
-  )
+  const { html, filter } = renderWithFilter(page, opensModeration)
+  return html.replace(filter, "")
+}
+
+function renderWithFilter(
+  page: Partial<AuditLogPage>,
+  opensModeration = false
+) {
+  const wholePage = { type: null, days: [], before: null, older: null, ...page }
+  return {
+    html: renderToStaticMarkup(
+      <AuditLog page={wholePage} opensModeration={opensModeration} />
+    ),
+    filter: renderToStaticMarkup(<AuditLogTypeFilter type={wholePage.type} />),
+  }
 }
 
 function text(html: string) {
@@ -307,4 +317,66 @@ test("an older page with no change says only that none is older, and links back 
     "Aucun changement plus ancien.Revenir aux plus récents"
   )
   expect(links(html)).toEqual([NEWEST_LINK])
+})
+
+test("the audit log opens on the filter of its page's type, before its days", () => {
+  const { html, filter } = renderWithFilter({
+    ...onOneDay(TIMEOUT),
+    type: "timeouts",
+  })
+
+  expect(filter).toMatch(/<a[^>]* aria-current="true"[^>]*>Exclusions<\/a>/)
+  expect(html.indexOf(filter)).toBeGreaterThan(-1)
+  expect(html.indexOf(filter)).toBeLessThan(html.indexOf("<section"))
+})
+
+test("an empty page of a type says that no change of that type is as recent as 45 days, and offers « Réinitialiser », which leads to every type", () => {
+  const html = render({ type: "kicks" })
+
+  expect(text(html)).toBe(
+    "Aucun changement de ce type ces 45 derniers jours.Réinitialiser"
+  )
+  expect(links(html)).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Réinitialiser",
+      href: "/audit-log",
+    },
+  ])
+  expect(days(html)).toEqual([])
+})
+
+test("a type's pages link to the newest and the older changes of that type", () => {
+  const older = {
+    ...onOneDay(TIMEOUT),
+    type: "timeouts",
+    before: "1563530499194880001",
+    older: "1563530499194880000",
+  } as const
+
+  expect(links(render(older))).toEqual([
+    { ...NEWEST_LINK, href: "/audit-log?type=timeouts" },
+    {
+      ...olderLink("1563530499194880000"),
+      href: "/audit-log?type=timeouts&before=1563530499194880000",
+    },
+  ])
+})
+
+test("an older page of a type with no change says only that none is older, then offers « Réinitialiser », and links back to that type's newest changes", () => {
+  const html = render({ type: "bans", before: "1563530499194880001" })
+
+  expect(text(html)).toBe(
+    "Aucun changement plus ancien.RéinitialiserRevenir aux plus récents"
+  )
+  expect(links(html)).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Réinitialiser",
+      href: "/audit-log",
+    },
+    { ...NEWEST_LINK, href: "/audit-log?type=bans" },
+  ])
 })

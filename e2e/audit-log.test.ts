@@ -153,6 +153,95 @@ test.describe("for a staff member who moderates", () => {
   })
 })
 
+const BRYN = { id: "1400000000000000002", username: "bryn" }
+
+test.describe("with changes of several types", () => {
+  test.use({
+    discordState: {
+      members: [
+        { user: ALDIS, roles: [STAFF_ROLE_ID] },
+        { user: LYRA },
+        { user: BRYN },
+      ],
+    },
+  })
+
+  test("a staff member chooses « Exclusions », reads only timeouts and their lifting, then the older ones of that type, then every type again through « Réinitialiser »", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    for (let index = 1; index <= 26; index++) {
+      discord.modifyMemberAs(
+        ALDIS.id,
+        LYRA.id,
+        { communication_disabled_until: inAnHour() },
+        `Motif ${index}`
+      )
+      discord.modifyMemberAs(ALDIS.id, LYRA.id, {
+        communication_disabled_until: null,
+      })
+    }
+    await discord.createAutoModerationRule(
+      newPanelRule(["mot0"]),
+      addition("mot0")
+    )
+    discord.removeMemberAs(ALDIS.id, BRYN.id, "Provocations")
+    const changes = page.locator("ol").getByRole("listitem")
+    const timeoutsAndLifts = changes.filter({
+      hasText: /Exclusion temporaire jusqu’au|Levée de l’exclusion temporaire/,
+    })
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+    const reset = page.getByRole("link", { name: "Réinitialiser" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(
+      typeFilter.getByRole("link", { name: "Tout", exact: true })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(changes.filter({ hasText: "Ajout de « mot0 »" })).toBeVisible()
+    await expect(changes.filter({ hasText: "Expulsion" })).toBeVisible()
+    await expect(reset).toHaveCount(0)
+
+    await typeFilter.getByRole("link", { name: "Exclusions" }).click()
+    await expect(page).toHaveURL("/audit-log?type=timeouts")
+    await expect(
+      typeFilter.getByRole("link", { name: "Exclusions" })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(
+      typeFilter.getByRole("link", { name: "Tout", exact: true })
+    ).not.toHaveAttribute("aria-current")
+    await expect(changes).toHaveCount(50)
+    await expect(timeoutsAndLifts).toHaveCount(50)
+    await checkAccessibility()
+
+    await page.getByRole("link", { name: "Plus anciens" }).click()
+    await expect(page).toHaveURL(/^[^?]*\/audit-log\?type=timeouts&before=\d+$/)
+    await expect(
+      typeFilter.getByRole("link", { name: "Exclusions" })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(changes).toHaveCount(2)
+    await expect(timeoutsAndLifts).toHaveCount(2)
+    await expect(changes.filter({ hasText: "Motif : Motif 1" })).toContainText(
+      "Exclusion temporaire jusqu’au"
+    )
+    await checkAccessibility()
+
+    await reset.click()
+    await expect(page).toHaveURL("/audit-log")
+    await expect(
+      typeFilter.getByRole("link", { name: "Tout", exact: true })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(changes.filter({ hasText: "Ajout de « mot0 »" })).toBeVisible()
+    await expect(changes).toHaveCount(50)
+    await expect(reset).toHaveCount(0)
+    await checkAccessibility()
+  })
+})
+
 test("a staff member who does not moderate sees a sanction in the audit log, with no link to the account's record", async ({
   page,
   logIn,
