@@ -1,9 +1,9 @@
 import { ParisTime } from "@/ui/paris-time"
 import type {
   SanctionAuthor,
-  SanctionChange,
   SanctionHistoryEntry,
 } from "./read-sanction-history"
+import { SanctionChangeSummary } from "./sanction-change-summary"
 
 const HEADING_ID = "sanction-history"
 
@@ -28,7 +28,7 @@ export function SanctionHistory({
           {history.map(({ id, date, change, author, reason }) => (
             <li key={id} className="flex flex-col gap-0.5 py-3">
               <p className="font-medium">
-                <ChangeSummary change={change} />
+                <SanctionChangeSummary change={change} />
               </p>
               <p className="text-sm wrap-anywhere text-muted-foreground">
                 Le <ParisTime date={date} />, par{" "}
@@ -45,27 +45,6 @@ export function SanctionHistory({
       )}
     </section>
   )
-}
-
-function ChangeSummary({ change }: { change: SanctionChange }) {
-  switch (change.kind) {
-    case "timeout":
-      return change.end === null ? (
-        "Exclusion temporaire"
-      ) : (
-        <>
-          Exclusion temporaire jusqu’au <ParisTime date={change.end} />
-        </>
-      )
-    case "timeout-lift":
-      return "Levée de l’exclusion temporaire"
-    case "kick":
-      return "Expulsion"
-    case "ban":
-      return "Bannissement"
-    case "ban-lift":
-      return "Levée du bannissement"
-  }
 }
 
 function AuthorSummary({ author }: { author: SanctionAuthor }) {

@@ -1,8 +1,14 @@
 import { newPanelRule } from "@/blocked-words/panel-rule"
-import { STAFF_ROLE_ID } from "../playwright.config"
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const LYRA = {
+  id: "1400000000000000003",
+  username: "lyra_gates",
+  global_name: "Lyra",
+}
 
 test.use({
   discordState: {
@@ -12,6 +18,7 @@ test.use({
         avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8",
         roles: [STAFF_ROLE_ID],
       },
+      { user: LYRA },
     ],
   },
 })
@@ -79,4 +86,71 @@ test("a staff member reads the audit log, newest changes first, each beside its 
   await page.setViewportSize({ width: 360, height: 760 })
   await expect(newestAvatar).toBeVisible()
   await expect(newestRow.getByText("aldis", { exact: true })).toBeVisible()
+})
+
+function inAnHour() {
+  return new Date(Date.now() + 3_600_000).toISOString()
+}
+
+test.describe("for a staff member who moderates", () => {
+  test.use({
+    discordState: {
+      members: [
+        { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+        { user: LYRA },
+      ],
+    },
+  })
+
+  test("a sanction shows in the audit log with its staff member, its account and its reason, and opens the account's record", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    const row = page
+      .getByRole("row")
+      .filter({ hasText: "Exclusion temporaire jusqu’au" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(row).toContainText("aldis")
+    await expect(row).toContainText("Compte : Lyra")
+    await expect(row).toContainText("Motif : Insultes répétées")
+    await checkAccessibility()
+
+    await row.getByRole("link", { name: "Lyra" }).click()
+    await expect(page).toHaveURL(`/records/${LYRA.id}`)
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Lyra" })
+    ).toBeVisible()
+    await checkAccessibility()
+  })
+})
+
+test("a staff member who does not moderate sees a sanction in the audit log, with no link to the account's record", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  discord.modifyMemberAs(ALDIS.id, LYRA.id, {
+    communication_disabled_until: inAnHour(),
+  })
+  const row = page
+    .getByRole("row")
+    .filter({ hasText: "Exclusion temporaire jusqu’au" })
+
+  await logIn(ALDIS)
+  await page.goto("/audit-log")
+  await expect(row).toContainText("Compte : Lyra")
+  await expect(row).toContainText("Aucun motif")
+  await expect(row.getByRole("link")).toHaveCount(0)
+  await checkAccessibility()
 })

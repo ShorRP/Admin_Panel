@@ -36,7 +36,12 @@ async function AuditLogFromDiscord({
 }: Pick<PageProps<"/audit-log">, "searchParams">) {
   await connection()
   const discord = createDiscordApi()
-  await requireStaffMember(discord)
+  const staffMember = await requireStaffMember(discord)
   const { before } = await searchParams
-  return <AuditLog page={await readAuditLog(discord, before)} />
+  return (
+    <AuditLog
+      page={await readAuditLog(discord, before)}
+      opensModeration={staffMember.opensModeration}
+    />
+  )
 }

@@ -12,7 +12,8 @@ const PAGES = [
   {
     path: "/audit-log",
     loading: "Chargement du journal d’audit…",
-    content: "Aucun changement des mots interdits ces 45 derniers jours.",
+    content:
+      "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.",
   },
 ] as const
 

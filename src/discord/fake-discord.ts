@@ -569,8 +569,11 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       const entries = (
         after === undefined ? ascending.reverse() : ascending
       ).slice(0, query.limit ?? DEFAULT_AUDIT_LOG_LIMIT)
-      const userIds = new Set(entries.map((entry) => entry.user_id))
       const targetIds = new Set(entries.map((entry) => entry.target_id))
+      const userIds = new Set([
+        ...entries.map((entry) => entry.user_id),
+        ...targetIds,
+      ])
       return {
         application_commands: [],
         audit_log_entries: entries,
