@@ -1,4 +1,6 @@
-import { STAFF_ROLE_ID } from "../playwright.config"
+import { DiscordError } from "@/discord/discord-error"
+import { ROUTES } from "@/discord/routes"
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -381,6 +383,47 @@ for (const { title, prefersReducedMotion } of [
     })
   })
 }
+
+test.describe("for a staff member who moderates", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
+    },
+  })
+
+  test("a DiscordError while reading the count of blocked words leaves the page shown, with no badge beside « Mots interdits », until a later load reads it", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    const blockedWords = page
+      .getByRole("complementary")
+      .getByRole("link", { name: /^Mots interdits/ })
+
+    await logIn(ALDIS)
+    await expect(blockedWords).toHaveAccessibleName("Mots interdits 0 mot")
+    await page.waitForLoadState()
+    discord.failNext(
+      "listAutoModerationRules",
+      new DiscordError({
+        method: "GET",
+        route: ROUTES.autoModerationRules,
+        status: 503,
+      })
+    )
+
+    await page.goto("/records")
+    await page.waitForLoadState()
+    await expect(page.getByLabel("Compte")).toBeVisible()
+    await expect(blockedWords).toHaveAccessibleName("Mots interdits")
+    expect(await discord.listAutoModerationRules()).toEqual([])
+    await checkAccessibility()
+
+    await page.reload()
+    await expect(blockedWords).toHaveAccessibleName("Mots interdits 0 mot")
+  })
+})
 
 test("/ redirects to /blocked-words, temporarily", async ({ page }) => {
   const response = await page.request.get("/", { maxRedirects: 0 })

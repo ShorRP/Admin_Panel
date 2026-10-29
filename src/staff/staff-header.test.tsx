@@ -1,4 +1,4 @@
-import type { ReactElement } from "react"
+import type { ReactElement, ReactNode } from "react"
 import {
   Ban,
   Gavel,
@@ -78,13 +78,22 @@ function insideElement(html: string, element: "aside" | "header") {
 
 async function render(
   currentPath: string,
-  { member = "aldis", opensModeration = false } = {}
+  {
+    member = "aldis",
+    opensModeration = false,
+    blockedWordCount = null,
+  }: {
+    member?: string
+    opensModeration?: boolean
+    blockedWordCount?: ReactNode
+  } = {}
 ) {
   const { prelude } = await prerender(
     <StaffHeader
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      blockedWordCount={blockedWordCount}
     />,
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
   )
@@ -202,6 +211,32 @@ test("each section's link shows its icon before its name, hidden from assistive 
       image: { drawing: drawing(<Gavel />), hidden: true },
     },
   ])
+})
+
+test("the blocked words' link shows the count it is given after the section's name, and no other section shows it, whichever is current", async () => {
+  const count = <span id="blocked-word-count">12</span>
+  const countMarkup = renderToStaticMarkup(count)
+  for (const currentPath of ["/blocked-words", "/audit-log"]) {
+    const sections = links(
+      (
+        await render(currentPath, {
+          opensModeration: true,
+          blockedWordCount: count,
+        })
+      ).sidebar
+    ).slice(1)
+
+    expect(
+      sections.map(({ content }) => ({
+        countAfterName: content.startsWith(`Mots interdits${countMarkup}`),
+        count: content.includes(countMarkup),
+      }))
+    ).toEqual([
+      { countAfterName: true, count: true },
+      { countAfterName: false, count: false },
+      { countAfterName: false, count: false },
+    ])
+  }
 })
 
 test('the current section\'s link alone carries aria-current="page"', async () => {

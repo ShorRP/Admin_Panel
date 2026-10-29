@@ -39,6 +39,7 @@ const TEXT_PAIRS = [
   ["muted-foreground", "sidebar"],
   ["sidebar-primary-foreground", "sidebar-primary"],
   ["sidebar-accent-foreground", "sidebar-accent"],
+  ["muted-foreground", "sidebar-accent"],
   ["success", "background"],
   ["success", "card"],
   ["destructive", "background"],

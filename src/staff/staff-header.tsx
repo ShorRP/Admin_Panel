@@ -30,15 +30,23 @@ type Section = {
   href: string
   name: string
   Icon: LucideIcon
+  badge?: ReactNode
   current: "page" | undefined
 }
 
 type SectionLinkComponent = ComponentType<{ section: Section }>
 
-const SECTIONS = [
-  { href: "/blocked-words", name: "Mots interdits", Icon: Ban },
-  { href: "/audit-log", name: "Journal d’audit", Icon: ScrollText },
-] as const
+const BLOCKED_WORDS = {
+  href: "/blocked-words",
+  name: "Mots interdits",
+  Icon: Ban,
+}
+
+const AUDIT_LOG = {
+  href: "/audit-log",
+  name: "Journal d’audit",
+  Icon: ScrollText,
+}
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
@@ -56,12 +64,17 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  blockedWordCount: ReactNode
 }) {
-  const sections = SECTIONS.map((section) => withCurrent(section, currentPath))
+  const sections = [
+    withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
+    withCurrent(AUDIT_LOG, currentPath),
+  ]
   const moderation = withCurrent(MODERATION, currentPath)
   return (
     <>
@@ -234,7 +247,7 @@ function CurrentSectionBar() {
 }
 
 function SidebarSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -248,6 +261,7 @@ function SidebarSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && (
           <ViewTransition
             name="current-section-bar"
@@ -263,7 +277,7 @@ function SidebarSectionLink({
 }
 
 function MenuSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -277,6 +291,7 @@ function MenuSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && <CurrentSectionBar />}
       </SheetClose>
     </li>
