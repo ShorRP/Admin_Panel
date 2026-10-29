@@ -232,8 +232,9 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
   test.each(["background", "card", "popover"])(
     "the focus ring, ring/50, reaches 3:1 on %s",
     (surface) => {
-      const ratio = themeContrast(theme, "ring/50", [surface])
-      expect(ratio).toBeGreaterThanOrEqual(3)
+      expect(themeContrast(theme, "ring/50", [surface])).toBeGreaterThanOrEqual(
+        3
+      )
     }
   )
 
