@@ -14,15 +14,22 @@ export type TimeoutOption =
 export type SanctionOptions =
   | { kind: "none" }
   | { kind: "refused"; reason: string }
-  | { kind: "open"; userId: Snowflake; timeout: TimeoutOption }
+  | { kind: "member"; userId: Snowflake; timeout: TimeoutOption; ban: boolean }
+  | { kind: "absent"; userId: Snowflake }
+  | { kind: "banned"; userId: Snowflake }
 
 export async function readSanctionOptions(
   discord: DiscordApi,
   staffMember: StaffMember,
   record: AccountRecord | null
 ): Promise<SanctionOptions> {
-  if (record?.standing.kind !== "member") {
+  if (record === null) {
     return { kind: "none" }
+  }
+  if (record.standing.kind !== "member") {
+    return staffMember.opensBans
+      ? { kind: record.standing.kind, userId: record.id }
+      : { kind: "none" }
   }
   const { everySanction, timeout } = await readSanctionRefusals(
     discord,
@@ -33,11 +40,12 @@ export async function readSanctionOptions(
     return { kind: "refused", reason: everySanction }
   }
   return {
-    kind: "open",
+    kind: "member",
     userId: record.id,
     timeout:
       timeout === null
         ? { kind: "open", timedOutUntil: record.standing.timedOutUntil }
         : { kind: "refused", reason: timeout },
+    ban: staffMember.opensBans,
   }
 }

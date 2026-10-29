@@ -76,15 +76,28 @@ test("E2E_TEST_PROXY takes no value but 1, an empty one included, and its error 
   expect(error).not.toContain("on-4f7c")
 })
 
-test("the contract suite's member is a snowflake, named in the error without its value", () => {
+test("the contract suite's member and absent account are snowflakes, named in the error without their value", () => {
   expect(
-    parseContractEnv({ CONTRACT_MEMBER_ID: "1514367000280043596" })
-  ).toEqual({ memberId: "1514367000280043596" })
-  expect(thrownBy(() => parseContractEnv({}))).toContain("CONTRACT_MEMBER_ID")
+    parseContractEnv({
+      CONTRACT_MEMBER_ID: "1514367000280043596",
+      CONTRACT_ABSENT_USER_ID: "450323683840491530",
+    })
+  ).toEqual({
+    memberId: "1514367000280043596",
+    absentUserId: "450323683840491530",
+  })
+  const missing = thrownBy(() => parseContractEnv({}))
+  expect(missing).toContain("CONTRACT_MEMBER_ID")
+  expect(missing).toContain("CONTRACT_ABSENT_USER_ID")
   const error = thrownBy(() =>
-    parseContractEnv({ CONTRACT_MEMBER_ID: "member-4f7c" })
+    parseContractEnv({
+      CONTRACT_MEMBER_ID: "member-4f7c",
+      CONTRACT_ABSENT_USER_ID: "absent-9b2e",
+    })
   )
 
   expect(error).toContain("CONTRACT_MEMBER_ID")
+  expect(error).toContain("CONTRACT_ABSENT_USER_ID")
   expect(error).not.toContain("member-4f7c")
+  expect(error).not.toContain("absent-9b2e")
 })

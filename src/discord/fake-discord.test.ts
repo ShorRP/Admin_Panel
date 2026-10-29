@@ -7,6 +7,8 @@ const OWNER = { id: "222222222222222223", username: "owner" }
 
 const MEMBER = { id: "222222222222222224", username: "member" }
 
+const ABSENT = { id: "222222222222222227", username: "absent" }
+
 const PANEL_ROLE = { id: "333333333333333333", name: "Shor Panel", position: 1 }
 
 describeDiscordApiContract("The fake Discord", () => ({
@@ -15,10 +17,11 @@ describeDiscordApiContract("The fake Discord", () => ({
     roles: [PANEL_ROLE],
     applicationRoles: [PANEL_ROLE.id],
     members: [{ user: OWNER }, { user: MEMBER }],
-    users: [OUTSIDER],
+    users: [OUTSIDER, ABSENT],
   }),
   outsider: OUTSIDER.id,
   member: MEMBER.id,
+  absent: ABSENT.id,
   deleteMessage: () => Promise.resolve(),
   cleanUp: () => Promise.resolve(),
 }))

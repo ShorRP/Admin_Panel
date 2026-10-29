@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 
 import { WriteResultMessage } from "@/ui/write-result-message"
+import { BanForm } from "./ban-form"
+import { BanLiftForm } from "./ban-lift-form"
 import { KickForm } from "./kick-form"
 import { SANCTION_ALERT_ID } from "./sanction-form"
 import type { SanctionOptions } from "./sanction-options"
@@ -8,6 +10,8 @@ import type { SanctionResult } from "./sanction-result"
 import { TimeoutForms } from "./timeout-forms"
 
 const HEADING_ID = "sanctions"
+
+const BAN_HEADING_ID = "sanctions-ban"
 
 export function RecordSanctions({
   options,
@@ -30,7 +34,7 @@ export function RecordSanctions({
         Sanctions
       </h2>
       {options.kind === "refused" && <p>{options.reason}</p>}
-      {options.kind === "open" && (
+      {options.kind === "member" && (
         <>
           <Sanction
             headingId="sanctions-timeout"
@@ -57,6 +61,28 @@ export function RecordSanctions({
             />
           </Sanction>
         </>
+      )}
+      {((options.kind === "member" && options.ban) ||
+        options.kind === "absent") && (
+        <Sanction headingId={BAN_HEADING_ID} heading="Bannissement">
+          <BanForm
+            userId={options.userId}
+            notifies={options.kind === "member"}
+            state={state}
+            pending={pending}
+            action={action}
+          />
+        </Sanction>
+      )}
+      {options.kind === "banned" && (
+        <Sanction headingId={BAN_HEADING_ID} heading="Bannissement">
+          <BanLiftForm
+            userId={options.userId}
+            state={state}
+            pending={pending}
+            action={action}
+          />
+        </Sanction>
       )}
       <p role="status" className="text-sm">
         {pending

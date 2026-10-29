@@ -7,6 +7,7 @@ import {
 } from "discord-api-types/v10"
 
 import type {
+  BanBody,
   BansQuery,
   DiscordApi,
   MemberChanges,
@@ -94,6 +95,22 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
           RESTJSONErrorCodes.UnknownBan,
           "Unknown Ban"
         ),
+    },
+    {
+      method: "PUT",
+      route: ROUTES.guildBan,
+      answer: async (request, param) =>
+        await api.createBan(
+          param("user.id"),
+          await readJson<BanBody>(request),
+          reasonOf(request)
+        ),
+    },
+    {
+      method: "DELETE",
+      route: ROUTES.guildBan,
+      answer: async (request, param) =>
+        await api.removeBan(param("user.id"), reasonOf(request)),
     },
     {
       method: "GET",

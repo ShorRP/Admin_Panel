@@ -12,28 +12,34 @@ export type StaffMember = {
   readonly name: string
   readonly avatarUrl: string | null
   readonly opensModeration: boolean
+  readonly opensBans: boolean
   readonly roleIds: string[]
   readonly [brand]: true
 }
 
-export type StaffRoles = Pick<StaffEnv, "staffRoleId" | "moderationRoleIds">
+export type StaffRoles = Pick<
+  StaffEnv,
+  "staffRoleId" | "moderationRoleIds" | "banRoleIds"
+>
 
 export async function findStaffMember(
   discord: DiscordApi,
-  { staffRoleId, moderationRoleIds }: StaffRoles,
+  { staffRoleId, moderationRoleIds, banRoleIds }: StaffRoles,
   userId: string
 ): Promise<StaffMember | null> {
   const member = await discord.getMember(userId)
   if (member === null || !member.roles.includes(staffRoleId)) {
     return null
   }
+  const holdsAny = (roleIds: string[]) =>
+    roleIds.some((roleId) => member.roles.includes(roleId))
+  const opensModeration = holdsAny(moderationRoleIds)
   return {
     id: member.user.id,
     name: memberName(member),
     avatarUrl: memberAvatarUrl(discord.guildId, member),
-    opensModeration: moderationRoleIds.some((roleId) =>
-      member.roles.includes(roleId)
-    ),
+    opensModeration,
+    opensBans: opensModeration && holdsAny(banRoleIds),
     roleIds: member.roles,
   } as StaffMember
 }
