@@ -1,10 +1,4 @@
-import {
-  CircleAlert,
-  CircleCheck,
-  LoaderCircle,
-  Plus,
-  type LucideIcon,
-} from "lucide-react"
+import { CircleAlert, LoaderCircle, Plus, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -31,10 +25,6 @@ function region(html: string, role: "status" | "alert") {
 
 const EMPTY = { icon: undefined, iconHidden: false, text: "" }
 
-function successMessage(text: string) {
-  return { icon: drawing(CircleCheck), iconHidden: true, text }
-}
-
 function failureMessage(text: string) {
   return { icon: drawing(CircleAlert), iconHidden: true, text }
 }
@@ -59,7 +49,7 @@ function button(html: string) {
   }
 }
 
-test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and both regions empty", () => {
+test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and its alert region empty, with no status region", () => {
   const html = render(null)
 
   expect(html).toMatch(
@@ -73,8 +63,8 @@ test("before any write, the form shows its labelled field, « Ajouter » after a
     text: "Ajouter",
     disabled: false,
   })
-  expect(region(html, "status")).toEqual(EMPTY)
   expect(region(html, "alert")).toEqual(EMPTY)
+  expect(html).not.toContain('role="status"')
 })
 
 test("the field points to the alert region, and leaves validation to the panel", () => {
@@ -95,19 +85,16 @@ test("a refused word shows its message in the alert region, after a hidden alert
   expect(region(html, "alert")).toEqual(
     failureMessage("« merde » est déjà un mot interdit.")
   )
-  expect(region(html, "status")).toEqual(EMPTY)
   expect(field(html)).toContain('value="Merde"')
 })
 
-test("a word added shows its message in the status region, after a hidden check, and leaves the field empty", () => {
+test("a word added leaves the field empty and the form without its message, since a toast says so", () => {
   const html = render({
     ok: true,
     message: "« foo » est maintenant un mot interdit.",
   })
 
-  expect(region(html, "status")).toEqual(
-    successMessage("« foo » est maintenant un mot interdit.")
-  )
+  expect(html).not.toContain("est maintenant un mot interdit.")
   expect(region(html, "alert")).toEqual(EMPTY)
   expect(field(html)).toContain('value=""')
 })

@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, type LucideIcon } from "lucide-react"
+import { CircleAlert, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -154,7 +154,7 @@ test("a banned account offers only to lift the ban", () => {
   expect(changes(html)).toEqual(["lift-ban"])
 })
 
-test("a kick that landed keeps « Sanctions » with its message in the status region, though the account is no longer a member", () => {
+test("a kick that landed hides « Sanctions », since the account it removed offers no sanction", () => {
   const html = render({
     options: { kind: "none" },
     state: {
@@ -163,13 +163,22 @@ test("a kick that landed keeps « Sanctions » with its message in the status re
     },
   })
 
-  expect(html).not.toMatch(/^<section[^>]* hidden=""/)
-  expect(headings(html, "h2")).toEqual(["Sanctions"])
-  expect(region(html, "status")).toEqual({
-    icon: drawing(CircleCheck),
-    text: "L’expulsion de Lyra a eu lieu. Le message privé est parti.",
-  })
+  expect(html).toMatch(/^<section[^>]* hidden=""/)
   expect(html).not.toContain("<form")
+})
+
+test("a change that lands leaves both regions empty, since a toast says so", () => {
+  const html = render({
+    options: MEMBER,
+    state: {
+      ok: true,
+      message:
+        "L’exclusion temporaire de Lyra est levée. Le message privé est parti.",
+    },
+  })
+
+  expect(region(html, "status")).toEqual({ icon: undefined, text: "" })
+  expect(region(html, "alert")).toEqual({ icon: undefined, text: "" })
 })
 
 test("a refused change shows its message in the alert region, which the fields point to", () => {

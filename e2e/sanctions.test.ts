@@ -37,15 +37,15 @@ test.use({
   },
 })
 
-test("a moderator finds a member, opens their record, times them out with the direct message, then lifts the timeout, each in the record's history", async ({
+test("a moderator finds a member, opens their record, times them out with the direct message, then lifts the timeout, each saying so in a toast and showing in the record's history", async ({
   page,
   logIn,
   discord,
   checkAccessibility,
+  readToast,
 }) => {
   const main = page.getByRole("main")
   const timeout = main.getByRole("region", { name: "Exclusion temporaire" })
-  const status = main.getByRole("status")
   const history = main.getByRole("region", {
     name: "Historique des sanctions",
   })
@@ -82,7 +82,7 @@ test("a moderator finds a member, opens their record, times them out with the di
     timeout.getByRole("checkbox", { name: "Prévenir en message privé" })
   ).toBeChecked()
   await timeout.getByRole("button", { name: "Exclure temporairement" }).click()
-  await expect(status).toHaveText(
+  await readToast(
     /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\. Le message privé est parti\.$/
   )
   await expect(main).toContainText("Membre exclu temporairement jusqu’au")
@@ -103,9 +103,7 @@ test("a moderator finds a member, opens their record, times them out with the di
   await main
     .getByRole("button", { name: "Lever l’exclusion temporaire" })
     .click()
-  await expect(status).toHaveText(
-    "L’exclusion temporaire de Lyra des Brumes est levée."
-  )
+  await readToast("L’exclusion temporaire de Lyra des Brumes est levée.")
   await expect(main).toContainText("Membre du serveur")
   await expect(
     main.getByRole("button", { name: "Lever l’exclusion temporaire" })
@@ -116,10 +114,12 @@ test("a moderator finds a member, opens their record, times them out with the di
   await checkAccessibility()
 })
 
-test("a refused timeout stays in its form, with its message", async ({
+test("a refused timeout stays in its form, with its message, and makes no toast", async ({
   page,
   logIn,
   checkAccessibility,
+  toast,
+  readToast,
 }) => {
   const main = page.getByRole("main")
   const timeout = main.getByRole("region", { name: "Exclusion temporaire" })
@@ -145,13 +145,24 @@ test("a refused timeout stays in its form, with its message", async ({
   ).not.toBeChecked()
   await expect(main).toContainText("Membre du serveur")
   await checkAccessibility()
+
+  await timeout
+    .getByLabel("Motif de l’exclusion temporaire")
+    .fill("Insultes répétées")
+  await timeout.getByRole("button", { name: "Exclure temporairement" }).click()
+  await readToast(
+    /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\d{2}:\d{2}\.$/
+  )
+  await expect(toast()).toHaveCount(1)
+  await checkAccessibility()
 })
 
-test("a moderator kicks a member from their record with the direct message, and the record then says the account is absent, its history showing the kick", async ({
+test("a moderator kicks a member from their record with the direct message, which a toast confirms, and the record then says the account is absent, with no « Sanctions », its history showing the kick", async ({
   page,
   logIn,
   discord,
   checkAccessibility,
+  readToast,
 }) => {
   const main = page.getByRole("main")
   const kick = main.getByRole("region", { name: "Expulsion" })
@@ -169,13 +180,13 @@ test("a moderator kicks a member from their record with the direct message, and 
   ).toBeChecked()
   await kick.getByRole("button", { name: "Expulser" }).click()
 
-  await expect(main.getByRole("status")).toHaveText(
+  await readToast(
     "L’expulsion de Lyra des Brumes a eu lieu. Le message privé est parti."
   )
   await expect(main).toContainText("Compte absent du serveur")
   await expect(
     main.getByRole("heading", { name: "Sanctions", exact: true })
-  ).toBeVisible()
+  ).toHaveCount(0)
   await expect(main.getByRole("button", { name: "Expulser" })).toHaveCount(0)
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText("Expulsion")
@@ -188,11 +199,12 @@ test("a moderator kicks a member from their record with the direct message, and 
   await checkAccessibility()
 })
 
-test("a staff member who bans bans a member from their record with the direct message, then lifts the ban, the record and its history following each", async ({
+test("a staff member who bans bans a member from their record with the direct message, then lifts the ban, each saying so in a toast, the record and its history following each", async ({
   page,
   logIn,
   discord,
   checkAccessibility,
+  readToast,
 }) => {
   const main = page.getByRole("main")
   const ban = main.getByRole("region", { name: "Bannissement" })
@@ -216,7 +228,7 @@ test("a staff member who bans bans a member from their record with the direct me
   ).toBeChecked()
   await ban.getByRole("button", { name: "Bannir" }).click()
 
-  await expect(main.getByRole("status")).toHaveText(
+  await readToast(
     "Le bannissement de Lyra des Brumes a eu lieu. Le message privé est parti."
   )
   await expect(main).toContainText("Compte banni")
@@ -238,9 +250,7 @@ test("a staff member who bans bans a member from their record with the direct me
   await ban.getByLabel("Motif de la levée").fill("Erreur de cible")
   await ban.getByRole("button", { name: "Lever le bannissement" }).click()
 
-  await expect(main.getByRole("status")).toHaveText(
-    "Le bannissement de Lyra est levé."
-  )
+  await readToast("Le bannissement de Lyra est levé.")
   await expect(main).toContainText("Compte absent du serveur")
   await expect(entries).toHaveCount(2)
   await expect(entries.first()).toContainText("Levée du bannissement")

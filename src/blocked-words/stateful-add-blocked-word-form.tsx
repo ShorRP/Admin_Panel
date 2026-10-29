@@ -2,6 +2,7 @@
 
 import { useActionState } from "react"
 
+import { useSuccessToast } from "@/ui/use-success-toast"
 import { addBlockedWordAction } from "./actions"
 import { AddBlockedWordForm } from "./add-blocked-word-form"
 import type { WriteResult } from "./write-result"
@@ -11,5 +12,6 @@ export function StatefulAddBlockedWordForm() {
     addBlockedWordAction,
     null
   )
+  useSuccessToast(state)
   return <AddBlockedWordForm state={state} pending={pending} action={action} />
 }

@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, X, type LucideIcon } from "lucide-react"
+import { CircleAlert, X, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -33,10 +33,6 @@ function region(html: string, role: "status" | "alert") {
 }
 
 const EMPTY = { icon: undefined, iconHidden: false, text: "" }
-
-function successMessage(text: string) {
-  return { icon: drawing(CircleCheck), iconHidden: true, text }
-}
 
 function failureMessage(text: string) {
   return { icon: drawing(CircleAlert), iconHidden: true, text }
@@ -111,7 +107,7 @@ test("while a removal is pending, every « Retirer » is disabled and the status
   })
 })
 
-test("a removal's message shows in the status region after a hidden check, and a failed one's in the alert region after a hidden alert icon", () => {
+test("a removal that lands leaves both regions empty, since a toast says so, and a failed one's message shows in the alert region after a hidden alert icon", () => {
   const removed = render(["zèbre"], {
     ok: true,
     message: "« abricot » n’est plus un mot interdit.",
@@ -122,9 +118,7 @@ test("a removal's message shows in the status region after a hidden check, and a
     word: "abricot",
   })
 
-  expect(region(removed, "status")).toEqual(
-    successMessage("« abricot » n’est plus un mot interdit.")
-  )
+  expect(region(removed, "status")).toEqual(EMPTY)
   expect(region(removed, "alert")).toEqual(EMPTY)
   expect(region(failed, "status")).toEqual(EMPTY)
   expect(region(failed, "alert")).toEqual(
