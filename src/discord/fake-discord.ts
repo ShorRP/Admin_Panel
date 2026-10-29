@@ -24,6 +24,7 @@ import {
 } from "discord-api-types/v10"
 
 import type {
+  BanBody,
   BansQuery,
   DiscordApi,
   DmChannel,
@@ -83,6 +84,8 @@ const MAX_REASON_LENGTH = 512
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000
 
 const MAX_MESSAGE_LENGTH = 2000
+
+const MAX_DELETE_MESSAGE_SECONDS = 7 * 24 * 60 * 60
 
 const DEFAULT_OWNER_ID = "1000000000000000000"
 
@@ -174,14 +177,22 @@ function missingPermissions(method: HttpMethod, route: DiscordRoute) {
   })
 }
 
+function notFound(
+  method: HttpMethod,
+  route: DiscordRoute,
+  code: RESTJSONErrorCodes,
+  discordMessage: string
+) {
+  return new DiscordError({ method, route, status: 404, code, discordMessage })
+}
+
 function unknownMember(method: HttpMethod) {
-  return new DiscordError({
+  return notFound(
     method,
-    route: ROUTES.guildMember,
-    status: 404,
-    code: RESTJSONErrorCodes.UnknownMember,
-    discordMessage: "Unknown Member",
-  })
+    ROUTES.guildMember,
+    RESTJSONErrorCodes.UnknownMember,
+    "Unknown Member"
+  )
 }
 
 function cannotSendMessages(code: RESTJSONErrorCodes) {
@@ -258,6 +269,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   >()
   private readonly users = new Map<Snowflake, APIUser>()
   private readonly bans = new Map<Snowflake, APIBan>()
+  private readonly deletedMessageSeconds = new Map<Snowflake, number>()
   private readonly roles: APIRole[]
   private readonly rules: APIAutoModerationRule[]
   private readonly entries: APIAuditLogEntry[]
@@ -359,10 +371,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     if (user === undefined) {
       throw new Error(`No account ${bannedId} on the fake Discord`)
     }
-    this.members.delete(bannedId)
-    this.users.delete(bannedId)
-    this.bans.set(bannedId, { user, reason: keptReason(reason) ?? null })
-    this.log(AuditLogEvent.MemberBanAdd, bannedId, author.user.id, reason)
+    this.ban(user, 0, author.user.id, reason)
   }
 
   removeBanAs(userId: Snowflake, bannedId: Snowflake, reason?: string) {
@@ -371,9 +380,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     if (ban === undefined) {
       throw new Error(`No ban of ${bannedId} on the fake Discord server`)
     }
-    this.bans.delete(bannedId)
-    this.users.set(bannedId, ban.user)
-    this.log(AuditLogEvent.MemberBanRemove, bannedId, author.user.id, reason)
+    this.liftBan(ban, author.user.id, reason)
   }
 
   timeOutByAutoModeration(ruleId: Snowflake, memberId: Snowflake) {
@@ -412,6 +419,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     return [...this.directChannels.values()]
       .filter(({ recipientId }) => recipientId === userId)
       .flatMap(({ messages }) => messages.map(({ content }) => content))
+  }
+
+  deletedMessageSecondsOf(userId: Snowflake) {
+    return this.deletedMessageSeconds.get(userId)
   }
 
   getGuild() {
@@ -472,6 +483,51 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         throw missingPermissions("DELETE", ROUTES.guildMember)
       }
       this.kick(member, this.applicationUser.id, reason)
+    })
+  }
+
+  createBan(
+    userId: Snowflake,
+    { delete_message_seconds: seconds = 0 }: BanBody,
+    reason: string
+  ) {
+    return this.answer("createBan", () => {
+      const route = ROUTES.guildBan
+      if (seconds < 0 || seconds > MAX_DELETE_MESSAGE_SECONDS) {
+        throw refused("PUT", route)
+      }
+      const member = this.members.get(userId)
+      if (
+        member !== undefined &&
+        (userId === this.ownerId || !this.isBelowApplication(member))
+      ) {
+        throw missingPermissions("PUT", route)
+      }
+      const user = this.knownUser(userId)
+      if (user === undefined) {
+        throw notFound(
+          "PUT",
+          route,
+          RESTJSONErrorCodes.UnknownUser,
+          "Unknown User"
+        )
+      }
+      this.ban(user, seconds, this.applicationUser.id, reason)
+    })
+  }
+
+  removeBan(userId: Snowflake, reason: string) {
+    return this.answer("removeBan", () => {
+      const ban = this.bans.get(userId)
+      if (ban === undefined) {
+        throw notFound(
+          "DELETE",
+          ROUTES.guildBan,
+          RESTJSONErrorCodes.UnknownBan,
+          "Unknown Ban"
+        )
+      }
+      this.liftBan(ban, this.applicationUser.id, reason)
     })
   }
 
@@ -724,6 +780,29 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     this.members.delete(member.user.id)
     this.users.set(member.user.id, member.user)
     this.log(AuditLogEvent.MemberKick, member.user.id, userId, reason)
+  }
+
+  private ban(
+    user: APIUser,
+    deletedMessageSeconds: number,
+    userId: Snowflake,
+    reason: string | undefined
+  ) {
+    this.members.delete(user.id)
+    this.users.delete(user.id)
+    this.bans.set(user.id, { user, reason: keptReason(reason) ?? null })
+    this.deletedMessageSeconds.set(user.id, deletedMessageSeconds)
+    this.log(AuditLogEvent.MemberBanAdd, user.id, userId, reason)
+  }
+
+  private liftBan(
+    { user }: APIBan,
+    userId: Snowflake,
+    reason: string | undefined
+  ) {
+    this.bans.delete(user.id)
+    this.users.set(user.id, user)
+    this.log(AuditLogEvent.MemberBanRemove, user.id, userId, reason)
   }
 
   private isAdministrator(member: APIGuildMember) {

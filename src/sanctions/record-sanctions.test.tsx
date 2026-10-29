@@ -8,10 +8,11 @@ import type { SanctionResult } from "./sanction-result"
 
 const LYRA_ID = "1400000000000000003"
 
-const OPEN: SanctionOptions = {
-  kind: "open",
+const MEMBER: SanctionOptions = {
+  kind: "member",
   userId: LYRA_ID,
   timeout: { kind: "open", timedOutUntil: null },
+  ban: false,
 }
 
 function render({
@@ -89,7 +90,7 @@ test("a member the staff member cannot sanction shows why, once, under « Sancti
 })
 
 test("a member the staff member can sanction shows the timeout's forms and the kick's, each under its heading", () => {
-  const html = render({ options: OPEN })
+  const html = render({ options: MEMBER })
 
   expect(headings(html, "h2")).toEqual(["Sanctions"])
   expect(headings(html, "h3")).toEqual(["Exclusion temporaire", "Expulsion"])
@@ -102,7 +103,7 @@ test("a member the staff member can sanction shows the timeout's forms and the k
 test("a timed-out member's record also offers to lift the timeout", () => {
   const html = render({
     options: {
-      ...OPEN,
+      ...MEMBER,
       timeout: {
         kind: "open",
         timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
@@ -117,12 +118,40 @@ test("a member who cannot be timed out shows why, once, under « Exclusion tempo
   const reason =
     "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement."
   const html = render({
-    options: { ...OPEN, timeout: { kind: "refused", reason } },
+    options: { ...MEMBER, timeout: { kind: "refused", reason } },
   })
 
   expect(headings(html, "h3")).toEqual(["Exclusion temporaire", "Expulsion"])
   expect(text(html).split(reason)).toHaveLength(2)
   expect(changes(html)).toEqual(["kick"])
+})
+
+test("a staff member who bans also sees the ban's form, with the direct message, after the kick's", () => {
+  const html = render({ options: { ...MEMBER, ban: true } })
+
+  expect(headings(html, "h3")).toEqual([
+    "Exclusion temporaire",
+    "Expulsion",
+    "Bannissement",
+  ])
+  expect(changes(html)).toEqual(["time-out", "kick", "ban"])
+  expect(html.match(/Prévenir en message privé/g)).toHaveLength(3)
+})
+
+test("an account absent from the Discord server offers only the ban, with no direct message", () => {
+  const html = render({ options: { kind: "absent", userId: LYRA_ID } })
+
+  expect(html).not.toMatch(/^<section[^>]* hidden=""/)
+  expect(headings(html, "h3")).toEqual(["Bannissement"])
+  expect(changes(html)).toEqual(["ban"])
+  expect(html).not.toContain("Prévenir en message privé")
+})
+
+test("a banned account offers only to lift the ban", () => {
+  const html = render({ options: { kind: "banned", userId: LYRA_ID } })
+
+  expect(headings(html, "h3")).toEqual(["Bannissement"])
+  expect(changes(html)).toEqual(["lift-ban"])
 })
 
 test("a kick that landed keeps « Sanctions » with its message in the status region, though the account is no longer a member", () => {
@@ -145,7 +174,7 @@ test("a kick that landed keeps « Sanctions » with its message in the status re
 
 test("a refused change shows its message in the alert region, which the fields point to", () => {
   const html = render({
-    options: OPEN,
+    options: MEMBER,
     state: {
       ok: false,
       message: "Saisis un motif.",
@@ -166,7 +195,7 @@ test("a refused change shows its message in the alert region, which the fields p
 test("while a change is sent, every button is disabled and the status region says so", () => {
   const html = render({
     options: {
-      ...OPEN,
+      ...MEMBER,
       timeout: {
         kind: "open",
         timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),

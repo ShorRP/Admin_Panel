@@ -19,6 +19,8 @@ const OWNER = { id: "222222222222222223", username: "owner" }
 
 const MEMBER = { id: "222222222222222224", username: "member" }
 
+const ABSENT = { id: "222222222222222227", username: "absent" }
+
 const PANEL_ROLE = { id: "333333333333333333", name: "Shor Panel", position: 1 }
 
 function apiOver(fake: FakeDiscord) {
@@ -46,11 +48,12 @@ describeDiscordApiContract("The real DiscordApi over the HTTP adapter", () => ({
       roles: [PANEL_ROLE],
       applicationRoles: [PANEL_ROLE.id],
       members: [{ user: OWNER }, { user: MEMBER }],
-      users: [OUTSIDER],
+      users: [OUTSIDER, ABSENT],
     })
   ),
   outsider: OUTSIDER.id,
   member: MEMBER.id,
+  absent: ABSENT.id,
   deleteMessage: () => Promise.resolve(),
   cleanUp: () => Promise.resolve(),
 }))
@@ -259,4 +262,55 @@ test("a user who is not on the Discord server cannot be kicked, as Unknown Membe
     status: 404,
     code: RESTJSONErrorCodes.UnknownMember,
   })
+})
+
+test("the real DiscordApi bans a member over the HTTP adapter, deleting the messages it asks: they leave the Discord server, and the ban and the audit log keep its reason, under the application", async () => {
+  const fake = kickableDiscord()
+  const discord = apiOver(fake)
+
+  await discord.createBan(MEMBER.id, { delete_message_seconds: 86400 }, "Spam")
+
+  expect(await discord.getMember(MEMBER.id)).toBeNull()
+  expect(await discord.getBan(MEMBER.id)).toMatchObject({
+    user: { id: MEMBER.id },
+    reason: "Spam",
+  })
+  expect(fake.deletedMessageSecondsOf(MEMBER.id)).toBe(86400)
+  const { audit_log_entries } = await discord.getAuditLog({
+    action_type: AuditLogEvent.MemberBanAdd,
+  })
+  expect(
+    audit_log_entries.map(({ target_id, user_id, reason }) => ({
+      target_id,
+      user_id,
+      reason,
+    }))
+  ).toEqual([
+    {
+      target_id: MEMBER.id,
+      user_id: fake.applicationUser.id,
+      reason: "Spam",
+    },
+  ])
+})
+
+test("a member with the Administrator permission, below the application's role, can be banned", async () => {
+  const discord = apiOver(kickableDiscord())
+
+  await discord.createBan(ADMINISTRATOR.id, {}, "Spam")
+
+  expect(await discord.getBan(ADMINISTRATOR.id)).not.toBeNull()
+})
+
+test("the owner of the Discord server, and a member whose highest role equals or exceeds the application's, cannot be banned, with Missing Permissions", async () => {
+  const discord = apiOver(kickableDiscord())
+
+  for (const userId of [OWNER.id, SENIOR.id]) {
+    await expect(discord.createBan(userId, {}, "Spam")).rejects.toMatchObject({
+      status: 403,
+      code: RESTJSONErrorCodes.MissingPermissions,
+    })
+    expect(await discord.getMember(userId)).not.toBeNull()
+    expect(await discord.getBan(userId)).toBeNull()
+  }
 })

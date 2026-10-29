@@ -26,7 +26,7 @@ function discordWithStaff() {
 async function staffMemberOn(discord: FakeDiscord) {
   const staffMember = await findStaffMember(
     discord,
-    { staffRoleId: STAFF_ROLE_ID, moderationRoleIds: [] },
+    { staffRoleId: STAFF_ROLE_ID, moderationRoleIds: [], banRoleIds: [] },
     ALDIS.id
   )
   if (staffMember === null) {

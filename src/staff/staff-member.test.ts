@@ -9,9 +9,12 @@ const OTHER_ROLE_ID = "1300000000000000001"
 
 const MODERATION_ROLE_ID = "1300000000000000002"
 
+const BAN_ROLE_ID = "1300000000000000003"
+
 const ROLES = {
   staffRoleId: STAFF_ROLE_ID,
   moderationRoleIds: ["1300000000000000004", MODERATION_ROLE_ID],
+  banRoleIds: ["1300000000000000005", BAN_ROLE_ID],
 }
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -26,6 +29,7 @@ test("a member holding the staff role is a staff member, under their Discord nam
     name: "aldis",
     avatarUrl: null,
     opensModeration: false,
+    opensBans: false,
     roleIds: [OTHER_ROLE_ID, STAFF_ROLE_ID],
   })
 })
@@ -129,6 +133,36 @@ test("a staff member holding a role of the moderation section's list opens it", 
   expect(await findStaffMember(discord, ROLES, ALDIS.id)).toMatchObject({
     opensModeration: true,
   })
+})
+
+test("a staff member who opens the moderation section and holds a role of the bans' list opens the bans, while one who holds that role without moderating does not", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      {
+        user: ALDIS,
+        roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID, BAN_ROLE_ID],
+      },
+      {
+        user: { id: "1400000000000000002", username: "brynja" },
+        roles: [STAFF_ROLE_ID, BAN_ROLE_ID],
+      },
+      {
+        user: { id: "1400000000000000003", username: "corvus" },
+        roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID],
+      },
+    ],
+  })
+
+  expect(await findStaffMember(discord, ROLES, ALDIS.id)).toMatchObject({
+    opensModeration: true,
+    opensBans: true,
+  })
+  expect(
+    await findStaffMember(discord, ROLES, "1400000000000000002")
+  ).toMatchObject({ opensModeration: false, opensBans: false })
+  expect(
+    await findStaffMember(discord, ROLES, "1400000000000000003")
+  ).toMatchObject({ opensModeration: true, opensBans: false })
 })
 
 test("a member holding a role of the moderation section's list, but not the staff role, is no staff member", async () => {

@@ -44,8 +44,14 @@ const TEST_PROXY_ENV = z
   .transform((env) => ({ testProxy: env.E2E_TEST_PROXY === "1" }))
 
 const CONTRACT_ENV = z
-  .object({ CONTRACT_MEMBER_ID: SNOWFLAKE })
-  .transform((env) => ({ memberId: env.CONTRACT_MEMBER_ID }))
+  .object({
+    CONTRACT_MEMBER_ID: SNOWFLAKE,
+    CONTRACT_ABSENT_USER_ID: SNOWFLAKE,
+  })
+  .transform((env) => ({
+    memberId: env.CONTRACT_MEMBER_ID,
+    absentUserId: env.CONTRACT_ABSENT_USER_ID,
+  }))
 
 type Env = Record<string, string | undefined>
 

@@ -12,7 +12,7 @@ const DISCORD_SYSTEM_USER_ID = "643945264868098049"
 
 describeDiscordApiContract("Discord", () => {
   const env = parseDiscordApiEnv(process.env)
-  const { memberId } = parseContractEnv(process.env)
+  const { memberId, absentUserId } = parseContractEnv(process.env)
   const discord = createDiscordApi()
 
   async function remove(route: DiscordRoute, params: Record<string, string>) {
@@ -34,6 +34,7 @@ describeDiscordApiContract("Discord", () => {
     discord,
     outsider: DISCORD_SYSTEM_USER_ID,
     member: memberId,
+    absent: absentUserId,
     async deleteMessage(channelId, messageId) {
       await remove(ROUTES.channelMessage, {
         "channel.id": channelId,

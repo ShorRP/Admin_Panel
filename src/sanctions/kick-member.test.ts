@@ -71,7 +71,11 @@ function discordWith(lyra: Partial<FakeMember> = {}) {
 async function staffMemberOn(discord: FakeDiscord, userId = ALDIS.id) {
   const staffMember = await findStaffMember(
     discord,
-    { staffRoleId: STAFF.id, moderationRoleIds: [MODERATION.id] },
+    {
+      staffRoleId: STAFF.id,
+      moderationRoleIds: [MODERATION.id],
+      banRoleIds: [],
+    },
     userId
   )
   if (staffMember === null) {

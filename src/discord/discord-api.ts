@@ -18,6 +18,7 @@ import {
   type RESTPatchAPIGuildMemberJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type RESTPostAPIChannelMessageJSONBody,
+  type RESTPutAPIGuildBanJSONBody,
   type Snowflake,
 } from "discord-api-types/v10"
 
@@ -43,6 +44,8 @@ export type DiscordApi = {
     reason: string
   ): Promise<APIGuildMember>
   removeMember(userId: Snowflake, reason: string): Promise<void>
+  createBan(userId: Snowflake, ban: BanBody, reason: string): Promise<void>
+  removeBan(userId: Snowflake, reason: string): Promise<void>
   createDm(recipientId: Snowflake): Promise<DmChannel>
   createMessage(channelId: Snowflake, message: MessageBody): Promise<Message>
   listAutoModerationRules(): Promise<APIAutoModerationRule[]>
@@ -73,6 +76,8 @@ export type MemberChanges = Pick<
   RESTPatchAPIGuildMemberJSONBody,
   "communication_disabled_until"
 >
+
+export type BanBody = Pick<RESTPutAPIGuildBanJSONBody, "delete_message_seconds">
 
 export type DmChannel = Pick<APIDMChannel, "id" | "type">
 
@@ -170,6 +175,31 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
         discordRequest({
           method: "DELETE",
           route: ROUTES.guildMember,
+          params: { "user.id": userId },
+          reason,
+        })
+      )
+    },
+
+    async createBan(userId, ban, reason) {
+      await requestDiscord(
+        fetch,
+        discordRequest({
+          method: "PUT",
+          route: ROUTES.guildBan,
+          params: { "user.id": userId },
+          body: ban,
+          reason,
+        })
+      )
+    },
+
+    async removeBan(userId, reason) {
+      await requestDiscord(
+        fetch,
+        discordRequest({
+          method: "DELETE",
+          route: ROUTES.guildBan,
           params: { "user.id": userId },
           reason,
         })

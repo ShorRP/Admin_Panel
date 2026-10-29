@@ -23,6 +23,7 @@ export type ContractTarget = {
   discord: DiscordApi
   outsider: Snowflake
   member: Snowflake
+  absent: Snowflake
   deleteMessage(channelId: Snowflake, messageId: Snowflake): Promise<void>
   cleanUp(): Promise<void>
 }
@@ -68,16 +69,30 @@ async function liftTimeout(discord: DiscordApi, member: Snowflake) {
   await discord.modifyMember(member, timeoutUntil(null), "Contract: clean-up")
 }
 
+async function liftBan(discord: DiscordApi, account: Snowflake) {
+  if ((await discord.getBan(account)) !== null) {
+    await discord.removeBan(account, "Contract: clean-up")
+  }
+}
+
+async function entryWith(
+  discord: DiscordApi,
+  actionType: AuditLogEvent,
+  reason: string
+) {
+  const log = await discord.getAuditLog({ action_type: actionType, limit: 100 })
+  return {
+    entry: log.audit_log_entries.find((entry) => entry.reason === reason),
+    userIds: log.users.map(({ id }) => id),
+  }
+}
+
 function uniqueText(change: string) {
   return `Contract: ${change} ${crypto.randomUUID().slice(0, 8)}`
 }
 
 async function memberUpdateWith(discord: DiscordApi, reason: string) {
-  const updates = await discord.getAuditLog({
-    action_type: AuditLogEvent.MemberUpdate,
-    limit: 100,
-  })
-  return updates.audit_log_entries.find((entry) => entry.reason === reason)
+  return (await entryWith(discord, AuditLogEvent.MemberUpdate, reason)).entry
 }
 
 function timeoutChangeOf(entry: APIAuditLogEntry | undefined) {
@@ -129,6 +144,10 @@ function patient(discord: DiscordApi): DiscordApi {
       patiently(() => discord.modifyMember(userId, changes, reason)),
     removeMember: (userId, reason) =>
       patiently(() => discord.removeMember(userId, reason)),
+    createBan: (userId, ban, reason) =>
+      patiently(() => discord.createBan(userId, ban, reason)),
+    removeBan: (userId, reason) =>
+      patiently(() => discord.removeBan(userId, reason)),
     createDm: (recipientId) => patiently(() => discord.createDm(recipientId)),
     createMessage: (channelId, message) =>
       patiently(() => discord.createMessage(channelId, message)),
@@ -627,6 +646,68 @@ export function describeDiscordApiContract(
       ).rejects.toMatchObject({
         status: 404,
         code: RESTJSONErrorCodes.UnknownMember,
+        unavailable: false,
+      })
+    })
+
+    test("an account absent from the Discord server is banned by its ID, its ban holding the reason, then the ban is lifted, each in the audit log under the application, whose users name the account", async () => {
+      const { discord, absent } = connected()
+      onTestFinished(() => liftBan(discord, absent))
+      const ban = uniqueText("banned, « é »")
+      const lift = uniqueText("ban lifted")
+      const application = (await discord.getApplicationUser()).id
+
+      await discord.createBan(absent, { delete_message_seconds: 3600 }, ban)
+
+      expect(await discord.getMember(absent)).toBeNull()
+      expect(await discord.getBan(absent)).toMatchObject({
+        user: { id: absent },
+        reason: ban,
+      })
+      const banAdd = await entryWith(discord, AuditLogEvent.MemberBanAdd, ban)
+      expect(banAdd.entry).toMatchObject({
+        target_id: absent,
+        user_id: application,
+      })
+      expect(banAdd.userIds).toContain(absent)
+      await discord.removeBan(absent, lift)
+
+      expect(await discord.getBan(absent)).toBeNull()
+      expect(await discord.getUser(absent)).toMatchObject({ id: absent })
+      const banRemove = await entryWith(
+        discord,
+        AuditLogEvent.MemberBanRemove,
+        lift
+      )
+      expect(banRemove.entry).toMatchObject({
+        target_id: absent,
+        user_id: application,
+      })
+      expect(banRemove.userIds).toContain(absent)
+    })
+
+    test("a ban deletes at most 7 days of messages", async () => {
+      const { discord, absent } = connected()
+      onTestFinished(() => liftBan(discord, absent))
+
+      await expect(
+        discord.createBan(
+          absent,
+          { delete_message_seconds: 7 * DAY_S + 1 },
+          "Contract: a ban deleting 7 days and a second of messages"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      expect(await discord.getBan(absent)).toBeNull()
+    })
+
+    test("lifting the ban of an account that is not banned fails as Unknown Ban", async () => {
+      const { discord, outsider } = connected()
+
+      await expect(
+        discord.removeBan(outsider, "Contract: an outsider's ban lifted")
+      ).rejects.toMatchObject({
+        status: 404,
+        code: RESTJSONErrorCodes.UnknownBan,
         unavailable: false,
       })
     })

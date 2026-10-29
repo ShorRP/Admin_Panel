@@ -1,7 +1,13 @@
-import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import {
+  BAN_ROLE_ID,
+  MODERATION_ROLE_ID,
+  STAFF_ROLE_ID,
+} from "../playwright.config"
 import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const SIGRID = { id: "1400000000000000010", username: "sigrid" }
 
 const LYRA = {
   id: "1400000000000000003",
@@ -9,9 +15,11 @@ const LYRA = {
   global_name: "Lyra",
 }
 
-const STAFF = { id: STAFF_ROLE_ID, name: "Staff", position: 4 }
+const STAFF = { id: STAFF_ROLE_ID, name: "Staff", position: 5 }
 
-const MODERATION = { id: MODERATION_ROLE_ID, name: "Modération", position: 3 }
+const MODERATION = { id: MODERATION_ROLE_ID, name: "Modération", position: 4 }
+
+const BANS = { id: BAN_ROLE_ID, name: "Bannissements", position: 3 }
 
 const PANEL = { id: "1300000000000000020", name: "Shor Panel", position: 2 }
 
@@ -19,10 +27,11 @@ const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
 
 test.use({
   discordState: {
-    roles: [STAFF, MODERATION, PANEL, GUARD],
+    roles: [STAFF, MODERATION, BANS, PANEL, GUARD],
     applicationRoles: [PANEL.id],
     members: [
       { user: ALDIS, roles: [STAFF.id, MODERATION.id] },
+      { user: SIGRID, roles: [STAFF.id, MODERATION.id, BANS.id] },
       { user: LYRA, nick: "Lyra des Brumes", roles: [GUARD.id] },
     ],
   },
@@ -59,6 +68,9 @@ test("a moderator finds a member, opens their record, times them out with the di
   ).toHaveCount(0)
   await expect(history).toContainText(
     "Aucune sanction ni levée dans l’historique."
+  )
+  await expect(main.getByRole("region", { name: "Bannissement" })).toHaveCount(
+    0
   )
   await checkAccessibility()
 
@@ -173,5 +185,68 @@ test("a moderator kicks a member from their record with the direct message, and 
     expect.stringContaining("Motif : Spam répété"),
   ])
   expect(await discord.getMember(LYRA.id)).toBeNull()
+  await checkAccessibility()
+})
+
+test("a staff member who bans bans a member from their record with the direct message, then lifts the ban, the record and its history following each", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  const main = page.getByRole("main")
+  const ban = main.getByRole("region", { name: "Bannissement" })
+  const entries = main
+    .getByRole("region", { name: "Historique des sanctions" })
+    .getByRole("listitem")
+
+  await logIn(SIGRID)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.goto(`/records/${LYRA.id}`)
+  await page.waitForLoadState()
+  await expect(
+    ban.getByRole("radio", { name: "Aucun", exact: true })
+  ).toBeChecked()
+  await checkAccessibility()
+
+  await ban.getByRole("radio", { name: "Dernière heure" }).check()
+  await ban.getByLabel("Motif du bannissement").fill("Menaces répétées")
+  await expect(
+    ban.getByRole("checkbox", { name: "Prévenir en message privé" })
+  ).toBeChecked()
+  await ban.getByRole("button", { name: "Bannir" }).click()
+
+  await expect(main.getByRole("status")).toHaveText(
+    "Le bannissement de Lyra des Brumes a eu lieu. Le message privé est parti."
+  )
+  await expect(main).toContainText("Compte banni")
+  await expect(
+    main.getByText("Menaces répétées", { exact: true })
+  ).toBeVisible()
+  await expect(main.getByText("sigrid", { exact: true })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Bannir" })).toHaveCount(0)
+  await expect(entries).toHaveCount(1)
+  await expect(entries.first()).toContainText("Bannissement")
+  await expect(entries.first()).toContainText("par sigrid, depuis le panel")
+  await expect(entries.first()).toContainText("Motif : Menaces répétées")
+  expect(discord.directMessagesTo(LYRA.id)).toEqual([
+    expect.stringContaining("Motif : Menaces répétées"),
+  ])
+  expect(discord.deletedMessageSecondsOf(LYRA.id)).toBe(3600)
+  await checkAccessibility()
+
+  await ban.getByLabel("Motif de la levée").fill("Erreur de cible")
+  await ban.getByRole("button", { name: "Lever le bannissement" }).click()
+
+  await expect(main.getByRole("status")).toHaveText(
+    "Le bannissement de Lyra est levé."
+  )
+  await expect(main).toContainText("Compte absent du serveur")
+  await expect(entries).toHaveCount(2)
+  await expect(entries.first()).toContainText("Levée du bannissement")
+  await expect(entries.first()).toContainText("Motif : Erreur de cible")
+  await expect(ban.getByRole("button", { name: "Bannir" })).toBeVisible()
+  await expect(ban.getByRole("checkbox")).toHaveCount(0)
+  expect(await discord.getBan(LYRA.id)).toBeNull()
   await checkAccessibility()
 })

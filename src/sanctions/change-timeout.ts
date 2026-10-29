@@ -4,11 +4,11 @@ import type { APIGuildMember } from "discord-api-types/v10"
 
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
-import { DiscordError } from "@/discord/discord-error"
 import { memberName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
 import { formatParisTime } from "@/ui/paris-time"
 import { DIRECT_MESSAGE_OUTCOMES, sendDirectMessage } from "./direct-message"
+import { unlessDiscordUnavailable } from "./discord-unavailable"
 import { readSanctionRefusals } from "./sanction-refusal"
 import type { TimeoutFields, TimeoutResult } from "./sanction-result"
 import {
@@ -38,8 +38,9 @@ export async function changeTimeout(
     return failure(submitted.message, submitted.fields)
   }
   const { fields, reason } = submitted
-  const applied = await unlessDiscordUnavailable(fields, () =>
-    applyChange(discord, staffMember, submitted)
+  const applied = await unlessDiscordUnavailable(
+    () => applyChange(discord, staffMember, submitted),
+    DISCORD_UNAVAILABLE[fields.change]
   )
   if (typeof applied === "string") {
     return failure(applied, fields)
@@ -92,20 +93,6 @@ async function applyChange(
     auditLogReason(staffMember, reason)
   )
   return { name, member, end }
-}
-
-async function unlessDiscordUnavailable(
-  fields: TimeoutFields,
-  write: () => Promise<AppliedChange | string>
-) {
-  try {
-    return await write()
-  } catch (error) {
-    if (error instanceof DiscordError && error.unavailable) {
-      return DISCORD_UNAVAILABLE[fields.change]
-    }
-    throw error
-  }
 }
 
 function isTimedOut({ communication_disabled_until }: APIGuildMember) {

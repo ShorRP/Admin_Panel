@@ -88,7 +88,11 @@ function discordWithLyra() {
 async function moderatorOn(discord: FakeDiscord) {
   const staffMember = await findStaffMember(
     discord,
-    { staffRoleId: STAFF.id, moderationRoleIds: [MODERATION.id] },
+    {
+      staffRoleId: STAFF.id,
+      moderationRoleIds: [MODERATION.id],
+      banRoleIds: [],
+    },
     ALDIS.id
   )
   if (staffMember === null) {

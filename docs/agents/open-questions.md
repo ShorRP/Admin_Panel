@@ -35,7 +35,7 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 - **Question:** Until the panel's contestation page exists (#150), where should an account the staff banned turn to contest the ban? It can no longer open a support ticket on the Discord server.
 - **Where it shows up:** the direct message the panel sends with a sanction says how to contest it, and nobody reads a reply to it, since the panel's application never connects to the gateway (ADR 0003; Gilles, 2026-10-28, while grilling #27). A warning, a timeout and a kick are contested through a support ticket of the « ❓ Autre demande » kind, which ShorBot serves (ADR 0003): the POs' list of the Bot's features says so for a warning (relayed by Gilles on 2026-10-23, #4), and Gilles extended it to the timeout and the kick on 2026-10-28. A timed-out member keeps only View Channel and Read Message History (https://docs.discord.com/developers/topics/permissions, read 2026-10-28), so they can write in a ticket only once the timeout ends (inferred), and a kicked member joins again through an invite.
 - **Who is likely to know:** Gilles, who decides it, and the POs for any way to reach the staff outside the Discord server.
-- **Blocked on it:** the final text of the ban's direct message, which keeps a placeholder until then (#181).
+- **Blocked on it:** the final text of the ban's direct message, which says until then « La marche à suivre pour le contester n’est pas encore fixée. » (`src/sanctions/ban-direct-message.ts`, #181).
 
 ## Are there minors on Shor's Discord server?
 

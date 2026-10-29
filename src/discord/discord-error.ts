@@ -1,6 +1,6 @@
 import type { DiscordRoute } from "./routes"
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE"
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
 
 export type DiscordErrorDetails = {
   method: HttpMethod
