@@ -11,6 +11,7 @@ const LYRA_ID = "1400000000000000003"
 const MEMBER: SanctionOptions = {
   kind: "member",
   userId: LYRA_ID,
+  name: "Lyra des Brumes",
   timeout: { kind: "open", timedOutUntil: null },
   ban: false,
 }
@@ -193,7 +194,9 @@ test("a staff member who bans also finds the ban's form, with the direct message
 })
 
 test("an account absent from the Discord server offers only the ban, with no tabs and no direct message, after the mockup's sentence", () => {
-  const html = render({ options: { kind: "absent", userId: LYRA_ID } })
+  const html = render({
+    options: { kind: "absent", userId: LYRA_ID, name: "Lyra des Brumes" },
+  })
 
   expect(html).not.toMatch(/^<section[^>]* hidden=""/)
   expect(html).not.toContain('role="tablist"')
@@ -271,7 +274,7 @@ test("a refused change shows its message in the alert region, which the fields p
   expect(region(html, "status").text).toBe("")
 })
 
-test("while a change is sent, every button that sends one is disabled, the tabs still open, and the status region says so", () => {
+test("while a change is sent, every button that sends one, or asks to confirm one, is disabled, the tabs still open, and the status region says so", () => {
   const html = render({
     options: {
       ...MEMBER,
@@ -286,17 +289,19 @@ test("while a change is sent, every button that sends one is disabled, the tabs 
 
   expect(
     Array.from(html.matchAll(/<button([^>]*)>/g), ([, tag = ""]) => ({
+      role: attributesOf(tag).get("role"),
       submits: attributesOf(tag).get("type") === "submit",
+      confirms: attributesOf(tag).get("aria-haspopup") === "dialog",
       disabled: attributesOf(tag).has("disabled"),
     }))
   ).toEqual([
-    { submits: false, disabled: false },
-    { submits: false, disabled: false },
-    { submits: false, disabled: false },
-    { submits: true, disabled: true },
-    { submits: true, disabled: true },
-    { submits: true, disabled: true },
-    { submits: true, disabled: true },
+    { role: "tab", submits: false, confirms: false, disabled: false },
+    { role: "tab", submits: false, confirms: false, disabled: false },
+    { role: "tab", submits: false, confirms: false, disabled: false },
+    { role: undefined, submits: true, confirms: false, disabled: true },
+    { role: undefined, submits: true, confirms: false, disabled: true },
+    { role: undefined, submits: false, confirms: true, disabled: true },
+    { role: undefined, submits: false, confirms: true, disabled: true },
   ])
   expect(region(html, "status")).toEqual({
     icon: undefined,

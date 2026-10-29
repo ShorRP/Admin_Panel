@@ -57,6 +57,7 @@ function discordWith(timedOutUntil: string | null = null) {
       { user: SIGRID, roles: [STAFF.id, MODERATION.id, BANS.id] },
       {
         user: LYRA,
+        nick: "Lyra des Brumes",
         roles: [GUARD.id],
         communication_disabled_until: timedOutUntil,
       },
@@ -98,6 +99,7 @@ test("a member below the staff member and the application can be timed out or ki
   expect(await optionsFor(discordWith(), LYRA)).toEqual({
     kind: "member",
     userId: LYRA.id,
+    name: "Lyra des Brumes",
     timeout: { kind: "open", timedOutUntil: null },
     ban: false,
   })
@@ -107,6 +109,7 @@ test("a staff member who bans can also ban a member", async () => {
   expect(await optionsFor(discordWith(), LYRA, SIGRID.id)).toEqual({
     kind: "member",
     userId: LYRA.id,
+    name: "Lyra des Brumes",
     timeout: { kind: "open", timedOutUntil: null },
     ban: true,
   })
@@ -118,6 +121,7 @@ test("a timed-out member can be timed out again or lifted, until the end of thei
   ).toEqual({
     kind: "member",
     userId: LYRA.id,
+    name: "Lyra des Brumes",
     timeout: {
       kind: "open",
       timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
@@ -161,6 +165,7 @@ test("a member with the Administrator permission can be kicked, but not timed ou
   expect(await optionsFor(discordWith(), HALDOR)).toEqual({
     kind: "member",
     userId: HALDOR.id,
+    name: "haldor",
     timeout: {
       kind: "refused",
       reason:
@@ -186,6 +191,7 @@ test("a staff member who bans can ban an account absent from the Discord server,
   expect(await optionsFor(discord, OUTSIDER, SIGRID.id)).toEqual({
     kind: "absent",
     userId: OUTSIDER.id,
+    name: "outsider",
   })
   expect(await optionsFor(discord, ESKIL, SIGRID.id)).toEqual({
     kind: "banned",

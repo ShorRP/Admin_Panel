@@ -5,7 +5,11 @@ import { Button } from "@/ui/button"
 import { ParisTime } from "@/ui/paris-time"
 import { NotifyCheckbox } from "./notify-checkbox"
 import { ReasonField } from "./reason-field"
-import { LEGEND_CLASS, SANCTION_ALERT_ID, SUBMIT_CLASS } from "./sanction-form"
+import {
+  CARD_BUTTON_CLASS,
+  LEGEND_CLASS,
+  SANCTION_ALERT_ID,
+} from "./sanction-form"
 import { SanctionNotice } from "./sanction-notice"
 import type { SanctionResult } from "./sanction-result"
 import {
@@ -101,7 +105,7 @@ export function TimeoutForms({
           readByMember
         />
         <NotifyCheckbox defaultChecked={refusedTimeOut?.notify ?? true} />
-        <Button type="submit" disabled={pending} className={SUBMIT_CLASS}>
+        <Button type="submit" disabled={pending} className={CARD_BUTTON_CLASS}>
           <Timer aria-hidden data-icon="inline-start" />
           Exclure temporairement
         </Button>

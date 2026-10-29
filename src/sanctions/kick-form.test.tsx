@@ -17,6 +17,7 @@ function render({
   return renderToStaticMarkup(
     <KickForm
       userId={LYRA_ID}
+      name="Lyra des Brumes"
       state={state}
       pending={pending}
       action={() => {}}
@@ -36,6 +37,8 @@ function button(html: string) {
     icon: iconDrawing,
     iconHidden: /\saria-hidden="true"/.test(iconAttributes),
     text,
+    type: /\stype="([^"]*)"/.exec(tag)?.[1],
+    opensDialog: /\saria-haspopup="dialog"/.test(tag),
     disabled: /\sdisabled=""/.test(tag),
   }
 }
@@ -76,7 +79,7 @@ test("a kick says that the account can come back through an invite, and asks for
   expect(placeholder(html)).toBe("Écris le motif tel que le membre le lira.")
 })
 
-test("a member can be kicked with a labelled reason and the direct message checked", () => {
+test("a member can be kicked with a labelled reason and the direct message checked, through « Expulser », which opens the kick's confirmation rather than sending the form", () => {
   const html = render()
 
   expect(html.match(/<form/g)).toHaveLength(1)
@@ -90,10 +93,13 @@ test("a member can be kicked with a labelled reason and the direct message check
   expect(html).toMatch(
     /<label[^>]*><input type="checkbox"[^>]*\/>Prévenir en message privé<\/label>/
   )
+  expect(html.match(/<button/g)).toHaveLength(1)
   expect(button(html)).toEqual({
     icon: drawing(UserX),
     iconHidden: true,
     text: "Expulser",
+    type: "button",
+    opensDialog: true,
     disabled: false,
   })
 })

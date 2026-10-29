@@ -19,6 +19,7 @@ function render({
   return renderToStaticMarkup(
     <BanForm
       userId={LYRA_ID}
+      name="Lyra des Brumes"
       standing={standing}
       state={state}
       pending={pending}
@@ -39,6 +40,8 @@ function button(html: string) {
     icon: iconDrawing,
     iconHidden: /\saria-hidden="true"/.test(iconAttributes),
     text,
+    type: /\stype="([^"]*)"/.exec(tag)?.[1],
+    opensDialog: /\saria-haspopup="dialog"/.test(tag),
     disabled: /\sdisabled=""/.test(tag),
   }
 }
@@ -83,7 +86,7 @@ function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1]
 }
 
-test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked", () => {
+test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked, through « Bannir », which opens the ban's confirmation rather than sending the form", () => {
   const html = render()
 
   expect(html.match(/<form/g)).toHaveLength(1)
@@ -109,10 +112,13 @@ test("a member can be banned with the messages to delete, none by default, a lab
   expect(html).toMatch(
     /<label[^>]*><input type="checkbox"[^>]*\/>Prévenir en message privé<\/label>/
   )
+  expect(html.match(/<button/g)).toHaveLength(1)
   expect(button(html)).toEqual({
     icon: drawing(Hammer),
     iconHidden: true,
     text: "Bannir",
+    type: "button",
+    opensDialog: true,
     disabled: false,
   })
 })
