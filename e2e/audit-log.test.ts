@@ -128,7 +128,7 @@ test.describe("for a staff member who moderates", () => {
     await row.getByRole("link", { name: "Lyra" }).click()
     await expect(page).toHaveURL(`/records/${LYRA.id}`)
     await expect(
-      page.getByRole("heading", { level: 2, name: "Lyra" })
+      page.getByRole("heading", { level: 1, name: "Lyra" })
     ).toBeVisible()
     await checkAccessibility()
   })

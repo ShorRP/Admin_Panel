@@ -23,6 +23,11 @@ test.each([
     { kind: "banned" } as const,
     "Compte banni",
   ],
+  [
+    "an absent account's badge says it is not on the Discord server",
+    { kind: "absent" } as const,
+    "Absent du serveur",
+  ],
 ])(
   "%s, after a dot hidden from assistive technologies",
   (_, standing, text) => {

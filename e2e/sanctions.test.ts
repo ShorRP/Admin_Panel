@@ -85,7 +85,7 @@ test("a moderator finds a member, opens their record, times them out with the di
   await readToast(
     /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\. Le message privé est parti\.$/
   )
-  await expect(main).toContainText("Membre exclu temporairement jusqu’au")
+  await expect(main).toContainText("Exclu jusqu’au")
   await expect(main.getByLabel("Motif de l’exclusion temporaire")).toHaveValue(
     ""
   )
@@ -183,7 +183,7 @@ test("a moderator kicks a member from their record with the direct message, whic
   await readToast(
     "L’expulsion de Lyra des Brumes a eu lieu. Le message privé est parti."
   )
-  await expect(main).toContainText("Compte absent du serveur")
+  await expect(main).toContainText("Absent du serveur")
   await expect(
     main.getByRole("heading", { name: "Sanctions", exact: true })
   ).toHaveCount(0)
@@ -251,7 +251,7 @@ test("a staff member who bans bans a member from their record with the direct me
   await ban.getByRole("button", { name: "Lever le bannissement" }).click()
 
   await readToast("Le bannissement de Lyra est levé.")
-  await expect(main).toContainText("Compte absent du serveur")
+  await expect(main).toContainText("Absent du serveur")
   await expect(entries).toHaveCount(2)
   await expect(entries.first()).toContainText("Levée du bannissement")
   await expect(entries.first()).toContainText("Motif : Erreur de cible")
