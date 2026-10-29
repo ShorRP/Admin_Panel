@@ -71,7 +71,7 @@ test("a search finds the members whose username or nickname starts with it, what
         name: "Aldis",
         username: "aldis",
         avatarUrl: null,
-        banned: false,
+        standing: { kind: "member", timedOutUntil: null },
       },
       {
         id: CORVUS.id,
@@ -79,7 +79,7 @@ test("a search finds the members whose username or nickname starts with it, what
         username: "corvus",
         avatarUrl:
           "https://cdn.discordapp.com/avatars/1400000000000000003/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
-        banned: false,
+        standing: { kind: "member", timedOutUntil: null },
       },
       {
         id: ALDA.id,
@@ -87,10 +87,40 @@ test("a search finds the members whose username or nickname starts with it, what
         username: "alda",
         avatarUrl:
           "https://cdn.discordapp.com/avatars/1400000000000000004/6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c.webp?size=64",
-        banned: true,
+        standing: { kind: "banned" },
       },
     ],
     truncated: false,
+  })
+})
+
+test("a search gives the end of a member's timeout while it runs, and none once it has ended", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      {
+        user: ALDIS,
+        communication_disabled_until: "2099-11-02T18:30:00.000000+00:00",
+      },
+      {
+        user: ALDA,
+        communication_disabled_until: "2026-01-02T18:30:00.000000+00:00",
+      },
+    ],
+  })
+
+  const search = await searchAccounts(discord, "ald")
+
+  expect(search).toMatchObject({
+    accounts: [
+      {
+        id: ALDIS.id,
+        standing: {
+          kind: "member",
+          timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
+        },
+      },
+      { id: ALDA.id, standing: { kind: "member", timedOutUntil: null } },
+    ],
   })
 })
 
@@ -106,7 +136,9 @@ test("a search finds banned accounts beyond the first 1,000 bans Discord lists a
   const search = await searchAccounts(discord, "hal")
 
   expect(search).toMatchObject({
-    accounts: [{ id: HALDOR.id, username: "haldor", banned: true }],
+    accounts: [
+      { id: HALDOR.id, username: "haldor", standing: { kind: "banned" } },
+    ],
   })
 })
 
@@ -130,7 +162,9 @@ test("a search shows 25 accounts at most, members first, and says when it left s
   expect(search).toMatchObject({ kind: "accounts", truncated: true })
   const found = search.kind === "accounts" ? search.accounts : []
   expect(found).toHaveLength(25)
-  expect(found.filter(({ banned }) => banned)).toHaveLength(5)
+  expect(
+    found.filter(({ standing }) => standing.kind === "banned")
+  ).toHaveLength(5)
 })
 
 test("a search that finds 25 accounts exactly leaves none out", async () => {

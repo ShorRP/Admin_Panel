@@ -27,6 +27,7 @@ const TEXT_PAIRS = [
   ["muted-foreground", "muted"],
   ["muted-foreground", "card"],
   ["muted-foreground", "popover"],
+  ["muted-foreground", "accent"],
   ["primary-foreground", "primary"],
   ["secondary-foreground", "secondary"],
   ["accent-foreground", "accent"],
@@ -40,6 +41,8 @@ const TEXT_PAIRS = [
   ["success", "card"],
   ["destructive", "background"],
   ["destructive", "card"],
+  ["warning", "background"],
+  ["warning", "card"],
 ] as const
 
 const css = readFileSync(new URL("./globals.css", import.meta.url), "utf8")
@@ -260,11 +263,15 @@ test.each(["background", "card"])(
   }
 )
 
-test.each(["input/30", "input/50"])(
-  "in dark, text in foreground reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
-  (fill) => {
+test.each([
+  ["foreground", "input/30"],
+  ["foreground", "input/50"],
+  ["muted-foreground", "input/30"],
+])(
+  "in dark, text in %s reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
+  (text, fill) => {
     expect(
-      themeContrast(themes.dark, "foreground", ["background", fill])
+      themeContrast(themes.dark, text, ["background", fill])
     ).toBeGreaterThanOrEqual(4.5)
   }
 )

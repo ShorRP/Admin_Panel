@@ -7,13 +7,15 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { memberName, userName } from "@/discord/member-name"
 import { ACCOUNT_ID } from "./account-id"
+import type { AccountStanding } from "./account-standing"
+import { timeoutEndOf } from "./timeout-end"
 
 export type FoundAccount = {
   id: Snowflake
   name: string
   username: string
   avatarUrl: string | null
-  banned: boolean
+  standing: AccountStanding
 }
 
 export type AccountSearch =
@@ -51,16 +53,19 @@ export async function searchAccounts(
     allBans(discord),
   ])
   const found: FoundAccount[] = [
-    ...members.map((member) => ({
+    ...members.map((member): FoundAccount => ({
       ...accountOf(member.user, memberAvatarUrl(discord.guildId, member)),
       name: memberName(member),
-      banned: false,
+      standing: {
+        kind: "member",
+        timedOutUntil: timeoutEndOf(member.communication_disabled_until),
+      },
     })),
     ...bans
       .filter(({ user }) => startsWithIgnoringCase(user.username, query))
-      .map(({ user }) => ({
+      .map(({ user }): FoundAccount => ({
         ...accountOf(user, userAvatarUrl(user)),
-        banned: true,
+        standing: { kind: "banned" },
       })),
   ]
   return {

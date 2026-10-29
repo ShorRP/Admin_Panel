@@ -15,6 +15,18 @@ const CORVUS = { id: "1400000000000000004", username: "corvus" }
 
 const HALDOR = { id: "1400000000000000005", username: "haldor" }
 
+const LYRANDIL = {
+  id: "1400000000000000006",
+  username: "lyrandil",
+  global_name: "Lyrandil",
+}
+
+const LYSANNE = {
+  id: "1400000000000000007",
+  username: "lysanne_",
+  global_name: "Lysanne",
+}
+
 const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
 
 test.use({
@@ -24,18 +36,23 @@ test.use({
       { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
       { user: BRYNJA, roles: [STAFF_ROLE_ID] },
       { user: LYRA, nick: "Lyra des Brumes", roles: [GUARD.id] },
+      {
+        user: LYRANDIL,
+        communication_disabled_until: "2099-11-02T18:30:00.000000+00:00",
+      },
     ],
     bans: [
       {
         user: CORVUS,
         reason: "Aldis (1400000000000000001) : insultes répétées",
       },
+      { user: LYSANNE },
     ],
     users: [HALDOR],
   },
 })
 
-test("a staff member who moderates finds an account by name through « Modération », then opens its record", async ({
+test("a staff member who moderates finds accounts by name through « Modération », counted, each with its standing, a timed-out member's until when, then opens a record", async ({
   page,
   logIn,
   checkAccessibility,
@@ -46,7 +63,10 @@ test("a staff member who moderates finds an account by name through « Modérati
   const moderation = sections
     .getByRole("list", { name: "Modération" })
     .getByRole("link", { name: "Modération" })
-  const found = page.getByRole("main").getByRole("link", { name: /^Lyra/ })
+  const main = page.getByRole("main")
+  const found = main
+    .getByRole("list", { name: "3 comptes commencent par « ly »" })
+    .getByRole("link")
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -54,14 +74,26 @@ test("a staff member who moderates finds an account by name through « Modérati
   await expect(page).toHaveURL("/records")
   await expect(page).toHaveTitle("Modération – Panel de Shor")
   await expect(moderation).toHaveAttribute("aria-current", "page")
-  await page.getByLabel("Compte").fill("LYR")
+  await expect(
+    main.getByRole("heading", { level: 1, name: "Modération" })
+  ).toBeVisible()
+  await page.getByLabel("Compte").fill("ly")
   await page.getByRole("button", { name: "Chercher" }).click()
-  await expect(page).toHaveURL("/records?query=LYR")
-  await expect(found).toContainText("Lyra des Brumes")
-  await expect(found).toContainText("@lyra_gates")
+  await expect(page).toHaveURL("/records?query=ly")
+  await expect(found).toHaveCount(3)
+  await expect(found.nth(0)).toHaveAccessibleName(
+    /^Lyra des Brumes\s*@lyra_gates\s*Membre du serveur$/
+  )
+  await expect(found.nth(1)).toHaveAccessibleName(
+    /^Lyrandil\s*@lyrandil\s*Exclu jusqu’au 2 nov\. 2099, 19:30$/
+  )
+  await expect(found.nth(2)).toHaveAccessibleName(
+    /^Lysanne\s*@lysanne_\s*Compte banni$/
+  )
+  await expect(main).toContainText("Heures de Paris.")
   await checkAccessibility()
 
-  await found.click()
+  await found.nth(0).click()
   await expect(page).toHaveURL(`/records/${LYRA.id}`)
   await expect(page).toHaveTitle("Fiche – Panel de Shor")
   await expect(
