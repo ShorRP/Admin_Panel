@@ -15,21 +15,18 @@ function chosenTheme(): Theme {
   return theme === "light" || theme === "dark" ? theme : "system"
 }
 
-function systemTheme(): Theme {
+function themeOnTheServer(): Theme {
   return "system"
 }
 
 function choose(theme: Theme) {
   const root = document.documentElement
-  if (theme === "system") {
-    delete root.dataset.theme
-  } else {
-    root.dataset.theme = theme
-  }
   try {
     if (theme === "system") {
+      delete root.dataset.theme
       localStorage.removeItem(THEME_STORAGE_KEY)
     } else {
+      root.dataset.theme = theme
       localStorage.setItem(THEME_STORAGE_KEY, theme)
     }
   } catch {}
@@ -42,7 +39,7 @@ export function StatefulThemeToggle(
   return (
     <ThemeToggle
       {...props}
-      theme={useSyncExternalStore(subscribe, chosenTheme, systemTheme)}
+      theme={useSyncExternalStore(subscribe, chosenTheme, themeOnTheServer)}
       onChoose={choose}
     />
   )

@@ -11,7 +11,7 @@ const CHOICES = [
 ] as const
 
 const choiceVariants = cva(
-  "flex h-7 items-center justify-center gap-1.5 rounded-sm text-xs whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+  "flex h-7 items-center justify-center gap-1.5 rounded-sm border border-transparent text-xs whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
   {
     variants: {
       iconOnly: { true: "w-7", false: "flex-1 px-2" },
@@ -44,8 +44,17 @@ export function ThemeToggle({
           onClick={() => onChoose(choice)}
           className={choiceVariants({ iconOnly })}
         >
-          <Icon aria-hidden className="size-3.5" />
-          {iconOnly ? <span className="sr-only">{name}</span> : name}
+          {iconOnly ? (
+            <>
+              <Icon aria-hidden className="size-3.5" />
+              <span className="sr-only">{name}</span>
+            </>
+          ) : (
+            <>
+              <Icon aria-hidden data-icon="inline-start" className="size-3.5" />
+              {name}
+            </>
+          )}
         </button>
       ))}
     </div>

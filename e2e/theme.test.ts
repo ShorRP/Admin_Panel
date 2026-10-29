@@ -1,30 +1,21 @@
 import { STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test } from "./fixtures"
+import { bodyBackground, expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const THEME_WATCH = "Theme watch: "
+
+const TRANSPARENT = "rgba(0, 0, 0, 0)"
 
 test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
 
-type ThemeWatch = {
-  setBeforeBody: boolean
-  atDomContentLoaded: string | undefined
-}
-
-type ThemedPage = {
-  emulateMedia: (media: { colorScheme: "light" | "dark" }) => Promise<void>
-  evaluate: (pageFunction: () => string) => Promise<string>
-}
-
 function watchTheme() {
-  const watch: ThemeWatch = {
-    setBeforeBody: false,
-    atDomContentLoaded: undefined,
-  }
-  Object.assign(window, { themeWatch: watch })
   const observer = new MutationObserver(() => {
-    watch.setBeforeBody = document.body === null
+    console.log(
+      `Theme watch: data-theme set before <body> exists: ${document.body === null}`
+    )
     observer.disconnect()
   })
   observer.observe(document, {
@@ -33,16 +24,10 @@ function watchTheme() {
     attributeFilter: ["data-theme"],
   })
   document.addEventListener("DOMContentLoaded", () => {
-    watch.atDomContentLoaded = document.documentElement.dataset.theme
+    console.log(
+      `Theme watch: data-theme at DOMContentLoaded: ${document.documentElement.dataset.theme ?? "none"}`
+    )
   })
-}
-
-function themeWatch() {
-  return (window as unknown as { themeWatch: ThemeWatch }).themeWatch
-}
-
-function bodyBackground() {
-  return getComputedStyle(document.body).backgroundColor
 }
 
 function theme() {
@@ -52,7 +37,7 @@ function theme() {
   }
 }
 
-async function systemBackgrounds(page: ThemedPage) {
+async function systemBackgrounds(page: Page) {
   const backgrounds = { light: "", dark: "" }
   for (const scheme of ["dark", "light"] as const) {
     await page.emulateMedia({ colorScheme: scheme })
@@ -71,6 +56,12 @@ test("under a light system, a staff member chooses « Sombre » in the sidebar, 
     .getByRole("group", { name: "Thème" })
   const auto = toggle.getByRole("button", { name: "Auto" })
   const dark = toggle.getByRole("button", { name: "Sombre" })
+  const watched: string[] = []
+  page.on("console", (message) => {
+    if (message.text().startsWith(THEME_WATCH)) {
+      watched.push(message.text().slice(THEME_WATCH.length))
+    }
+  })
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -82,6 +73,8 @@ test("under a light system, a staff member chooses « Sombre » in the sidebar, 
   await dark.click()
   await expect(dark).toHaveAttribute("aria-pressed", "true")
   await expect(auto).toHaveAttribute("aria-pressed", "false")
+  await expect(dark).not.toHaveCSS("border-top-color", TRANSPARENT)
+  await expect(auto).toHaveCSS("border-top-color", TRANSPARENT)
   expect(await page.evaluate(theme)).toEqual({ chosen: "dark", stored: "dark" })
   expect(await page.evaluate(bodyBackground)).toBe(system.dark)
   await checkAccessibility()
@@ -89,10 +82,10 @@ test("under a light system, a staff member chooses « Sombre » in the sidebar, 
   await page.addInitScript(watchTheme)
   await page.reload()
   await page.waitForLoadState()
-  expect(await page.evaluate(themeWatch)).toEqual({
-    setBeforeBody: true,
-    atDomContentLoaded: "dark",
-  })
+  expect(watched).toEqual([
+    "data-theme set before <body> exists: true",
+    "data-theme at DOMContentLoaded: dark",
+  ])
   await expect(dark).toHaveAttribute("aria-pressed", "true")
   expect(await page.evaluate(bodyBackground)).toBe(system.dark)
 

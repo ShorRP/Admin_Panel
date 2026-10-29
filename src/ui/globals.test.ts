@@ -267,6 +267,15 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     }
   )
 
+  test.each(["muted", "card"])(
+    "the border of the theme chosen in the toggle, primary, reaches 3:1 on %s",
+    (surface) => {
+      expect(themeContrast(theme, "primary", [surface])).toBeGreaterThanOrEqual(
+        3
+      )
+    }
+  )
+
   test("the current section's icon, in primary, reaches 3:1 on sidebar-accent", () => {
     expect(
       themeContrast(theme, "primary", ["sidebar-accent"])
