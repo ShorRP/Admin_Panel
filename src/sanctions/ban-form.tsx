@@ -4,10 +4,8 @@ import { Hammer } from "lucide-react"
 import { BAN_MESSAGE_DELETIONS } from "./ban-message-deletions"
 import { NotifyCheckbox } from "./notify-checkbox"
 import { ReasonField } from "./reason-field"
-import {
-  ConfirmedSanction,
-  SanctionConfirmation,
-} from "./sanction-confirmation"
+import type { Confirmation } from "./sanction-confirmation"
+import { SanctionConfirmationDialog } from "./sanction-confirmation-dialog"
 import {
   CHOICE_CLASS,
   LEGEND_CLASS,
@@ -77,21 +75,21 @@ export function BanForm({
       {standing === "member" && (
         <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
       )}
-      <ConfirmedSanction label="Bannir" icon={Hammer} pending={pending}>
-        <BanConfirmation name={name} />
-      </ConfirmedSanction>
+      <SanctionConfirmationDialog
+        confirmation={banConfirmation(name)}
+        pending={pending}
+      />
     </form>
   )
 }
 
-export function BanConfirmation({ name }: { name: string }) {
-  return (
-    <SanctionConfirmation
-      formId={FORM_ID}
-      title={`Bannir ${name} ?`}
-      description="Le compte ne pourra plus rejoindre le serveur Discord tant que le staff ne lève pas le bannissement."
-      label="Bannir"
-      icon={Hammer}
-    />
-  )
+export function banConfirmation(name: string): Confirmation {
+  return {
+    formId: FORM_ID,
+    label: "Bannir",
+    icon: Hammer,
+    title: `Bannir ${name} ?`,
+    description:
+      "Le compte ne pourra plus rejoindre le serveur Discord tant que le staff ne lève pas le bannissement.",
+  }
 }

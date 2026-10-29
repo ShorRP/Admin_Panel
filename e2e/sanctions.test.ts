@@ -57,6 +57,14 @@ function sanctionsOf(page: Page) {
     .getByRole("region", { name: "Sanctions", exact: true })
 }
 
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox()
+  if (box === null) {
+    throw new Error("The element is not visible.")
+  }
+  return box
+}
+
 async function expectRed(page: Page, button: Locator) {
   const [red, onRed] = await page.evaluate(() => {
     const probe = document.createElement("div")
@@ -435,6 +443,7 @@ test("a staff member who bans bans a member from the ban's tab with the direct m
     reason: expect.stringContaining("Retour refusé"),
   })
   expect(discord.directMessagesTo(LYRA.id)).toHaveLength(1)
+  await checkAccessibility()
 })
 
 test("« Annuler » closes the confirmation of a kick or a ban without writing anything to Discord, and the form keeps what was typed", async ({
@@ -482,7 +491,7 @@ test("« Annuler » closes the confirmation of a kick or a ban without writing
   await checkAccessibility()
 })
 
-test("a kick confirmed without a reason comes back with its message in the alert region, the form keeping the choice of the direct message", async ({
+test("a kick or a ban confirmed without a reason comes back with its message in the alert region, the form keeping what was chosen", async ({
   page,
   logIn,
   discord,
@@ -492,9 +501,10 @@ test("a kick confirmed without a reason comes back with its message in the alert
   const main = page.getByRole("main")
   const sanctions = sanctionsOf(page)
   const kick = sanctions.getByRole("tabpanel", { name: "Expulsion" })
+  const ban = sanctions.getByRole("tabpanel", { name: "Bannissement" })
   const confirmation = page.getByRole("dialog")
 
-  await logIn(ALDIS)
+  await logIn(SIGRID)
   await expect(page).toHaveURL("/blocked-words")
   await page.goto(`/records/${LYRA.id}`)
   await page.waitForLoadState()
@@ -513,6 +523,27 @@ test("a kick confirmed without a reason comes back with its message in the alert
   ).not.toBeChecked()
   await expect(kick.getByLabel("Motif de l’expulsion")).toHaveValue("")
   await expect(toast()).toHaveCount(0)
+  expect(await discord.getMember(LYRA.id)).not.toBeNull()
+  await checkAccessibility()
+
+  await sanctions.getByRole("tab", { name: "Bannissement" }).click()
+  await ban.getByRole("radio", { name: "Dernière heure" }).check()
+  await ban
+    .getByRole("checkbox", { name: "Prévenir en message privé" })
+    .uncheck()
+  await ban.getByRole("button", { name: "Bannir" }).click()
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole("button", { name: "Bannir" }).click()
+
+  await expect(main.getByRole("alert")).toHaveText("Saisis un motif.")
+  await expect(confirmation).toHaveCount(0)
+  await expect(ban.getByRole("radio", { name: "Dernière heure" })).toBeChecked()
+  await expect(
+    ban.getByRole("checkbox", { name: "Prévenir en message privé" })
+  ).not.toBeChecked()
+  await expect(ban.getByLabel("Motif du bannissement")).toHaveValue("")
+  await expect(toast()).toHaveCount(0)
+  expect(await discord.getBan(LYRA.id)).toBeNull()
   expect(await discord.getMember(LYRA.id)).not.toBeNull()
   await checkAccessibility()
 })
@@ -535,6 +566,7 @@ for (const { title, prefersReducedMotion } of [
     test("the confirmation fades in, and zooms in only with motion", async ({
       page,
       logIn,
+      checkAccessibility,
     }) => {
       const sanctions = sanctionsOf(page)
 
@@ -587,6 +619,48 @@ for (const { title, prefersReducedMotion } of [
         scale: prefersReducedMotion ? 1 : 0.95,
       })
       await expect(page.getByRole("dialog")).toBeVisible()
+      await checkAccessibility()
     })
   })
 }
+
+test.describe("on a 360 px screen", () => {
+  test.use({ viewport: { width: 360, height: 760 } })
+
+  test("the confirmation offers « Annuler », then the confirmation beside it, on one row", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const sanctions = sanctionsOf(page)
+    const confirmation = page.getByRole("dialog")
+
+    await logIn(SIGRID)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto(`/records/${LYRA.id}`)
+    await page.waitForLoadState()
+    for (const [tab, label] of [
+      ["Expulsion", "Expulser"],
+      ["Bannissement", "Bannir"],
+    ] as const) {
+      await sanctions.getByRole("tab", { name: tab }).click()
+      await sanctions
+        .getByRole("tabpanel", { name: tab })
+        .getByRole("button", { name: label })
+        .click()
+      await expect(confirmation).toBeVisible()
+      await checkAccessibility()
+
+      const cancel = await boxOf(
+        confirmation.getByRole("button", { name: "Annuler" })
+      )
+      const confirm = await boxOf(
+        confirmation.getByRole("button", { name: label })
+      )
+      expect(confirm.y).toBe(cancel.y)
+      expect(confirm.x).toBeGreaterThanOrEqual(cancel.x + cancel.width)
+      await confirmation.getByRole("button", { name: "Annuler" }).click()
+      await expect(confirmation).toHaveCount(0)
+    }
+  })
+})

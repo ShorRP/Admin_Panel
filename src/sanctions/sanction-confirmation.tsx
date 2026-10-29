@@ -1,62 +1,29 @@
-import type { ReactNode } from "react"
-import { cn } from "cn"
 import { TriangleAlert, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import {
-  Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/ui/dialog"
-import { RED_BUTTON_CLASS, SUBMIT_CLASS } from "./sanction-form"
+import { RED_BUTTON_CLASS } from "./sanction-form"
 
-export function ConfirmedSanction({
-  label,
-  icon: Icon,
-  pending,
-  children,
-}: {
+export type Confirmation = {
+  formId: string
   label: string
   icon: LucideIcon
-  pending: boolean
-  children: ReactNode
-}) {
-  return (
-    <Dialog>
-      <DialogTrigger
-        disabled={pending}
-        render={<Button className={cn(SUBMIT_CLASS, RED_BUTTON_CLASS)} />}
-      >
-        <Icon aria-hidden data-icon="inline-start" />
-        {label}
-      </DialogTrigger>
-      <DialogContent
-        showCloseButton={false}
-        className="gap-5 p-6 sm:max-w-110 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:zoom-out-100"
-      >
-        {children}
-      </DialogContent>
-    </Dialog>
-  )
+  title: string
+  description: string
 }
 
 export function SanctionConfirmation({
   formId,
-  title,
-  description,
   label,
   icon: Icon,
-}: {
-  formId: string
-  title: string
-  description: string
-  label: string
-  icon: LucideIcon
-}) {
+  title,
+  description,
+}: Confirmation) {
   return (
     <>
       <div className="flex gap-3.5">
@@ -72,7 +39,7 @@ export function SanctionConfirmation({
           </DialogDescription>
         </DialogHeader>
       </div>
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex justify-end gap-2">
         <DialogClose render={<Button variant="outline" size="lg" />}>
           Annuler
         </DialogClose>

@@ -3,10 +3,8 @@ import { UserX } from "lucide-react"
 
 import { NotifyCheckbox } from "./notify-checkbox"
 import { ReasonField } from "./reason-field"
-import {
-  ConfirmedSanction,
-  SanctionConfirmation,
-} from "./sanction-confirmation"
+import type { Confirmation } from "./sanction-confirmation"
+import { SanctionConfirmationDialog } from "./sanction-confirmation-dialog"
 import { SENTENCE_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 
@@ -43,21 +41,21 @@ export function KickForm({
         readByMember
       />
       <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
-      <ConfirmedSanction label="Expulser" icon={UserX} pending={pending}>
-        <KickConfirmation name={name} />
-      </ConfirmedSanction>
+      <SanctionConfirmationDialog
+        confirmation={kickConfirmation(name)}
+        pending={pending}
+      />
     </form>
   )
 }
 
-export function KickConfirmation({ name }: { name: string }) {
-  return (
-    <SanctionConfirmation
-      formId={FORM_ID}
-      title={`Expulser ${name} ?`}
-      description="Le compte quitte le serveur Discord tout de suite. Il pourra revenir par une invitation."
-      label="Expulser"
-      icon={UserX}
-    />
-  )
+export function kickConfirmation(name: string): Confirmation {
+  return {
+    formId: FORM_ID,
+    label: "Expulser",
+    icon: UserX,
+    title: `Expulser ${name} ?`,
+    description:
+      "Le compte quitte le serveur Discord tout de suite. Il pourra revenir par une invitation.",
+  }
 }

@@ -1,9 +1,8 @@
-import { Hammer, TriangleAlert, type LucideIcon } from "lucide-react"
+import { Hammer, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import { Dialog } from "@/ui/dialog"
-import { BanConfirmation, BanForm } from "./ban-form"
+import { BanForm } from "./ban-form"
 import type { SanctionResult } from "./sanction-result"
 
 const LYRA_ID = "1400000000000000003"
@@ -33,41 +32,18 @@ function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
-function buttons(html: string) {
-  return Array.from(
-    html.matchAll(
-      /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/g
-    ),
-    ([, tag = "", iconAttributes = "", iconDrawing, text]) => ({
-      icon: iconDrawing,
-      iconHidden: /\saria-hidden="true"/.test(iconAttributes),
-      text,
-      type: /\stype="([^"]*)"/.exec(tag)?.[1],
-      opensDialog: /\saria-haspopup="dialog"/.test(tag),
-      form: /\sform="([^"]*)"/.exec(tag)?.[1],
-      disabled: /\sdisabled=""/.test(tag),
-    })
-  )
-}
-
 function button(html: string) {
-  const [first] = buttons(html)
-  if (first === undefined) {
-    throw new Error("The markup holds no button.")
+  const [, tag = "", iconAttributes = "", iconDrawing, text] =
+    /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/.exec(html) ??
+    []
+  return {
+    icon: iconDrawing,
+    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+    text,
+    type: /\stype="([^"]*)"/.exec(tag)?.[1],
+    opensDialog: /\saria-haspopup="dialog"/.test(tag),
+    disabled: /\sdisabled=""/.test(tag),
   }
-  return first
-}
-
-function formId(html: string) {
-  return /<form[^>]*\sid="([^"]*)"/.exec(html)?.[1]
-}
-
-function confirmation(name: string) {
-  return renderToStaticMarkup(
-    <Dialog>
-      <BanConfirmation name={name} />
-    </Dialog>
-  )
 }
 
 function hiddenFields(html: string) {
@@ -110,7 +86,7 @@ function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1]
 }
 
-test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked", () => {
+test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked, through « Bannir », which opens the ban's confirmation rather than sending the form", () => {
   const html = render()
 
   expect(html.match(/<form/g)).toHaveLength(1)
@@ -136,53 +112,15 @@ test("a member can be banned with the messages to delete, none by default, a lab
   expect(html).toMatch(
     /<label[^>]*><input type="checkbox"[^>]*\/>Prévenir en message privé<\/label>/
   )
-  expect(buttons(html)).toEqual([
-    {
-      icon: drawing(Hammer),
-      iconHidden: true,
-      text: "Bannir",
-      type: "button",
-      opensDialog: true,
-      form: undefined,
-      disabled: false,
-    },
-  ])
-})
-
-test("the ban's confirmation asks whether to ban the account, by its name, behind a hidden warning icon, says what a ban does, then offers « Annuler », then « Bannir », which sends the ban's form", () => {
-  const html = confirmation("Lyra des Brumes")
-
-  expect(/<h2[^>]*>([^<]*)<\/h2>/.exec(html)?.[1]).toBe(
-    "Bannir Lyra des Brumes ?"
-  )
-  expect(/<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1]).toBe(
-    "Le compte ne pourra plus rejoindre le serveur Discord tant que le staff ne lève pas le bannissement."
-  )
-  const [warning = ""] = /<svg[^>]*>.*?<\/svg>/.exec(html) ?? []
-  expect(warning).toContain(drawing(TriangleAlert))
-  expect(warning).toMatch(/\saria-hidden="true"/)
-  expect(formId(render())).toBeDefined()
-  expect(formId(render({ standing: "absent" }))).toBe(formId(render()))
-  expect(buttons(html)).toEqual([
-    {
-      icon: undefined,
-      iconHidden: false,
-      text: "Annuler",
-      type: "button",
-      opensDialog: false,
-      form: undefined,
-      disabled: false,
-    },
-    {
-      icon: drawing(Hammer),
-      iconHidden: true,
-      text: "Bannir",
-      type: "submit",
-      opensDialog: false,
-      form: formId(render()),
-      disabled: false,
-    },
-  ])
+  expect(html.match(/<button/g)).toHaveLength(1)
+  expect(button(html)).toEqual({
+    icon: drawing(Hammer),
+    iconHidden: true,
+    text: "Bannir",
+    type: "button",
+    opensDialog: true,
+    disabled: false,
+  })
 })
 
 test("a member's ban says that the account cannot come back until it is lifted, and asks for the reason as the member will read it", () => {

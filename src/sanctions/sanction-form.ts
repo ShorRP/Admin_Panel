@@ -10,7 +10,7 @@ export const LEGEND_CLASS = cn("mb-2.5 text-[0.8125rem] font-medium")
 
 export const SENTENCE_CLASS = cn("text-[0.8125rem] text-muted-foreground")
 
-export const SUBMIT_CLASS = cn("h-9.5 w-full")
+export const CARD_BUTTON_CLASS = cn("h-9.5 w-full")
 
 export const RED_BUTTON_CLASS = cn(
   "bg-destructive text-destructive-foreground hover:bg-destructive/90"

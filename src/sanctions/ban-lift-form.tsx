@@ -3,7 +3,7 @@ import { UserCheck } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { ReasonField } from "./reason-field"
-import { SUBMIT_CLASS } from "./sanction-form"
+import { CARD_BUTTON_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 
 const REASON_ID = "ban-lift-reason"
@@ -34,7 +34,7 @@ export function BanLiftForm({
         type="submit"
         variant="outline"
         disabled={pending}
-        className={SUBMIT_CLASS}
+        className={CARD_BUTTON_CLASS}
       >
         <UserCheck aria-hidden data-icon="inline-start" />
         Lever le bannissement
