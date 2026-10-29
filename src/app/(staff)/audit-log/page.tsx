@@ -20,7 +20,7 @@ export default function AuditLogPage({
       exit="section-crossfade"
       default="none"
     >
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
+      <main className="mx-auto flex max-w-3xl flex-col gap-6">
         <h1 className="font-heading text-xl font-medium">Journal d’audit</h1>
         <p>L’historique couvre 45 jours. Heures de Paris.</p>
         <SuspenseWithSkeleton skeleton={<AuditLogSkeleton />}>

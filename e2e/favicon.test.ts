@@ -38,7 +38,7 @@ test("a staff page, and a login page once the member logs out, point to Shor's f
   await page.waitForLoadState()
 
   await page
-    .getByRole("banner")
+    .getByRole("complementary")
     .getByRole("button", { name: "Se déconnecter" })
     .click()
   await expect(page).toHaveURL("/login/logged-out")

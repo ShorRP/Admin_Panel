@@ -35,7 +35,7 @@ test.use({
   },
 })
 
-test("every page's h1 and h2, and « Panel de Shor », take EB Garamond, whose one face the panel serves: weight 500, latin subset", async ({
+test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, whose one face the panel serves: weight 500, latin subset", async ({
   page,
   logIn,
   checkAccessibility,
@@ -43,7 +43,12 @@ test("every page's h1 and h2, and « Panel de Shor », take EB Garamond, whose o
   function headingFonts() {
     return page
       .locator("h1, h2")
-      .or(page.getByRole("banner").getByRole("link", { name: "Panel de Shor" }))
+      .or(
+        page
+          .getByRole("complementary")
+          .getByRole("link", { name: "Shor Panel du staff" })
+          .getByText("Shor", { exact: true })
+      )
       .filter({ visible: true })
       .evaluateAll((elements) =>
         elements.map((element) => ({
@@ -95,22 +100,22 @@ test("every page's h1 and h2, and « Panel de Shor », take EB Garamond, whose o
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
   await expectHeadingsInEbGaramond([
-    "Panel de Shor",
+    "Shor",
     "Mots interdits",
     "Autres règles AutoMod du serveur",
   ])
   await checkAccessibility()
 
   await page
-    .getByRole("banner")
+    .getByRole("complementary")
     .getByRole("link", { name: "Journal d’audit" })
     .click()
   await expect(page).toHaveURL("/audit-log")
-  await expectHeadingsInEbGaramond(["Panel de Shor", "Journal d’audit"])
+  await expectHeadingsInEbGaramond(["Shor", "Journal d’audit"])
   await checkAccessibility()
 
   await page
-    .getByRole("banner")
+    .getByRole("complementary")
     .getByRole("button", { name: "Se déconnecter" })
     .click()
   await expect(page).toHaveURL("/login/logged-out")

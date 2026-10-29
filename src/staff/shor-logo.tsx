@@ -6,7 +6,7 @@ export function ShorLogo({ className }: { className?: string }) {
       viewBox="0 0 1085.665 1173.71"
       fill="currentColor"
       aria-hidden
-      className={cn("size-8 shrink-0 text-primary", className)}
+      className={cn("h-7.5 w-7 shrink-0 text-primary", className)}
     >
       <path d="M517.35,380.63v40.719a184.586,184.586,0,0,0-29.87,3.59V350.77Z" />
       <path d="M434.63,845.26l-58.45-58.45V697.95a182.039,182.039,0,0,0,48.95,46.55C425.16,822.05,426.57,821.43,434.63,845.26Z" />

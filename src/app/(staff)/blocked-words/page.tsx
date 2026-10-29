@@ -20,7 +20,7 @@ export default function BlockedWordsPage() {
       exit="section-crossfade"
       default="none"
     >
-      <main className="mx-auto flex max-w-xl flex-col gap-6 p-4">
+      <main className="mx-auto flex max-w-xl flex-col gap-6">
         <h1 className="font-heading text-xl font-medium">Mots interdits</h1>
         <p>
           Les mots interdits ne s’appliquent ni au propriétaire du serveur

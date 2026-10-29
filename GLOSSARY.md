@@ -36,7 +36,7 @@ _Avoid_: admin role, mod role
 
 **Admin Panel**:
 The web application where the staff administer the Discord server without code or bot commands, and where anyone with a Discord account takes the few steps that concern them, such as contesting a ban.
-_Avoid_: dashboard, painel, staff panel
+_Avoid_: dashboard, painel, staff panel (the interface's « Panel du staff », under Shor's name, is a label, not a name of it)
 
 **Bot**:
 Shor's Discord bot, which reacts to what happens on the Discord server and serves its members there, such as their support tickets. Not the Admin Panel's own Discord application, which acts only when a staff member uses the panel.

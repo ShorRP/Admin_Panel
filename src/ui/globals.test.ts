@@ -31,6 +31,7 @@ const TEXT_PAIRS = [
   ["card-foreground", "card"],
   ["popover-foreground", "popover"],
   ["sidebar-foreground", "sidebar"],
+  ["muted-foreground", "sidebar"],
   ["sidebar-primary-foreground", "sidebar-primary"],
   ["sidebar-accent-foreground", "sidebar-accent"],
   ["success", "background"],
@@ -226,6 +227,12 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
   test("the focus ring, ring/50, reaches 3:1 on background", () => {
     expect(
       themeContrast(theme, "ring/50", ["background"])
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  test("the current section's icon, in primary, reaches 3:1 on sidebar-accent", () => {
+    expect(
+      themeContrast(theme, "primary", ["sidebar-accent"])
     ).toBeGreaterThanOrEqual(3)
   })
 

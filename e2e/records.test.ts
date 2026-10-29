@@ -40,9 +40,11 @@ test("a staff member who moderates finds an account by name through « Modérati
   logIn,
   checkAccessibility,
 }) => {
-  const moderation = page
-    .getByRole("banner")
+  const sections = page
+    .getByRole("complementary")
     .getByRole("navigation", { name: "Sections du panel" })
+  const moderation = sections
+    .getByRole("list", { name: "Modération" })
     .getByRole("link", { name: "Modération" })
   const found = page.getByRole("main").getByRole("link", { name: /^Lyra/ })
 
@@ -108,13 +110,14 @@ test("a staff member who does not moderate sees no « Modération », and the se
   logIn,
   checkAccessibility,
 }) => {
-  const header = page.getByRole("banner")
+  const sidebar = page.getByRole("complementary")
 
   await logIn(BRYNJA)
   await expect(page).toHaveURL("/blocked-words")
-  await expect(header).toContainText("brynja")
+  await expect(sidebar).toContainText("brynja")
   await page.waitForLoadState()
-  await expect(header.getByRole("link", { name: "Modération" })).toHaveCount(0)
+  await expect(sidebar.getByRole("link", { name: "Modération" })).toHaveCount(0)
+  await expect(sidebar).not.toContainText("Modération")
 
   await page.goto("/records")
   await expect(
