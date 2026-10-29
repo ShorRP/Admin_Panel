@@ -23,6 +23,22 @@ test("a member's initials take the first letter of at most two words of their na
   ).toBe("BL")
 })
 
+test("a member's initials skip the words that start with neither a letter nor a digit", () => {
+  expect(
+    text(
+      renderToStaticMarkup(
+        <MemberAvatar name="Lyra | Garde de Blancherive" avatarUrl={null} />
+      )
+    )
+  ).toBe("LG")
+})
+
+test("a member whose name holds no word that starts with a letter or a digit shows its first character", () => {
+  expect(
+    text(renderToStaticMarkup(<MemberAvatar name="~ ~" avatarUrl={null} />))
+  ).toBe("~")
+})
+
 test("a member with an avatar shows their initials until the browser has loaded it", () => {
   expect(
     text(

@@ -1,4 +1,5 @@
 import {
+  AuditLogEvent,
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
@@ -30,6 +31,14 @@ test.use({
         enabled: true,
         exempt_roles: [],
         exempt_channels: [],
+      },
+    ],
+    auditLogEntries: [
+      {
+        id: "1563530499194880000",
+        action_type: AuditLogEvent.MemberKick,
+        target_id: BRYNJA.id,
+        user_id: ALDIS.id,
       },
     ],
   },
@@ -107,7 +116,11 @@ test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, wh
     .getByRole("link", { name: "Journal d’audit" })
     .click()
   await expect(page).toHaveURL("/audit-log")
-  await expectHeadingsInEbGaramond(["Shor", "Journal d’audit"])
+  await expectHeadingsInEbGaramond([
+    "Shor",
+    "Journal d’audit",
+    "samedi 24 octobre 2026",
+  ])
   await checkAccessibility()
 
   await page

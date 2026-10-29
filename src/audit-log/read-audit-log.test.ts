@@ -12,8 +12,12 @@ import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { changeTimeout } from "@/sanctions/change-timeout"
-import { findStaffMember } from "@/staff/staff-member"
-import { readAuditLog, type AuditLogChange } from "./read-audit-log"
+import { findStaffMember, type StaffMember } from "@/staff/staff-member"
+import {
+  readAuditLog,
+  type AuditLogChange,
+  type AuditLogPage,
+} from "./read-audit-log"
 
 const STAFF_ROLE_ID = "1300000000000000000"
 
@@ -47,6 +51,10 @@ function form(word: string) {
   const data = new FormData()
   data.set("word", word)
   return data
+}
+
+function changesOf({ days }: AuditLogPage) {
+  return days.flatMap(({ changes }) => changes)
 }
 
 function shown(changes: AuditLogChange[]) {
@@ -133,7 +141,7 @@ test("a timeout given through the panel shows among the changes to the blocked w
   await changeTimeout(discord, moderator, timeOutForm("Insultes répétées"))
   await addBlockedWord(discord, moderator, form("bar"))
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(changes).toEqual([
     expect.objectContaining({ kind: "rule", description: "Ajout de « bar »" }),
@@ -170,7 +178,7 @@ test("timeouts, kicks and bans made in Discord, and their lifting, show under th
   discord.createBanAs(BRYN.id, LYRA.id, "Retour sous un autre nom")
   discord.removeBanAs(BRYN.id, LYRA.id)
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   const byBryn = {
     memberName: "Bryn la Rouge",
@@ -215,7 +223,7 @@ test("AutoMod's timeouts never show, nor a change to a member but their timeout"
   discord.timeOutByAutoModeration(insults.id, LYRA.id)
   discord.modifyMemberAs(BRYN.id, LYRA.id, { nick: "Lyra des Brumes" })
 
-  expect((await readAuditLog(discord, undefined)).changes).toEqual([])
+  expect(changesOf(await readAuditLog(discord, undefined))).toEqual([])
 })
 
 test("a sanction against an account the audit log does not name shows it as « Compte inconnu »", async () => {
@@ -231,7 +239,7 @@ test("a sanction against an account the audit log does not name shows it as « 
     ],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(sanctionChanges(changes)).toEqual([
     {
@@ -259,13 +267,13 @@ test("a page holds the 50 newest changes, to the blocked words and to sanctions 
   const newest = await readAuditLog(discord, undefined)
   const older = await readAuditLog(discord, newest.older)
 
-  expect(newest.changes).toHaveLength(50)
-  expect(sanctionChanges(newest.changes)[0]?.reason).toBe("Motif 30")
-  expect(shown(newest.changes).at(-1)?.description).toBe("Ajout de « mot6 »")
+  expect(changesOf(newest)).toHaveLength(50)
+  expect(sanctionChanges(changesOf(newest))[0]?.reason).toBe("Motif 30")
+  expect(shown(changesOf(newest)).at(-1)?.description).toBe("Ajout de « mot6 »")
   expect(older.older).toBeNull()
-  expect(older.changes).toHaveLength(10)
-  expect(sanctionChanges(older.changes)[0]?.reason).toBe("Motif 5")
-  expect(shown(older.changes).at(-1)?.description).toBe("Ajout de « mot1 »")
+  expect(changesOf(older)).toHaveLength(10)
+  expect(sanctionChanges(changesOf(older))[0]?.reason).toBe("Motif 5")
+  expect(shown(changesOf(older)).at(-1)?.description).toBe("Ajout de « mot1 »")
 })
 
 test("the blocked words added and removed through the panel show newest first, under the staff member's name", async () => {
@@ -275,7 +283,7 @@ test("the blocked words added and removed through the panel show newest first, u
   await addBlockedWord(discord, staffMember, form("bar"))
   await removeBlockedWord(discord, staffMember, form("foo"))
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Retrait de « foo »" },
@@ -290,7 +298,7 @@ const BRYN = {
   global_name: "Bryn la Rouge",
 }
 
-test("a change made in Discord to the panel's rule shows under its author's Discord name, with no detail", async () => {
+test("a change made in Discord to the panel's rule shows under its author's Discord name, with no detail, marked as made in Discord, where a blocked word added through the panel is not", async () => {
   const discord = new FakeDiscord({
     members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }, { user: BRYN }],
   })
@@ -303,7 +311,7 @@ test("a change made in Discord to the panel's rule shows under its author's Disc
     enabled: true,
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Règle modifiée dans Discord" },
@@ -313,6 +321,9 @@ test("a change made in Discord to the panel's rule shows under its author's Disc
     },
     { memberName: "aldis", description: "Ajout de « foo »" },
   ])
+  expect(
+    changes.map((change) => change.kind === "rule" && change.madeInDiscord)
+  ).toEqual([true, true, false])
 })
 
 const LINKS_RULE = {
@@ -335,7 +346,7 @@ test("changes to other AutoMod rules never show, however many there are", async 
     })
   }
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(shown(changes)).toEqual([
     { memberName: "aldis", description: "Ajout de « bar »" },
@@ -347,7 +358,7 @@ test("before the panel's rule exists, no change to an AutoMod rule shows", async
   const discord = discordWithStaff()
   discord.createAutoModerationRuleAs(ALDIS.id, LINKS_RULE)
 
-  expect((await readAuditLog(discord, undefined)).changes).toEqual([])
+  expect(changesOf(await readAuditLog(discord, undefined))).toEqual([])
 })
 
 test("a page holds the 50 newest changes, and its cursor leads to the older ones", async () => {
@@ -361,12 +372,12 @@ test("a page holds the 50 newest changes, and its cursor leads to the older ones
   const older = await readAuditLog(discord, newest.older)
 
   expect(newest.before).toBeNull()
-  expect(newest.changes).toHaveLength(50)
-  expect(shown(newest.changes)[0]?.description).toBe("Ajout de « mot51 »")
-  expect(shown(newest.changes).at(-1)?.description).toBe("Ajout de « mot2 »")
+  expect(changesOf(newest)).toHaveLength(50)
+  expect(shown(changesOf(newest))[0]?.description).toBe("Ajout de « mot51 »")
+  expect(shown(changesOf(newest)).at(-1)?.description).toBe("Ajout de « mot2 »")
   expect(older.before).toBe(newest.older)
   expect(older.older).toBeNull()
-  expect(shown(older.changes)).toEqual([
+  expect(shown(changesOf(older))).toEqual([
     { memberName: "aldis", description: "Ajout de « mot1 »" },
   ])
 })
@@ -380,7 +391,7 @@ test("with 50 changes or fewer, there is no older page", async () => {
 
   const newest = await readAuditLog(discord, undefined)
 
-  expect(newest.changes).toHaveLength(50)
+  expect(changesOf(newest)).toHaveLength(50)
   expect(newest.older).toBeNull()
 })
 
@@ -398,7 +409,7 @@ test("an invalid cursor counts as absent, and the newest changes show", async ()
   ]) {
     const page = await readAuditLog(discord, before)
     expect(page.before).toBeNull()
-    expect(shown(page.changes)).toEqual([
+    expect(shown(changesOf(page))).toEqual([
       { memberName: "aldis", description: "Ajout de « foo »" },
     ])
   }
@@ -433,7 +444,7 @@ test("each change carries the moment its audit log entry's ID holds", async () =
     ],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(changes.map(({ date }) => date)).toEqual([
     new Date("2026-10-24T12:32:00.000Z"),
@@ -472,7 +483,7 @@ test("a change made through the panel carries the avatar of the staff member its
     auditLogEntries: [panelAddition("1563530499194880000", "foo")],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(withAvatars(changes)).toEqual([
     {
@@ -499,7 +510,7 @@ test("a change made in Discord carries its author's avatar", async () => {
     ],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(withAvatars(changes)).toEqual([
     {
@@ -529,7 +540,7 @@ test("a member whose lookup Discord refuses shows no avatar on any of their chan
     })
   )
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(withAvatars(changes)).toEqual([
     { memberName: "aldis", avatarUrl: null },
@@ -543,7 +554,7 @@ test("a staff member who has left the Discord server shows no avatar, under the 
     auditLogEntries: [panelAddition("1563530499194880000", "foo")],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(withAvatars(changes)).toEqual([
     { memberName: "aldis", avatarUrl: null },
@@ -568,7 +579,7 @@ test("a member's lookup that fails with anything but a DiscordError is thrown", 
   await expect(readAuditLog(discord, undefined)).rejects.toBe(BUG)
 })
 
-test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
+test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
   const discord = new FakeDiscord({
     autoModerationRules: [PANEL_RULE],
     auditLogEntries: [
@@ -587,7 +598,7 @@ test("a change made in Discord by an account the audit log does not name shows u
     ],
   })
 
-  const { changes } = await readAuditLog(discord, undefined)
+  const changes = changesOf(await readAuditLog(discord, undefined))
 
   expect(shown(changes)).toEqual([
     {
@@ -614,9 +625,77 @@ test("renamed in Discord, the panel's rule takes its history with it, which star
   await addBlockedWord(discord, staffMember, form("bar"))
   const created = await readAuditLog(discord, undefined)
 
-  expect(renamed.changes).toEqual([])
-  expect(shown(created.changes)).toEqual([
+  expect(changesOf(renamed)).toEqual([])
+  expect(shown(changesOf(created))).toEqual([
     { memberName: "aldis", description: "Ajout de « bar »" },
+  ])
+})
+
+function onParisDays(page: AuditLogPage) {
+  return page.days.map(({ date, changes }) => ({
+    date,
+    descriptions: shown(changes).map(({ description }) => description),
+  }))
+}
+
+async function addBlockedWordAt(
+  discord: FakeDiscord,
+  staffMember: StaffMember,
+  word: string,
+  moment: string
+) {
+  vi.setSystemTime(new Date(moment))
+  await addBlockedWord(discord, staffMember, form(word))
+}
+
+test("a page's changes sit under the day of Paris they were made on, newest day first", async () => {
+  freezeTime()
+  const discord = discordWithStaff()
+  const staffMember = await staffMemberOn(discord)
+  await addBlockedWordAt(discord, staffMember, "foo", "2026-10-27T22:59:00Z")
+  await addBlockedWordAt(discord, staffMember, "bar", "2026-10-27T23:01:00Z")
+  await addBlockedWordAt(discord, staffMember, "baz", "2026-10-28T09:00:00Z")
+
+  expect(onParisDays(await readAuditLog(discord, undefined))).toEqual([
+    {
+      date: "2026-10-28",
+      descriptions: ["Ajout de « baz »", "Ajout de « bar »"],
+    },
+    { date: "2026-10-27", descriptions: ["Ajout de « foo »"] },
+  ])
+})
+
+test("a day cut between two pages heads both: the newest page ends on it, and the older one starts on it again", async () => {
+  freezeTime()
+  const discord = discordWithStaff()
+  const staffMember = await staffMemberOn(discord)
+  await addBlockedWordAt(discord, staffMember, "mot1", "2026-10-26T10:00:00Z")
+  await addBlockedWordAt(discord, staffMember, "mot2", "2026-10-27T10:00:00Z")
+  await addBlockedWordAt(discord, staffMember, "mot3", "2026-10-27T11:00:00Z")
+  for (let index = 4; index <= 52; index++) {
+    await addBlockedWordAt(
+      discord,
+      staffMember,
+      `mot${index}`,
+      "2026-10-28T10:00:00Z"
+    )
+  }
+
+  const newest = await readAuditLog(discord, undefined)
+  const older = await readAuditLog(discord, newest.older)
+
+  expect(
+    onParisDays(newest).map(({ date, descriptions }) => [
+      date,
+      descriptions.length,
+    ])
+  ).toEqual([
+    ["2026-10-28", 49],
+    ["2026-10-27", 1],
+  ])
+  expect(onParisDays(older)).toEqual([
+    { date: "2026-10-27", descriptions: ["Ajout de « mot2 »"] },
+    { date: "2026-10-26", descriptions: ["Ajout de « mot1 »"] },
   ])
 })
 
