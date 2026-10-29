@@ -8,38 +8,53 @@ function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
-function controls(html: string) {
-  return Array.from(
-    html.matchAll(
-      /<(a|button)(\s[^>]*)>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/\1>/g
+function noticeOf(html: string) {
+  const main = /<main[^>]*>(.*)<\/main>/.exec(html)?.[1] ?? ""
+  return {
+    heading: /<h1[^>]*>(.*?)<\/h1>/.exec(main)?.[1],
+    sentence: /<\/h1>.*?<p[^>]*>(.*?)<\/p>/.exec(main)?.[1],
+    controls: Array.from(
+      main.matchAll(
+        /<(a|button)(\s[^>]*)>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/\1>/g
+      ),
+      ([
+        ,
+        element,
+        attributes = "",
+        iconAttributes = "",
+        iconDrawing,
+        text,
+      ]) => ({
+        element,
+        href: /\shref="([^"]*)"/.exec(attributes)?.[1],
+        icon: iconDrawing,
+        iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+        text,
+      })
     ),
-    ([, element, attributes = "", iconAttributes = "", iconDrawing, text]) => ({
-      element,
-      href: /\shref="([^"]*)"/.exec(attributes)?.[1],
-      icon: iconDrawing,
-      iconHidden: /\saria-hidden="true"/.test(iconAttributes),
-      text,
-    })
-  )
+  }
 }
 
-test("under its heading, the refused page offers « Se reconnecter » after a hidden log-in icon, then « Se déconnecter » after a hidden log-out icon", () => {
-  const html = renderToStaticMarkup(<LoginRefused />)
-
-  expect(controls(html.slice(html.indexOf("<h1")))).toEqual([
-    {
-      element: "a",
-      href: "/login",
-      icon: drawing(LogIn),
-      iconHidden: true,
-      text: "Se reconnecter",
-    },
-    {
-      element: "button",
-      href: undefined,
-      icon: drawing(LogOut),
-      iconHidden: true,
-      text: "Se déconnecter",
-    },
-  ])
+test("the refused page says the account lacks the staff role, then offers « Se reconnecter » after a hidden log-in icon, and « Se déconnecter » after a hidden log-out icon", () => {
+  expect(noticeOf(renderToStaticMarkup(<LoginRefused />))).toEqual({
+    heading: "Accès refusé",
+    sentence:
+      "Ce compte Discord n’a pas le rôle staff sur le serveur Discord de Shor.",
+    controls: [
+      {
+        element: "a",
+        href: "/login",
+        icon: drawing(LogIn),
+        iconHidden: true,
+        text: "Se reconnecter",
+      },
+      {
+        element: "button",
+        href: undefined,
+        icon: drawing(LogOut),
+        iconHidden: true,
+        text: "Se déconnecter",
+      },
+    ],
+  })
 })

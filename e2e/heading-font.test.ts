@@ -128,7 +128,7 @@ test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, wh
     .getByRole("button", { name: "Se déconnecter" })
     .click()
   await expect(page).toHaveURL("/login/logged-out")
-  await expectHeadingsInEbGaramond(["Déconnexion"])
+  await expectHeadingsInEbGaramond(["Ta session est terminée."])
   await checkAccessibility()
 
   await logIn(BRYNJA)
