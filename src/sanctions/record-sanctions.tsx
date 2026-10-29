@@ -69,6 +69,7 @@ export function RecordSanctions({
             <SanctionPanel value="kick">
               <KickForm
                 userId={options.userId}
+                name={options.name}
                 state={state}
                 pending={pending}
                 action={action}
@@ -78,6 +79,7 @@ export function RecordSanctions({
               <SanctionPanel value="ban">
                 <BanForm
                   userId={options.userId}
+                  name={options.name}
                   standing="member"
                   state={state}
                   pending={pending}
@@ -90,6 +92,7 @@ export function RecordSanctions({
         {options.kind === "absent" && (
           <BanForm
             userId={options.userId}
+            name={options.name}
             standing="absent"
             state={state}
             pending={pending}

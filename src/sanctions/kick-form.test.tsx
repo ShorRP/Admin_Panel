@@ -1,8 +1,9 @@
-import { UserX, type LucideIcon } from "lucide-react"
+import { TriangleAlert, UserX, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import { KickForm } from "./kick-form"
+import { Dialog } from "@/ui/dialog"
+import { KickConfirmation, KickForm } from "./kick-form"
 import type { SanctionResult } from "./sanction-result"
 
 const LYRA_ID = "1400000000000000003"
@@ -17,6 +18,7 @@ function render({
   return renderToStaticMarkup(
     <KickForm
       userId={LYRA_ID}
+      name="Lyra des Brumes"
       state={state}
       pending={pending}
       action={() => {}}
@@ -28,16 +30,41 @@ function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
+function buttons(html: string) {
+  return Array.from(
+    html.matchAll(
+      /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/g
+    ),
+    ([, tag = "", iconAttributes = "", iconDrawing, text]) => ({
+      icon: iconDrawing,
+      iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+      text,
+      type: /\stype="([^"]*)"/.exec(tag)?.[1],
+      opensDialog: /\saria-haspopup="dialog"/.test(tag),
+      form: /\sform="([^"]*)"/.exec(tag)?.[1],
+      disabled: /\sdisabled=""/.test(tag),
+    })
+  )
+}
+
 function button(html: string) {
-  const [, tag = "", iconAttributes = "", iconDrawing, text] =
-    /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/.exec(html) ??
-    []
-  return {
-    icon: iconDrawing,
-    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
-    text,
-    disabled: /\sdisabled=""/.test(tag),
+  const [first] = buttons(html)
+  if (first === undefined) {
+    throw new Error("The markup holds no button.")
   }
+  return first
+}
+
+function formId(html: string) {
+  return /<form[^>]*\sid="([^"]*)"/.exec(html)?.[1]
+}
+
+function confirmation(name: string) {
+  return renderToStaticMarkup(
+    <Dialog>
+      <KickConfirmation name={name} />
+    </Dialog>
+  )
 }
 
 function hiddenFields(html: string) {
@@ -90,12 +117,52 @@ test("a member can be kicked with a labelled reason and the direct message check
   expect(html).toMatch(
     /<label[^>]*><input type="checkbox"[^>]*\/>Prévenir en message privé<\/label>/
   )
-  expect(button(html)).toEqual({
-    icon: drawing(UserX),
-    iconHidden: true,
-    text: "Expulser",
-    disabled: false,
-  })
+  expect(buttons(html)).toEqual([
+    {
+      icon: drawing(UserX),
+      iconHidden: true,
+      text: "Expulser",
+      type: "button",
+      opensDialog: true,
+      form: undefined,
+      disabled: false,
+    },
+  ])
+})
+
+test("the kick's confirmation asks whether to kick the account, by its name, behind a hidden warning icon, says what a kick does, then offers « Annuler », then « Expulser », which sends the kick's form", () => {
+  const html = confirmation("Lyra des Brumes")
+
+  expect(/<h2[^>]*>([^<]*)<\/h2>/.exec(html)?.[1]).toBe(
+    "Expulser Lyra des Brumes ?"
+  )
+  expect(/<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1]).toBe(
+    "Le compte quitte le serveur Discord tout de suite. Il pourra revenir par une invitation."
+  )
+  const [warning = ""] = /<svg[^>]*>.*?<\/svg>/.exec(html) ?? []
+  expect(warning).toContain(drawing(TriangleAlert))
+  expect(warning).toMatch(/\saria-hidden="true"/)
+  expect(formId(render())).toBeDefined()
+  expect(buttons(html)).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Annuler",
+      type: "button",
+      opensDialog: false,
+      form: undefined,
+      disabled: false,
+    },
+    {
+      icon: drawing(UserX),
+      iconHidden: true,
+      text: "Expulser",
+      type: "submit",
+      opensDialog: false,
+      form: formId(render()),
+      disabled: false,
+    },
+  ])
 })
 
 test("every field points to the alert region of the sanctions, and leaves validation to the panel", () => {

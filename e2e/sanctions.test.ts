@@ -243,7 +243,7 @@ test("a member the moderator cannot sanction shows why, with no tabs and no form
   await checkAccessibility()
 })
 
-test("a moderator kicks a member from the kick's tab with the direct message, through a red button, which a toast confirms, and the record then says the account is absent, with no « Sanctions », its history showing the kick", async ({
+test("a moderator kicks a member from the kick's tab with the direct message, through a red button, then the red button of its confirmation, which a toast confirms, and the record then says the account is absent, with no « Sanctions », its history showing the kick", async ({
   page,
   logIn,
   discord,
@@ -253,6 +253,9 @@ test("a moderator kicks a member from the kick's tab with the direct message, th
   const main = page.getByRole("main")
   const sanctions = sanctionsOf(page)
   const kick = sanctions.getByRole("tabpanel", { name: "Expulsion" })
+  const confirmation = page.getByRole("dialog", {
+    name: "Expulser Lyra des Brumes ?",
+  })
   const entries = main
     .getByRole("region", { name: "Historique des sanctions" })
     .getByRole("listitem")
@@ -280,6 +283,21 @@ test("a moderator kicks a member from the kick's tab with the direct message, th
   ).toBeChecked()
   await kick.getByRole("button", { name: "Expulser" }).click()
 
+  await expect(confirmation).toBeVisible()
+  await expect(confirmation).toHaveAccessibleDescription(
+    "Le compte quitte le serveur Discord tout de suite. Il pourra revenir par une invitation."
+  )
+  await expect(confirmation.getByRole("button")).toHaveText([
+    "Annuler",
+    "Expulser",
+  ])
+  await expectRed(page, confirmation.getByRole("button", { name: "Expulser" }))
+  expect(await discord.getMember(LYRA.id)).not.toBeNull()
+  await checkAccessibility()
+
+  await confirmation.getByRole("button", { name: "Expulser" }).click()
+
+  await expect(confirmation).toHaveCount(0)
   await readToast(
     "L’expulsion de Lyra des Brumes a eu lieu. Le message privé est parti."
   )
@@ -299,7 +317,7 @@ test("a moderator kicks a member from the kick's tab with the direct message, th
   await checkAccessibility()
 })
 
-test("a staff member who bans bans a member from the ban's tab with the direct message, through a red button, then lifts the ban from the notice that says the account is banned, each saying so in a toast, the record and its history following each", async ({
+test("a staff member who bans bans a member from the ban's tab with the direct message, through a red button, then the red button of its confirmation, lifts the ban from the notice that says the account is banned, then bans the account, now absent, through the same confirmation, each saying so in a toast, the record and its history following each", async ({
   page,
   logIn,
   discord,
@@ -309,6 +327,14 @@ test("a staff member who bans bans a member from the ban's tab with the direct m
   const main = page.getByRole("main")
   const sanctions = sanctionsOf(page)
   const ban = sanctions.getByRole("tabpanel", { name: "Bannissement" })
+  const memberConfirmation = page.getByRole("dialog", {
+    name: "Bannir Lyra des Brumes ?",
+  })
+  const absentConfirmation = page.getByRole("dialog", {
+    name: "Bannir Lyra ?",
+  })
+  const banDescription =
+    "Le compte ne pourra plus rejoindre le serveur Discord tant que le staff ne lève pas le bannissement."
   const entries = main
     .getByRole("region", { name: "Historique des sanctions" })
     .getByRole("listitem")
@@ -339,6 +365,20 @@ test("a staff member who bans bans a member from the ban's tab with the direct m
   ).toBeChecked()
   await ban.getByRole("button", { name: "Bannir" }).click()
 
+  await expect(memberConfirmation).toBeVisible()
+  await expect(memberConfirmation).toHaveAccessibleDescription(banDescription)
+  await expect(memberConfirmation.getByRole("button")).toHaveText([
+    "Annuler",
+    "Bannir",
+  ])
+  await expectRed(
+    page,
+    memberConfirmation.getByRole("button", { name: "Bannir" })
+  )
+  await checkAccessibility()
+  await memberConfirmation.getByRole("button", { name: "Bannir" }).click()
+
+  await expect(memberConfirmation).toHaveCount(0)
   await readToast(
     "Le bannissement de Lyra des Brumes a eu lieu. Le message privé est parti."
   )
@@ -378,4 +418,175 @@ test("a staff member who bans bans a member from the ban's tab with the direct m
   await expect(sanctions.getByRole("checkbox")).toHaveCount(0)
   expect(await discord.getBan(LYRA.id)).toBeNull()
   await checkAccessibility()
+
+  await sanctions.getByLabel("Motif du bannissement").fill("Retour refusé")
+  await sanctions.getByRole("button", { name: "Bannir" }).click()
+
+  await expect(absentConfirmation).toBeVisible()
+  await expect(absentConfirmation).toHaveAccessibleDescription(banDescription)
+  await checkAccessibility()
+  await absentConfirmation.getByRole("button", { name: "Bannir" }).click()
+
+  await readToast("Le bannissement de Lyra a eu lieu.")
+  await expect(main).toContainText("Compte banni")
+  await expect(entries).toHaveCount(3)
+  await expect(entries.first()).toContainText("Motif : Retour refusé")
+  expect(await discord.getBan(LYRA.id)).toMatchObject({
+    reason: expect.stringContaining("Retour refusé"),
+  })
+  expect(discord.directMessagesTo(LYRA.id)).toHaveLength(1)
 })
+
+test("« Annuler » closes the confirmation of a kick or a ban without writing anything to Discord, and the form keeps what was typed", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  const sanctions = sanctionsOf(page)
+  const kick = sanctions.getByRole("tabpanel", { name: "Expulsion" })
+  const ban = sanctions.getByRole("tabpanel", { name: "Bannissement" })
+  const confirmation = page.getByRole("dialog")
+  const before = await discord.getMember(LYRA.id)
+
+  await logIn(SIGRID)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.goto(`/records/${LYRA.id}`)
+  await page.waitForLoadState()
+  await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+  await kick.getByLabel("Motif de l’expulsion").fill("Spam répété")
+  await kick.getByRole("button", { name: "Expulser" }).click()
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole("button", { name: "Annuler" }).click()
+
+  await expect(confirmation).toHaveCount(0)
+  await expect(kick.getByLabel("Motif de l’expulsion")).toHaveValue(
+    "Spam répété"
+  )
+
+  await sanctions.getByRole("tab", { name: "Bannissement" }).click()
+  await ban.getByLabel("Motif du bannissement").fill("Menaces répétées")
+  await ban.getByRole("button", { name: "Bannir" }).click()
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole("button", { name: "Annuler" }).click()
+
+  await expect(confirmation).toHaveCount(0)
+  await expect(ban.getByLabel("Motif du bannissement")).toHaveValue(
+    "Menaces répétées"
+  )
+  await expect(page.getByRole("main")).toContainText("Membre du serveur")
+  expect(await discord.getMember(LYRA.id)).toEqual(before)
+  expect(await discord.getBan(LYRA.id)).toBeNull()
+  expect(discord.directMessagesTo(LYRA.id)).toEqual([])
+  expect((await discord.getAuditLog({})).audit_log_entries).toEqual([])
+  await checkAccessibility()
+})
+
+test("a kick confirmed without a reason comes back with its message in the alert region, the form keeping the choice of the direct message", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+  toast,
+}) => {
+  const main = page.getByRole("main")
+  const sanctions = sanctionsOf(page)
+  const kick = sanctions.getByRole("tabpanel", { name: "Expulsion" })
+  const confirmation = page.getByRole("dialog")
+
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.goto(`/records/${LYRA.id}`)
+  await page.waitForLoadState()
+  await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+  await kick
+    .getByRole("checkbox", { name: "Prévenir en message privé" })
+    .uncheck()
+  await kick.getByRole("button", { name: "Expulser" }).click()
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole("button", { name: "Expulser" }).click()
+
+  await expect(main.getByRole("alert")).toHaveText("Saisis un motif.")
+  await expect(confirmation).toHaveCount(0)
+  await expect(
+    kick.getByRole("checkbox", { name: "Prévenir en message privé" })
+  ).not.toBeChecked()
+  await expect(kick.getByLabel("Motif de l’expulsion")).toHaveValue("")
+  await expect(toast()).toHaveCount(0)
+  expect(await discord.getMember(LYRA.id)).not.toBeNull()
+  await checkAccessibility()
+})
+
+for (const { title, prefersReducedMotion } of [
+  {
+    title: "under reduced motion, every test's default",
+    prefersReducedMotion: true,
+  },
+  {
+    title: "with motion, which a test can ask for",
+    prefersReducedMotion: false,
+  },
+]) {
+  test.describe(title, () => {
+    if (!prefersReducedMotion) {
+      test.use({ reducedMotion: "no-preference" })
+    }
+
+    test("the confirmation fades in, and zooms in only with motion", async ({
+      page,
+      logIn,
+    }) => {
+      const sanctions = sanctionsOf(page)
+
+      await logIn(ALDIS)
+      await expect(page).toHaveURL("/blocked-words")
+      await page.goto(`/records/${LYRA.id}`)
+      await page.waitForLoadState()
+      await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+
+      const opening = page.waitForFunction(
+        () => {
+          const animation = document
+            .getAnimations()
+            .find(
+              ({ effect }) =>
+                effect instanceof KeyframeEffect &&
+                effect.target instanceof HTMLElement &&
+                effect.target.dataset.slot === "dialog-content"
+            )
+          const dialog =
+            animation?.effect instanceof KeyframeEffect
+              ? animation.effect.target
+              : null
+          if (animation === undefined || !(dialog instanceof HTMLElement)) {
+            return false
+          }
+          animation.pause()
+          animation.currentTime = 0
+          const start = {
+            opacity: getComputedStyle(dialog).opacity,
+            scale:
+              Math.round(
+                (dialog.getBoundingClientRect().width / dialog.offsetWidth) *
+                  100
+              ) / 100,
+          }
+          animation.play()
+          return start
+        },
+        undefined,
+        { polling: "raf" }
+      )
+      await sanctions
+        .getByRole("tabpanel", { name: "Expulsion" })
+        .getByRole("button", { name: "Expulser" })
+        .click()
+
+      expect(await (await opening).jsonValue()).toEqual({
+        opacity: "0",
+        scale: prefersReducedMotion ? 1 : 0.95,
+      })
+      await expect(page.getByRole("dialog")).toBeVisible()
+    })
+  })
+}

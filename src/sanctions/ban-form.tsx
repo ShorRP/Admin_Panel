@@ -1,21 +1,23 @@
-import { cn } from "cn"
 import type { Snowflake } from "discord-api-types/v10"
 import { Hammer } from "lucide-react"
 
-import { Button } from "@/ui/button"
 import { BAN_MESSAGE_DELETIONS } from "./ban-message-deletions"
 import { NotifyCheckbox } from "./notify-checkbox"
 import { ReasonField } from "./reason-field"
 import {
+  ConfirmedSanction,
+  SanctionConfirmation,
+} from "./sanction-confirmation"
+import {
   CHOICE_CLASS,
   LEGEND_CLASS,
   NATIVE_CONTROL_CLASS,
-  RED_BUTTON_CLASS,
   SANCTION_ALERT_ID,
   SENTENCE_CLASS,
-  SUBMIT_CLASS,
 } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
+
+const FORM_ID = "ban-form"
 
 const REASON_ID = "ban-reason"
 
@@ -23,12 +25,14 @@ const NO_MESSAGE_DELETED = "0"
 
 export function BanForm({
   userId,
+  name,
   standing,
   state,
   pending,
   action,
 }: {
   userId: Snowflake
+  name: string
   standing: "member" | "absent"
   state: SanctionResult | null
   pending: boolean
@@ -36,7 +40,7 @@ export function BanForm({
 }) {
   const refused = state?.ok === false && state.change === "ban" ? state : null
   return (
-    <form action={action} className="flex flex-col gap-4.5">
+    <form id={FORM_ID} action={action} className="flex flex-col gap-4.5">
       <input type="hidden" name="change" value="ban" />
       <input type="hidden" name="userId" value={userId} />
       <p className={SENTENCE_CLASS}>
@@ -73,14 +77,21 @@ export function BanForm({
       {standing === "member" && (
         <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
       )}
-      <Button
-        type="submit"
-        disabled={pending}
-        className={cn(SUBMIT_CLASS, RED_BUTTON_CLASS)}
-      >
-        <Hammer aria-hidden data-icon="inline-start" />
-        Bannir
-      </Button>
+      <ConfirmedSanction label="Bannir" icon={Hammer} pending={pending}>
+        <BanConfirmation name={name} />
+      </ConfirmedSanction>
     </form>
+  )
+}
+
+export function BanConfirmation({ name }: { name: string }) {
+  return (
+    <SanctionConfirmation
+      formId={FORM_ID}
+      title={`Bannir ${name} ?`}
+      description="Le compte ne pourra plus rejoindre le serveur Discord tant que le staff ne lève pas le bannissement."
+      label="Bannir"
+      icon={Hammer}
+    />
   )
 }
