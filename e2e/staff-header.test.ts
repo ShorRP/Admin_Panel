@@ -9,14 +9,14 @@ test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
 
-test("a staff member moves between sections through the header, which marks the current one and prefetches none, then logs out from it", async ({
+test("a staff member moves between sections through the sidebar, which marks the current one and prefetches none, then logs out from it", async ({
   page,
   logIn,
   prefetchedPaths,
   checkAccessibility,
 }) => {
-  const header = page.getByRole("banner")
-  const sections = header.getByRole("navigation", {
+  const sidebar = page.getByRole("complementary")
+  const sections = sidebar.getByRole("navigation", {
     name: "Sections du panel",
   })
   const blockedWords = sections.getByRole("link", { name: "Mots interdits" })
@@ -26,25 +26,26 @@ test("a staff member moves between sections through the header, which marks the 
   await expect(page).toHaveURL("/blocked-words")
   await expect(blockedWords).toHaveAttribute("aria-current", "page")
   await expect(auditLog).not.toHaveAttribute("aria-current")
+  await expect(page.getByRole("banner", { includeHidden: true })).toBeHidden()
   await expect(
-    header.getByRole("button", { name: "Ouvrir le menu" })
-  ).toBeHidden()
+    sections.getByRole("list", { name: "Administration" })
+  ).toBeVisible()
 
   await auditLog.click()
   await expect(page).toHaveURL("/audit-log")
   await expect(page).toHaveTitle("Journal d’audit – Panel de Shor")
   await expect(auditLog).toHaveAttribute("aria-current", "page")
   await expect(blockedWords).not.toHaveAttribute("aria-current")
-  await expect(header).toContainText("aldis")
+  await expect(sidebar).toContainText("aldis")
   await checkAccessibility()
 
-  await header.getByRole("link", { name: "Panel de Shor" }).click()
+  await sidebar.getByRole("link", { name: "Shor Panel du staff" }).click()
   await expect(page).toHaveURL("/blocked-words")
   await expect(blockedWords).toHaveAttribute("aria-current", "page")
   await expect(auditLog).not.toHaveAttribute("aria-current")
   await page.waitForLoadState()
 
-  await header.getByRole("button", { name: "Se déconnecter" }).click()
+  await sidebar.getByRole("button", { name: "Se déconnecter" }).click()
   await expect(page).toHaveURL("/login/logged-out")
   expect(
     (await page.context().cookies()).filter(
@@ -52,6 +53,62 @@ test("a staff member moves between sections through the header, which marks the 
     )
   ).toEqual([])
   expect(prefetchedPaths).toEqual([])
+})
+
+test("from md, the sidebar runs 252 px wide down the screen's left edge and stays there as the page scrolls, while below md the bar takes its place at the top", async ({
+  page,
+  logIn,
+}) => {
+  const sidebar = page.getByRole("complementary", { includeHidden: true })
+  const bar = page.getByRole("banner", { includeHidden: true })
+  function boxesAfterScrolling() {
+    return page.evaluate(() => {
+      window.scrollTo(0, 120)
+      return [...document.querySelectorAll("aside, header")].map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect()
+        return {
+          element: element.localName,
+          scrolled: window.scrollY,
+          box: { x, y, width, height },
+        }
+      })
+    })
+  }
+
+  await page.setViewportSize({ width: 768, height: 300 })
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.waitForLoadState()
+  await expect(sidebar).toBeVisible()
+  await expect(bar).toBeHidden()
+  expect(await boxesAfterScrolling()).toEqual([
+    {
+      element: "aside",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 252, height: 300 },
+    },
+    {
+      element: "header",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 0, height: 0 },
+    },
+  ])
+
+  await page.setViewportSize({ width: 767, height: 300 })
+  await expect(sidebar).toBeHidden()
+  await expect(bar).toBeVisible()
+  expect(await boxesAfterScrolling()).toEqual([
+    {
+      element: "aside",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 0, height: 0 },
+    },
+    {
+      element: "header",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 767, height: 56 },
+    },
+  ])
 })
 
 test.describe("for a staff member with an avatar on the Discord server", () => {
@@ -67,14 +124,15 @@ test.describe("for a staff member with an avatar on the Discord server", () => {
     },
   })
 
-  test("the header shows that avatar from Discord's CDN beside the member's name, then beside the menu button on a 360 px screen, where the name moves into the menu", async ({
+  test("the sidebar shows that avatar from Discord's CDN beside the member's name, then the bar beside the menu button on a 360 px screen, where the name moves into the menu", async ({
     page,
     logIn,
     discordCdnRequests,
     checkAccessibility,
   }) => {
+    const sidebar = page.getByRole("complementary")
     const header = page.getByRole("banner")
-    const avatar = header.locator("img")
+    const avatar = sidebar.locator("img")
     const avatarUrl =
       "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000002/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64"
 
@@ -87,11 +145,12 @@ test.describe("for a staff member with an avatar on the Discord server", () => {
       await avatar.evaluate((image: HTMLImageElement) => image.naturalWidth)
     ).toBe(64)
     expect(discordCdnRequests).toContain(avatarUrl)
-    await expect(header.getByText("brynja", { exact: true })).toBeVisible()
+    await expect(sidebar.getByText("brynja", { exact: true })).toBeVisible()
     await checkAccessibility()
 
     await page.setViewportSize({ width: 360, height: 760 })
-    await expect(avatar).toBeVisible()
+    await expect(header.locator("img")).toBeVisible()
+    await expect(header.locator("img")).toHaveAttribute("src", avatarUrl)
     await expect(
       header.getByRole("button", { name: "Ouvrir le menu" })
     ).toBeVisible()
@@ -120,14 +179,14 @@ test.describe("on a 360 px screen", () => {
     await logIn(ALDIS)
     await expect(page).toHaveURL("/blocked-words")
     await expect(
-      header.getByRole("navigation", { name: "Sections du panel" })
+      page.getByRole("complementary", { includeHidden: true })
     ).toBeHidden()
     await expect(
-      header.getByRole("link", { name: "Panel de Shor" })
+      header.getByRole("link", { name: "Shor Panel du staff" })
     ).toBeVisible()
     await expect(
       header.getByRole("button", { name: "Se déconnecter" })
-    ).toBeHidden()
+    ).toHaveCount(0)
 
     await openMenu.click()
     await expect(menu).toBeVisible()
@@ -144,6 +203,9 @@ test.describe("on a 360 px screen", () => {
     await expect(blockedWords).toHaveAttribute("aria-current", "page")
     await expect(auditLog).not.toHaveAttribute("aria-current")
     await expect(menu).toContainText("aldis")
+    await expect(
+      sections.getByRole("list", { name: "Administration" })
+    ).toBeVisible()
     await checkAccessibility()
 
     await auditLog.click()
@@ -181,7 +243,7 @@ for (const { title, prefersReducedMotion } of [
       test.use({ reducedMotion: "no-preference" })
     }
 
-    test("moving between sections fades the old content out and the new one in, moving nothing but the current section's underline, which slides over unless motion is reduced", async ({
+    test("moving between sections fades the old content out and the new one in, moving nothing but the current section's bar, which slides over unless motion is reduced", async ({
       page,
       logIn,
       checkAccessibility,
@@ -200,7 +262,7 @@ for (const { title, prefersReducedMotion } of [
 
       const transition = page.waitForFunction(
         () => {
-          const underline = "(current-section-underline)"
+          const bar = "(current-section-bar)"
           const effects = document.documentElement
             .getAnimations({ subtree: true })
             .flatMap(({ effect }) =>
@@ -230,9 +292,7 @@ for (const { title, prefersReducedMotion } of [
             effects.length > 0 && {
               content: unique(
                 effects
-                  .filter(
-                    ({ pseudoElement }) => !pseudoElement.endsWith(underline)
-                  )
+                  .filter(({ pseudoElement }) => !pseudoElement.endsWith(bar))
                   .flatMap(({ pseudoElement, keyframes }) =>
                     keyframes.flatMap((keyframe) =>
                       properties(keyframe).map(
@@ -242,11 +302,11 @@ for (const { title, prefersReducedMotion } of [
                     )
                   )
               ),
-              underlineMoves: unique(
+              barMoves: unique(
                 effects
                   .filter(
                     ({ pseudoElement }) =>
-                      pseudoElement === `::view-transition-group${underline}`
+                      pseudoElement === `::view-transition-group${bar}`
                   )
                   .flatMap(({ keyframes }) =>
                     keyframes.flatMap((keyframe) =>
@@ -265,7 +325,7 @@ for (const { title, prefersReducedMotion } of [
         { polling: "raf" }
       )
       await page
-        .getByRole("banner")
+        .getByRole("complementary")
         .getByRole("link", { name: "Journal d’audit" })
         .click()
 
@@ -276,7 +336,7 @@ for (const { title, prefersReducedMotion } of [
           "::view-transition-old opacity 0 at 100%",
           "::view-transition-old opacity 1 at 0%",
         ],
-        underlineMoves: prefersReducedMotion ? [] : ["transform", "width"],
+        barMoves: prefersReducedMotion ? [] : ["transform"],
       })
       await expect(page).toHaveURL("/audit-log")
       await checkAccessibility()

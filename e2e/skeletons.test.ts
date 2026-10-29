@@ -66,7 +66,7 @@ for (const { title, prefersReducedMotion } of [
         await expect(skeletons.filter({ hasText: loading })).toBeVisible()
         await expect(
           page
-            .getByRole("banner")
+            .getByRole("complementary")
             .getByRole("status")
             .filter({ hasText: "Chargement de ton nom…" })
         ).toBeVisible()
@@ -138,7 +138,7 @@ for (const { title, prefersReducedMotion } of [
         )
         await expect(page.getByText(content)).toBeVisible()
         await expect(skeletons).toHaveCount(0)
-        await expect(page.getByRole("banner")).toContainText("aldis")
+        await expect(page.getByRole("complementary")).toContainText("aldis")
       })
     }
   })

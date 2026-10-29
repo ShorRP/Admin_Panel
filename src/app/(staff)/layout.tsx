@@ -13,15 +13,19 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
   const staffMember = currentStaffMember()
   return (
     <>
-      <StatefulStaffHeader
-        member={
-          <Suspense fallback={<StaffMemberIdentitySkeleton />}>
-            <CurrentStaffMemberIdentity staffMember={staffMember} />
-          </Suspense>
-        }
-        opensModeration={opensModerationOnceRead(staffMember)}
-      />
-      {children}
+      <div className="flex min-h-svh flex-col md:flex-row">
+        <StatefulStaffHeader
+          member={
+            <Suspense fallback={<StaffMemberIdentitySkeleton />}>
+              <CurrentStaffMemberIdentity staffMember={staffMember} />
+            </Suspense>
+          }
+          opensModeration={opensModerationOnceRead(staffMember)}
+        />
+        <div className="min-w-0 flex-1 px-[clamp(1.25rem,4vw,3.5rem)] pt-11 pb-24">
+          {children}
+        </div>
+      </div>
       <Toaster />
     </>
   )
@@ -37,6 +41,12 @@ async function CurrentStaffMemberIdentity({
 }: {
   staffMember: Promise<StaffMember>
 }) {
-  const { name, avatarUrl } = await staffMember
-  return <StaffMemberIdentity name={name} avatarUrl={avatarUrl} />
+  const { name, avatarUrl, opensModeration } = await staffMember
+  return (
+    <StaffMemberIdentity
+      name={name}
+      avatarUrl={avatarUrl}
+      opensModeration={opensModeration}
+    />
+  )
 }

@@ -21,7 +21,7 @@ export default function RecordsPage({ searchParams }: PageProps<"/records">) {
       exit="section-crossfade"
       default="none"
     >
-      <main className="mx-auto flex max-w-xl flex-col gap-6 p-4">
+      <main className="mx-auto flex max-w-xl flex-col gap-6">
         <h1 className="font-heading text-xl font-medium">Modération</h1>
         <p>
           Cherche un compte par le début de son nom d’utilisateur ou de son

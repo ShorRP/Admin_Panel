@@ -13,14 +13,19 @@ function image(attributes: string | undefined, drawing: string | undefined) {
     : { drawing, hidden: /\saria-hidden="true"/.test(attributes) }
 }
 
+function textOf(html: string) {
+  return html.replace(/<[^>]*>/g, "")
+}
+
 function links(html: string) {
   return Array.from(
     html.matchAll(/<a([^>]*)>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/a>/g),
     ([, attributes = "", imageAttributes, imageDrawing, content = ""]) => ({
-      text: content.replace(/<[^>]*>/g, ""),
+      text: textOf(content),
       href: /\shref="([^"]*)"/.exec(attributes)?.[1],
       current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
       image: image(imageAttributes, imageDrawing),
+      content,
     })
   )
 }
@@ -35,11 +40,34 @@ function buttons(html: string) {
   )
 }
 
+function groups(html: string) {
+  return Array.from(
+    html.matchAll(
+      /<p id="([^"]*)"[^>]*>([^<]*)<\/p><ul aria-labelledby="([^"]*)"[^>]*>(.*?)<\/ul>/g
+    ),
+    ([, id, title, labelledBy, list = ""]) => ({
+      title,
+      titlesItsList: id === labelledBy,
+      sections: links(list).map(({ text }) => text),
+    })
+  )
+}
+
 function drawing(image: ReactElement) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(image))?.[1]
 }
 
-async function header(
+function part(html: string, element: "aside" | "header") {
+  const content = new RegExp(
+    String.raw`<${element}[^>]*>([\s\S]*)</${element}>`
+  ).exec(html)?.[1]
+  if (content === undefined) {
+    throw new Error(`The header renders no <${element}>.`)
+  }
+  return content
+}
+
+async function render(
   currentPath: string,
   { member = "aldis", opensModeration = false } = {}
 ) {
@@ -48,40 +76,103 @@ async function header(
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
-    />
+    />,
+    { progressiveChunkSize: Number.POSITIVE_INFINITY }
   )
-  return await new Response(prelude).text()
+  const html = await new Response(prelude).text()
+  return { sidebar: part(html, "aside"), bar: part(html, "header") }
 }
 
 async function currentLinks(currentPath: string) {
-  return links(await header(currentPath, { opensModeration: true }))
+  const { sidebar } = await render(currentPath, { opensModeration: true })
+  return links(sidebar)
     .filter(({ current }) => current !== undefined)
     .map(({ text, href, current }) => ({ text, href, current }))
 }
 
-test("the header links to the panel, then to each section", async () => {
-  const html = await header("/blocked-words")
+test("the sidebar links to the panel, then to each section", async () => {
+  const { sidebar } = await render("/blocked-words")
 
-  expect(links(html).map(({ text, href }) => ({ text, href }))).toEqual([
-    { text: "Panel de Shor", href: "/" },
+  expect(links(sidebar).map(({ text, href }) => ({ text, href }))).toEqual([
+    { text: "Shor Panel du staff", href: "/" },
     { text: "Mots interdits", href: "/blocked-words" },
     { text: "Journal d’audit", href: "/audit-log" },
   ])
 })
 
-test("the link to the panel shows Shor's logo before its name, hidden from assistive technologies", async () => {
-  const [panel] = links(await header("/blocked-words"))
+test("the sidebar's link to the panel shows Shor's logo, hidden from assistive technologies, before « Shor » and « Panel du staff »", async () => {
+  const [panel] = links((await render("/blocked-words")).sidebar)
 
-  expect(panel).toEqual({
-    text: "Panel de Shor",
+  expect(panel).toMatchObject({
+    text: "Shor Panel du staff",
     href: "/",
     current: undefined,
     image: { drawing: drawing(<ShorLogo />), hidden: true },
   })
 })
 
+test("the bar's link to the panel shows Shor's logo alone, and leaves « Shor » and « Panel du staff » to assistive technologies", async () => {
+  const { bar } = await render("/blocked-words")
+
+  expect(
+    links(bar).map(({ text, href, image, content }) => ({
+      text,
+      href,
+      image,
+      nameForAssistiveTechnologiesAlone: content.startsWith(
+        '<span class="sr-only">'
+      ),
+    }))
+  ).toEqual([
+    {
+      text: "Shor Panel du staff",
+      href: "/",
+      image: { drawing: drawing(<ShorLogo />), hidden: true },
+      nameForAssistiveTechnologiesAlone: true,
+    },
+  ])
+})
+
+test("the sidebar's ornament, between the link to the panel and the sections, is hidden from assistive technologies", async () => {
+  const { sidebar } = await render("/blocked-words")
+  const ornament = /<\/a>(<div[^>]*>[\s\S]*?<\/div>)<nav/.exec(sidebar)?.[1]
+
+  expect({
+    hidden: ornament?.match(/^<div[^>]*\saria-hidden="true"/) !== null,
+    text: textOf(ornament ?? "x"),
+  }).toEqual({ hidden: true, text: "" })
+})
+
+test("a staff member who cannot open the moderation section sees the sections under « Administration », and no « Modération » at all", async () => {
+  const { sidebar } = await render("/blocked-words")
+
+  expect(groups(sidebar)).toEqual([
+    {
+      title: "Administration",
+      titlesItsList: true,
+      sections: ["Mots interdits", "Journal d’audit"],
+    },
+  ])
+  expect(textOf(sidebar)).not.toContain("Modération")
+})
+
+test("a staff member who opens the moderation section also sees « Modération », last, under a title of its own", async () => {
+  const { sidebar } = await render("/blocked-words", { opensModeration: true })
+
+  expect(groups(sidebar)).toEqual([
+    {
+      title: "Administration",
+      titlesItsList: true,
+      sections: ["Mots interdits", "Journal d’audit"],
+    },
+    { title: "Modération", titlesItsList: true, sections: ["Modération"] },
+  ])
+})
+
 test("each section's link shows its icon before its name, hidden from assistive technologies", async () => {
-  const [, ...sections] = links(await header("/blocked-words"))
+  const [, ...sections] = links(
+    (await render("/blocked-words", { opensModeration: true })).sidebar
+  )
 
   expect(sections.map(({ text, image }) => ({ text, image }))).toEqual([
     {
@@ -91,6 +182,10 @@ test("each section's link shows its icon before its name, hidden from assistive 
     {
       text: "Journal d’audit",
       image: { drawing: drawing(<ScrollText />), hidden: true },
+    },
+    {
+      text: "Modération",
+      image: { drawing: drawing(<Gavel />), hidden: true },
     },
   ])
 })
@@ -108,26 +203,6 @@ test("a path outside every section marks no link current", async () => {
   expect(await currentLinks("/login/refused")).toEqual([])
 })
 
-test("a staff member who opens the moderation section sees « Modération » last among the sections, after a hidden gavel icon", async () => {
-  const [, , , moderation, ...rest] = links(
-    await header("/blocked-words", { opensModeration: true })
-  )
-
-  expect(moderation).toEqual({
-    text: "Modération",
-    href: "/records",
-    current: undefined,
-    image: { drawing: drawing(<Gavel />), hidden: true },
-  })
-  expect(rest).toEqual([])
-})
-
-test("a staff member who cannot open the moderation section sees no link to it", async () => {
-  expect(
-    links(await header("/blocked-words")).map(({ text }) => text)
-  ).not.toContain("Modération")
-})
-
 test("the moderation section is current on its search and on every record", async () => {
   const moderation = {
     text: "Modération",
@@ -142,29 +217,28 @@ test("the moderation section is current on its search and on every record", asyn
   expect(await currentLinks("/recordsx")).toEqual([])
 })
 
-test("the header names the staff member, then offers to log out after a hidden log-out icon", async () => {
-  const html = await header("/blocked-words", { member: "Brynja la Rouge" })
+test("the sidebar's foot names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
+  const { sidebar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+  })
+  const foot = sidebar.slice(sidebar.indexOf("</nav>"))
 
-  expect(html).toContain(">Brynja la Rouge<")
-  expect(
-    buttons(html).filter(({ content }) => content === "Se déconnecter")
-  ).toEqual([
+  expect(textOf(foot)).toBe("Brynja la RougeSe déconnecter")
+  expect(buttons(foot)).toEqual([
     {
-      content: "Se déconnecter",
+      content: '<span class="sr-only">Se déconnecter</span>',
       image: { drawing: drawing(<LogOut />), hidden: true },
     },
   ])
-  expect(html.indexOf("Brynja la Rouge")).toBeLessThan(
-    html.indexOf("Se déconnecter")
-  )
 })
 
-test("a menu button shows a hidden menu icon, and names itself « Ouvrir le menu » to assistive technologies alone", async () => {
-  const html = await header("/blocked-words")
+test("the bar names the staff member, then shows a menu button with a hidden menu icon, named « Ouvrir le menu » to assistive technologies alone", async () => {
+  const { bar } = await render("/blocked-words", { member: "Brynja la Rouge" })
 
-  expect(
-    buttons(html).filter(({ content }) => content?.includes("Ouvrir le menu"))
-  ).toEqual([
+  expect(textOf(bar.slice(bar.indexOf("</a>")))).toBe(
+    "Brynja la RougeOuvrir le menu"
+  )
+  expect(buttons(bar)).toEqual([
     {
       content: '<span class="sr-only">Ouvrir le menu</span>',
       image: { drawing: drawing(<Menu />), hidden: true },

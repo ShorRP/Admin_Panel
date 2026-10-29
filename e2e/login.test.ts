@@ -18,7 +18,7 @@ function sessionCookiesIn(cookies: { name: string }[]) {
   return cookies.filter(({ name }) => name === "__Host-session")
 }
 
-test("a staff member logs in and lands on the blocked words, under a header that names them", async ({
+test("a staff member logs in and lands on the blocked words, beside a sidebar that names them", async ({
   page,
   logIn,
   checkAccessibility,
@@ -27,7 +27,7 @@ test("a staff member logs in and lands on the blocked words, under a header that
 
   await expect(page).toHaveURL("/blocked-words")
   await expect(page).toHaveTitle("Mots interdits – Panel de Shor")
-  await expect(page.getByRole("banner")).toContainText("aldis")
+  await expect(page.getByRole("complementary")).toContainText("aldis")
   await expect(
     page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
@@ -48,7 +48,10 @@ test("a member without the staff role is refused in French", async ({
       "Ce compte Discord n’a pas le rôle staff sur le serveur Discord de Shor."
     )
   ).toBeVisible()
-  await expect(page.getByRole("banner")).toHaveCount(0)
+  await expect(
+    page.getByRole("complementary", { includeHidden: true })
+  ).toHaveCount(0)
+  await expect(page.getByRole("banner", { includeHidden: true })).toHaveCount(0)
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
   await checkAccessibility()
 })
@@ -85,7 +88,10 @@ test("a staff member who loses the staff role lands on /login/refused at the nex
   await expect(
     page.getByText("Ta session sur le panel est terminée.")
   ).toBeVisible()
-  await expect(page.getByRole("banner")).toHaveCount(0)
+  await expect(
+    page.getByRole("complementary", { includeHidden: true })
+  ).toHaveCount(0)
+  await expect(page.getByRole("banner", { includeHidden: true })).toHaveCount(0)
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
   await checkAccessibility()
 })

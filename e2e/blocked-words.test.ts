@@ -312,7 +312,7 @@ test("a write's toast stays while the staff member moves to another section, and
 }) => {
   const added = "« foo » est maintenant un mot interdit."
   const sections = page
-    .getByRole("banner")
+    .getByRole("complementary")
     .getByRole("navigation", { name: "Sections du panel" })
 
   await logIn(ALDIS)
