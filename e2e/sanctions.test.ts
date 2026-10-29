@@ -114,10 +114,12 @@ test("a moderator finds a member, opens their record, times them out with the di
   await checkAccessibility()
 })
 
-test("a refused timeout stays in its form, with its message", async ({
+test("a refused timeout stays in its form, with its message, and makes no toast", async ({
   page,
   logIn,
   checkAccessibility,
+  toast,
+  readToast,
 }) => {
   const main = page.getByRole("main")
   const timeout = main.getByRole("region", { name: "Exclusion temporaire" })
@@ -142,6 +144,16 @@ test("a refused timeout stays in its form, with its message", async ({
     timeout.getByRole("checkbox", { name: "Prévenir en message privé" })
   ).not.toBeChecked()
   await expect(main).toContainText("Membre du serveur")
+  await checkAccessibility()
+
+  await timeout
+    .getByLabel("Motif de l’exclusion temporaire")
+    .fill("Insultes répétées")
+  await timeout.getByRole("button", { name: "Exclure temporairement" }).click()
+  await readToast(
+    /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\d{2}:\d{2}\.$/
+  )
+  await expect(toast()).toHaveCount(1)
   await checkAccessibility()
 })
 

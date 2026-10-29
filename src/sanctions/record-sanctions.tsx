@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { WriteResultMessage } from "@/ui/write-result-message"
+import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { BanForm } from "./ban-form"
 import { BanLiftForm } from "./ban-lift-form"
 import { KickForm } from "./kick-form"
@@ -88,7 +88,7 @@ export function RecordSanctions({
         {pending && "Envoi en cours…"}
       </p>
       <p role="alert" id={SANCTION_ALERT_ID} className="text-sm">
-        {state?.ok === false && <WriteResultMessage result={state} />}
+        {state?.ok === false && <WriteFailureMessage message={state.message} />}
       </p>
     </section>
   )

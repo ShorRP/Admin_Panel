@@ -49,7 +49,7 @@ function button(html: string) {
   }
 }
 
-test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and its alert region empty, with no status region", () => {
+test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and its alert region empty, with no status region", () => {
   const html = render(null)
 
   expect(html).toMatch(

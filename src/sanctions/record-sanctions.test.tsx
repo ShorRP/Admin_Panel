@@ -154,7 +154,7 @@ test("a banned account offers only to lift the ban", () => {
   expect(changes(html)).toEqual(["lift-ban"])
 })
 
-test("a kick that landed hides « Sanctions », since the account it removed offers no sanction", () => {
+test("a kick that landed hides « Sanctions », since the account it removed offers no sanction", () => {
   const html = render({
     options: { kind: "none" },
     state: {

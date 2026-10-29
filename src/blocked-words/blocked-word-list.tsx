@@ -2,7 +2,7 @@ import { ViewTransition } from "react"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { WriteResultMessage } from "@/ui/write-result-message"
+import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { counted, frenchNumber } from "./french-text"
 import { MAX_BLOCKED_WORDS } from "./limits"
 import type { WriteResult } from "./write-result"
@@ -54,7 +54,7 @@ export function BlockedWordList({
         {pending && "Retrait en cours…"}
       </p>
       <p role="alert" className="text-sm">
-        {state?.ok === false && <WriteResultMessage result={state} />}
+        {state?.ok === false && <WriteFailureMessage message={state.message} />}
       </p>
     </div>
   )

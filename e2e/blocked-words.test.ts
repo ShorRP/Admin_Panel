@@ -190,13 +190,11 @@ for (const { title, prefersReducedMotion } of [
     test("a write's toast slides in and out unless motion is reduced, when it only fades", async ({
       page,
       logIn,
+      checkAccessibility,
+      toast,
       readToast,
     }) => {
       const message = "« banane » est maintenant un mot interdit."
-      const toast = page
-        .getByRole("region", { name: "Notifications" })
-        .getByRole("dialog")
-        .filter({ hasText: message })
       const moves = prefersReducedMotion ? ["opacity"] : ["transform"]
 
       await logIn(ALDIS)
@@ -210,17 +208,18 @@ for (const { title, prefersReducedMotion } of [
 
       expect(await (await entering).jsonValue()).toEqual(moves)
       await readToast(message)
-      await toast.evaluate((element) =>
+      await checkAccessibility()
+      await toast(message).evaluate((element) =>
         Promise.all(element.getAnimations().map(({ finished }) => finished))
       )
 
       const leaving = page.waitForFunction(toastTransitions, undefined, {
         polling: "raf",
       })
-      await toast.getByRole("button", { name: "Fermer" }).click()
+      await toast(message).getByRole("button", { name: "Fermer" }).click()
 
       expect(await (await leaving).jsonValue()).toEqual(moves)
-      await expect(toast).toHaveCount(0)
+      await expect(toast(message)).toHaveCount(0)
     })
 
     test.describe("with two blocked words already", () => {
@@ -304,38 +303,51 @@ for (const { title, prefersReducedMotion } of [
   })
 }
 
-test("a write's toast stays while the staff member moves to another section", async ({
+test("a write's toast stays while the staff member moves to another section, and coming back to the form adds no second toast", async ({
   page,
   logIn,
+  checkAccessibility,
+  toast,
+  readToast,
 }) => {
-  const toast = page
-    .getByRole("region", { name: "Notifications" })
-    .getByRole("dialog")
-    .filter({ hasText: "« foo » est maintenant un mot interdit." })
+  const added = "« foo » est maintenant un mot interdit."
+  const sections = page
+    .getByRole("banner")
+    .getByRole("navigation", { name: "Sections du panel" })
 
   await logIn(ALDIS)
   await page.goto("/blocked-words")
   await page.waitForLoadState()
   await page.getByLabel("Mot ou expression").fill("foo")
   await page.getByRole("button", { name: "Ajouter" }).click()
-  await expect(toast).toBeVisible()
+  await readToast(added)
+  await checkAccessibility()
 
-  await page
-    .getByRole("banner")
-    .getByRole("navigation", { name: "Sections du panel" })
-    .getByRole("link", { name: "Journal d’audit" })
-    .click()
-
+  await sections.getByRole("link", { name: "Journal d’audit" }).click()
   await expect(
     page.getByRole("heading", { level: 1, name: "Journal d’audit" })
   ).toBeVisible()
-  await expect(toast).toBeVisible()
+  await readToast(added)
+  await checkAccessibility()
+  await toast(added).getByRole("button", { name: "Fermer" }).click()
+  await expect(toast(added)).toHaveCount(0)
+
+  await sections.getByRole("link", { name: "Mots interdits" }).click()
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Mots interdits" })
+  ).toBeVisible()
+  await page.getByLabel("Mot ou expression").fill("bar")
+  await page.getByRole("button", { name: "Ajouter" }).click()
+  await readToast("« bar » est maintenant un mot interdit.")
+  await expect(toast()).toHaveCount(1)
 })
 
-test("a refused blocked word stays in the field, which its message describes", async ({
+test("a refused blocked word stays in the field, which its message describes, and makes no toast", async ({
   page,
   logIn,
   checkAccessibility,
+  toast,
+  readToast,
 }) => {
   const tooLong = "é".repeat(61)
   await logIn(ALDIS)
@@ -349,6 +361,12 @@ test("a refused blocked word stays in the field, which its message describes", a
     "Raccourcis ce mot : AutoMod n’accepte pas plus de 60 caractères."
   )
   await expect(field).toHaveValue(tooLong)
+  await checkAccessibility()
+
+  await field.fill("foo")
+  await page.getByRole("button", { name: "Ajouter" }).click()
+  await readToast("« foo » est maintenant un mot interdit.")
+  await expect(toast()).toHaveCount(1)
   await checkAccessibility()
 })
 

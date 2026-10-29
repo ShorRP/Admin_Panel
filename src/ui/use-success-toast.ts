@@ -5,11 +5,11 @@ import { toast } from "@/ui/toast"
 type WriteResult = { ok: boolean; message: string }
 
 export function useSuccessToast(state: WriteResult | null) {
-  const toasted = useRef(state)
+  const seen = useRef(state)
   useEffect(() => {
-    if (state !== toasted.current && state?.ok === true) {
-      toast.add({ description: state.message, type: "success" })
+    if (state !== seen.current && state?.ok === true) {
+      toast.add({ title: state.message, type: "success" })
     }
-    toasted.current = state
+    seen.current = state
   }, [state])
 }

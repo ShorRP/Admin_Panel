@@ -3,7 +3,7 @@ import { LoaderCircle, Plus } from "lucide-react"
 import { Button } from "@/ui/button"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
-import { WriteResultMessage } from "@/ui/write-result-message"
+import { WriteFailureMessage } from "@/ui/write-failure-message"
 import type { WriteResult } from "./write-result"
 
 const FIELD_ID = "blocked-word"
@@ -50,7 +50,7 @@ export function AddBlockedWordForm({
         </Button>
       </div>
       <p role="alert" id={ALERT_ID} className="text-sm">
-        {state?.ok === false && <WriteResultMessage result={state} />}
+        {state?.ok === false && <WriteFailureMessage message={state.message} />}
       </p>
     </form>
   )
