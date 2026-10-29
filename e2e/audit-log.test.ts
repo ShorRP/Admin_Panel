@@ -26,6 +26,20 @@ test.use({
 const ALDIS_AVATAR_URL =
   "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64"
 
+function parisDay(date: Date) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "full",
+    timeZone: "Europe/Paris",
+  }).format(date)
+}
+
+function shortDay(date: Date) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeZone: "Europe/Paris",
+  }).format(date)
+}
+
 function addition(word: string) {
   return `aldis (${ALDIS.id}) : ajout de « ${word} »`
 }
@@ -47,16 +61,11 @@ test("a staff member reads the audit log, newest changes first, each beside its 
       addition(`mot${index}`)
     )
   }
-  const newest = page.getByRole("cell", {
-    name: "Ajout de « mot50 »",
-    exact: true,
-  })
-  const oldest = page.getByRole("cell", {
-    name: "Ajout de « mot0 »",
-    exact: true,
-  })
-  const newestRow = page.getByRole("row").filter({ has: newest })
-  const newestAvatar = newestRow.locator("img")
+  const seededAt = new Date()
+  const changes = page.getByRole("listitem")
+  const newest = changes.filter({ hasText: "Ajout de « mot50 »" })
+  const oldest = changes.filter({ hasText: "Ajout de « mot0 »" })
+  const newestAvatar = newest.locator("img")
 
   await logIn(ALDIS)
   await page.goto("/audit-log")
@@ -65,9 +74,16 @@ test("a staff member reads the audit log, newest changes first, each beside its 
     page.getByRole("heading", { level: 1, name: "Journal d’audit" })
   ).toBeVisible()
   await expect(
-    page.getByText("L’historique couvre 45 jours. Heures de Paris.")
+    page.getByText("45 derniers jours · Heures de Paris", { exact: true })
   ).toBeVisible()
-  await expect(newestRow).toContainText("aldis")
+  await expect(
+    page.getByRole("heading", {
+      level: 2,
+      name: parisDay(seededAt),
+      exact: true,
+    })
+  ).toBeVisible()
+  await expect(newest).toContainText("aldis")
   await expect(newestAvatar).toHaveAttribute("src", ALDIS_AVATAR_URL)
   await expect(newestAvatar).toHaveAttribute("alt", "")
   await expect(oldest).toHaveCount(0)
@@ -75,6 +91,9 @@ test("a staff member reads the audit log, newest changes first, each beside its 
 
   await page.getByRole("link", { name: "Plus anciens" }).click()
   await expect(oldest).toBeVisible()
+  await expect(
+    page.getByText(`Jusqu’au ${shortDay(seededAt)}`, { exact: true })
+  ).toBeVisible()
   await expect(newest).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Plus anciens" })).toHaveCount(0)
   await checkAccessibility()
@@ -85,7 +104,7 @@ test("a staff member reads the audit log, newest changes first, each beside its 
 
   await page.setViewportSize({ width: 360, height: 760 })
   await expect(newestAvatar).toBeVisible()
-  await expect(newestRow.getByText("aldis", { exact: true })).toBeVisible()
+  await expect(newest.getByText("aldis", { exact: true })).toBeVisible()
 })
 
 function inAnHour() {
@@ -115,7 +134,7 @@ test.describe("for a staff member who moderates", () => {
       "Insultes répétées"
     )
     const row = page
-      .getByRole("row")
+      .getByRole("listitem")
       .filter({ hasText: "Exclusion temporaire jusqu’au" })
 
     await logIn(ALDIS)
@@ -144,7 +163,7 @@ test("a staff member who does not moderate sees a sanction in the audit log, wit
     communication_disabled_until: inAnHour(),
   })
   const row = page
-    .getByRole("row")
+    .getByRole("listitem")
     .filter({ hasText: "Exclusion temporaire jusqu’au" })
 
   await logIn(ALDIS)

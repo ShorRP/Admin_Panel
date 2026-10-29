@@ -20,6 +20,7 @@ import {
 } from "@/sanctions/sanction-events"
 import { auditLogPages } from "./audit-log-pages"
 import { panelReasonOf, type PanelReason } from "./audit-log-reason"
+import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
   id: Snowflake
@@ -27,7 +28,7 @@ export type AuditLogChange = {
   memberName: string
   avatarUrl: string | null
 } & (
-  | { kind: "rule"; description: string }
+  | { kind: "rule"; description: string; madeInDiscord: boolean }
   | {
       kind: "sanction-change"
       sanctionChange: SanctionChange
@@ -52,8 +53,10 @@ type EventReader = {
   changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
 }
 
+export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
+
 export type AuditLogPage = {
-  changes: AuditLogChange[]
+  days: AuditLogDay[]
   before: Snowflake | null
   older: Snowflake | null
 }
@@ -89,10 +92,13 @@ export async function readAuditLog(
     pageChanges.map(({ memberId }) => memberId)
   )
   return {
-    changes: pageChanges.map(({ memberId, change }) => ({
-      ...change,
-      avatarUrl: memberId === null ? null : (avatarUrls.get(memberId) ?? null),
-    })),
+    days: byParisDay(
+      pageChanges.map(({ memberId, change }) => ({
+        ...change,
+        avatarUrl:
+          memberId === null ? null : (avatarUrls.get(memberId) ?? null),
+      }))
+    ),
     before: cursor,
     older:
       found.length > CHANGES_PER_PAGE
@@ -174,6 +180,7 @@ function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
     change: {
       kind: "rule",
       ...moment,
+      madeInDiscord: reason === null,
       description:
         reason === null
           ? "Règle modifiée dans Discord"
@@ -231,6 +238,19 @@ function momentOf(
     memberId: entry.user_id,
     memberName: user === undefined ? "Membre inconnu" : userName(user),
   }
+}
+
+function byParisDay(changes: AuditLogChange[]) {
+  const days: AuditLogDay[] = []
+  for (const change of changes) {
+    const day = days.at(-1)
+    if (day !== undefined && parisDayOf(day.date) === parisDayOf(change.date)) {
+      day.changes.push(change)
+    } else {
+      days.push({ date: change.date, changes: [change] })
+    }
+  }
+  return days
 }
 
 function newestFirst(left: FoundChange, right: FoundChange) {
