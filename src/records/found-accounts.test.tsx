@@ -104,8 +104,15 @@ test("the dates of the accounts found are said once to be Paris time, when one i
   expect(text(search([ALDIS, ALDA]))).not.toContain("Heures de Paris.")
 })
 
-test("a search that left accounts out says so", () => {
-  expect(text(search([ALDIS], true))).toContain(
+test("a search that left accounts out counts more than the 25 it shows, and says to narrow it", () => {
+  const shown = Array.from({ length: 25 }, (_, index) => ({
+    ...ALDIS,
+    id: (BigInt(ALDIS.id) + BigInt(index)).toString(),
+  }))
+  const html = search(shown, true)
+
+  expect(list(html)).toBe("Plus de 25 comptes commencent par « ald »")
+  expect(text(html)).toContain(
     "Seuls les 25 premiers comptes s’affichent : précise ta recherche."
   )
 })

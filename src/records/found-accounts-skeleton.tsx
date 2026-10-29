@@ -6,7 +6,7 @@ const NAME_WIDTHS = ["w-32", "w-40", "w-28"] as const
 
 export function FoundAccountsSkeleton() {
   return (
-    <div role="status" className="flex max-w-190 flex-col gap-2.5">
+    <div role="status" className="flex flex-col gap-2.5">
       <span className="sr-only">Chargement des comptes…</span>
       <Skeleton className="h-3.5 w-52 motion-reduce:animate-none" />
       <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">

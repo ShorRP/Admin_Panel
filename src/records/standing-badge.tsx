@@ -1,15 +1,30 @@
+import type { ReactNode } from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 import { ParisTime } from "@/ui/paris-time"
-import type { FoundAccount } from "./search-accounts"
+import type { AccountStanding } from "./account-standing"
+
+const standingDot = cva("size-1.5 shrink-0 rounded-full", {
+  variants: {
+    tone: {
+      member: "bg-success",
+      timedOut: "bg-warning",
+      banned: "bg-destructive",
+    },
+  },
+})
+
+type Tone = NonNullable<VariantProps<typeof standingDot>["tone"]>
 
 export function StandingBadge({
   standing,
   className,
 }: {
-  standing: FoundAccount["standing"]
+  standing: AccountStanding
   className?: string
 }) {
+  const { tone, label } = lookOf(standing)
   return (
     <span
       className={cn(
@@ -17,32 +32,25 @@ export function StandingBadge({
         className
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          standing.kind === "banned"
-            ? "bg-destructive"
-            : standing.timedOutUntil === null
-              ? "bg-success"
-              : "bg-warning"
-        )}
-      />
-      <StandingText standing={standing} />
+      <span aria-hidden className={standingDot({ tone })} />
+      <span>{label}</span>
     </span>
   )
 }
 
-function StandingText({ standing }: { standing: FoundAccount["standing"] }) {
+function lookOf(standing: AccountStanding): { tone: Tone; label: ReactNode } {
   if (standing.kind === "banned") {
-    return <span>Compte banni</span>
+    return { tone: "banned", label: "Compte banni" }
   }
   if (standing.timedOutUntil === null) {
-    return <span>Membre du serveur</span>
+    return { tone: "member", label: "Membre du serveur" }
   }
-  return (
-    <span>
-      Exclu jusqu’au <ParisTime date={standing.timedOutUntil} />
-    </span>
-  )
+  return {
+    tone: "timedOut",
+    label: (
+      <>
+        Exclu jusqu’au <ParisTime date={standing.timedOutUntil} />
+      </>
+    ),
+  }
 }

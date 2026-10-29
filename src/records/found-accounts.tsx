@@ -2,7 +2,9 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 
 import { MemberAvatar } from "@/ui/member-avatar"
-import type { AccountSearch, FoundAccount } from "./search-accounts"
+import { Overline } from "@/ui/overline"
+import { isTimedOut } from "./account-standing"
+import type { AccountSearch } from "./search-accounts"
 import { StandingBadge } from "./standing-badge"
 
 const COUNT_ID = "found-accounts-count"
@@ -14,19 +16,16 @@ export function FoundAccounts({ search }: { search: AccountSearch }) {
   const { query, accounts, truncated } = search
   if (accounts.length === 0) {
     return (
-      <p className="max-w-190 rounded-xl border border-dashed border-input px-5 py-7 text-center wrap-anywhere text-muted-foreground">
+      <p className="rounded-xl border border-dashed border-input px-5 py-7 text-center wrap-anywhere text-muted-foreground">
         {`Aucun membre ni banni dont le nom commence par « ${query} ».`}
       </p>
     )
   }
   return (
-    <div className="flex max-w-190 flex-col gap-2.5">
-      <p
-        id={COUNT_ID}
-        className="text-[0.65625rem] leading-3.5 font-medium tracking-[0.18em] wrap-anywhere text-muted-foreground uppercase"
-      >
-        {countOf(accounts.length, query)}
-      </p>
+    <div className="flex flex-col gap-2.5">
+      <Overline id={COUNT_ID} className="wrap-anywhere">
+        {countSentence(accounts.length, truncated, query)}
+      </Overline>
       <ul
         aria-labelledby={COUNT_ID}
         className="divide-y overflow-hidden rounded-xl border bg-card"
@@ -59,19 +58,18 @@ export function FoundAccounts({ search }: { search: AccountSearch }) {
           Seuls les 25 premiers comptes s’affichent : précise ta recherche.
         </p>
       )}
-      {accounts.some(isTimedOut) && (
+      {accounts.some(({ standing }) => isTimedOut(standing)) && (
         <p className="text-sm text-muted-foreground">Heures de Paris.</p>
       )}
     </div>
   )
 }
 
-function countOf(count: number, query: string) {
+function countSentence(count: number, truncated: boolean, query: string) {
+  if (truncated) {
+    return `Plus de ${count} comptes commencent par « ${query} »`
+  }
   return count === 1
     ? `1 compte commence par « ${query} »`
     : `${count} comptes commencent par « ${query} »`
-}
-
-function isTimedOut({ standing }: FoundAccount) {
-  return standing.kind === "member" && standing.timedOutUntil !== null
 }

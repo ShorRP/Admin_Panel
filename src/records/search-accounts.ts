@@ -7,6 +7,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { memberName, userName } from "@/discord/member-name"
 import { ACCOUNT_ID } from "./account-id"
+import type { AccountStanding } from "./account-standing"
 import { timeoutEndOf } from "./timeout-end"
 
 export type FoundAccount = {
@@ -14,7 +15,7 @@ export type FoundAccount = {
   name: string
   username: string
   avatarUrl: string | null
-  standing: { kind: "member"; timedOutUntil: Date | null } | { kind: "banned" }
+  standing: AccountStanding
 }
 
 export type AccountSearch =

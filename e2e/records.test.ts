@@ -65,7 +65,7 @@ test("a staff member who moderates finds accounts by name through « Modération
     .getByRole("link", { name: "Modération" })
   const main = page.getByRole("main")
   const found = main
-    .getByRole("list", { name: "3 comptes commencent par « LY »" })
+    .getByRole("list", { name: "3 comptes commencent par « ly »" })
     .getByRole("link")
 
   await logIn(ALDIS)
@@ -77,9 +77,9 @@ test("a staff member who moderates finds accounts by name through « Modération
   await expect(
     main.getByRole("heading", { level: 1, name: "Modération" })
   ).toBeVisible()
-  await page.getByLabel("Compte").fill("LY")
+  await page.getByLabel("Compte").fill("ly")
   await page.getByRole("button", { name: "Chercher" }).click()
-  await expect(page).toHaveURL("/records?query=LY")
+  await expect(page).toHaveURL("/records?query=ly")
   await expect(found).toHaveCount(3)
   await expect(found.nth(0)).toHaveAccessibleName(
     /^Lyra des Brumes\s*@lyra_gates\s*Membre du serveur$/

@@ -9,11 +9,7 @@ const FIELD_ID = "account-search"
 
 export function AccountSearchForm({ query }: { query: string }) {
   return (
-    <Form
-      action="/records"
-      prefetch={false}
-      className="flex max-w-190 flex-col gap-2"
-    >
+    <Form action="/records" prefetch={false} className="flex flex-col gap-2">
       <Label htmlFor={FIELD_ID}>Compte</Label>
       <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">

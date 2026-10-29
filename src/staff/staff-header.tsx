@@ -11,6 +11,8 @@ import { cn } from "cn"
 import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/ui/button"
+import { OrnamentRule } from "@/ui/ornament-rule"
+import { Overline } from "@/ui/overline"
 import {
   Sheet,
   SheetClose,
@@ -64,13 +66,7 @@ export function StaffHeader({
     <>
       <aside className="sticky top-0 hidden h-svh w-63 shrink-0 flex-col border-r bg-sidebar text-sm text-sidebar-foreground md:flex">
         <PanelLink className="px-5.5 pt-6 pb-5.5" />
-        <div
-          aria-hidden
-          className="flex items-center gap-2 px-5.5 text-ornament"
-        >
-          <span className="size-1.5 rotate-45 border border-current" />
-          <span className="h-px flex-1 bg-border" />
-        </div>
+        <OrnamentRule className="px-5.5" />
         <SectionNav
           place="sidebar"
           sections={sections}
@@ -209,12 +205,9 @@ function SectionGroup({
 }) {
   return (
     <div>
-      <p
-        id={id}
-        className="px-2.5 pb-2 text-[0.625rem] leading-3.5 font-medium tracking-[0.18em] text-muted-foreground uppercase"
-      >
+      <Overline id={id} className="px-2.5 pb-2 text-[0.625rem] leading-3.5">
         {title}
-      </p>
+      </Overline>
       <ul aria-labelledby={id} className="flex flex-col gap-0.5">
         {children}
       </ul>

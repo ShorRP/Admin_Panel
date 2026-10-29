@@ -263,17 +263,15 @@ test.each(["background", "card"])(
   }
 )
 
-test.each(["input/30", "input/50"])(
-  "in dark, text in foreground reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
-  (fill) => {
+test.each([
+  ["foreground", "input/30"],
+  ["foreground", "input/50"],
+  ["muted-foreground", "input/30"],
+])(
+  "in dark, text in %s reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
+  (text, fill) => {
     expect(
-      themeContrast(themes.dark, "foreground", ["background", fill])
+      themeContrast(themes.dark, text, ["background", fill])
     ).toBeGreaterThanOrEqual(4.5)
   }
 )
-
-test("in dark, the field's placeholder, muted-foreground, reaches 4.5:1 on input/30 on background, the field's fill", () => {
-  expect(
-    themeContrast(themes.dark, "muted-foreground", ["background", "input/30"])
-  ).toBeGreaterThanOrEqual(4.5)
-})
