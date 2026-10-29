@@ -78,23 +78,24 @@ function textarea(html: string, id: string) {
     new RegExp(`<textarea([^>]*id="${id}"[^>]*)>([^<]*)</textarea>`).exec(
       html
     ) ?? []
-  return { attributes, value }
+  return { placeholder: /\splaceholder="([^"]*)"/.exec(attributes)?.[1], value }
 }
 
 function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1] ?? ""
 }
 
-test("a member who is not timed out can be timed out for one of seven durations, none chosen, with a labelled reason and the direct message checked, and has nothing to lift", () => {
+test("a member who is not timed out can be timed out for one of seven durations, an hour chosen, with a labelled reason, written as the member will read it, and the direct message checked, and has nothing to lift", () => {
   const html = render()
 
   expect(forms(html)).toHaveLength(1)
+  expect(html).not.toContain("Exclusion temporaire en cours")
   expect(html).toMatch(/<legend[^>]*>Durée<\/legend>/)
   expect(durations(html)).toEqual([
     { label: "60 secondes", value: "60", checked: false },
     { label: "5 minutes", value: "300", checked: false },
     { label: "10 minutes", value: "600", checked: false },
-    { label: "1 heure", value: "3600", checked: false },
+    { label: "1 heure", value: "3600", checked: true },
     { label: "1 jour", value: "86400", checked: false },
     { label: "1 semaine", value: "604800", checked: false },
     { label: "28 jours", value: "2419200", checked: false },
@@ -102,7 +103,10 @@ test("a member who is not timed out can be timed out for one of seven durations,
   expect(html).toMatch(
     /<label[^>]* for="time-out-reason"[^>]*>Motif de l’exclusion temporaire<\/label>/
   )
-  expect(textarea(html, "time-out-reason").value).toBe("")
+  expect(textarea(html, "time-out-reason")).toEqual({
+    placeholder: "Écris le motif tel que le membre le lira.",
+    value: "",
+  })
   expect(notify(html)).toContain('name="notify"')
   expect(notify(html)).toMatch(/\schecked=""/)
   expect(html).toMatch(
@@ -116,15 +120,24 @@ test("a member who is not timed out can be timed out for one of seven durations,
   })
 })
 
-test("a timed-out member can also have their timeout lifted, with a reason of its own", () => {
+test("a timed-out member's timeout says until when, and can be lifted there, with a reason of its own, before a new timeout", () => {
   const html = render({ timedOutUntil: TIMED_OUT_UNTIL })
-  const [, lift] = forms(html)
+  const [lift] = forms(html)
+  const before = html.slice(0, html.indexOf("<form"))
 
   expect(forms(html)).toHaveLength(2)
+  expect(before.replace(/<[^>]*>/g, "")).toBe(
+    "Exclusion temporaire en coursJusqu’au 2 nov. 2099, 19:30"
+  )
+  expect(before).toContain('<time dateTime="2099-11-02T18:30:00.000Z">')
+  expect(before).toMatch(/<svg[^>]*\saria-hidden="true"/)
   expect(html).toMatch(
     /<label[^>]* for="lift-reason"[^>]*>Motif de la levée<\/label>/
   )
-  expect(textarea(html, "lift-reason").value).toBe("")
+  expect(textarea(html, "lift-reason")).toEqual({
+    placeholder: undefined,
+    value: "",
+  })
   expect(button(lift?.inside ?? "")).toEqual({
     icon: drawing(TimerOff),
     iconHidden: true,
@@ -139,8 +152,8 @@ test("each form names the member it acts on and the change it makes", () => {
       ({ hidden }) => hidden
     )
   ).toEqual([
-    { change: "time-out", userId: LYRA_ID },
     { change: "lift", userId: LYRA_ID },
+    { change: "time-out", userId: LYRA_ID },
   ])
 })
 

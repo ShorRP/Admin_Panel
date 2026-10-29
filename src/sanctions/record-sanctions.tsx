@@ -1,17 +1,18 @@
 import type { ReactNode } from "react"
+import { ShieldBan } from "lucide-react"
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { BanForm } from "./ban-form"
 import { BanLiftForm } from "./ban-lift-form"
 import { KickForm } from "./kick-form"
-import { SANCTION_ALERT_ID } from "./sanction-form"
+import { SANCTION_ALERT_ID, SENTENCE_CLASS } from "./sanction-form"
+import { SanctionNotice } from "./sanction-notice"
 import type { SanctionOptions } from "./sanction-options"
 import type { SanctionResult } from "./sanction-result"
 import { TimeoutForms } from "./timeout-forms"
 
 const HEADING_ID = "sanctions"
-
-const BAN_HEADING_ID = "sanctions-ban"
 
 export function RecordSanctions({
   options,
@@ -28,87 +29,132 @@ export function RecordSanctions({
     <section
       aria-labelledby={HEADING_ID}
       hidden={options.kind === "none"}
-      className="flex flex-col gap-6"
+      className="rounded-xl border bg-card"
     >
-      <h2 id={HEADING_ID} className="font-heading text-lg font-medium">
-        Sanctions
-      </h2>
-      {options.kind === "refused" && <p>{options.reason}</p>}
-      {options.kind === "member" && (
-        <>
-          <Sanction
-            headingId="sanctions-timeout"
-            heading="Exclusion temporaire"
-          >
-            {options.timeout.kind === "refused" ? (
-              <p>{options.timeout.reason}</p>
-            ) : (
-              <TimeoutForms
+      <div className="border-b px-5 py-3.5">
+        <h2
+          id={HEADING_ID}
+          className="font-heading text-xl leading-[1.2] font-medium"
+        >
+          Sanctions
+        </h2>
+      </div>
+      <div className="flex flex-col p-5">
+        {options.kind === "refused" && (
+          <p className={SENTENCE_CLASS}>{options.reason}</p>
+        )}
+        {options.kind === "member" && (
+          <Tabs defaultValue="time-out">
+            <TabsList className="w-full group-data-horizontal/tabs:h-auto">
+              <SanctionTab value="time-out">Exclusion temporaire</SanctionTab>
+              <SanctionTab value="kick">Expulsion</SanctionTab>
+              {options.ban && (
+                <SanctionTab value="ban">Bannissement</SanctionTab>
+              )}
+            </TabsList>
+            <SanctionPanel value="time-out">
+              {options.timeout.kind === "refused" ? (
+                <p className={SENTENCE_CLASS}>{options.timeout.reason}</p>
+              ) : (
+                <TimeoutForms
+                  userId={options.userId}
+                  timedOutUntil={options.timeout.timedOutUntil}
+                  state={state}
+                  pending={pending}
+                  action={action}
+                />
+              )}
+            </SanctionPanel>
+            <SanctionPanel value="kick">
+              <KickForm
                 userId={options.userId}
-                timedOutUntil={options.timeout.timedOutUntil}
                 state={state}
                 pending={pending}
                 action={action}
               />
+            </SanctionPanel>
+            {options.ban && (
+              <SanctionPanel value="ban">
+                <BanForm
+                  userId={options.userId}
+                  member
+                  state={state}
+                  pending={pending}
+                  action={action}
+                />
+              </SanctionPanel>
             )}
-          </Sanction>
-          <Sanction headingId="sanctions-kick" heading="Expulsion">
-            <KickForm
+          </Tabs>
+        )}
+        {options.kind === "absent" && (
+          <BanForm
+            userId={options.userId}
+            member={false}
+            state={state}
+            pending={pending}
+            action={action}
+          />
+        )}
+        {options.kind === "banned" && (
+          <div className="flex flex-col gap-4.5">
+            <SanctionNotice
+              kind="ban"
+              icon={ShieldBan}
+              title="Compte banni"
+              detail="Un bannissement n’a pas de fin : seul le staff peut le lever."
+            />
+            <BanLiftForm
               userId={options.userId}
               state={state}
               pending={pending}
               action={action}
             />
-          </Sanction>
-        </>
-      )}
-      {((options.kind === "member" && options.ban) ||
-        options.kind === "absent") && (
-        <Sanction headingId={BAN_HEADING_ID} heading="Bannissement">
-          <BanForm
-            userId={options.userId}
-            notifies={options.kind === "member"}
-            state={state}
-            pending={pending}
-            action={action}
-          />
-        </Sanction>
-      )}
-      {options.kind === "banned" && (
-        <Sanction headingId={BAN_HEADING_ID} heading="Bannissement">
-          <BanLiftForm
-            userId={options.userId}
-            state={state}
-            pending={pending}
-            action={action}
-          />
-        </Sanction>
-      )}
-      <p role="status" className="text-sm">
-        {pending && "Envoi en cours…"}
-      </p>
-      <p role="alert" id={SANCTION_ALERT_ID} className="text-sm">
-        {state?.ok === false && <WriteFailureMessage message={state.message} />}
-      </p>
+          </div>
+        )}
+        <p role="status" className="text-sm not-empty:mt-4">
+          {pending && "Envoi en cours…"}
+        </p>
+        <p
+          role="alert"
+          id={SANCTION_ALERT_ID}
+          className="text-sm not-empty:mt-4"
+        >
+          {state?.ok === false && (
+            <WriteFailureMessage message={state.message} />
+          )}
+        </p>
+      </div>
     </section>
   )
 }
 
-function Sanction({
-  headingId,
-  heading,
+function SanctionTab({
+  value,
   children,
 }: {
-  headingId: string
-  heading: string
+  value: string
   children: ReactNode
 }) {
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <h3 id={headingId} className="font-medium">
-        {heading}
-      </h3>
+    <TabsTrigger
+      value={value}
+      className="h-auto min-h-7.5 flex-auto self-stretch text-[0.78125rem] leading-4 whitespace-normal"
+    >
       {children}
-    </section>
+    </TabsTrigger>
+  )
+}
+
+function SanctionPanel({
+  value,
+  children,
+}: {
+  value: string
+  children: ReactNode
+}) {
+  return (
+    <TabsContent value={value} keepMounted className="pt-3">
+      {children}
+    </TabsContent>
   )
 }

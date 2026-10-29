@@ -52,6 +52,36 @@ function changes(html: string) {
   )
 }
 
+function attributesOf(tag: string) {
+  return {
+    has: (name: string) =>
+      new RegExp(`\\s${name}(?:="[^"]*")?[\\s/>]`).test(tag),
+    get: (name: string) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1],
+  }
+}
+
+function tabs(html: string) {
+  return Array.from(
+    html.matchAll(/(<button[^>]*\srole="tab"[^>]*>)(.*?)<\/button>/g),
+    ([, tag = "", name = ""]) => ({
+      name: name.replace(/<[^>]*>/g, ""),
+      selected: attributesOf(tag).get("aria-selected") === "true",
+    })
+  )
+}
+
+function panels(html: string) {
+  const starts = Array.from(
+    html.matchAll(/<div[^>]*\srole="tabpanel"[^>]*>/g),
+    (match) => ({ tag: match[0], index: match.index })
+  )
+  const end = html.indexOf('<p role="status"')
+  return starts.map(({ tag, index }, position) => ({
+    hidden: attributesOf(tag).has("hidden"),
+    changes: changes(html.slice(index, starts[position + 1]?.index ?? end)),
+  }))
+}
+
 function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
@@ -89,18 +119,25 @@ test("a member the staff member cannot sanction shows why, once, under « Sancti
   expect(html).not.toContain("<form")
 })
 
-test("a member the staff member can sanction shows the timeout's forms and the kick's, each under its heading", () => {
+test("a member the staff member can sanction shows the timeout's form and the kick's under two tabs, the timeout's open", () => {
   const html = render({ options: MEMBER })
 
   expect(headings(html, "h2")).toEqual(["Sanctions"])
-  expect(headings(html, "h3")).toEqual(["Exclusion temporaire", "Expulsion"])
-  expect(changes(html)).toEqual(["time-out", "kick"])
+  expect(headings(html, "h3")).toEqual([])
+  expect(tabs(html)).toEqual([
+    { name: "Exclusion temporaire", selected: true },
+    { name: "Expulsion", selected: false },
+  ])
+  expect(panels(html)).toEqual([
+    { hidden: false, changes: ["time-out"] },
+    { hidden: true, changes: ["kick"] },
+  ])
   expect(html).toContain(
     '<input type="hidden" name="userId" value="1400000000000000003"/>'
   )
 })
 
-test("a timed-out member's record also offers to lift the timeout", () => {
+test("a timed-out member's record says until when under the timeout's tab, and offers to lift it before a new timeout", () => {
   const html = render({
     options: {
       ...MEMBER,
@@ -111,47 +148,80 @@ test("a timed-out member's record also offers to lift the timeout", () => {
     },
   })
 
-  expect(changes(html)).toEqual(["time-out", "lift", "kick"])
+  expect(panels(html)).toEqual([
+    { hidden: false, changes: ["lift", "time-out"] },
+    { hidden: true, changes: ["kick"] },
+  ])
+  expect(text(html)).toContain(
+    "Exclusion temporaire en coursJusqu’au 2 nov. 2099, 19:30"
+  )
+  expect(html).toContain('<time dateTime="2099-11-02T18:30:00.000Z">')
 })
 
-test("a member who cannot be timed out shows why, once, under « Exclusion temporaire », and the kick's form", () => {
+test("a member who cannot be timed out shows why, once, under the timeout's tab, and the kick's form under its own", () => {
   const reason =
     "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement."
   const html = render({
     options: { ...MEMBER, timeout: { kind: "refused", reason } },
   })
 
-  expect(headings(html, "h3")).toEqual(["Exclusion temporaire", "Expulsion"])
-  expect(text(html).split(reason)).toHaveLength(2)
-  expect(changes(html)).toEqual(["kick"])
-})
-
-test("a staff member who bans also sees the ban's form, with the direct message, after the kick's", () => {
-  const html = render({ options: { ...MEMBER, ban: true } })
-
-  expect(headings(html, "h3")).toEqual([
+  expect(tabs(html).map(({ name }) => name)).toEqual([
     "Exclusion temporaire",
     "Expulsion",
-    "Bannissement",
   ])
-  expect(changes(html)).toEqual(["time-out", "kick", "ban"])
+  expect(text(html).split(reason)).toHaveLength(2)
+  expect(panels(html)).toEqual([
+    { hidden: false, changes: [] },
+    { hidden: true, changes: ["kick"] },
+  ])
+})
+
+test("a staff member who bans also finds the ban's form, with the direct message, under a third tab", () => {
+  const html = render({ options: { ...MEMBER, ban: true } })
+
+  expect(tabs(html)).toEqual([
+    { name: "Exclusion temporaire", selected: true },
+    { name: "Expulsion", selected: false },
+    { name: "Bannissement", selected: false },
+  ])
+  expect(panels(html)).toEqual([
+    { hidden: false, changes: ["time-out"] },
+    { hidden: true, changes: ["kick"] },
+    { hidden: true, changes: ["ban"] },
+  ])
   expect(html.match(/Prévenir en message privé/g)).toHaveLength(3)
 })
 
-test("an account absent from the Discord server offers only the ban, with no direct message", () => {
+test("an account absent from the Discord server offers only the ban, with no tabs and no direct message, after the mockup's sentence", () => {
   const html = render({ options: { kind: "absent", userId: LYRA_ID } })
 
   expect(html).not.toMatch(/^<section[^>]* hidden=""/)
-  expect(headings(html, "h3")).toEqual(["Bannissement"])
+  expect(html).not.toContain('role="tablist"')
   expect(changes(html)).toEqual(["ban"])
+  expect(text(html)).toContain(
+    "Ce compte n’est pas membre du serveur Discord : seul un bannissement reste possible, pour l’empêcher d’y revenir."
+  )
   expect(html).not.toContain("Prévenir en message privé")
 })
 
-test("a banned account offers only to lift the ban", () => {
+test("a banned account says that a ban has no end, then offers only to lift it, with no tabs", () => {
   const html = render({ options: { kind: "banned", userId: LYRA_ID } })
 
-  expect(headings(html, "h3")).toEqual(["Bannissement"])
+  expect(html).not.toContain('role="tablist"')
+  expect(text(html)).toContain(
+    "Compte banniUn bannissement n’a pas de fin : seul le staff peut le lever."
+  )
   expect(changes(html)).toEqual(["lift-ban"])
+})
+
+test("the card holds one pair of regions, after the tabs", () => {
+  const html = render({ options: { ...MEMBER, ban: true } })
+
+  expect(html.match(/role="status"/g)).toHaveLength(1)
+  expect(html.match(/role="alert"/g)).toHaveLength(1)
+  expect(html.indexOf('<p role="status"')).toBeGreaterThan(
+    html.lastIndexOf('role="tabpanel"')
+  )
 })
 
 test("a kick that landed hides « Sanctions », since the account it removed offers no sanction", () => {
@@ -201,7 +271,7 @@ test("a refused change shows its message in the alert region, which the fields p
   expect(region(html, "status").text).toBe("")
 })
 
-test("while a change is sent, every button is disabled and the status region says so", () => {
+test("while a change is sent, every button that sends one is disabled, the tabs still open, and the status region says so", () => {
   const html = render({
     options: {
       ...MEMBER,
@@ -209,15 +279,25 @@ test("while a change is sent, every button is disabled and the status region say
         kind: "open",
         timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
       },
+      ban: true,
     },
     pending: true,
   })
 
   expect(
-    Array.from(html.matchAll(/<button([^>]*)>/g), ([, attributes]) =>
-      /\sdisabled=""/.test(attributes ?? "")
-    )
-  ).toEqual([true, true, true])
+    Array.from(html.matchAll(/<button([^>]*)>/g), ([, tag = ""]) => ({
+      submits: attributesOf(tag).get("type") === "submit",
+      disabled: attributesOf(tag).has("disabled"),
+    }))
+  ).toEqual([
+    { submits: false, disabled: false },
+    { submits: false, disabled: false },
+    { submits: false, disabled: false },
+    { submits: true, disabled: true },
+    { submits: true, disabled: true },
+    { submits: true, disabled: true },
+    { submits: true, disabled: true },
+  ])
   expect(region(html, "status")).toEqual({
     icon: undefined,
     text: "Envoi en cours…",
