@@ -44,6 +44,8 @@ const favicon = readFileSync(
   "utf8"
 )
 
+const button = readFileSync(new URL("./button.tsx", import.meta.url), "utf8")
+
 const light = customProperties(/^:root \{([^}]*)\}/m)
 
 const themes = {
@@ -155,6 +157,16 @@ function faviconFill(element: string) {
   return new RegExp(`<${element}\\s[^>]*fill="([^"]*)"`).exec(favicon)?.[1]
 }
 
+function defaultButtonHoverFill() {
+  const fill = /default: "[^"]*\bhover:bg-(primary\/\d+)\b/.exec(button)?.[1]
+  if (fill === undefined) {
+    throw new Error(
+      "button.tsx gives its default variant no hover:bg-primary/<opacity>."
+    )
+  }
+  return fill
+}
+
 function composite([bottom, ...above]: Color[]): Triple {
   if (bottom?.alpha !== 1) {
     throw new Error("The bottom layer must be opaque.")
@@ -209,6 +221,15 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
 
   test.each(TEXT_PAIRS)("text in %s on %s reaches 4.5:1", (text, surface) => {
     expect(themeContrast(theme, text, [surface])).toBeGreaterThanOrEqual(4.5)
+  })
+
+  test("text in primary-foreground reaches 4.5:1 on the default button's hover fill, the hover:bg-primary of button.tsx, on background", () => {
+    expect(
+      themeContrast(theme, "primary-foreground", [
+        "background",
+        defaultButtonHoverFill(),
+      ])
+    ).toBeGreaterThanOrEqual(4.5)
   })
 
   test("the field's border, input, reaches 3:1 on background", () => {
