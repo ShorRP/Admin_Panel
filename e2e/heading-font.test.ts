@@ -44,7 +44,7 @@ test.use({
   },
 })
 
-test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, whose one face the panel serves: weight 500, latin subset", async ({
+test("every page's h1 and h2, and the « Shor » of the sidebar and of the login pages, take EB Garamond, whose one face the panel serves: weight 500, latin subset", async ({
   page,
   logIn,
   checkAccessibility,
@@ -52,12 +52,7 @@ test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, wh
   function headingFonts() {
     return page
       .locator("h1, h2")
-      .or(
-        page
-          .getByRole("complementary")
-          .getByRole("link", { name: "Shor Panel du staff" })
-          .getByText("Shor", { exact: true })
-      )
+      .or(page.getByText("Shor", { exact: true }))
       .filter({ visible: true })
       .evaluateAll((elements) =>
         elements.map((element) => ({
@@ -128,15 +123,15 @@ test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, wh
     .getByRole("button", { name: "Se déconnecter" })
     .click()
   await expect(page).toHaveURL("/login/logged-out")
-  await expectHeadingsInEbGaramond(["Déconnexion"])
+  await expectHeadingsInEbGaramond(["Shor", "Ta session est terminée."])
   await checkAccessibility()
 
   await logIn(BRYNJA)
   await expect(page).toHaveURL("/login/refused")
-  await expectHeadingsInEbGaramond(["Accès refusé"])
+  await expectHeadingsInEbGaramond(["Shor", "Accès refusé"])
   await checkAccessibility()
 
   await page.goto("/login/failed")
-  await expectHeadingsInEbGaramond(["Connexion échouée"])
+  await expectHeadingsInEbGaramond(["Shor", "Connexion échouée"])
   await checkAccessibility()
 })

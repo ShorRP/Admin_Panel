@@ -8,27 +8,36 @@ function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
-function links(html: string) {
-  return Array.from(
-    html.matchAll(
-      /<a[^>]* href="([^"]*)"[^>]*>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/a>/g
+function noticeOf(html: string) {
+  const main = /<main[^>]*>(.*)<\/main>/.exec(html)?.[1] ?? ""
+  return {
+    heading: /<h1[^>]*>(.*?)<\/h1>/.exec(main)?.[1],
+    sentence: /<\/h1>.*?<p[^>]*>(.*?)<\/p>/.exec(main)?.[1],
+    links: Array.from(
+      main.matchAll(
+        /<a[^>]* href="([^"]*)"[^>]*>(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/a>/g
+      ),
+      ([, href, iconAttributes = "", iconDrawing, text]) => ({
+        icon: iconDrawing,
+        iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+        text,
+        href,
+      })
     ),
-    ([, href, iconAttributes = "", iconDrawing, text]) => ({
-      icon: iconDrawing,
-      iconHidden: /\saria-hidden="true"/.test(iconAttributes),
-      text,
-      href,
-    })
-  )
+  }
 }
 
-test("the logged-out page links to the login through « Se connecter », after a hidden log-in icon", () => {
-  expect(links(renderToStaticMarkup(<LoggedOut />))).toEqual([
-    {
-      icon: drawing(LogIn),
-      iconHidden: true,
-      text: "Se connecter",
-      href: "/login",
-    },
-  ])
+test("the logged-out page says the session is over, then links to the login through « Se connecter avec Discord », after a hidden log-in icon", () => {
+  expect(noticeOf(renderToStaticMarkup(<LoggedOut />))).toEqual({
+    heading: "Ta session est terminée.",
+    sentence: "Reconnecte-toi avec ton compte Discord pour revenir au panel.",
+    links: [
+      {
+        icon: drawing(LogIn),
+        iconHidden: true,
+        text: "Se connecter avec Discord",
+        href: "/login",
+      },
+    ],
+  })
 })
