@@ -13,6 +13,7 @@ import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
 import { snowflakeDate } from "@/discord/snowflake-date"
 import { ACCOUNT_ID } from "./account-id"
+import { timeoutEndOf } from "./timeout-end"
 
 export type Standing =
   | {
@@ -115,15 +116,4 @@ function bannedStanding({ reason }: APIBan): Standing {
     reason: panelReason?.change ?? reason,
     staffMemberName: panelReason?.staffMemberName ?? null,
   }
-}
-
-function timeoutEndOf(communicationDisabledUntil: string | null | undefined) {
-  if (
-    communicationDisabledUntil === null ||
-    communicationDisabledUntil === undefined
-  ) {
-    return null
-  }
-  const end = new Date(communicationDisabledUntil)
-  return end.getTime() > Date.now() ? end : null
 }

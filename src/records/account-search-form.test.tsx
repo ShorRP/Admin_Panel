@@ -41,3 +41,20 @@ test("the search's button reads « Chercher », after a hidden search icon", () 
     text,
   }).toEqual({ icon: drawing(Search), iconHidden: true, text: "Chercher" })
 })
+
+test("the search's field suggests what it takes, beside a search icon hidden from assistive technologies", () => {
+  const html = renderToStaticMarkup(<AccountSearchForm query="" />)
+  const field = /<input[^>]*>/.exec(html)?.[0] ?? ""
+  const [, iconAttributes = "", iconDrawing] =
+    /<svg([^>]*)>(.*?)<\/svg><input/.exec(html) ?? []
+
+  expect({
+    placeholder: attribute(field, "placeholder"),
+    icon: iconDrawing,
+    iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+  }).toEqual({
+    placeholder: "Nom d’utilisateur, pseudo, ID ou mention",
+    icon: drawing(Search),
+    iconHidden: true,
+  })
+})
