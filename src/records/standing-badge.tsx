@@ -11,6 +11,7 @@ const standingDot = cva("size-1.5 shrink-0 rounded-full", {
       member: "bg-success",
       timedOut: "bg-warning",
       banned: "bg-destructive",
+      absent: "bg-muted-foreground",
     },
   },
 })
@@ -41,6 +42,9 @@ export function StandingBadge({
 function lookOf(standing: AccountStanding): { tone: Tone; label: ReactNode } {
   if (standing.kind === "banned") {
     return { tone: "banned", label: "Compte banni" }
+  }
+  if (standing.kind === "absent") {
+    return { tone: "absent", label: "Absent du serveur" }
   }
   if (standing.timedOutUntil === null) {
     return { tone: "member", label: "Membre du serveur" }

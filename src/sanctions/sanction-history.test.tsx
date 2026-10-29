@@ -91,3 +91,31 @@ test("each sanction and each lifting says what, when, who, from where, and why",
   ])
   expect(html).toContain('<time dateTime="2026-10-28T13:20:00.000Z">')
 })
+
+test("each entry of the timeline carries a diamond hidden from assistive technologies, toned by its kind: a timeout in warning, a lifting in success, a kick or a ban in destructive", () => {
+  const html = renderToStaticMarkup(
+    <SanctionHistory
+      history={[
+        { kind: "ban-lift" } as const,
+        { kind: "ban" } as const,
+        { kind: "kick" } as const,
+        { kind: "timeout-lift" } as const,
+        { kind: "timeout", end: null } as const,
+      ].map((change, index) => ({
+        id: `150000000000000000${index}`,
+        date: new Date("2026-10-28T13:00:00.000Z"),
+        change,
+        author: { kind: "panel", staffMemberName: "Aldis" } as const,
+        reason: null,
+      }))}
+    />
+  )
+
+  expect(
+    Array.from(
+      html.matchAll(/<li[^>]*>(.*?)<\/li>/g),
+      ([, item = ""]) =>
+        /<span[^>]*aria-hidden="true"[^>]*data-tone="([^"]+)"/.exec(item)?.[1]
+    )
+  ).toEqual(["success", "destructive", "destructive", "success", "warning"])
+})

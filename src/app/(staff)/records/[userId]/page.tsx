@@ -4,8 +4,11 @@ import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
 import { readRecord } from "@/records/read-record"
+import { RecordBreadcrumb } from "@/records/record-breadcrumb"
+import { RecordColumns } from "@/records/record-columns"
 import { RecordDetails } from "@/records/record-details"
 import { RecordDetailsSkeleton } from "@/records/record-details-skeleton"
+import { RecordHeader } from "@/records/record-header"
 import { readSanctionHistory } from "@/sanctions/read-sanction-history"
 import { SanctionHistory } from "@/sanctions/sanction-history"
 import { readSanctionOptions } from "@/sanctions/sanction-options"
@@ -24,8 +27,8 @@ export default function RecordPage({ params }: PageProps<"/records/[userId]">) {
       exit="section-crossfade"
       default="none"
     >
-      <main className="mx-auto flex max-w-xl flex-col gap-6">
-        <h1 className="font-heading text-xl font-medium">Fiche</h1>
+      <main className="flex flex-col gap-6">
+        <RecordBreadcrumb />
         <SuspenseWithSkeleton skeleton={<RecordDetailsSkeleton />}>
           <RecordFromDiscord params={params} />
         </SuspenseWithSkeleton>
@@ -48,9 +51,15 @@ async function RecordFromDiscord({
   ])
   return (
     <>
-      <RecordDetails record={record} />
-      <StatefulRecordSanctions options={options} />
-      <SanctionHistory history={history} />
+      <RecordHeader record={record} />
+      {record !== null && (
+        <RecordColumns
+          details={<RecordDetails record={record} />}
+          sanctions={<StatefulRecordSanctions options={options} />}
+          sanctionsShown={options.kind !== "none"}
+          history={<SanctionHistory history={history} />}
+        />
+      )}
     </>
   )
 }

@@ -15,12 +15,14 @@ function initialsOf(name: string) {
 export function MemberAvatar({
   name,
   avatarUrl,
+  className,
 }: {
   name: string
   avatarUrl: string | null
+  className?: string
 }) {
   return (
-    <Avatar aria-hidden>
+    <Avatar aria-hidden className={className}>
       {avatarUrl !== null && <AvatarImage src={avatarUrl} alt="" />}
       <AvatarFallback>{initialsOf(name)}</AvatarFallback>
     </Avatar>

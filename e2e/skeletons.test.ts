@@ -1,7 +1,9 @@
-import { STAFF_ROLE_ID } from "../playwright.config"
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const LYRA = { id: "1400000000000000003", username: "lyra_gates" }
 
 const PAGES = [
   {
@@ -14,6 +16,11 @@ const PAGES = [
     loading: "Chargement du journal d’audit…",
     content:
       "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.",
+  },
+  {
+    path: `/records/${LYRA.id}`,
+    loading: "Chargement de la fiche…",
+    content: "Aucune sanction ni levée dans l’historique.",
   },
 ] as const
 
@@ -30,7 +37,12 @@ const RISE = [
 ]
 
 test.use({
-  discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
+  discordState: {
+    members: [
+      { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+      { user: LYRA },
+    ],
+  },
 })
 
 for (const { title, prefersReducedMotion } of [

@@ -1,27 +1,28 @@
 import type { ReactNode } from "react"
+import { cn } from "cn"
 
-import { MemberAvatar } from "@/ui/member-avatar"
+import { Overline } from "@/ui/overline"
 import { ParisTime } from "@/ui/paris-time"
-import type { AccountRecord, Standing } from "./read-record"
+import type { AccountRecord } from "./read-record"
 
-export function RecordDetails({ record }: { record: AccountRecord | null }) {
-  if (record === null) {
-    return <p>Aucun compte Discord n’a cet ID.</p>
-  }
-  const { name, avatarUrl, globalName, username, id, createdAt, standing } =
-    record
+const HEADING_ID = "record-details"
+
+export function RecordDetails({ record }: { record: AccountRecord }) {
+  const { globalName, username, id, createdAt, standing } = record
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <MemberAvatar name={name} avatarUrl={avatarUrl} />
-        <h2 className="min-w-0 font-heading text-lg font-medium wrap-anywhere">
-          {name}
+    <section aria-labelledby={HEADING_ID} className="rounded-xl border bg-card">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 border-b px-5 py-3.5">
+        <h2
+          id={HEADING_ID}
+          className="font-heading text-xl leading-[1.2] font-medium"
+        >
+          Détails
         </h2>
+        <Overline className="text-[0.625rem] tracking-[0.16em] whitespace-nowrap">
+          Heures de Paris
+        </Overline>
       </div>
-      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[max-content_1fr]">
-        <Entry term="État">
-          <StandingSummary standing={standing} />
-        </Entry>
+      <dl className="grid gap-x-4 px-5 pt-1 pb-1.5 text-sm sm:grid-cols-[minmax(6.875rem,11.875rem)_minmax(0,1fr)]">
         {standing.kind === "banned" && (
           <>
             <Entry term="Motif du bannissement">
@@ -37,7 +38,9 @@ export function RecordDetails({ record }: { record: AccountRecord | null }) {
         )}
         <Entry term="Nom d’affichage">{globalName ?? "Aucun"}</Entry>
         <Entry term="Nom d’utilisateur">{username}</Entry>
-        <Entry term="ID">{id}</Entry>
+        <Entry term="ID" className="font-mono text-[0.78125rem]">
+          {id}
+        </Entry>
         <Entry term="Création du compte">
           <ParisTime date={createdAt} />
         </Entry>
@@ -58,7 +61,7 @@ export function RecordDetails({ record }: { record: AccountRecord | null }) {
                   {standing.roles.map(({ id, name }) => (
                     <li
                       key={id}
-                      className="rounded-sm border px-1.5 text-sm wrap-anywhere"
+                      className="rounded-md border border-input px-2 py-px text-[0.78125rem] wrap-anywhere"
                     >
                       {name}
                     </li>
@@ -69,34 +72,23 @@ export function RecordDetails({ record }: { record: AccountRecord | null }) {
           </>
         )}
       </dl>
-      <p>Heures de Paris.</p>
-    </div>
+    </section>
   )
 }
 
-function Entry({ term, children }: { term: string; children: ReactNode }) {
+function Entry({
+  term,
+  className,
+  children,
+}: {
+  term: string
+  className?: string
+  children: ReactNode
+}) {
   return (
-    <div className="flex flex-col gap-0.5 sm:col-span-2 sm:grid sm:grid-cols-subgrid">
-      <dt className="text-sm text-muted-foreground sm:text-base">{term}</dt>
-      <dd className="wrap-anywhere">{children}</dd>
+    <div className="flex flex-col gap-y-0.5 border-t py-2.75 first:border-t-transparent sm:col-span-2 sm:grid sm:grid-cols-subgrid sm:items-baseline">
+      <dt className="text-muted-foreground">{term}</dt>
+      <dd className={cn("wrap-anywhere", className)}>{children}</dd>
     </div>
   )
-}
-
-function StandingSummary({ standing }: { standing: Standing }) {
-  switch (standing.kind) {
-    case "member":
-      return standing.timedOutUntil === null ? (
-        "Membre du serveur"
-      ) : (
-        <>
-          Membre exclu temporairement jusqu’au{" "}
-          <ParisTime date={standing.timedOutUntil} />
-        </>
-      )
-    case "banned":
-      return "Compte banni"
-    case "absent":
-      return "Compte absent du serveur"
-  }
 }
