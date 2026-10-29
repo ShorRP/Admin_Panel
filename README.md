@@ -15,7 +15,7 @@ The panel is a Next.js app in TypeScript, under [`src/app/`](src/app/), whose in
 
 ## Requirements
 
-- Node `^22.13.0 || ^24.0.0 || >=26.0.0`, the range `engines` sets in `package.json`.
+- Node 24, the one major that `engines` sets in `package.json`, as `^24.0.0`, and that Vercel and CI run too.
 - pnpm, at the version `packageManager` pins in `package.json`.
 
 ## Commands
