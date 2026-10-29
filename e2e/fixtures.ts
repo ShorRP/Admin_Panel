@@ -107,9 +107,18 @@ export const test = base.extend<Fixtures>({
       if (waitForLoad) {
         await page.waitForLoadState()
       }
+      const chosenTheme = await page.evaluate(
+        () => document.documentElement.dataset.theme
+      )
+      const schemes =
+        chosenTheme === undefined
+          ? (["light", "dark"] as const)
+          : [`the theme chosen as ${chosenTheme}`]
       const backgrounds = new Map<string, string>()
-      for (const scheme of ["light", "dark"] as const) {
-        await page.emulateMedia({ colorScheme: scheme })
+      for (const scheme of schemes) {
+        if (scheme === "light" || scheme === "dark") {
+          await page.emulateMedia({ colorScheme: scheme })
+        }
         await page.waitForFunction(() =>
           document
             .getAnimations()
@@ -135,10 +144,12 @@ export const test = base.extend<Fixtures>({
           `axe's WCAG 2.2 AA rules in ${scheme}`
         ).toEqual([])
       }
-      expect(
-        backgrounds.get("dark"),
-        "the page's background in dark, against light's"
-      ).not.toBe(backgrounds.get("light"))
+      if (chosenTheme === undefined) {
+        expect(
+          backgrounds.get("dark"),
+          "the page's background in dark, against light's"
+        ).not.toBe(backgrounds.get("light"))
+      }
       await page.emulateMedia({ colorScheme })
 
       const viewport = page.viewportSize()

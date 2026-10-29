@@ -17,3 +17,4 @@ The Admin Panel sends one static Content Security Policy from `next.config.ts`, 
 - An injected inline script would run; an injected script from another origin would not.
 - Previews serve the same policy, with the Vercel Toolbar turned off there, since it needs `https://vercel.live` in six directives (https://vercel.com/docs/vercel-toolbar/managing-toolbar, updated 2026-08-11).
 - Moving to nonces later means rendering every page on request.
+- The script in the root layout's `<head>` that applies the theme a staff member chose runs through `'unsafe-inline'` too (`CLAUDE.md`, **Theme**, #225): a policy without it would have to allow that script by its hash or its nonce (inferred).

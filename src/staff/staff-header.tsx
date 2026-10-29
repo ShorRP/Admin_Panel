@@ -24,6 +24,7 @@ import {
 } from "@/ui/sheet"
 import { LogOutForm } from "./log-out-form"
 import { ShorLogo } from "./shor-logo"
+import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
 type Section = {
   href: string
@@ -75,9 +76,12 @@ export function StaffHeader({
           SectionLink={SidebarSectionLink}
           className="flex flex-1 flex-col gap-5.5 overflow-y-auto px-3 py-5"
         />
-        <div className="flex items-center gap-2 border-t px-3 py-3.5">
-          <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
-          <LogOutForm iconOnly />
+        <div className="flex flex-col gap-3 border-t px-3 py-3.5">
+          <StatefulThemeToggle />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
+            <LogOutForm iconOnly />
+          </div>
         </div>
       </aside>
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
@@ -105,6 +109,7 @@ export function StaffHeader({
                 className="flex flex-col gap-5.5 px-3"
               />
               <SheetFooter className="border-t">
+                <StatefulThemeToggle />
                 {member}
                 <LogOutForm />
               </SheetFooter>

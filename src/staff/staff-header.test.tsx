@@ -1,5 +1,14 @@
 import type { ReactElement } from "react"
-import { Ban, Gavel, LogOut, Menu, ScrollText } from "lucide-react"
+import {
+  Ban,
+  Gavel,
+  LogOut,
+  Menu,
+  Monitor,
+  Moon,
+  ScrollText,
+  Sun,
+} from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { prerender } from "react-dom/static"
 import { expect, test } from "vitest"
@@ -222,14 +231,33 @@ test("the moderation section is current on its search and on every record", asyn
   expect(await currentLinks("/recordsx")).toEqual([])
 })
 
-test("the sidebar's foot names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
+test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
   const { sidebar } = await render("/blocked-words", {
     member: "Brynja la Rouge",
   })
   const foot = sidebar.slice(sidebar.indexOf("</nav>"))
 
-  expect(textOf(foot)).toBe("Brynja la RougeSe déconnecter")
+  expect(textOf(foot)).toBe("AutoClairSombreBrynja la RougeSe déconnecter")
+  expect(/<div role="group" aria-label="Thème"/.test(foot)).toBe(true)
+  expect(
+    Array.from(
+      foot.matchAll(/<button[^>]*aria-pressed="true"[^>]*>(.*?)<\/button>/g),
+      ([, content = ""]) => textOf(content)
+    )
+  ).toEqual(["Auto"])
   expect(buttons(foot)).toEqual([
+    {
+      content: "Auto",
+      image: { drawing: drawing(<Monitor />), hidden: true },
+    },
+    {
+      content: "Clair",
+      image: { drawing: drawing(<Sun />), hidden: true },
+    },
+    {
+      content: "Sombre",
+      image: { drawing: drawing(<Moon />), hidden: true },
+    },
     {
       content: '<span class="sr-only">Se déconnecter</span>',
       image: { drawing: drawing(<LogOut />), hidden: true },
