@@ -4,12 +4,12 @@ import { Hammer } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { BAN_MESSAGE_DELETIONS } from "./ban-message-deletions"
-import { NotifyCheckbox, ReasonField } from "./sanction-fields"
+import { NotifyCheckbox } from "./notify-checkbox"
+import { ReasonField } from "./reason-field"
 import {
   CHOICE_CLASS,
   LEGEND_CLASS,
   NATIVE_CONTROL_CLASS,
-  REASON_PLACEHOLDER,
   RED_BUTTON_CLASS,
   SANCTION_ALERT_ID,
   SENTENCE_CLASS,
@@ -23,13 +23,13 @@ const NO_MESSAGE_DELETED = "0"
 
 export function BanForm({
   userId,
-  member,
+  standing,
   state,
   pending,
   action,
 }: {
   userId: Snowflake
-  member: boolean
+  standing: "member" | "absent"
   state: SanctionResult | null
   pending: boolean
   action: (formData: FormData) => void
@@ -40,7 +40,7 @@ export function BanForm({
       <input type="hidden" name="change" value="ban" />
       <input type="hidden" name="userId" value={userId} />
       <p className={SENTENCE_CLASS}>
-        {member
+        {standing === "member"
           ? "Le compte quitte le serveur Discord et ne peut plus le rejoindre tant que le bannissement n’est pas levé."
           : "Ce compte n’est pas membre du serveur Discord : seul un bannissement reste possible, pour l’empêcher d’y revenir."}
       </p>
@@ -68,9 +68,11 @@ export function BanForm({
         id={REASON_ID}
         label="Motif du bannissement"
         defaultValue={refused?.reason ?? ""}
-        placeholder={member ? REASON_PLACEHOLDER : undefined}
+        readByMember={standing === "member"}
       />
-      {member && <NotifyCheckbox defaultChecked={refused?.notify ?? true} />}
+      {standing === "member" && (
+        <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
+      )}
       <Button
         type="submit"
         disabled={pending}

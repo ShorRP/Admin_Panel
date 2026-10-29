@@ -2,7 +2,7 @@ import type { Snowflake } from "discord-api-types/v10"
 import { UserCheck } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { ReasonField } from "./sanction-fields"
+import { ReasonField } from "./reason-field"
 import { SUBMIT_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 

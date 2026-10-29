@@ -8,18 +8,18 @@ import type { SanctionResult } from "./sanction-result"
 const LYRA_ID = "1400000000000000003"
 
 function render({
-  member = true,
+  standing = "member",
   state = null,
   pending = false,
 }: {
-  member?: boolean
+  standing?: "member" | "absent"
   state?: SanctionResult | null
   pending?: boolean
 } = {}) {
   return renderToStaticMarkup(
     <BanForm
       userId={LYRA_ID}
-      member={member}
+      standing={standing}
       state={state}
       pending={pending}
       action={() => {}}
@@ -127,7 +127,7 @@ test("a member's ban says that the account cannot come back until it is lifted, 
 })
 
 test("an account absent from the Discord server is banned with no direct message to offer, after saying that only a ban remains", () => {
-  const html = render({ member: false })
+  const html = render({ standing: "absent" })
 
   expect(notify(html)).toBeUndefined()
   expect(html).not.toContain("Prévenir en message privé")

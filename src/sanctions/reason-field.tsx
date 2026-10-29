@@ -2,23 +2,21 @@ import { cn } from "cn"
 
 import { Label } from "@/ui/label"
 import { Textarea } from "@/ui/textarea"
-import {
-  CHOICE_CLASS,
-  NATIVE_CONTROL_CLASS,
-  SANCTION_ALERT_ID,
-} from "./sanction-form"
+import { SANCTION_ALERT_ID } from "./sanction-form"
+
+const READ_BY_MEMBER_PLACEHOLDER = "Écris le motif tel que le membre le lira."
 
 export function ReasonField({
   id,
   label,
   defaultValue,
-  placeholder,
+  readByMember = false,
   className,
 }: {
   id: string
   label: string
   defaultValue: string
-  placeholder?: string | undefined
+  readByMember?: boolean
   className?: string
 }) {
   return (
@@ -30,29 +28,10 @@ export function ReasonField({
         id={id}
         name="reason"
         defaultValue={defaultValue}
-        placeholder={placeholder}
+        placeholder={readByMember ? READ_BY_MEMBER_PLACEHOLDER : undefined}
         aria-describedby={SANCTION_ALERT_ID}
         className={cn("min-h-19", className)}
       />
     </div>
-  )
-}
-
-export function NotifyCheckbox({
-  defaultChecked,
-}: {
-  defaultChecked: boolean
-}) {
-  return (
-    <label className={CHOICE_CLASS}>
-      <input
-        type="checkbox"
-        name="notify"
-        defaultChecked={defaultChecked}
-        aria-describedby={SANCTION_ALERT_ID}
-        className={NATIVE_CONTROL_CLASS}
-      />
-      Prévenir en message privé
-    </label>
   )
 }

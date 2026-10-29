@@ -59,17 +59,21 @@ function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1] ?? ""
 }
 
+function sentence(html: string) {
+  return /<form[^>]*>(?:<input[^>]*\/>)*<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1]
+}
+
+function placeholder(html: string) {
+  return /<textarea[^>]*\splaceholder="([^"]*)"/.exec(html)?.[1]
+}
+
 test("a kick says that the account can come back through an invite, and asks for the reason as the member will read it", () => {
   const html = render()
 
-  expect(
-    /<form[^>]*>(?:<input[^>]*\/>)*<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1]
-  ).toBe(
+  expect(sentence(html)).toBe(
     "Le compte quitte le serveur Discord et peut le rejoindre à nouveau par une invitation."
   )
-  expect(/<textarea[^>]*\splaceholder="([^"]*)"/.exec(html)?.[1]).toBe(
-    "Écris le motif tel que le membre le lira."
-  )
+  expect(placeholder(html)).toBe("Écris le motif tel que le membre le lira.")
 })
 
 test("a member can be kicked with a labelled reason and the direct message checked", () => {

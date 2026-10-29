@@ -15,5 +15,3 @@ export const SUBMIT_CLASS = cn("h-9.5 w-full")
 export const RED_BUTTON_CLASS = cn(
   "bg-destructive text-destructive-foreground hover:bg-destructive/90"
 )
-
-export const REASON_PLACEHOLDER = "Écris le motif tel que le membre le lira."

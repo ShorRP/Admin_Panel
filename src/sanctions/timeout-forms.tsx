@@ -3,22 +3,19 @@ import { Timer, TimerOff } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { ParisTime } from "@/ui/paris-time"
-import { NotifyCheckbox, ReasonField } from "./sanction-fields"
-import {
-  LEGEND_CLASS,
-  REASON_PLACEHOLDER,
-  SANCTION_ALERT_ID,
-  SUBMIT_CLASS,
-} from "./sanction-form"
+import { NotifyCheckbox } from "./notify-checkbox"
+import { ReasonField } from "./reason-field"
+import { LEGEND_CLASS, SANCTION_ALERT_ID, SUBMIT_CLASS } from "./sanction-form"
 import { SanctionNotice } from "./sanction-notice"
 import type { SanctionResult } from "./sanction-result"
-import { TIMEOUT_DURATIONS } from "./timeout-durations"
+import {
+  DEFAULT_TIMEOUT_DURATION,
+  TIMEOUT_DURATIONS,
+} from "./timeout-durations"
 
 const TIME_OUT_REASON_ID = "time-out-reason"
 
 const LIFT_REASON_ID = "lift-reason"
-
-const ONE_HOUR = "3600"
 
 export function TimeoutForms({
   userId,
@@ -42,7 +39,6 @@ export function TimeoutForms({
       {timedOutUntil !== null && (
         <SanctionNotice
           kind="timeout"
-          icon={Timer}
           title="Exclusion temporaire en cours"
           detail={
             <>
@@ -87,7 +83,8 @@ export function TimeoutForms({
                   name="duration"
                   value={seconds}
                   defaultChecked={
-                    (refusedTimeOut?.duration ?? ONE_HOUR) === seconds
+                    (refusedTimeOut?.duration ?? DEFAULT_TIMEOUT_DURATION) ===
+                    seconds
                   }
                   aria-describedby={SANCTION_ALERT_ID}
                   className="absolute inset-0 size-full cursor-pointer appearance-none rounded-[inherit] outline-none"
@@ -101,7 +98,7 @@ export function TimeoutForms({
           id={TIME_OUT_REASON_ID}
           label="Motif de l’exclusion temporaire"
           defaultValue={refusedTimeOut?.reason ?? ""}
-          placeholder={REASON_PLACEHOLDER}
+          readByMember
         />
         <NotifyCheckbox defaultChecked={refusedTimeOut?.notify ?? true} />
         <Button type="submit" disabled={pending} className={SUBMIT_CLASS}>

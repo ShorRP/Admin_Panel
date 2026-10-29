@@ -1,5 +1,4 @@
 import type { ReactNode } from "react"
-import { ShieldBan } from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
@@ -9,10 +8,12 @@ import { KickForm } from "./kick-form"
 import { SANCTION_ALERT_ID, SENTENCE_CLASS } from "./sanction-form"
 import { SanctionNotice } from "./sanction-notice"
 import type { SanctionOptions } from "./sanction-options"
-import type { SanctionResult } from "./sanction-result"
+import type { SanctionFields, SanctionResult } from "./sanction-result"
 import { TimeoutForms } from "./timeout-forms"
 
 const HEADING_ID = "sanctions"
+
+type TabValue = Extract<SanctionFields["change"], "time-out" | "kick" | "ban">
 
 export function RecordSanctions({
   options,
@@ -77,7 +78,7 @@ export function RecordSanctions({
               <SanctionPanel value="ban">
                 <BanForm
                   userId={options.userId}
-                  member
+                  standing="member"
                   state={state}
                   pending={pending}
                   action={action}
@@ -89,7 +90,7 @@ export function RecordSanctions({
         {options.kind === "absent" && (
           <BanForm
             userId={options.userId}
-            member={false}
+            standing="absent"
             state={state}
             pending={pending}
             action={action}
@@ -99,7 +100,6 @@ export function RecordSanctions({
           <div className="flex flex-col gap-4.5">
             <SanctionNotice
               kind="ban"
-              icon={ShieldBan}
               title="Compte banni"
               detail="Un bannissement n’a pas de fin : seul le staff peut le lever."
             />
@@ -132,7 +132,7 @@ function SanctionTab({
   value,
   children,
 }: {
-  value: string
+  value: TabValue
   children: ReactNode
 }) {
   return (
@@ -149,7 +149,7 @@ function SanctionPanel({
   value,
   children,
 }: {
-  value: string
+  value: TabValue
   children: ReactNode
 }) {
   return (

@@ -3,13 +3,9 @@ import type { Snowflake } from "discord-api-types/v10"
 import { UserX } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { NotifyCheckbox, ReasonField } from "./sanction-fields"
-import {
-  REASON_PLACEHOLDER,
-  RED_BUTTON_CLASS,
-  SENTENCE_CLASS,
-  SUBMIT_CLASS,
-} from "./sanction-form"
+import { NotifyCheckbox } from "./notify-checkbox"
+import { ReasonField } from "./reason-field"
+import { RED_BUTTON_CLASS, SENTENCE_CLASS, SUBMIT_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 
 const REASON_ID = "kick-reason"
@@ -38,7 +34,7 @@ export function KickForm({
         id={REASON_ID}
         label="Motif de l’expulsion"
         defaultValue={refused?.reason ?? ""}
-        placeholder={REASON_PLACEHOLDER}
+        readByMember
       />
       <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
       <Button

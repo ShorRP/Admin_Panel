@@ -3,9 +3,7 @@ import {
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
 } from "../playwright.config"
-import { expect, test, type Page } from "./fixtures"
-
-type Locator = ReturnType<Page["locator"]>
+import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -27,14 +25,28 @@ const PANEL = { id: "1300000000000000020", name: "Shor Panel", position: 2 }
 
 const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
 
+const ADMINISTRATION = {
+  id: "1300000000000000030",
+  name: "Administration",
+  position: 1,
+  permissions: "8",
+}
+
+const TORVALD = { id: "1400000000000000020", username: "torvald" }
+
+const EIRIK = { id: "1400000000000000021", username: "eirik" }
+
 test.use({
   discordState: {
-    roles: [STAFF, MODERATION, BANS, PANEL, GUARD],
+    roles: [STAFF, MODERATION, BANS, PANEL, GUARD, ADMINISTRATION],
+    ownerId: TORVALD.id,
     applicationRoles: [PANEL.id],
     members: [
       { user: ALDIS, roles: [STAFF.id, MODERATION.id] },
       { user: SIGRID, roles: [STAFF.id, MODERATION.id, BANS.id] },
       { user: LYRA, nick: "Lyra des Brumes", roles: [GUARD.id] },
+      { user: TORVALD },
+      { user: EIRIK, roles: [ADMINISTRATION.id] },
     ],
   },
 })
@@ -187,6 +199,47 @@ test("a refused timeout stays in its form, with its message, and makes no toast"
     /^Lyra des Brumes est en exclusion temporaire jusqu’au .+\d{2}:\d{2}\.$/
   )
   await expect(toast()).toHaveCount(1)
+  await checkAccessibility()
+})
+
+test("a member the moderator cannot sanction shows why, with no tabs and no form, and a member who cannot be timed out shows why under the timeout's tab, and the kick's form under its own", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const sanctions = sanctionsOf(page)
+
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.goto(`/records/${TORVALD.id}`)
+  await page.waitForLoadState()
+  await expect(sanctions).toContainText(
+    "Tu ne peux pas sanctionner ce membre : c’est le propriétaire du serveur Discord."
+  )
+  await expect(sanctions.getByRole("tablist")).toHaveCount(0)
+  await expect(sanctions.getByRole("button")).toHaveCount(0)
+  await checkAccessibility()
+
+  await page.goto(`/records/${EIRIK.id}`)
+  await page.waitForLoadState()
+  await expect(sanctions.getByRole("tab")).toHaveText([
+    "Exclusion temporaire",
+    "Expulsion",
+  ])
+  const timeout = sanctions.getByRole("tabpanel", {
+    name: "Exclusion temporaire",
+  })
+  await expect(timeout).toHaveText(
+    "Ce membre a la permission Administrateur : Discord ne l’exclut jamais temporairement."
+  )
+  await checkAccessibility()
+
+  await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+  await expect(
+    sanctions
+      .getByRole("tabpanel", { name: "Expulsion" })
+      .getByRole("button", { name: "Expulser" })
+  ).toBeVisible()
   await checkAccessibility()
 })
 

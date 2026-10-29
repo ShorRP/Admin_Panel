@@ -32,7 +32,7 @@ const LOCAL_AVATAR =
 
 export { expect }
 
-export type { Page }
+export type { Locator, Page }
 
 export function bodyBackground() {
   return getComputedStyle(document.body).backgroundColor
