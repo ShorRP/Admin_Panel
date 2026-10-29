@@ -1,5 +1,6 @@
 import { MemberAvatar } from "@/ui/member-avatar"
 import { OrnamentRule } from "@/ui/ornament-rule"
+import { PageHeader } from "@/ui/page-header"
 import { PageHeading } from "@/ui/page-heading"
 import type { AccountRecord } from "./read-record"
 import { StandingBadge } from "./standing-badge"
@@ -8,12 +9,7 @@ export function RecordHeader({ record }: { record: AccountRecord | null }) {
   return (
     <div className="flex flex-col gap-6">
       {record === null ? (
-        <div className="flex flex-col gap-2.5">
-          <PageHeading className="wrap-anywhere">Fiche</PageHeading>
-          <p className="text-[0.9375rem] leading-5.5 text-muted-foreground">
-            Aucun compte Discord n’a cet ID.
-          </p>
-        </div>
+        <PageHeader title="Fiche">Aucun compte Discord n’a cet ID.</PageHeader>
       ) : (
         <div className="flex items-center gap-5">
           <MemberAvatar

@@ -9,9 +9,27 @@ import { expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
+const PANEL_RULE_ID = "1500000000000000001"
+
 test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
+
+function keywordRule(id: string, name: string, keywords: string[]) {
+  return {
+    id,
+    guild_id: "1100000000000000000",
+    name,
+    creator_id: ALDIS.id,
+    event_type: AutoModerationRuleEventType.MessageSend,
+    trigger_type: AutoModerationRuleTriggerType.Keyword,
+    trigger_metadata: { keyword_filter: keywords },
+    actions: [{ type: AutoModerationActionType.BlockMessage }],
+    enabled: true,
+    exempt_roles: [],
+    exempt_channels: [],
+  }
+}
 
 function recordViewTransitionNames() {
   new MutationObserver((records) => {
@@ -89,7 +107,7 @@ function animationsByWord() {
 }
 
 function capacity(page: Page) {
-  return page.getByText("/ 1 000 mots").locator("..")
+  return page.getByRole("group", { name: "Capacité" })
 }
 
 function toastTransitions() {
@@ -125,7 +143,7 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("0/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
     await checkAccessibility()
     await page.waitForFunction(() => document.activeViewTransition === null)
 
@@ -148,7 +166,7 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("1 mot interdit", { exact: true })
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("1/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité1/ 1 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: ["foo"] } },
     ])
@@ -171,7 +189,7 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("0/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: [] } },
     ])
@@ -234,24 +252,15 @@ for (const { title, prefersReducedMotion } of [
         discordState: {
           members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
           autoModerationRules: [
-            {
-              id: "1500000000000000001",
-              guild_id: "1100000000000000000",
-              name: "Mots interdits du panel",
-              creator_id: ALDIS.id,
-              event_type: AutoModerationRuleEventType.MessageSend,
-              trigger_type: AutoModerationRuleTriggerType.Keyword,
-              trigger_metadata: { keyword_filter: ["cerise", "abricot"] },
-              actions: [{ type: AutoModerationActionType.BlockMessage }],
-              enabled: true,
-              exempt_roles: [],
-              exempt_channels: [],
-            },
+            keywordRule(PANEL_RULE_ID, "Mots interdits du panel", [
+              "cerise",
+              "abricot",
+            ]),
           ],
         },
       })
 
-      test("a blocked word added between the two pushes the next one down while the one before stays still, then removed lets it back up, each word that moves sliding unless motion is reduced", async ({
+      test("a blocked word added between the two pushes the next one into the following cell of the grid while the one before stays still, then removed lets it back, each word that moves sliding unless motion is reduced", async ({
         page,
         logIn,
         checkAccessibility,
@@ -396,22 +405,6 @@ test("the page says whom the blocked words spare", async ({
   await checkAccessibility()
 })
 
-function keywordRule(id: string, name: string, keywords: string[]) {
-  return {
-    id,
-    guild_id: "1100000000000000000",
-    name,
-    creator_id: ALDIS.id,
-    event_type: AutoModerationRuleEventType.MessageSend,
-    trigger_type: AutoModerationRuleTriggerType.Keyword,
-    trigger_metadata: { keyword_filter: keywords },
-    actions: [{ type: AutoModerationActionType.BlockMessage }],
-    enabled: true,
-    exempt_roles: [],
-    exempt_channels: [],
-  }
-}
-
 test.describe("with sixty blocked words, one of sixty characters, and another AutoMod rule", () => {
   const longWord = "a".repeat(60)
 
@@ -419,7 +412,7 @@ test.describe("with sixty blocked words, one of sixty characters, and another Au
     discordState: {
       members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
       autoModerationRules: [
-        keywordRule("1500000000000000001", "Mots interdits du panel", [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", [
           longWord,
           ...Array.from(
             { length: 59 },
@@ -441,14 +434,12 @@ test.describe("with sixty blocked words, one of sixty characters, and another Au
     checkAccessibility,
   }) => {
     const list = page.getByRole("region", { name: "La liste" })
-    const exceptions = page
-      .getByText("Exceptions", { exact: true })
-      .locator("..")
+    const exceptions = page.getByRole("region", { name: "Exceptions" })
 
     await logIn(ALDIS)
     await page.goto("/blocked-words")
     await expect(list.getByRole("listitem")).toHaveCount(60)
-    await expect(capacity(page)).toHaveText("60/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité60/ 1 000 mots")
     await page.waitForLoadState()
 
     const listBox = await list.boundingBox()
@@ -461,10 +452,13 @@ test.describe("with sixty blocked words, one of sixty characters, and another Au
     })
     await expect.poll(async () => (await exceptions.boundingBox())?.y).toBe(24)
 
-    const rule = page.locator("summary").filter({ hasText: "Liens suspects" })
-    await expect(rule).toHaveText("Liens suspects3 mots-clés")
-    await rule.click()
-    await expect(rule.locator("..").getByRole("listitem")).toHaveText([
+    const rule = page
+      .getByRole("listitem")
+      .filter({ hasText: "Liens suspects" })
+    const summary = rule.locator("summary")
+    await expect(summary).toHaveText("Liens suspects3 mots-clés")
+    await summary.click()
+    await expect(rule.getByRole("listitem")).toHaveText([
       "bit.ly/",
       "discord.gg/",
       "gift.steam",

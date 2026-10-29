@@ -1,9 +1,11 @@
 import { ViewTransition } from "react"
+import { cn } from "cn"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { counted, quoted } from "./french-text"
+import { WORD_GRID_CLASSES, WORD_TILE_CLASSES } from "./word-tiles"
 import type { WriteResult } from "./write-result"
 
 const HEADING_ID = "blocked-word-list"
@@ -39,7 +41,7 @@ export function BlockedWordList({
           Aucun mot interdit pour l’instant.
         </p>
       )}
-      <ul className="mt-3.5 grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-2 empty:hidden">
+      <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>
         {words.map((word) => (
           <ViewTransition
             key={word}
@@ -48,10 +50,7 @@ export function BlockedWordList({
             update="slide-into-place"
             default="none"
           >
-            <li
-              title={word}
-              className="flex h-10 min-w-0 items-center gap-1.5 rounded-lg border bg-card pr-1 pl-3"
-            >
+            <li title={word} className={cn("pr-1", WORD_TILE_CLASSES)}>
               <span className="min-w-0 flex-1 truncate font-mono text-[0.78125rem]">
                 {word}
               </span>

@@ -33,6 +33,15 @@ test("the gauge's count reads as French numbers do, and a full rule fills the ba
   })
 })
 
+test("the gauge is a group that its overline names", () => {
+  const html = renderToStaticMarkup(<BlockedWordCapacity count={18} />)
+  const id = /^<div role="group" aria-labelledby="([^"]+)"/.exec(html)?.[1]
+
+  expect(new RegExp(`<p id="${id}"[^>]*>([^<]*)</p>`).exec(html)?.[1]).toBe(
+    "Capacité"
+  )
+})
+
 test("an empty rule leaves the bar empty", () => {
   expect(
     gauge(renderToStaticMarkup(<BlockedWordCapacity count={0} />)).barWidth

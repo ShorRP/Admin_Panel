@@ -2,10 +2,16 @@ import { Overline } from "@/ui/overline"
 import { frenchNumber } from "./french-text"
 import { MAX_BLOCKED_WORDS } from "./limits"
 
+const LABEL_ID = "blocked-word-capacity"
+
 export function BlockedWordCapacity({ count }: { count: number }) {
   return (
-    <div className="flex min-w-52.5 flex-col gap-2">
-      <Overline>Capacité</Overline>
+    <div
+      role="group"
+      aria-labelledby={LABEL_ID}
+      className="flex min-w-52.5 flex-col gap-2"
+    >
+      <Overline id={LABEL_ID}>Capacité</Overline>
       <p className="flex items-baseline gap-1.5">
         <span className="font-heading text-[1.875rem] leading-none font-medium">
           {frenchNumber(count)}
