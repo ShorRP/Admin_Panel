@@ -3,6 +3,20 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource/eb-garamond/latin-500.css";
 
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+      :root:not([data-theme="light"]),
+      :root:not([data-theme="light"]) *
+    ) {
+      @slot;
+    }
+  }
+}
+
 @theme {
   --font-heading: "EB Garamond", var(--font-serif);
 }
@@ -127,6 +141,83 @@
     --sidebar-border: oklch(0.9 0.035 80 / 10%);
     --sidebar-ring: oklch(0.8 0.12 78);
   }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: oklch(0.975 0.01 78);
+  --foreground: oklch(0.22 0.025 60);
+  --card: oklch(0.994 0.005 78);
+  --card-foreground: oklch(0.22 0.025 60);
+  --popover: oklch(0.994 0.005 78);
+  --popover-foreground: oklch(0.22 0.025 60);
+  --primary: oklch(0.52 0.13 60);
+  --primary-foreground: oklch(0.99 0.01 80);
+  --secondary: oklch(0.94 0.016 78);
+  --secondary-foreground: oklch(0.22 0.025 60);
+  --muted: oklch(0.94 0.016 78);
+  --muted-foreground: oklch(0.47 0.026 70);
+  --accent: oklch(0.925 0.019 78);
+  --accent-foreground: oklch(0.22 0.025 60);
+  --destructive: oklch(0.53 0.17 35);
+  --success: oklch(0.5 0.1 145);
+  --warning: oklch(0.55 0.13 65);
+  --ornament: oklch(0.5 0.09 35);
+  --border: oklch(0.895 0.017 78);
+  --input: oklch(0.64 0.03 70);
+  --ring: oklch(0.26 0.06 58);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.25rem;
+  --sidebar: oklch(0.955 0.014 78);
+  --sidebar-foreground: oklch(0.22 0.025 60);
+  --sidebar-primary: oklch(0.52 0.13 60);
+  --sidebar-primary-foreground: oklch(0.99 0.01 80);
+  --sidebar-accent: oklch(0.915 0.032 70);
+  --sidebar-accent-foreground: oklch(0.22 0.025 60);
+  --sidebar-border: oklch(0.895 0.017 78);
+  --sidebar-ring: oklch(0.26 0.06 58);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: oklch(0.165 0.014 60);
+  --foreground: oklch(0.95 0.015 85);
+  --card: oklch(0.205 0.017 60);
+  --card-foreground: oklch(0.95 0.015 85);
+  --popover: oklch(0.205 0.017 60);
+  --popover-foreground: oklch(0.95 0.015 85);
+  --primary: oklch(0.8 0.13 78);
+  --primary-foreground: oklch(0.22 0.04 60);
+  --secondary: oklch(0.248 0.019 60);
+  --secondary-foreground: oklch(0.95 0.015 85);
+  --muted: oklch(0.248 0.019 60);
+  --muted-foreground: oklch(0.74 0.022 70);
+  --accent: oklch(0.272 0.02 60);
+  --accent-foreground: oklch(0.95 0.015 85);
+  --destructive: oklch(0.7 0.15 35);
+  --success: oklch(0.76 0.09 145);
+  --warning: oklch(0.8 0.11 78);
+  --ornament: oklch(0.72 0.1 50);
+  --border: oklch(0.9 0.035 80 / 10%);
+  --input: oklch(0.6 0.03 65);
+  --ring: oklch(0.8 0.12 78);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.188 0.016 60);
+  --sidebar-foreground: oklch(0.95 0.015 85);
+  --sidebar-primary: oklch(0.8 0.13 78);
+  --sidebar-primary-foreground: oklch(0.22 0.04 60);
+  --sidebar-accent: oklch(0.27 0.035 68);
+  --sidebar-accent-foreground: oklch(0.95 0.015 85);
+  --sidebar-border: oklch(0.9 0.035 80 / 10%);
+  --sidebar-ring: oklch(0.8 0.12 78);
 }
 
 @layer base {

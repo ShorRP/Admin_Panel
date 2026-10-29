@@ -23,8 +23,10 @@ function controls(html: string) {
   )
 }
 
-test("the refused page offers « Se reconnecter » after a hidden log-in icon, then « Se déconnecter » after a hidden log-out icon", () => {
-  expect(controls(renderToStaticMarkup(<LoginRefused />))).toEqual([
+test("under its heading, the refused page offers « Se reconnecter » after a hidden log-in icon, then « Se déconnecter » after a hidden log-out icon", () => {
+  const html = renderToStaticMarkup(<LoginRefused />)
+
+  expect(controls(html.slice(html.indexOf("<h1")))).toEqual([
     {
       element: "a",
       href: "/login",

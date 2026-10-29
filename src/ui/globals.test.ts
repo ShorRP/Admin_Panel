@@ -52,35 +52,43 @@ const favicon = readFileSync(
   "utf8"
 )
 
-const light = customProperties(/^:root \{([^}]*)\}/m)
+const LIGHT_BLOCK = /^:root \{([^}]*)\}/m
+
+const DARK_BLOCK =
+  /^@media \(prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/m
+
+const light = customProperties(LIGHT_BLOCK)
 
 const themes = {
   light,
-  dark: new Map([
-    ...light,
-    ...customProperties(
-      /^@media \(prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/m
-    ),
-  ]),
+  dark: new Map([...light, ...customProperties(DARK_BLOCK)]),
 }
 
-function customProperties(block: RegExp): Theme {
-  const declarations = block.exec(css)?.[1]
-  if (declarations === undefined) {
+function declarations(block: RegExp): Theme {
+  const body = block.exec(css)?.[1]
+  if (body === undefined) {
     throw new Error(`globals.css holds no block that matches ${block}.`)
   }
   return new Map(
-    declarations
+    body
       .split(";")
       .map((declaration) => declaration.trim())
-      .filter((declaration) => declaration.startsWith("--"))
+      .filter((declaration) => declaration !== "")
       .map((declaration) => {
         const colon = declaration.indexOf(":")
         return [
-          declaration.slice(2, colon),
+          declaration.slice(0, colon),
           declaration.slice(colon + 1).trim(),
         ] as const
       })
+  )
+}
+
+function customProperties(block: RegExp): Theme {
+  return new Map(
+    Array.from(declarations(block))
+      .filter(([property]) => property.startsWith("--"))
+      .map(([property, value]) => [property.slice(2), value])
   )
 }
 
@@ -205,6 +213,24 @@ test("the measure gives black at 50% on white 3.95:1, the ratio of #808080", () 
   ).toBeCloseTo(3.95, 1)
 })
 
+test.each([
+  ["light", /^:root\[data-theme="light"\] \{([^}]*)\}/m, LIGHT_BLOCK],
+  ["dark", /^:root\[data-theme="dark"\] \{([^}]*)\}/m, DARK_BLOCK],
+])(
+  "the theme chosen as %s sets the same custom properties as the block the contrast tests measure, under its own color-scheme",
+  (scheme, chosen, measured) => {
+    expect(declarations(chosen)).toEqual(
+      new Map([
+        ["color-scheme", scheme],
+        ...Array.from(
+          customProperties(measured),
+          ([name, value]) => [`--${name}`, value] as const
+        ),
+      ])
+    )
+  }
+)
+
 test("the favicon draws the logo in dark's primary, on a tile of light's primary", () => {
   expect({ tile: faviconFill("rect"), logo: faviconFill("g") }).toEqual({
     tile: hex(themeColor(themes.light, "primary")),
@@ -232,10 +258,19 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     }
   )
 
-  test.each(["background", "card", "popover"])(
+  test.each(["background", "card", "popover", "muted"])(
     "the focus ring, ring/50, reaches 3:1 on %s",
     (surface) => {
       expect(themeContrast(theme, "ring/50", [surface])).toBeGreaterThanOrEqual(
+        3
+      )
+    }
+  )
+
+  test.each(["muted", "card"])(
+    "the border of the theme chosen in the toggle, primary, reaches 3:1 on %s",
+    (surface) => {
+      expect(themeContrast(theme, "primary", [surface])).toBeGreaterThanOrEqual(
         3
       )
     }
