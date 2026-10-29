@@ -25,6 +25,8 @@ const TEXT_PAIRS = [
   ["foreground", "background"],
   ["muted-foreground", "background"],
   ["muted-foreground", "muted"],
+  ["muted-foreground", "card"],
+  ["muted-foreground", "popover"],
   ["primary-foreground", "primary"],
   ["secondary-foreground", "secondary"],
   ["accent-foreground", "accent"],
@@ -35,7 +37,9 @@ const TEXT_PAIRS = [
   ["sidebar-primary-foreground", "sidebar-primary"],
   ["sidebar-accent-foreground", "sidebar-accent"],
   ["success", "background"],
+  ["success", "card"],
   ["destructive", "background"],
+  ["destructive", "card"],
 ] as const
 
 const css = readFileSync(new URL("./globals.css", import.meta.url), "utf8")
@@ -218,17 +222,21 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     ).toBeGreaterThanOrEqual(4.5)
   })
 
-  test("the field's border, input, reaches 3:1 on background", () => {
-    expect(
-      themeContrast(theme, "input", ["background"])
-    ).toBeGreaterThanOrEqual(3)
-  })
+  test.each(["background", "card"])(
+    "the field's border, input, reaches 3:1 on %s",
+    (surface) => {
+      expect(themeContrast(theme, "input", [surface])).toBeGreaterThanOrEqual(3)
+    }
+  )
 
-  test("the focus ring, ring/50, reaches 3:1 on background", () => {
-    expect(
-      themeContrast(theme, "ring/50", ["background"])
-    ).toBeGreaterThanOrEqual(3)
-  })
+  test.each(["background", "card", "popover"])(
+    "the focus ring, ring/50, reaches 3:1 on %s",
+    (surface) => {
+      expect(themeContrast(theme, "ring/50", [surface])).toBeGreaterThanOrEqual(
+        3
+      )
+    }
+  )
 
   test("the current section's icon, in primary, reaches 3:1 on sidebar-accent", () => {
     expect(
@@ -243,11 +251,14 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
   })
 })
 
-test("in dark, the field's border, input, reaches 3:1 on the field's fill, input/30 on background", () => {
-  expect(
-    themeContrast(themes.dark, "input", ["background", "input/30"])
-  ).toBeGreaterThanOrEqual(3)
-})
+test.each(["background", "card"])(
+  "in dark, the field's border, input, reaches 3:1 on the field's fill, input/30 on %s",
+  (surface) => {
+    expect(
+      themeContrast(themes.dark, "input", [surface, "input/30"])
+    ).toBeGreaterThanOrEqual(3)
+  }
+)
 
 test.each(["input/30", "input/50"])(
   "in dark, text in foreground reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
