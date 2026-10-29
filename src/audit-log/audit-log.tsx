@@ -26,9 +26,9 @@ import {
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
   NO_CHANGE_CLASSES,
-  RESET_LINK_CLASSES,
+  TEXT_LINK_CLASSES,
 } from "./audit-log-layout"
-import { AuditLogTypeFilter } from "./audit-log-type-filter"
+import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
 import { ParisDay } from "./paris-day"
 import type {
   AuditLogChange,
@@ -110,29 +110,24 @@ export function AuditLog({
 }
 
 function NoChange({ type, before }: Pick<AuditLogPage, "type" | "before">) {
-  if (before !== null) {
-    return <p className={NO_CHANGE_CLASSES}>Aucun changement plus ancien.</p>
-  }
-  if (type === null) {
-    return (
-      <p className={NO_CHANGE_CLASSES}>
-        Aucun changement des mots interdits, aucune sanction ni levée ces 45
-        derniers jours.
-      </p>
-    )
-  }
   return (
     <div className={cn("flex flex-col items-center gap-3", NO_CHANGE_CLASSES)}>
-      <p>Aucun changement de ce type ces 45 derniers jours.</p>
-      <Link
-        href={auditLogHref({ type: null })}
-        prefetch={false}
-        className={cn("text-foreground", RESET_LINK_CLASSES)}
-      >
-        Réinitialiser
-      </Link>
+      <p>{noChangeMessage(type, before)}</p>
+      {type !== null && <ResetLink />}
     </div>
   )
+}
+
+function noChangeMessage(
+  type: AuditLogPage["type"],
+  before: AuditLogPage["before"]
+) {
+  if (before !== null) {
+    return "Aucun changement plus ancien."
+  }
+  return type === null
+    ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
+    : "Aucun changement de ce type ces 45 derniers jours."
 }
 
 function ChangesOfDay({
@@ -244,7 +239,7 @@ function SanctionChangeDescription({
           <Link
             href={`/records/${account.id}`}
             prefetch={false}
-            className="text-foreground underline decoration-input underline-offset-3 hover:decoration-primary"
+            className={TEXT_LINK_CLASSES}
           >
             {account.name}
           </Link>

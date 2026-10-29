@@ -6,8 +6,8 @@ export const TYPE_FILTER_CLASSES = cn(
 
 export const TYPE_LINKS_CLASSES = cn("flex flex-wrap gap-1.5")
 
-export const RESET_LINK_CLASSES = cn(
-  "text-[0.8125rem] underline decoration-input underline-offset-3 hover:decoration-primary"
+export const TEXT_LINK_CLASSES = cn(
+  "text-foreground underline decoration-input underline-offset-3 hover:decoration-primary"
 )
 
 export const NO_CHANGE_CLASSES = cn(

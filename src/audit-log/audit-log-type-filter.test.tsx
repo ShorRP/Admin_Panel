@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
-import type { ChangeType } from "./read-audit-log"
+import type { ChangeType } from "./change-type"
 
 function render(type: ChangeType | null) {
   return renderToStaticMarkup(<AuditLogTypeFilter type={type} />)

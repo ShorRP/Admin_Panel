@@ -20,6 +20,7 @@ import {
 } from "@/sanctions/sanction-events"
 import { auditLogPages } from "./audit-log-pages"
 import { panelReasonOf, type PanelReason } from "./audit-log-reason"
+import { CHANGE_TYPES, type ChangeType } from "./change-type"
 import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
@@ -55,8 +56,6 @@ type EventReader = {
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
 
-export type ChangeType = (typeof CHANGE_TYPES)[number]
-
 export type AuditLogPage = {
   type: ChangeType | null
   days: AuditLogDay[]
@@ -68,8 +67,6 @@ const AUTO_MOD_RULE_EVENTS = [
   AuditLogEvent.AutoModerationRuleCreate,
   AuditLogEvent.AutoModerationRuleUpdate,
 ]
-
-const CHANGE_TYPES = ["blocked-words", "timeouts", "kicks", "bans"] as const
 
 const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
   "blocked-words": AUTO_MOD_RULE_EVENTS,
@@ -88,14 +85,14 @@ const CURSOR = z
   .nullable()
   .catch(null)
 
-const TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)
+const CHANGE_TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)
 
 export async function readAuditLog(
   discord: DiscordApi,
   searchParams: { before?: unknown; type?: unknown }
 ): Promise<AuditLogPage> {
   const cursor = CURSOR.parse(searchParams.before)
-  const type = TYPE.parse(searchParams.type)
+  const type = CHANGE_TYPE.parse(searchParams.type)
   const found: FoundChange[] = []
   for (const reader of await eventReadersOfType(discord, type)) {
     found.push(...(await changesOfEvent(discord, reader, cursor)))
@@ -126,11 +123,11 @@ async function eventReadersOfType(
   discord: DiscordApi,
   type: ChangeType | null
 ) {
-  if (type === null) {
-    return eventReaders(await panelRuleId(discord))
-  }
-  const events = EVENTS_OF_TYPE[type]
-  const ruleId = type === "blocked-words" ? await panelRuleId(discord) : null
+  const events =
+    type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
+  const ruleId = events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
+    ? await panelRuleId(discord)
+    : null
   return eventReaders(ruleId).filter(({ actionType }) =>
     events.includes(actionType)
   )

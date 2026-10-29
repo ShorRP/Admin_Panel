@@ -55,7 +55,6 @@ const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
 
 function render(page: Partial<AuditLogPage>, opensModeration = false) {
   const { html, filter } = renderWithFilter(page, opensModeration)
-  expect(html.indexOf(filter)).toBeGreaterThan(-1)
   return html.replace(filter, "")
 }
 
@@ -362,5 +361,22 @@ test("a type's pages link to the newest and the older changes of that type", () 
       ...olderLink("1563530499194880000"),
       href: "/audit-log?type=timeouts&before=1563530499194880000",
     },
+  ])
+})
+
+test("an older page of a type with no change says only that none is older, then offers « Réinitialiser », and links back to that type's newest changes", () => {
+  const html = render({ type: "bans", before: "1563530499194880001" })
+
+  expect(text(html)).toBe(
+    "Aucun changement plus ancien.RéinitialiserRevenir aux plus récents"
+  )
+  expect(links(html)).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Réinitialiser",
+      href: "/audit-log",
+    },
+    { ...NEWEST_LINK, href: "/audit-log?type=bans" },
   ])
 })

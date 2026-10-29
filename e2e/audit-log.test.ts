@@ -225,7 +225,7 @@ test.describe("with changes of several types", () => {
     ).toHaveAttribute("aria-current", "true")
     await expect(changes).toHaveCount(2)
     await expect(timeoutsAndLifts).toHaveCount(2)
-    await expect(changes.filter({ hasText: "Motif : Motif 1" })).toContainText(
+    await expect(changes.filter({ hasText: "Motif : Motif 1" })).toContainText(
       "Exclusion temporaire jusqu’au"
     )
     await checkAccessibility()

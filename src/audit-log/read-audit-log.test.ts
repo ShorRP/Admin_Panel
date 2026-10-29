@@ -727,9 +727,10 @@ async function discordWithEveryKindOfChange() {
 async function addEveryKindOfChange(discord: FakeDiscord) {
   await addBlockedWord(discord, await staffMemberOn(discord), form("foo"))
   const [rule] = await discord.listAutoModerationRules()
-  discord.modifyAutoModerationRuleAs(BRYN.id, rule?.id ?? "", {
-    enabled: false,
-  })
+  if (rule === undefined) {
+    throw new Error("Adding a blocked word created no panel rule")
+  }
+  discord.modifyAutoModerationRuleAs(BRYN.id, rule.id, { enabled: false })
   discord.modifyMemberAs(
     BRYN.id,
     LYRA.id,

@@ -1,20 +1,25 @@
 import Link from "next/link"
 import { cva } from "class-variance-authority"
+import { cn } from "cn"
 
 import { auditLogHref } from "./audit-log-href"
 import {
-  RESET_LINK_CLASSES,
+  TEXT_LINK_CLASSES,
   TYPE_FILTER_CLASSES,
   TYPE_LINKS_CLASSES,
 } from "./audit-log-layout"
-import type { ChangeType } from "./read-audit-log"
+import { CHANGE_TYPES, type ChangeType } from "./change-type"
 
-const TYPE_LINKS: { type: ChangeType | null; label: string }[] = [
+const LABELS: Record<ChangeType, string> = {
+  "blocked-words": "Mots interdits",
+  timeouts: "Exclusions",
+  kicks: "Expulsions",
+  bans: "Bannissements",
+}
+
+const TYPE_LINKS = [
   { type: null, label: "Tout" },
-  { type: "blocked-words", label: "Mots interdits" },
-  { type: "timeouts", label: "Exclusions" },
-  { type: "kicks", label: "Expulsions" },
-  { type: "bans", label: "Bannissements" },
+  ...CHANGE_TYPES.map((type) => ({ type, label: LABELS[type] })),
 ]
 
 const typeLinkVariants = cva(
@@ -52,15 +57,19 @@ export function AuditLogTypeFilter({ type }: { type: ChangeType | null }) {
           })}
         </ul>
       </nav>
-      {type !== null && (
-        <Link
-          href={auditLogHref({ type: null })}
-          prefetch={false}
-          className={RESET_LINK_CLASSES}
-        >
-          Réinitialiser
-        </Link>
-      )}
+      {type !== null && <ResetLink />}
     </div>
+  )
+}
+
+export function ResetLink() {
+  return (
+    <Link
+      href={auditLogHref({ type: null })}
+      prefetch={false}
+      className={cn("text-[0.8125rem]", TEXT_LINK_CLASSES)}
+    >
+      Réinitialiser
+    </Link>
   )
 }

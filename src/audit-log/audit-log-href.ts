@@ -1,6 +1,6 @@
 import type { Snowflake } from "discord-api-types/v10"
 
-import type { ChangeType } from "./read-audit-log"
+import type { ChangeType } from "./change-type"
 
 export function auditLogHref({
   type,
