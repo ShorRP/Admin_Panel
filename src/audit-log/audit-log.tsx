@@ -86,6 +86,7 @@ export function AuditLog({
               {before !== null && (
                 <Link
                   href={auditLogHref({ type })}
+                  prefetch={false}
                   className={buttonVariants({ variant: "outline" })}
                 >
                   <ArrowLeft aria-hidden data-icon="inline-start" />
@@ -95,6 +96,7 @@ export function AuditLog({
               {older !== null && (
                 <Link
                   href={auditLogHref({ type, before: older })}
+                  prefetch={false}
                   className={buttonVariants({ variant: "outline" })}
                 >
                   <ArrowRight aria-hidden data-icon="inline-start" />
