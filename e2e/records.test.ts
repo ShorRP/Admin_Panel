@@ -120,9 +120,10 @@ test("a staff member who moderates finds accounts by name through « Modération
   ).toBeVisible()
 })
 
-test("a record shows its details and its history on the left and its sanctions on the right, which stay in view as the page scrolls, and puts them in one column, details, sanctions then history, where both columns do not fit and on a 360 px screen", async ({
+test("a record shows its details and its history on the left and its sanctions on the right, which stay in view as the page scrolls, and puts them in one column, details, sanctions then history, where both columns do not fit and on a 360 px screen, each detail's value beside its term", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   const main = page.getByRole("main")
   const details = main.getByRole("region", { name: "Détails" })
@@ -150,7 +151,7 @@ test("a record shows its details and its history on the left and its sanctions o
   await expect(page).toHaveURL("/blocked-words")
   await page.goto(`/records/${LYRA.id}`)
   await expect(sanctions).toContainText("Tu ne peux pas sanctionner ce membre")
-  await page.waitForLoadState()
+  await checkAccessibility()
 
   const wide = await boxes()
   expect(wide.sanctions.x).toBeGreaterThan(wide.details.x + wide.details.width)
@@ -175,6 +176,10 @@ test("a record shows its details and its history on the left and its sanctions o
     expect(narrow.history.y, `at ${width} px`).toBeGreaterThan(
       narrow.sanctions.y + narrow.sanctions.height
     )
+    const term = await boxOf(details.getByText("Nom d’utilisateur"))
+    const value = await boxOf(details.getByText(LYRA.username, { exact: true }))
+    expect(value.x, `at ${width} px`).toBeGreaterThan(term.x + term.width)
+    expect(value.y, `at ${width} px`).toBeLessThan(term.y + term.height)
   }
 })
 

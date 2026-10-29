@@ -92,7 +92,7 @@ test("each sanction and each lifting says what, when, who, from where, and why",
   expect(html).toContain('<time dateTime="2026-10-28T13:20:00.000Z">')
 })
 
-test("each entry of the timeline carries a diamond hidden from assistive technologies, toned by its kind: a timeout in warning, a lifting in success, a kick or a ban in destructive", () => {
+test("each entry of the timeline carries its line and its diamond, both hidden from assistive technologies", () => {
   const html = renderToStaticMarkup(
     <SanctionHistory
       history={[
@@ -115,7 +115,7 @@ test("each entry of the timeline carries a diamond hidden from assistive technol
     Array.from(
       html.matchAll(/<li[^>]*>(.*?)<\/li>/g),
       ([, item = ""]) =>
-        /<span[^>]*aria-hidden="true"[^>]*data-tone="([^"]+)"/.exec(item)?.[1]
+        item.match(/<span aria-hidden="true"[^>]*><\/span>/g)?.length
     )
-  ).toEqual(["success", "destructive", "destructive", "success", "warning"])
+  ).toEqual([2, 2, 2, 2, 2])
 })

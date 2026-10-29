@@ -5,14 +5,10 @@ import { connection } from "next/server"
 import { createDiscordApi } from "@/discord/discord-api"
 import { readRecord } from "@/records/read-record"
 import { RecordBreadcrumb } from "@/records/record-breadcrumb"
-import { RecordColumns } from "@/records/record-columns"
-import { RecordDetails } from "@/records/record-details"
 import { RecordDetailsSkeleton } from "@/records/record-details-skeleton"
-import { RecordHeader } from "@/records/record-header"
+import { RecordView } from "@/records/record-view"
 import { readSanctionHistory } from "@/sanctions/read-sanction-history"
-import { SanctionHistory } from "@/sanctions/sanction-history"
 import { readSanctionOptions } from "@/sanctions/sanction-options"
-import { StatefulRecordSanctions } from "@/sanctions/stateful-record-sanctions"
 import { requireModerationAccess } from "@/staff/require-staff-member"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
@@ -49,17 +45,5 @@ async function RecordFromDiscord({
     readSanctionOptions(discord, staffMember, record),
     readSanctionHistory(discord, record),
   ])
-  return (
-    <>
-      <RecordHeader record={record} />
-      {record !== null && (
-        <RecordColumns
-          details={<RecordDetails record={record} />}
-          sanctions={<StatefulRecordSanctions options={options} />}
-          sanctionsShown={options.kind !== "none"}
-          history={<SanctionHistory history={history} />}
-        />
-      )}
-    </>
-  )
+  return <RecordView record={record} options={options} history={history} />
 }

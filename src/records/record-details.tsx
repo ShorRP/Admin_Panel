@@ -22,7 +22,7 @@ export function RecordDetails({ record }: { record: AccountRecord }) {
           Heures de Paris
         </Overline>
       </div>
-      <dl className="grid gap-x-4 px-5 pt-1 pb-1.5 text-sm sm:grid-cols-[minmax(6.875rem,11.875rem)_minmax(0,1fr)]">
+      <dl className="grid grid-cols-[minmax(6.875rem,min(11.875rem,40%))_minmax(0,1fr)] gap-x-4 px-5 pt-1 pb-1.5 text-sm">
         {standing.kind === "banned" && (
           <>
             <Entry term="Motif du bannissement">
@@ -86,7 +86,7 @@ function Entry({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-y-0.5 border-t py-2.75 first:border-t-transparent sm:col-span-2 sm:grid sm:grid-cols-subgrid sm:items-baseline">
+    <div className="col-span-2 grid grid-cols-subgrid items-baseline border-t py-2.75 first:border-t-transparent">
       <dt className="text-muted-foreground">{term}</dt>
       <dd className={cn("wrap-anywhere", className)}>{children}</dd>
     </div>

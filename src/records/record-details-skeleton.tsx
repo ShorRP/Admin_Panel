@@ -26,6 +26,7 @@ export function RecordDetailsSkeleton() {
         <OrnamentRule leadingLine />
       </div>
       <RecordColumns
+        twoColumns
         details={
           <div className="rounded-xl border bg-card">
             <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
@@ -36,9 +37,9 @@ export function RecordDetailsSkeleton() {
               {DETAIL_VALUE_WIDTHS.map((width) => (
                 <div
                   key={width}
-                  className="flex flex-col gap-1.5 border-t py-3.5 first:border-t-transparent sm:flex-row sm:gap-4"
+                  className="flex gap-4 border-t py-3.5 first:border-t-transparent"
                 >
-                  <Skeleton className="h-3.5 w-28 shrink-0 motion-reduce:animate-none sm:w-36" />
+                  <Skeleton className="h-3.5 w-24 shrink-0 motion-reduce:animate-none sm:w-36" />
                   <Skeleton
                     className={cn("h-3.5 motion-reduce:animate-none", width)}
                   />
@@ -47,8 +48,6 @@ export function RecordDetailsSkeleton() {
             </div>
           </div>
         }
-        sanctions={null}
-        sanctionsShown
         history={
           <div className="flex flex-col gap-4.5">
             <Skeleton className="h-7 w-64 max-w-full motion-reduce:animate-none" />
