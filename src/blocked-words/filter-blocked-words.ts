@@ -1,27 +1,23 @@
 import { z } from "zod"
 
-export type FilteredBlockedWords = {
-  filter: string | null
-  words: string[]
-  total: number
-}
+export type FilteredBlockedWords =
+  | { query: null; words: string[] }
+  | { query: string; words: string[]; total: number }
 
-const FILTER = z.string().trim().min(1).nullable().catch(null)
+const QUERY = z.string().trim().min(1).nullable().catch(null)
 
 export function filterBlockedWords(
   words: string[],
-  filterParam: unknown
+  queryParam: unknown
 ): FilteredBlockedWords {
-  const filter = FILTER.parse(filterParam)
-  if (filter === null) {
-    return { filter, words, total: words.length }
+  const query = QUERY.parse(queryParam)
+  if (query === null) {
+    return { query, words }
   }
-  const searched = filter.toLocaleLowerCase("fr")
+  const lowerCaseQuery = query.toLowerCase()
   return {
-    filter,
-    words: words.filter((word) =>
-      word.toLocaleLowerCase("fr").includes(searched)
-    ),
+    query,
+    words: words.filter((word) => word.toLowerCase().includes(lowerCaseQuery)),
     total: words.length,
   }
 }

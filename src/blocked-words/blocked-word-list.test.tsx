@@ -9,14 +9,23 @@ import type { WriteResult } from "./write-result"
 function render(
   words: string[],
   state: WriteResult | null = null,
-  pending = false,
-  { filter = null, total = words.length }: Partial<FilteredBlockedWords> = {}
+  pending = false
+) {
+  return renderList({ query: null, words }, state, pending)
+}
+
+function renderFiltered(query: string, words: string[], total: number) {
+  return renderList({ query, words, total }, null, false)
+}
+
+function renderList(
+  blockedWords: FilteredBlockedWords,
+  state: WriteResult | null,
+  pending: boolean
 ) {
   return renderToStaticMarkup(
     <BlockedWordList
-      words={words}
-      total={total}
-      filter={filter}
+      blockedWords={blockedWords}
       state={state}
       pending={pending}
       action={() => {}}
@@ -35,7 +44,7 @@ function showAll(html: string) {
 }
 
 function filterField(html: string) {
-  const field = /<input[^>]*\sname="filter"[^>]*>/.exec(html)?.[0] ?? ""
+  const field = /<input[^>]*\sname="query"[^>]*>/.exec(html)?.[0] ?? ""
   return /\svalue="([^"]*)"/.exec(field)?.[1]
 }
 
@@ -163,10 +172,7 @@ test("a removal that lands leaves both regions empty, since a toast says so, and
 })
 
 test("with a filter, the list shows the blocked words that pass it, counted « k sur N », its field holds the text searched, and « Tout afficher » leads back to the whole list", () => {
-  const html = render(["Free Nitro", "nitro gratuit"], null, false, {
-    filter: "nitro",
-    total: 5,
-  })
+  const html = renderFiltered("nitro", ["Free Nitro", "nitro gratuit"], 5)
 
   expect(heading(html)).toEqual({ title: "La liste", count: "2 sur 5" })
   expect(tiles(html)).toEqual([tile("Free Nitro"), tile("nitro gratuit")])
@@ -184,7 +190,7 @@ test("without a filter, the list holds an empty filter field and no « Tout aff
 })
 
 test("a filter that no blocked word passes says so in place of the tiles, counted « 0 sur N »", () => {
-  const html = render([], null, false, { filter: "xyz", total: 3 })
+  const html = renderFiltered("xyz", [], 3)
 
   expect(heading(html)).toEqual({ title: "La liste", count: "0 sur 3" })
   expect(tiles(html)).toEqual([])
@@ -193,11 +199,11 @@ test("a filter that no blocked word passes says so in place of the tiles, counte
   expect(showAll(html)).toHaveLength(1)
 })
 
-test("a filter on an empty list still says that there is no blocked word yet, with no count", () => {
-  const html = render([], null, false, { filter: "xyz", total: 0 })
+test("a filter on an empty list counts « 0 sur 0 » and says that no blocked word contains the text searched", () => {
+  const html = renderFiltered("xyz", [], 0)
 
-  expect(heading(html)).toEqual({ title: "La liste", count: undefined })
-  expect(html).toContain("Aucun mot interdit pour l’instant.")
-  expect(html).not.toContain("ne contient")
+  expect(heading(html)).toEqual({ title: "La liste", count: "0 sur 0" })
+  expect(html).toContain("Aucun mot interdit ne contient « xyz ».")
+  expect(html).not.toContain("Aucun mot interdit pour l’instant.")
   expect(showAll(html)).toHaveLength(1)
 })

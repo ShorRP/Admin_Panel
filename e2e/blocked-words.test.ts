@@ -498,7 +498,7 @@ test.describe("with four blocked words", () => {
     },
   })
 
-  test("a staff member filters the list by what a word contains, whatever its case, removes a word without losing the filter, finds none for another text, then shows the whole list again", async ({
+  test("a staff member filters the list by what a word contains, whatever its case, removes and adds words without losing the filter, a word added that does not pass it staying out of the list, finds none for another text, then shows the whole list again", async ({
     page,
     logIn,
     discord,
@@ -509,6 +509,8 @@ test.describe("with four blocked words", () => {
     const words = list.getByRole("listitem")
     const field = page.getByLabel("Filtrer la liste")
     const showAll = list.getByRole("link", { name: "Tout afficher" })
+    const addField = page.getByLabel("Ajouter un mot ou une expression")
+    const add = page.getByRole("button", { name: "Ajouter" })
 
     await logIn(ALDIS)
     await page.goto("/blocked-words")
@@ -521,7 +523,7 @@ test.describe("with four blocked words", () => {
     await field.fill("NITRO")
     await page.getByRole("button", { name: "Filtrer", exact: true }).click()
 
-    await expect(page).toHaveURL("/blocked-words?filter=NITRO")
+    await expect(page).toHaveURL("/blocked-words?query=NITRO")
     await expect(words).toHaveText([/^free nitro/, /^Nitro gratuit/])
     await expect(list.getByText("2 sur 4", { exact: true })).toBeVisible()
     await expect(field).toHaveValue("NITRO")
@@ -534,7 +536,7 @@ test.describe("with four blocked words", () => {
       .click()
 
     await readToast("« free nitro » n’est plus un mot interdit.")
-    await expect(page).toHaveURL("/blocked-words?filter=NITRO")
+    await expect(page).toHaveURL("/blocked-words?query=NITRO")
     await expect(words).toHaveText([/^Nitro gratuit/])
     await expect(list.getByText("1 sur 3", { exact: true })).toBeVisible()
     await expect(field).toHaveValue("NITRO")
@@ -547,14 +549,33 @@ test.describe("with four blocked words", () => {
     ])
     await checkAccessibility()
 
+    await addField.fill("zèbre")
+    await add.click()
+
+    await readToast("« zèbre » est maintenant un mot interdit.")
+    await expect(page).toHaveURL("/blocked-words?query=NITRO")
+    await expect(words).toHaveText([/^Nitro gratuit/])
+    await expect(list.getByText("1 sur 4", { exact: true })).toBeVisible()
+    await expect(capacity(page)).toHaveText("Capacité4/ 1 000 mots")
+
+    await addField.fill("nitro boost")
+    await add.click()
+
+    await readToast("« nitro boost » est maintenant un mot interdit.")
+    await expect(page).toHaveURL("/blocked-words?query=NITRO")
+    await expect(words).toHaveText([/^nitro boost/, /^Nitro gratuit/])
+    await expect(list.getByText("2 sur 5", { exact: true })).toBeVisible()
+    await expect(field).toHaveValue("NITRO")
+    await checkAccessibility()
+
     await field.fill("xyz")
     await page.getByRole("button", { name: "Filtrer", exact: true }).click()
 
-    await expect(page).toHaveURL("/blocked-words?filter=xyz")
+    await expect(page).toHaveURL("/blocked-words?query=xyz")
     await expect(
       list.getByText("Aucun mot interdit ne contient « xyz ».")
     ).toBeVisible()
-    await expect(list.getByText("0 sur 3", { exact: true })).toBeVisible()
+    await expect(list.getByText("0 sur 5", { exact: true })).toBeVisible()
     await expect(words).toHaveCount(0)
     await checkAccessibility()
 
@@ -563,11 +584,13 @@ test.describe("with four blocked words", () => {
     await expect(page).toHaveURL("/blocked-words")
     await expect(words).toHaveText([
       /^abricot/,
+      /^nitro boost/,
       /^Nitro gratuit/,
       /^steamcommunity\.ru/,
+      /^zèbre/,
     ])
     await expect(
-      list.getByText("3 mots interdits", { exact: true })
+      list.getByText("5 mots interdits", { exact: true })
     ).toBeVisible()
     await expect(field).toHaveValue("")
     await expect(showAll).toHaveCount(0)

@@ -8,7 +8,11 @@ import { BlockedWordList } from "./blocked-word-list"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
 import type { WriteResult } from "./write-result"
 
-export function StatefulBlockedWordList(listing: FilteredBlockedWords) {
+export function StatefulBlockedWordList({
+  blockedWords,
+}: {
+  blockedWords: FilteredBlockedWords
+}) {
   const [state, action, pending] = useActionState<WriteResult | null, FormData>(
     removeBlockedWordAction,
     null
@@ -16,7 +20,7 @@ export function StatefulBlockedWordList(listing: FilteredBlockedWords) {
   useSuccessToast(state)
   return (
     <BlockedWordList
-      {...listing}
+      blockedWords={blockedWords}
       state={state}
       pending={pending}
       action={action}

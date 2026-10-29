@@ -12,8 +12,8 @@ function attribute(tag: string, name: string) {
   return new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1]
 }
 
-test("the filter sends its one field, filter, to /blocked-words, named « Filtrer la liste » for assistive technologies alone, holding the text searched", () => {
-  const html = renderToStaticMarkup(<BlockedWordFilterForm filter="nitro" />)
+test("the filter sends its one field, query, to /blocked-words, named « Filtrer la liste » for assistive technologies alone, holding the text searched", () => {
+  const html = renderToStaticMarkup(<BlockedWordFilterForm query="nitro" />)
   const form = /<form[^>]*>/.exec(html)?.[0] ?? ""
   const field = /<input[^>]*>/.exec(html)?.[0] ?? ""
   const [, labelAttributes = "", label] =
@@ -21,7 +21,7 @@ test("the filter sends its one field, filter, to /blocked-words, named « Filtr
 
   expect(attribute(form, "action")).toBe("/blocked-words")
   expect(attribute(form, "method")).toBeUndefined()
-  expect(attribute(field, "name")).toBe("filter")
+  expect(attribute(field, "name")).toBe("query")
   expect(attribute(field, "value")).toBe("nitro")
   expect(attribute(field, "placeholder")).toBe("Filtrer la liste")
   expect(label).toBe("Filtrer la liste")
@@ -31,14 +31,14 @@ test("the filter sends its one field, filter, to /blocked-words, named « Filtr
 })
 
 test("without a filter, the field is empty", () => {
-  const html = renderToStaticMarkup(<BlockedWordFilterForm filter={null} />)
+  const html = renderToStaticMarkup(<BlockedWordFilterForm query={null} />)
   const field = /<input[^>]*>/.exec(html)?.[0] ?? ""
 
   expect(attribute(field, "value")).toBe("")
 })
 
 test("the filter's field sits beside a search icon hidden from assistive technologies", () => {
-  const html = renderToStaticMarkup(<BlockedWordFilterForm filter={null} />)
+  const html = renderToStaticMarkup(<BlockedWordFilterForm query={null} />)
   const [, iconAttributes = "", iconDrawing] =
     /<svg([^>]*)>(.*?)<\/svg><input/.exec(html) ?? []
 
@@ -49,7 +49,7 @@ test("the filter's field sits beside a search icon hidden from assistive technol
 })
 
 test("the filter's button reads « Filtrer », after a hidden list filter icon", () => {
-  const html = renderToStaticMarkup(<BlockedWordFilterForm filter={null} />)
+  const html = renderToStaticMarkup(<BlockedWordFilterForm query={null} />)
   const [, iconAttributes = "", iconDrawing, text] =
     /<button[^>]*type="submit"[^>]*><svg([^>]*)>(.*?)<\/svg>(.*?)<\/button>/.exec(
       html

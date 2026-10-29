@@ -75,11 +75,10 @@ async function ListFromDiscord({
   blockedWords,
   searchParams,
 }: FromDiscordProps & Pick<PageProps<"/blocked-words">, "searchParams">) {
-  const [{ words }, { filter }] = await Promise.all([
-    blockedWords,
-    searchParams,
-  ])
-  return <StatefulBlockedWordList {...filterBlockedWords(words, filter)} />
+  const [{ words }, { query }] = await Promise.all([blockedWords, searchParams])
+  return (
+    <StatefulBlockedWordList blockedWords={filterBlockedWords(words, query)} />
+  )
 }
 
 async function OtherRulesFromDiscord({ blockedWords }: FromDiscordProps) {
