@@ -61,7 +61,7 @@ test("a staff member reads the audit log, newest changes first, each beside its 
       addition(`mot${index}`)
     )
   }
-  const today = parisDay(new Date())
+  const seededAt = new Date()
   const changes = page.getByRole("listitem")
   const newest = changes.filter({ hasText: "Ajout de « mot50 »" })
   const oldest = changes.filter({ hasText: "Ajout de « mot0 »" })
@@ -77,7 +77,11 @@ test("a staff member reads the audit log, newest changes first, each beside its 
     page.getByText("45 derniers jours · Heures de Paris", { exact: true })
   ).toBeVisible()
   await expect(
-    page.getByRole("heading", { level: 2, name: today, exact: true })
+    page.getByRole("heading", {
+      level: 2,
+      name: parisDay(seededAt),
+      exact: true,
+    })
   ).toBeVisible()
   await expect(newest).toContainText("aldis")
   await expect(newestAvatar).toHaveAttribute("src", ALDIS_AVATAR_URL)
@@ -88,7 +92,7 @@ test("a staff member reads the audit log, newest changes first, each beside its 
   await page.getByRole("link", { name: "Plus anciens" }).click()
   await expect(oldest).toBeVisible()
   await expect(
-    page.getByText(`Jusqu’au ${shortDay(new Date())}`, { exact: true })
+    page.getByText(`Jusqu’au ${shortDay(seededAt)}`, { exact: true })
   ).toBeVisible()
   await expect(newest).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Plus anciens" })).toHaveCount(0)

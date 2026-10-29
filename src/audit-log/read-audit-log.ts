@@ -18,9 +18,9 @@ import {
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
-import { parisDayOf } from "@/ui/paris-time"
 import { auditLogPages } from "./audit-log-pages"
 import { panelReasonOf, type PanelReason } from "./audit-log-reason"
+import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
   id: Snowflake
@@ -53,7 +53,7 @@ type EventReader = {
   changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
 }
 
-export type AuditLogDay = { date: string; changes: AuditLogChange[] }
+export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
 
 export type AuditLogPage = {
   days: AuditLogDay[]
@@ -243,12 +243,11 @@ function momentOf(
 function byParisDay(changes: AuditLogChange[]) {
   const days: AuditLogDay[] = []
   for (const change of changes) {
-    const date = parisDayOf(change.date)
     const day = days.at(-1)
-    if (day?.date === date) {
+    if (day !== undefined && parisDayOf(day.date) === parisDayOf(change.date)) {
       day.changes.push(change)
     } else {
-      days.push({ date, changes: [change] })
+      days.push({ date: change.date, changes: [change] })
     }
   }
   return days

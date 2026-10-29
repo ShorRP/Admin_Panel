@@ -13,6 +13,7 @@ import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { changeTimeout } from "@/sanctions/change-timeout"
 import { findStaffMember, type StaffMember } from "@/staff/staff-member"
+import { parisDayOf } from "./paris-day"
 import {
   readAuditLog,
   type AuditLogChange,
@@ -579,7 +580,7 @@ test("a member's lookup that fails with anything but a DiscordError is thrown", 
   await expect(readAuditLog(discord, undefined)).rejects.toBe(BUG)
 })
 
-test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
+test("a change made in Discord by an account the audit log does not name shows under « Membre inconnu »", async () => {
   const discord = new FakeDiscord({
     autoModerationRules: [PANEL_RULE],
     auditLogEntries: [
@@ -633,7 +634,7 @@ test("renamed in Discord, the panel's rule takes its history with it, which star
 
 function onParisDays(page: AuditLogPage) {
   return page.days.map(({ date, changes }) => ({
-    date,
+    date: parisDayOf(date),
     descriptions: shown(changes).map(({ description }) => description),
   }))
 }

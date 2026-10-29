@@ -81,8 +81,8 @@ function days(html: string) {
 test("a page's changes sit under their day, whose heading gives its weekday, its date and its year, and each shows only its time in Paris, while its dateTime keeps the full moment", () => {
   const html = render({
     days: [
-      { date: "2026-12-02", changes: [TIMEOUT] },
-      { date: "2026-12-01", changes: [DISCORD_CHANGE] },
+      { date: TIMEOUT.date, changes: [TIMEOUT] },
+      { date: DISCORD_CHANGE.date, changes: [DISCORD_CHANGE] },
     ],
   })
 
@@ -113,7 +113,7 @@ function rows(html: string) {
 }
 
 function onOneDay(...changes: AuditLogChange[]) {
-  return { days: [{ date: "2026-12-02", changes }] }
+  return { days: [{ date: TIMEOUT.date, changes }] }
 }
 
 test("a sanction says what changed, then, on one line, the account it targets and its reason, then its staff member", () => {
@@ -241,16 +241,21 @@ function until(html: string) {
 }
 
 test("a page ends on the day of its oldest change, in Paris", () => {
+  const lateAddition = {
+    ...ADDITION,
+    date: new Date("2026-10-24T22:30:00.000Z"),
+  }
+
   expect(
     until(
       render({
         days: [
-          { date: "2026-12-01", changes: [DISCORD_CHANGE] },
-          { date: "2026-10-24", changes: [ADDITION] },
+          { date: DISCORD_CHANGE.date, changes: [DISCORD_CHANGE] },
+          { date: lateAddition.date, changes: [lateAddition] },
         ],
       })
     )
-  ).toBe('Jusqu’au <time dateTime="2026-10-24">24 oct. 2026</time>')
+  ).toBe('Jusqu’au <time dateTime="2026-10-25">25 oct. 2026</time>')
 })
 
 test("an empty audit log says so in one sentence, with no day and no date it ends on", () => {

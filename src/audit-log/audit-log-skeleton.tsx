@@ -2,14 +2,14 @@ import { cn } from "cn"
 
 import { Skeleton } from "@/ui/skeleton"
 import {
+  CHANGE_BODY_CLASSES,
   CHANGE_ICON_TILE_CLASSES,
-  CHANGE_LIST_CLASSES,
   CHANGE_ROW_CLASSES,
   CHANGE_STAFF_MEMBER_CLASSES,
   CHANGE_TIME_CLASSES,
-  CHANGE_WHAT_CLASSES,
+  DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
-} from "./audit-log-rows"
+} from "./audit-log-layout"
 
 const DAYS = [
   {
@@ -41,7 +41,7 @@ export function AuditLogSkeleton() {
             />
             <span className="h-px flex-1 bg-border" />
           </div>
-          <div className={CHANGE_LIST_CLASSES}>
+          <div className={DAY_CHANGES_CLASSES}>
             {changes.map(({ titleWidth, sanction }) => (
               <div key={titleWidth} className={CHANGE_ROW_CLASSES}>
                 <div className={CHANGE_TIME_CLASSES}>
@@ -53,7 +53,7 @@ export function AuditLogSkeleton() {
                     "motion-reduce:animate-none"
                   )}
                 />
-                <div className={CHANGE_WHAT_CLASSES}>
+                <div className={CHANGE_BODY_CLASSES}>
                   <Skeleton
                     className={cn(
                       "h-4 max-w-full motion-reduce:animate-none",

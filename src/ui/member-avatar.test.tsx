@@ -33,10 +33,10 @@ test("a member's initials skip the words that start with neither a letter nor a 
   ).toBe("LG")
 })
 
-test("a member whose name holds no word that starts with a letter or a digit shows its first character", () => {
+test("a member whose name holds no word that starts with a letter or a digit keeps the first characters of its first two words", () => {
   expect(
     text(renderToStaticMarkup(<MemberAvatar name="~ ~" avatarUrl={null} />))
-  ).toBe("~")
+  ).toBe("~~")
 })
 
 test("a member with an avatar shows their initials until the browser has loaded it", () => {

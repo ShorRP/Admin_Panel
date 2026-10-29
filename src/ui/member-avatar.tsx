@@ -5,7 +5,7 @@ const INITIALS_WORDS = 2
 function initialsOf(name: string) {
   const words = name.trim().split(/\s+/)
   const named = words.filter((word) => /^[\p{L}\p{N}]/u.test(word))
-  return (named.length > 0 ? named : words.slice(0, 1))
+  return (named.length > 0 ? named : words)
     .slice(0, INITIALS_WORDS)
     .map((word) => Array.from(word)[0] ?? "")
     .join("")
