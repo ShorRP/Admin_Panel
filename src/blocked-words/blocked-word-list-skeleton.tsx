@@ -1,6 +1,10 @@
 import { cn } from "cn"
 
 import { Skeleton } from "@/ui/skeleton"
+import {
+  FILTER_FORM_WIDTH_CLASSES,
+  LIST_HEADER_CLASSES,
+} from "./blocked-word-list-layout"
 import { WORD_GRID_CLASSES, WORD_TILE_CLASSES } from "./word-tiles"
 
 const WORD_WIDTHS = ["w-16", "w-24", "w-20", "w-28", "w-14", "w-32"] as const
@@ -9,9 +13,17 @@ export function BlockedWordListSkeleton() {
   return (
     <div role="status" className="flex flex-col gap-3.5">
       <span className="sr-only">Chargement des mots interdits…</span>
-      <div className="flex items-center gap-2.5">
-        <Skeleton className="h-6.5 w-24 motion-reduce:animate-none" />
-        <Skeleton className="h-3.5 w-28 motion-reduce:animate-none" />
+      <div className={LIST_HEADER_CLASSES}>
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-6.5 w-24 motion-reduce:animate-none" />
+          <Skeleton className="h-3.5 w-28 motion-reduce:animate-none" />
+        </div>
+        <Skeleton
+          className={cn(
+            "h-8 motion-reduce:animate-none",
+            FILTER_FORM_WIDTH_CLASSES
+          )}
+        />
       </div>
       <div className={WORD_GRID_CLASSES}>
         {WORD_WIDTHS.map((width) => (

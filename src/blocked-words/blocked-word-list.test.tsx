@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
 import { BlockedWordList } from "./blocked-word-list"
+import type { FilteredBlockedWords } from "./filter-blocked-words"
 import type { WriteResult } from "./write-result"
 
 function render(
@@ -10,14 +11,41 @@ function render(
   state: WriteResult | null = null,
   pending = false
 ) {
+  return renderList({ query: null, words }, state, pending)
+}
+
+function renderFiltered(query: string, words: string[], total: number) {
+  return renderList({ query, words, total }, null, false)
+}
+
+function renderList(
+  blockedWords: FilteredBlockedWords,
+  state: WriteResult | null,
+  pending: boolean
+) {
   return renderToStaticMarkup(
     <BlockedWordList
-      words={words}
+      blockedWords={blockedWords}
       state={state}
       pending={pending}
       action={() => {}}
     />
   )
+}
+
+function showAll(html: string) {
+  return Array.from(
+    html.matchAll(/<a([^>]*)>([^<]*)<\/a>/g),
+    ([, attributes = "", text]) => ({
+      text,
+      href: /\shref="([^"]*)"/.exec(attributes)?.[1],
+    })
+  ).filter(({ text }) => text === "Tout afficher")
+}
+
+function filterField(html: string) {
+  const field = /<input[^>]*\sname="query"[^>]*>/.exec(html)?.[0] ?? ""
+  return /\svalue="([^"]*)"/.exec(field)?.[1]
 }
 
 function region(html: string, role: "status" | "alert") {
@@ -141,4 +169,41 @@ test("a removal that lands leaves both regions empty, since a toast says so, and
   expect(region(failed, "alert")).toEqual(
     failureMessage("Discord n’a pas répondu.")
   )
+})
+
+test("with a filter, the list shows the blocked words that pass it, counted « k sur N », its field holds the text searched, and « Tout afficher » leads back to the whole list", () => {
+  const html = renderFiltered("nitro", ["Free Nitro", "nitro gratuit"], 5)
+
+  expect(heading(html)).toEqual({ title: "La liste", count: "2 sur 5" })
+  expect(tiles(html)).toEqual([tile("Free Nitro"), tile("nitro gratuit")])
+  expect(filterField(html)).toBe("nitro")
+  expect(showAll(html)).toEqual([
+    { text: "Tout afficher", href: "/blocked-words" },
+  ])
+})
+
+test("without a filter, the list holds an empty filter field and no « Tout afficher »", () => {
+  const html = render(["abricot", "zèbre"])
+
+  expect(filterField(html)).toBe("")
+  expect(showAll(html)).toEqual([])
+})
+
+test("a filter that no blocked word passes says so in place of the tiles, counted « 0 sur N »", () => {
+  const html = renderFiltered("xyz", [], 3)
+
+  expect(heading(html)).toEqual({ title: "La liste", count: "0 sur 3" })
+  expect(tiles(html)).toEqual([])
+  expect(html).toContain("Aucun mot interdit ne contient « xyz ».")
+  expect(html).not.toContain("Aucun mot interdit pour l’instant.")
+  expect(showAll(html)).toHaveLength(1)
+})
+
+test("a filter on an empty list counts « 0 sur 0 » and says that no blocked word contains the text searched", () => {
+  const html = renderFiltered("xyz", [], 0)
+
+  expect(heading(html)).toEqual({ title: "La liste", count: "0 sur 0" })
+  expect(html).toContain("Aucun mot interdit ne contient « xyz ».")
+  expect(html).not.toContain("Aucun mot interdit pour l’instant.")
+  expect(showAll(html)).toHaveLength(1)
 })
