@@ -55,7 +55,10 @@ type EventReader = {
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
 
+export type ChangeType = (typeof CHANGE_TYPES)[number]
+
 export type AuditLogPage = {
+  type: ChangeType | null
   days: AuditLogDay[]
   before: Snowflake | null
   older: Snowflake | null
@@ -65,6 +68,15 @@ const AUTO_MOD_RULE_EVENTS = [
   AuditLogEvent.AutoModerationRuleCreate,
   AuditLogEvent.AutoModerationRuleUpdate,
 ]
+
+const CHANGE_TYPES = ["blocked-words", "timeouts", "kicks", "bans"] as const
+
+const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
+  "blocked-words": AUTO_MOD_RULE_EVENTS,
+  timeouts: [AuditLogEvent.MemberUpdate],
+  kicks: [AuditLogEvent.MemberKick],
+  bans: [AuditLogEvent.MemberBanAdd, AuditLogEvent.MemberBanRemove],
+}
 
 const CHANGES_PER_PAGE = 50
 
@@ -76,14 +88,16 @@ const CURSOR = z
   .nullable()
   .catch(null)
 
+const TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)
+
 export async function readAuditLog(
   discord: DiscordApi,
-  before: unknown
+  searchParams: { before?: unknown; type?: unknown }
 ): Promise<AuditLogPage> {
-  const cursor = CURSOR.parse(before)
-  const rule = (await discord.listAutoModerationRules()).find(isPanelRule)
+  const cursor = CURSOR.parse(searchParams.before)
+  const type = TYPE.parse(searchParams.type)
   const found: FoundChange[] = []
-  for (const reader of eventReaders(rule?.id)) {
+  for (const reader of await eventReadersOfType(discord, type)) {
     found.push(...(await changesOfEvent(discord, reader, cursor)))
   }
   const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
@@ -92,6 +106,7 @@ export async function readAuditLog(
     pageChanges.map(({ memberId }) => memberId)
   )
   return {
+    type,
     days: byParisDay(
       pageChanges.map(({ memberId, change }) => ({
         ...change,
@@ -107,13 +122,31 @@ export async function readAuditLog(
   }
 }
 
-function eventReaders(ruleId: Snowflake | undefined): EventReader[] {
+async function eventReadersOfType(
+  discord: DiscordApi,
+  type: ChangeType | null
+) {
+  if (type === null) {
+    return eventReaders(await panelRuleId(discord))
+  }
+  const events = EVENTS_OF_TYPE[type]
+  const ruleId = type === "blocked-words" ? await panelRuleId(discord) : null
+  return eventReaders(ruleId).filter(({ actionType }) =>
+    events.includes(actionType)
+  )
+}
+
+async function panelRuleId(discord: DiscordApi) {
+  return (await discord.listAutoModerationRules()).find(isPanelRule)?.id ?? null
+}
+
+function eventReaders(ruleId: Snowflake | null): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
       sanctionChangeOf(entry, event.changeOf(entry), users),
   }))
-  if (ruleId === undefined) {
+  if (ruleId === null) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({

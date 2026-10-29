@@ -46,10 +46,10 @@ async function AuditLogFromDiscord({
   await connection()
   const discord = createDiscordApi()
   const staffMember = await requireStaffMember(discord)
-  const { before } = await searchParams
+  const { before, type } = await searchParams
   return (
     <AuditLog
-      page={await readAuditLog(discord, before)}
+      page={await readAuditLog(discord, { before, type })}
       opensModeration={staffMember.opensModeration}
     />
   )

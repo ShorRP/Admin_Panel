@@ -1,5 +1,19 @@
 import { cn } from "cn"
 
+export const TYPE_FILTER_CLASSES = cn(
+  "flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+)
+
+export const TYPE_LINKS_CLASSES = cn("flex flex-wrap gap-1.5")
+
+export const RESET_LINK_CLASSES = cn(
+  "text-[0.8125rem] underline decoration-input underline-offset-3 hover:decoration-primary"
+)
+
+export const NO_CHANGE_CLASSES = cn(
+  "rounded-xl border border-dashed border-input px-5 py-7 text-center text-muted-foreground"
+)
+
 export const DAY_HEADER_CLASSES = cn("flex items-center gap-3")
 
 export const DAY_CHANGES_CLASSES = cn("divide-y rounded-xl border bg-card")

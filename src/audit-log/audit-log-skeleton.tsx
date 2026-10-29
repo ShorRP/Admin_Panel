@@ -9,6 +9,8 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
+  TYPE_FILTER_CLASSES,
+  TYPE_LINKS_CLASSES,
 } from "./audit-log-layout"
 
 const DAYS = [
@@ -29,10 +31,25 @@ const DAYS = [
   },
 ] as const
 
+const TYPE_LINK_WIDTHS = ["w-13", "w-29", "w-24", "w-24.5", "w-29.5"] as const
+
 export function AuditLogSkeleton() {
   return (
     <div role="status" className="flex flex-col gap-7">
       <span className="sr-only">Chargement du journal d’audit…</span>
+      <div className={TYPE_FILTER_CLASSES}>
+        <div className={TYPE_LINKS_CLASSES}>
+          {TYPE_LINK_WIDTHS.map((width) => (
+            <Skeleton
+              key={width}
+              className={cn(
+                "h-7.5 rounded-full motion-reduce:animate-none",
+                width
+              )}
+            />
+          ))}
+        </div>
+      </div>
       {DAYS.map(({ headingWidth, changes }) => (
         <div key={headingWidth} className="flex flex-col gap-2.5">
           <div className={DAY_HEADER_CLASSES}>
