@@ -10,7 +10,6 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
 
-import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { Button } from "@/ui/button"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { Overline } from "@/ui/overline"
@@ -70,20 +69,10 @@ export function StaffHeader({
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
-  blockedWordCount: Promise<number | null>
+  blockedWordCount: ReactNode
 }) {
   const sections = [
-    withCurrent(
-      {
-        ...BLOCKED_WORDS,
-        badge: (
-          <Suspense fallback={null}>
-            <BlockedWordCount count={blockedWordCount} />
-          </Suspense>
-        ),
-      },
-      currentPath
-    ),
+    withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
     withCurrent(AUDIT_LOG, currentPath),
   ]
   const moderation = withCurrent(MODERATION, currentPath)
@@ -166,11 +155,6 @@ function ShownWhen({
   children: ReactNode
 }) {
   return use(shown) ? children : null
-}
-
-function BlockedWordCount({ count }: { count: Promise<number | null> }) {
-  const read = use(count)
-  return read === null ? null : <BlockedWordCountBadge count={read} />
 }
 
 function PanelLink({

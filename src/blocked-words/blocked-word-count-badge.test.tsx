@@ -3,7 +3,7 @@ import { expect, test } from "vitest"
 
 import { BlockedWordCountBadge } from "./blocked-word-count-badge"
 
-function badge(count: number) {
+function badge(count: number | null) {
   const html = renderToStaticMarkup(<BlockedWordCountBadge count={count} />)
   return Array.from(
     html.matchAll(/<span([^>]*)>([^<]*)<\/span>/g),
@@ -28,6 +28,10 @@ test("the badge shows 0 too, and reads one word or none in the singular", () => 
     { text: "0 mot", hidden: false, forAssistiveTechnologiesAlone: true },
   ])
   expect(badge(1).map(({ text }) => text)).toEqual(["1", "1 mot"])
+})
+
+test("no count from Discord shows no badge at all", () => {
+  expect(renderToStaticMarkup(<BlockedWordCountBadge count={null} />)).toBe("")
 })
 
 test("the badge's count reads as French numbers do", () => {
