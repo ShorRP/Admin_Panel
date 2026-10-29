@@ -7,6 +7,7 @@ import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
 import { StaffMemberIdentity } from "@/staff/staff-member-identity"
 import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
+import { Toaster } from "@/ui/toast"
 
 export default function StaffLayout({ children }: { children: ReactNode }) {
   const staffMember = currentStaffMember()
@@ -21,6 +22,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
         opensModeration={opensModerationOnceRead(staffMember)}
       />
       {children}
+      <Toaster />
     </>
   )
 }

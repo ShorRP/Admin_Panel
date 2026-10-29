@@ -2,6 +2,7 @@
 
 import { useActionState } from "react"
 
+import { useSuccessToast } from "@/ui/use-success-toast"
 import { changeSanctionAction } from "./actions"
 import { RecordSanctions } from "./record-sanctions"
 import type { SanctionOptions } from "./sanction-options"
@@ -16,6 +17,7 @@ export function StatefulRecordSanctions({
     SanctionResult | null,
     FormData
   >(changeSanctionAction, null)
+  useSuccessToast(state)
   return (
     <RecordSanctions
       options={options}

@@ -15,6 +15,7 @@ type Fixtures = {
   logIn: (user: FakeUser) => Promise<void>
   holdDiscord: () => () => void
   checkAccessibility: (options?: { waitForLoad?: boolean }) => Promise<void>
+  readToast: (message: string | RegExp) => Promise<void>
   discordCdnRequests: string[]
   prefetchedPaths: string[]
   browserConsole: void
@@ -152,6 +153,19 @@ export const test = base.extend<Fixtures>({
         scrollWidth,
         `the page's width at ${SMALLEST_SCREEN_WIDTH} px`
       ).toBeLessThanOrEqual(clientWidth)
+    })
+  },
+  readToast: async ({ page }, use) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    await use(async (message) => {
+      const notifications = page.getByRole("region", { name: "Notifications" })
+      const toast = notifications
+        .getByRole("dialog")
+        .filter({ hasText: message })
+      await expect(toast).toBeVisible()
+      await expect(toast).toHaveAccessibleDescription(message)
+      await page.keyboard.press("F6")
+      await expect(notifications).toBeFocused()
     })
   },
   discordCdnRequests: [

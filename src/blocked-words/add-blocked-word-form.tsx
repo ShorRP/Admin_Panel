@@ -49,9 +49,6 @@ export function AddBlockedWordForm({
           )}
         </Button>
       </div>
-      <p role="status" className="text-sm">
-        {state?.ok === true && <WriteResultMessage result={state} />}
-      </p>
       <p role="alert" id={ALERT_ID} className="text-sm">
         {state?.ok === false && <WriteResultMessage result={state} />}
       </p>

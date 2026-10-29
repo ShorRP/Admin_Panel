@@ -13,10 +13,35 @@ test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
 
+function recordViewTransitionNames() {
+  new MutationObserver((records) => {
+    for (const { target, oldValue } of records) {
+      if (target instanceof HTMLLIElement) {
+        for (const style of [oldValue, target.getAttribute("style")]) {
+          const [, name] =
+            /view-transition-name:\s*([^;\s]+)/.exec(style ?? "") ?? []
+          if (name !== undefined && name !== "none") {
+            target.dataset.viewTransitionName = name
+          }
+        }
+      }
+    }
+  }).observe(document, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style"],
+    attributeOldValue: true,
+  })
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(recordViewTransitionNames)
+})
+
 function animationsByWord() {
   const wordsByName = new Map(
     Array.from(document.querySelectorAll("li"), (item) => [
-      item.style.viewTransitionName,
+      item.dataset.viewTransitionName,
       item.querySelector("span")?.textContent ?? "",
     ])
   )
@@ -63,14 +88,29 @@ function animationsByWord() {
   )
 }
 
+function toastTransitions() {
+  const properties = Array.from(
+    document.querySelectorAll('[data-slot="toast"]'),
+    (toast) => toast.getAnimations()
+  )
+    .flat()
+    .flatMap((animation) =>
+      animation instanceof CSSTransition && animation.playState === "running"
+        ? [animation.transitionProperty]
+        : []
+    )
+  return properties.length > 0 && properties.sort()
+}
+
 test.describe("with motion, which this flow keeps", () => {
   test.use({ reducedMotion: "no-preference" })
 
-  test("a staff member adds a blocked word, which fades into the list lighting up, then removes it, which fades out of it, each write showing its message", async ({
+  test("a staff member adds a blocked word, which fades into the list lighting up, then removes it, which fades out of it, each write saying so in a toast", async ({
     page,
     logIn,
     discord,
     checkAccessibility,
+    readToast,
   }) => {
     await logIn(ALDIS)
     await page.goto("/blocked-words")
@@ -98,11 +138,7 @@ test.describe("with motion, which this flow keeps", () => {
       ],
     })
 
-    await expect(
-      page
-        .getByRole("status")
-        .filter({ hasText: "« foo » est maintenant un mot interdit." })
-    ).toBeVisible()
+    await readToast("« foo » est maintenant un mot interdit.")
     await expect(field).toHaveValue("")
     await expect(
       page.getByText("1 mot interdit sur 1 000 possibles.")
@@ -125,11 +161,7 @@ test.describe("with motion, which this flow keeps", () => {
       "the word removed": ["::view-transition-old opacity 150 ms ease-out"],
     })
 
-    await expect(
-      page
-        .getByRole("status")
-        .filter({ hasText: "« foo » n’est plus un mot interdit." })
-    ).toBeVisible()
+    await readToast("« foo » n’est plus un mot interdit.")
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
@@ -155,6 +187,42 @@ for (const { title, prefersReducedMotion } of [
       test.use({ reducedMotion: "no-preference" })
     }
 
+    test("a write's toast slides in and out unless motion is reduced, when it only fades", async ({
+      page,
+      logIn,
+      readToast,
+    }) => {
+      const message = "« banane » est maintenant un mot interdit."
+      const toast = page
+        .getByRole("region", { name: "Notifications" })
+        .getByRole("dialog")
+        .filter({ hasText: message })
+      const moves = prefersReducedMotion ? ["opacity"] : ["transform"]
+
+      await logIn(ALDIS)
+      await page.goto("/blocked-words")
+      await page.waitForLoadState()
+      await page.getByLabel("Mot ou expression").fill("banane")
+      const entering = page.waitForFunction(toastTransitions, undefined, {
+        polling: "raf",
+      })
+      await page.getByRole("button", { name: "Ajouter" }).click()
+
+      expect(await (await entering).jsonValue()).toEqual(moves)
+      await readToast(message)
+      await toast.evaluate((element) =>
+        Promise.all(element.getAnimations().map(({ finished }) => finished))
+      )
+
+      const leaving = page.waitForFunction(toastTransitions, undefined, {
+        polling: "raf",
+      })
+      await toast.getByRole("button", { name: "Fermer" }).click()
+
+      expect(await (await leaving).jsonValue()).toEqual(moves)
+      await expect(toast).toHaveCount(0)
+    })
+
     test.describe("with two blocked words already", () => {
       test.use({
         discordState: {
@@ -177,10 +245,11 @@ for (const { title, prefersReducedMotion } of [
         },
       })
 
-      test("a blocked word added between the two pushes both down under its message, then removed lets the next one back up while the one before stays still, each word that moves sliding unless motion is reduced", async ({
+      test("a blocked word added between the two pushes the next one down while the one before stays still, then removed lets it back up, each word that moves sliding unless motion is reduced", async ({
         page,
         logIn,
         checkAccessibility,
+        readToast,
       }) => {
         const words = page.getByRole("main").getByRole("listitem")
         const slides = ["::view-transition-group transform 250 ms ease-out"]
@@ -209,13 +278,9 @@ for (const { title, prefersReducedMotion } of [
             "::view-transition-new backgroundColor 250 ms ease-out",
             "::view-transition-new opacity 250 ms ease-out",
           ],
-          ...(!prefersReducedMotion && { abricot: slides, cerise: slides }),
+          ...(!prefersReducedMotion && { cerise: slides }),
         })
-        await expect(
-          page
-            .getByRole("status")
-            .filter({ hasText: "« banane » est maintenant un mot interdit." })
-        ).toBeVisible()
+        await readToast("« banane » est maintenant un mot interdit.")
         await expect(words).toHaveText([/^abricot/, /^banane/, /^cerise/])
         await checkAccessibility()
 
@@ -231,17 +296,41 @@ for (const { title, prefersReducedMotion } of [
           "the word removed": ["::view-transition-old opacity 150 ms ease-out"],
           ...(!prefersReducedMotion && { cerise: slides }),
         })
-        await expect(
-          page
-            .getByRole("status")
-            .filter({ hasText: "« banane » n’est plus un mot interdit." })
-        ).toBeVisible()
+        await readToast("« banane » n’est plus un mot interdit.")
         await expect(words).toHaveText([/^abricot/, /^cerise/])
         await checkAccessibility()
       })
     })
   })
 }
+
+test("a write's toast stays while the staff member moves to another section", async ({
+  page,
+  logIn,
+}) => {
+  const toast = page
+    .getByRole("region", { name: "Notifications" })
+    .getByRole("dialog")
+    .filter({ hasText: "« foo » est maintenant un mot interdit." })
+
+  await logIn(ALDIS)
+  await page.goto("/blocked-words")
+  await page.waitForLoadState()
+  await page.getByLabel("Mot ou expression").fill("foo")
+  await page.getByRole("button", { name: "Ajouter" }).click()
+  await expect(toast).toBeVisible()
+
+  await page
+    .getByRole("banner")
+    .getByRole("navigation", { name: "Sections du panel" })
+    .getByRole("link", { name: "Journal d’audit" })
+    .click()
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Journal d’audit" })
+  ).toBeVisible()
+  await expect(toast).toBeVisible()
+})
 
 test("a refused blocked word stays in the field, which its message describes", async ({
   page,

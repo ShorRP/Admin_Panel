@@ -27,7 +27,7 @@ export function RecordSanctions({
   return (
     <section
       aria-labelledby={HEADING_ID}
-      hidden={options.kind === "none" && state === null}
+      hidden={options.kind === "none"}
       className="flex flex-col gap-6"
     >
       <h2 id={HEADING_ID} className="font-heading text-lg font-medium">
@@ -85,9 +85,7 @@ export function RecordSanctions({
         </Sanction>
       )}
       <p role="status" className="text-sm">
-        {pending
-          ? "Envoi en cours…"
-          : state?.ok === true && <WriteResultMessage result={state} />}
+        {pending && "Envoi en cours…"}
       </p>
       <p role="alert" id={SANCTION_ALERT_ID} className="text-sm">
         {state?.ok === false && <WriteResultMessage result={state} />}

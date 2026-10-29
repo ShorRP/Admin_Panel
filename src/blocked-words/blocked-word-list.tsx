@@ -51,9 +51,7 @@ export function BlockedWordList({
         ))}
       </ul>
       <p role="status" className="text-sm">
-        {pending
-          ? "Retrait en cours…"
-          : state?.ok === true && <WriteResultMessage result={state} />}
+        {pending && "Retrait en cours…"}
       </p>
       <p role="alert" className="text-sm">
         {state?.ok === false && <WriteResultMessage result={state} />}
