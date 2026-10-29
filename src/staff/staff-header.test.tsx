@@ -57,14 +57,14 @@ function drawing(image: ReactElement) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(image))?.[1]
 }
 
-function part(html: string, element: "aside" | "header") {
-  const content = new RegExp(
+function insideElement(html: string, element: "aside" | "header") {
+  const inside = new RegExp(
     String.raw`<${element}[^>]*>([\s\S]*)</${element}>`
   ).exec(html)?.[1]
-  if (content === undefined) {
-    throw new Error(`The header renders no <${element}>.`)
+  if (inside === undefined) {
+    throw new Error(`StaffHeader renders no <${element}>.`)
   }
-  return content
+  return inside
 }
 
 async function render(
@@ -80,7 +80,10 @@ async function render(
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
   )
   const html = await new Response(prelude).text()
-  return { sidebar: part(html, "aside"), bar: part(html, "header") }
+  return {
+    sidebar: insideElement(html, "aside"),
+    bar: insideElement(html, "header"),
+  }
 }
 
 async function currentLinks(currentPath: string) {
@@ -135,12 +138,14 @@ test("the bar's link to the panel shows Shor's logo alone, and leaves « Shor »
 
 test("the sidebar's ornament, between the link to the panel and the sections, is hidden from assistive technologies", async () => {
   const { sidebar } = await render("/blocked-words")
-  const ornament = /<\/a>(<div[^>]*>[\s\S]*?<\/div>)<nav/.exec(sidebar)?.[1]
+  const ornament =
+    /<\/a>(<div[^>]*>[\s\S]*?<\/div>)<nav/.exec(sidebar)?.[1] ?? ""
 
   expect({
-    hidden: ornament?.match(/^<div[^>]*\saria-hidden="true"/) !== null,
-    text: textOf(ornament ?? "x"),
-  }).toEqual({ hidden: true, text: "" })
+    found: ornament !== "",
+    hidden: /^<div[^>]*\saria-hidden="true"/.test(ornament),
+    text: textOf(ornament),
+  }).toEqual({ found: true, hidden: true, text: "" })
 })
 
 test("a staff member who cannot open the moderation section sees the sections under « Administration », and no « Modération » at all", async () => {

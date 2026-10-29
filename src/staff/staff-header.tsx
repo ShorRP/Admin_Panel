@@ -1,5 +1,12 @@
-import { Suspense, use, useId, ViewTransition, type ReactNode } from "react"
+import {
+  Suspense,
+  use,
+  ViewTransition,
+  type ComponentType,
+  type ReactNode,
+} from "react"
 import Link from "next/link"
+import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
 
@@ -23,6 +30,8 @@ type Section = {
   current: "page" | undefined
 }
 
+type SectionLinkComponent = ComponentType<{ section: Section }>
+
 const SECTIONS = [
   { href: "/blocked-words", name: "Mots interdits", Icon: Ban },
   { href: "/audit-log", name: "Journal d’audit", Icon: ScrollText },
@@ -30,8 +39,15 @@ const SECTIONS = [
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
-const SECTION_LINK_CLASSES =
-  "relative flex h-9 items-center gap-2.5 rounded-sm px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground"
+const sectionLinkVariants = cva(
+  "group/section relative flex h-9 items-center gap-2.5 rounded-sm px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground"
+)
+
+const panelNameVariants = cva("", {
+  variants: {
+    shown: { true: "flex flex-col gap-1.25", false: "sr-only" },
+  },
+})
 
 export function StaffHeader({
   currentPath,
@@ -55,30 +71,21 @@ export function StaffHeader({
           <span className="size-1.5 rotate-45 border border-current" />
           <span className="h-px flex-1 bg-border" />
         </div>
-        <nav
-          aria-label="Sections du panel"
+        <SectionNav
+          place="sidebar"
+          sections={sections}
+          moderation={moderation}
+          opensModeration={opensModeration}
+          SectionLink={SidebarSectionLink}
           className="flex flex-1 flex-col gap-5.5 overflow-y-auto px-3 py-5"
-        >
-          <SectionGroup title="Administration">
-            {sections.map((section) => (
-              <SidebarSectionLink key={section.href} section={section} />
-            ))}
-          </SectionGroup>
-          <Suspense fallback={null}>
-            <ShownWhen shown={opensModeration}>
-              <SectionGroup title="Modération">
-                <SidebarSectionLink section={moderation} />
-              </SectionGroup>
-            </ShownWhen>
-          </Suspense>
-        </nav>
+        />
         <div className="flex items-center gap-2 border-t px-3 py-3.5">
           <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
           <LogOutForm iconOnly />
         </div>
       </aside>
-      <header className="sticky top-0 z-10 flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
-        <PanelLink nameHidden />
+      <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
+        <PanelLink nameShown={false} />
         <div className="ml-auto flex min-w-0 items-center gap-2 **:data-[slot=staff-member-name]:hidden">
           {member}
           <Sheet>
@@ -93,23 +100,14 @@ export function StaffHeader({
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
-              <nav
-                aria-label="Sections du panel"
+              <SectionNav
+                place="menu"
+                sections={sections}
+                moderation={moderation}
+                opensModeration={opensModeration}
+                SectionLink={MenuSectionLink}
                 className="flex flex-col gap-5.5 px-3"
-              >
-                <SectionGroup title="Administration">
-                  {sections.map((section) => (
-                    <MenuSectionLink key={section.href} section={section} />
-                  ))}
-                </SectionGroup>
-                <Suspense fallback={null}>
-                  <ShownWhen shown={opensModeration}>
-                    <SectionGroup title="Modération">
-                      <MenuSectionLink section={moderation} />
-                    </SectionGroup>
-                  </ShownWhen>
-                </Suspense>
-              </nav>
+              />
               <SheetFooter className="border-t">
                 {member}
                 <LogOutForm />
@@ -147,15 +145,15 @@ function ShownWhen({
 
 function PanelLink({
   className,
-  nameHidden = false,
+  nameShown = true,
 }: {
   className?: string
-  nameHidden?: boolean
+  nameShown?: boolean
 }) {
   return (
     <a href="/" className={cn("flex shrink-0 items-center gap-3", className)}>
       <ShorLogo />
-      <span className={nameHidden ? "sr-only" : "flex flex-col gap-1.25"}>
+      <span className={panelNameVariants({ shown: nameShown })}>
         <span className="font-heading text-[1.1875rem] leading-none font-medium tracking-[0.24em] uppercase">
           Shor
         </span>{" "}
@@ -167,40 +165,68 @@ function PanelLink({
   )
 }
 
+function SectionNav({
+  place,
+  sections,
+  moderation,
+  opensModeration,
+  SectionLink,
+  className,
+}: {
+  place: "sidebar" | "menu"
+  sections: Section[]
+  moderation: Section
+  opensModeration: Promise<boolean>
+  SectionLink: SectionLinkComponent
+  className: string
+}) {
+  return (
+    <nav aria-label="Sections du panel" className={className}>
+      <SectionGroup id={`${place}-administration`} title="Administration">
+        {sections.map((section) => (
+          <SectionLink key={section.href} section={section} />
+        ))}
+      </SectionGroup>
+      <Suspense fallback={null}>
+        <ShownWhen shown={opensModeration}>
+          <SectionGroup id={`${place}-moderation`} title="Modération">
+            <SectionLink section={moderation} />
+          </SectionGroup>
+        </ShownWhen>
+      </Suspense>
+    </nav>
+  )
+}
+
 function SectionGroup({
+  id,
   title,
   children,
 }: {
+  id: string
   title: string
   children: ReactNode
 }) {
-  const titleId = useId()
   return (
     <div>
       <p
-        id={titleId}
+        id={id}
         className="px-2.5 pb-2 text-[0.625rem] leading-3.5 font-medium tracking-[0.18em] text-muted-foreground uppercase"
       >
         {title}
       </p>
-      <ul aria-labelledby={titleId} className="flex flex-col gap-0.5">
+      <ul aria-labelledby={id} className="flex flex-col gap-0.5">
         {children}
       </ul>
     </div>
   )
 }
 
-function SectionIcon({
-  Icon,
-  current,
-}: {
-  Icon: LucideIcon
-  current: Section["current"]
-}) {
+function SectionIcon({ Icon }: { Icon: LucideIcon }) {
   return (
     <Icon
       aria-hidden
-      className={current === undefined ? "size-4" : "size-4 text-primary"}
+      className="size-4 group-aria-[current=page]/section:text-primary"
     />
   )
 }
@@ -220,9 +246,9 @@ function SidebarSectionLink({
         href={href}
         prefetch={false}
         aria-current={current}
-        className={SECTION_LINK_CLASSES}
+        className={sectionLinkVariants()}
       >
-        <SectionIcon Icon={Icon} current={current} />
+        <SectionIcon Icon={Icon} />
         {name}
         {current && (
           <ViewTransition
@@ -249,9 +275,9 @@ function MenuSectionLink({
         nativeButton={false}
         role={undefined}
         render={<Link href={href} prefetch={false} aria-current={current} />}
-        className={SECTION_LINK_CLASSES}
+        className={sectionLinkVariants()}
       >
-        <SectionIcon Icon={Icon} current={current} />
+        <SectionIcon Icon={Icon} />
         {name}
         {current && <CurrentSectionBar />}
       </SheetClose>

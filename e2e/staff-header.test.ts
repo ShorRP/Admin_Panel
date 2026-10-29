@@ -55,7 +55,7 @@ test("a staff member moves between sections through the sidebar, which marks the
   expect(prefetchedPaths).toEqual([])
 })
 
-test("from md, the sidebar runs 252 px wide down the screen's left edge and stays there as the page scrolls, while below md the bar takes its place at the top", async ({
+test("from md, the sidebar runs 252 px wide down the screen's left edge and stays there as the page scrolls, while below md the bar takes its place at the top of the page, which it leaves as the page scrolls", async ({
   page,
   logIn,
 }) => {
@@ -106,7 +106,7 @@ test("from md, the sidebar runs 252 px wide down the screen's left edge and stay
     {
       element: "header",
       scrolled: 120,
-      box: { x: 0, y: 0, width: 767, height: 56 },
+      box: { x: 0, y: -120, width: 767, height: 56 },
     },
   ])
 })
