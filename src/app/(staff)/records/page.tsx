@@ -23,7 +23,7 @@ export default function RecordsPage({ searchParams }: PageProps<"/records">) {
       exit="section-crossfade"
       default="none"
     >
-      <main className="flex flex-col gap-7">
+      <main className="mx-auto flex max-w-270 flex-col gap-7">
         <PageHeader
           overline="Fiches des comptes"
           title="Modération"

@@ -1,14 +1,11 @@
+import { cn } from "cn"
 import type { Snowflake } from "discord-api-types/v10"
 import { UserX } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { Label } from "@/ui/label"
-import { Textarea } from "@/ui/textarea"
-import {
-  CHOICE_CLASS,
-  NATIVE_CONTROL_CLASS,
-  SANCTION_ALERT_ID,
-} from "./sanction-form"
+import { NotifyCheckbox } from "./notify-checkbox"
+import { ReasonField } from "./reason-field"
+import { RED_BUTTON_CLASS, SENTENCE_CLASS, SUBMIT_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 
 const REASON_ID = "kick-reason"
@@ -26,29 +23,25 @@ export function KickForm({
 }) {
   const refused = state?.ok === false && state.change === "kick" ? state : null
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-4.5">
       <input type="hidden" name="change" value="kick" />
       <input type="hidden" name="userId" value={userId} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={REASON_ID}>Motif de l’expulsion</Label>
-        <Textarea
-          id={REASON_ID}
-          name="reason"
-          defaultValue={refused?.reason ?? ""}
-          aria-describedby={SANCTION_ALERT_ID}
-        />
-      </div>
-      <label className={CHOICE_CLASS}>
-        <input
-          type="checkbox"
-          name="notify"
-          defaultChecked={refused?.notify ?? true}
-          aria-describedby={SANCTION_ALERT_ID}
-          className={NATIVE_CONTROL_CLASS}
-        />
-        Prévenir en message privé
-      </label>
-      <Button type="submit" disabled={pending} className="self-start">
+      <p className={SENTENCE_CLASS}>
+        Le compte quitte le serveur Discord et peut le rejoindre à nouveau par
+        une invitation.
+      </p>
+      <ReasonField
+        id={REASON_ID}
+        label="Motif de l’expulsion"
+        defaultValue={refused?.reason ?? ""}
+        readByMember
+      />
+      <NotifyCheckbox defaultChecked={refused?.notify ?? true} />
+      <Button
+        type="submit"
+        disabled={pending}
+        className={cn(SUBMIT_CLASS, RED_BUTTON_CLASS)}
+      >
         <UserX aria-hidden data-icon="inline-start" />
         Expulser
       </Button>

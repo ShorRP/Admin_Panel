@@ -41,6 +41,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-ornament: var(--ornament);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -82,6 +83,7 @@
   --accent: oklch(0.925 0.019 78);
   --accent-foreground: oklch(0.22 0.025 60);
   --destructive: oklch(0.53 0.17 35);
+  --destructive-foreground: oklch(0.98 0.01 60);
   --success: oklch(0.5 0.1 145);
   --warning: oklch(0.55 0.13 65);
   --ornament: oklch(0.5 0.09 35);
@@ -121,6 +123,7 @@
     --accent: oklch(0.272 0.02 60);
     --accent-foreground: oklch(0.95 0.015 85);
     --destructive: oklch(0.7 0.15 35);
+    --destructive-foreground: oklch(0.17 0.03 35);
     --success: oklch(0.76 0.09 145);
     --warning: oklch(0.8 0.11 78);
     --ornament: oklch(0.72 0.1 50);
@@ -160,6 +163,7 @@
   --accent: oklch(0.925 0.019 78);
   --accent-foreground: oklch(0.22 0.025 60);
   --destructive: oklch(0.53 0.17 35);
+  --destructive-foreground: oklch(0.98 0.01 60);
   --success: oklch(0.5 0.1 145);
   --warning: oklch(0.55 0.13 65);
   --ornament: oklch(0.5 0.09 35);
@@ -199,6 +203,7 @@
   --accent: oklch(0.272 0.02 60);
   --accent-foreground: oklch(0.95 0.015 85);
   --destructive: oklch(0.7 0.15 35);
+  --destructive-foreground: oklch(0.17 0.03 35);
   --success: oklch(0.76 0.09 145);
   --warning: oklch(0.8 0.11 78);
   --ornament: oklch(0.72 0.1 50);

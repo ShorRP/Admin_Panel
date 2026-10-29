@@ -30,6 +30,7 @@ const TEXT_PAIRS = [
   ["muted-foreground", "popover"],
   ["muted-foreground", "accent"],
   ["primary-foreground", "primary"],
+  ["destructive-foreground", "destructive"],
   ["secondary-foreground", "secondary"],
   ["accent-foreground", "accent"],
   ["card-foreground", "card"],
@@ -256,6 +257,39 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
   )
 
   test.each(["background", "card"])(
+    "text in destructive-foreground reaches 4.5:1 on destructive/90 on %s, the red button's hover fill",
+    (surface) => {
+      expect(
+        themeContrast(theme, "destructive-foreground", [
+          surface,
+          "destructive/90",
+        ])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
+
+  test.each([
+    ["warning/6", "a running timeout's notice"],
+    ["destructive/10", "a banned account's notice"],
+  ])(
+    "text in foreground reaches 4.5:1 on %s on card, the fill of %s",
+    (fill) => {
+      expect(
+        themeContrast(theme, "foreground", ["card", fill])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
+
+  test.each(["input", "ring/50"])(
+    "%s reaches 3:1 on warning/6 on card, around the lift's reason in a running timeout's notice",
+    (layer) => {
+      expect(
+        themeContrast(theme, layer, ["card", "warning/6"])
+      ).toBeGreaterThanOrEqual(3)
+    }
+  )
+
+  test.each(["background", "card"])(
     "the field's border, input, reaches 3:1 on %s",
     (surface) => {
       expect(themeContrast(theme, "input", [surface])).toBeGreaterThanOrEqual(3)
@@ -316,3 +350,18 @@ test.each([
     ).toBeGreaterThanOrEqual(4.5)
   }
 )
+
+test.each(["input/30", "input/50"])(
+  "in dark, text in foreground reaches 4.5:1 on %s on warning/6 on card, the fill of the outline button in a running timeout's notice",
+  (fill) => {
+    expect(
+      themeContrast(themes.dark, "foreground", ["card", "warning/6", fill])
+    ).toBeGreaterThanOrEqual(4.5)
+  }
+)
+
+test("in dark, text in foreground reaches 4.5:1 on input/30 on muted, the fill of the open tab", () => {
+  expect(
+    themeContrast(themes.dark, "foreground", ["muted", "input/30"])
+  ).toBeGreaterThanOrEqual(4.5)
+})

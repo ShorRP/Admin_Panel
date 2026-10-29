@@ -23,7 +23,7 @@ export default function RecordPage({ params }: PageProps<"/records/[userId]">) {
       exit="section-crossfade"
       default="none"
     >
-      <main className="flex flex-col gap-6">
+      <main className="mx-auto flex max-w-270 flex-col gap-6">
         <RecordBreadcrumb />
         <SuspenseWithSkeleton skeleton={<RecordDetailsSkeleton />}>
           <RecordFromDiscord params={params} />
