@@ -1,25 +1,13 @@
-import { cn } from "cn"
 import { RotateCcw } from "lucide-react"
 
-import { buttonVariants } from "@/ui/button"
-import { LOGIN_ACTION_CLASS, LoginNotice } from "./login-notice"
+import { LoginLink } from "./login-link"
+import { LoginNotice } from "./login-notice"
 
 export function LoginFailed() {
   return (
     <LoginNotice
       title="Connexion échouée"
-      actions={
-        <a
-          href="/login"
-          className={cn(
-            buttonVariants({ variant: "default" }),
-            LOGIN_ACTION_CLASS
-          )}
-        >
-          <RotateCcw aria-hidden data-icon="inline-start" />
-          Réessayer
-        </a>
-      }
+      actions={<LoginLink Icon={RotateCcw}>Réessayer</LoginLink>}
     >
       La connexion avec Discord n’a pas abouti. Réessaie, et si ça échoue
       encore, signale-le dans le salon du staff sur Discord.

@@ -18,11 +18,12 @@ function sessionCookiesIn(cookies: { name: string }[]) {
   return cookies.filter(({ name }) => name === "__Host-session")
 }
 
-async function expectThemeColors(
+async function expectColorsInLight(
   page: Page,
   control: Locator,
   colors: Record<string, string>
 ) {
+  await page.emulateMedia({ colorScheme: "light" })
   await page.mouse.move(0, 0)
   const expected = await page.evaluate((colors) => {
     const probe = document.createElement("div")
@@ -80,12 +81,12 @@ test("a member without the staff role is refused in French, offered to log in ag
   ).toHaveCount(0)
   await expect(page.getByRole("banner", { includeHidden: true })).toHaveCount(0)
   expect(sessionCookiesIn(await page.context().cookies())).toEqual([])
-  await expectThemeColors(
+  await expectColorsInLight(
     page,
     page.getByRole("link", { name: "Se reconnecter" }),
     { "background-color": "--primary", color: "--primary-foreground" }
   )
-  await expectThemeColors(
+  await expectColorsInLight(
     page,
     page.getByRole("button", { name: "Se déconnecter" }),
     {
@@ -129,7 +130,7 @@ test("a staff member who loses the staff role lands on /login/refused at the nex
   await expect(
     page.getByRole("heading", { level: 1, name: "Ta session est terminée." })
   ).toBeVisible()
-  await expectThemeColors(
+  await expectColorsInLight(
     page,
     page.getByRole("link", { name: "Se connecter avec Discord" }),
     { "background-color": "--primary", color: "--primary-foreground" }
