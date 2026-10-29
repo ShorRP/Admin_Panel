@@ -42,21 +42,31 @@ function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
 }
 
-function items(html: string) {
+function heading(html: string) {
+  const [, title, after = ""] =
+    /<h2[^>]*>(.*?)<\/h2>(?:<p[^>]*>(.*?)<\/p>)?/.exec(html) ?? []
+  return { title, count: after === "" ? undefined : after }
+}
+
+function tiles(html: string) {
   return Array.from(
-    html.matchAll(/<li[^>]*>(.*?)<\/li>/g),
-    ([, item = ""]) => ({
+    html.matchAll(/<li([^>]*)><span[^>]*>(.*?)<\/span>(.*?)<\/li>/g),
+    ([, attributes = "", text, rest = ""]) => ({
+      title: /\stitle="([^"]*)"/.exec(attributes)?.[1],
+      text,
       word: /<input[^>]*type="hidden"[^>]*name="word"[^>]*value="([^"]*)"/.exec(
-        item
+        rest
       )?.[1],
       buttons: Array.from(
-        item.matchAll(
-          /(<button[^>]*>)(?:<svg([^>]*)>(.*?)<\/svg>)?(.*?)<\/button>/g
+        rest.matchAll(
+          /(<button[^>]*>)<svg([^>]*)>(.*?)<\/svg>(.*?)<\/button>/g
         ),
-        ([, tag = "", iconAttributes = "", iconDrawing, text]) => ({
+        ([, tag = "", iconAttributes = "", iconDrawing, content = ""]) => ({
           icon: iconDrawing,
           iconHidden: /\saria-hidden="true"/.test(iconAttributes),
-          text,
+          srOnlyName: /^<span class="sr-only">([^<]*)<\/span>$/.exec(
+            content
+          )?.[1],
           disabled: /\sdisabled=""/.test(tag),
         })
       ),
@@ -64,43 +74,50 @@ function items(html: string) {
   )
 }
 
-function removeButton(disabled: boolean) {
-  return { icon: drawing(X), iconHidden: true, text: "Retirer", disabled }
+function tile(word: string, disabled = false) {
+  return {
+    title: word,
+    text: word,
+    word,
+    buttons: [
+      {
+        icon: drawing(X),
+        iconHidden: true,
+        srOnlyName: `Retirer « ${word} »`,
+        disabled,
+      },
+    ],
+  }
 }
 
-test("each blocked word comes with its own « Retirer » form, its text after a hidden cross, under the count", () => {
+test("each blocked word is a tile under « La liste » and its count, that holds it whole in its title and removes it through a hidden cross named for assistive technologies alone", () => {
   const html = render(["abricot", "zèbre"])
 
-  expect(html).toContain("2 mots interdits sur 1 000 possibles.")
-  expect(items(html)).toEqual([
-    { word: "abricot", buttons: [removeButton(false)] },
-    { word: "zèbre", buttons: [removeButton(false)] },
-  ])
-  expect(html).toContain(">abricot<")
-  expect(html).toContain(">zèbre<")
+  expect(heading(html)).toEqual({
+    title: "La liste",
+    count: "2 mots interdits",
+  })
+  expect(tiles(html)).toEqual([tile("abricot"), tile("zèbre")])
 })
 
 test("a single blocked word is counted in the singular", () => {
-  expect(render(["foo"])).toContain("1 mot interdit sur 1 000 possibles.")
+  expect(heading(render(["foo"])).count).toBe("1 mot interdit")
 })
 
-test("an empty list says so in one sentence, and keeps both regions", () => {
+test("an empty list says so in one sentence in place of the count, and keeps both regions", () => {
   const html = render([])
 
+  expect(heading(html)).toEqual({ title: "La liste", count: undefined })
   expect(html).toContain("Aucun mot interdit pour l’instant.")
-  expect(html).not.toContain("possibles")
-  expect(items(html)).toEqual([])
+  expect(tiles(html)).toEqual([])
   expect(region(html, "status")).toEqual(EMPTY)
   expect(region(html, "alert")).toEqual(EMPTY)
 })
 
-test("while a removal is pending, every « Retirer » is disabled and the status reads « Retrait en cours… », with no icon", () => {
+test("while a removal is pending, every cross is disabled and the status reads « Retrait en cours… », with no icon", () => {
   const html = render(["abricot", "zèbre"], null, true)
 
-  expect(items(html).flatMap(({ buttons }) => buttons)).toEqual([
-    removeButton(true),
-    removeButton(true),
-  ])
+  expect(tiles(html)).toEqual([tile("abricot", true), tile("zèbre", true)])
   expect(region(html, "status")).toEqual({
     ...EMPTY,
     text: "Retrait en cours…",

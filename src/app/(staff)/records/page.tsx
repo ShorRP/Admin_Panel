@@ -11,7 +11,7 @@ import { FoundAccountsSkeleton } from "@/records/found-accounts-skeleton"
 import { searchAccounts, searchedText } from "@/records/search-accounts"
 import { requireModerationAccess } from "@/staff/require-staff-member"
 import { OrnamentRule } from "@/ui/ornament-rule"
-import { Overline } from "@/ui/overline"
+import { PageHeader } from "@/ui/page-header"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Modération" }
@@ -24,16 +24,14 @@ export default function RecordsPage({ searchParams }: PageProps<"/records">) {
       default="none"
     >
       <main className="flex flex-col gap-7">
-        <div className="flex max-w-160 flex-col gap-2.5">
-          <Overline>Fiches des comptes</Overline>
-          <h1 className="font-heading text-[2.375rem] leading-[1.05] font-medium tracking-[-0.01em]">
-            Modération
-          </h1>
-          <p className="text-[0.9375rem] leading-5.5 text-pretty text-muted-foreground">
-            Cherche un compte par le début de son nom d’utilisateur ou de son
-            pseudo sur le serveur, ou ouvre sa fiche par son ID ou sa mention.
-          </p>
-        </div>
+        <PageHeader
+          overline="Fiches des comptes"
+          title="Modération"
+          className="max-w-160"
+        >
+          Cherche un compte par le début de son nom d’utilisateur ou de son
+          pseudo sur le serveur, ou ouvre sa fiche par son ID ou sa mention.
+        </PageHeader>
         <OrnamentRule leadingLine />
         <div className="flex max-w-190 flex-col gap-7">
           <Suspense fallback={<AccountSearchFormSkeleton />}>

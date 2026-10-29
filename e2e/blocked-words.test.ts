@@ -5,13 +5,31 @@ import {
 } from "discord-api-types/v10"
 
 import { STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test } from "./fixtures"
+import { expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const PANEL_RULE_ID = "1500000000000000001"
 
 test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },
 })
+
+function keywordRule(id: string, name: string, keywords: string[]) {
+  return {
+    id,
+    guild_id: "1100000000000000000",
+    name,
+    creator_id: ALDIS.id,
+    event_type: AutoModerationRuleEventType.MessageSend,
+    trigger_type: AutoModerationRuleTriggerType.Keyword,
+    trigger_metadata: { keyword_filter: keywords },
+    actions: [{ type: AutoModerationActionType.BlockMessage }],
+    enabled: true,
+    exempt_roles: [],
+    exempt_channels: [],
+  }
+}
 
 function recordViewTransitionNames() {
   new MutationObserver((records) => {
@@ -88,6 +106,10 @@ function animationsByWord() {
   )
 }
 
+function capacity(page: Page) {
+  return page.getByRole("group", { name: "Capacité" })
+}
+
 function toastTransitions() {
   const properties = Array.from(
     document.querySelectorAll('[data-slot="toast"]'),
@@ -121,10 +143,11 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
+    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
     await checkAccessibility()
     await page.waitForFunction(() => document.activeViewTransition === null)
 
-    const field = page.getByLabel("Mot ou expression")
+    const field = page.getByLabel("Ajouter un mot ou une expression")
     await field.fill("foo")
     const entering = page.waitForFunction(animationsByWord, undefined, {
       polling: "raf",
@@ -141,8 +164,9 @@ test.describe("with motion, which this flow keeps", () => {
     await readToast("« foo » est maintenant un mot interdit.")
     await expect(field).toHaveValue("")
     await expect(
-      page.getByText("1 mot interdit sur 1 000 possibles.")
+      page.getByText("1 mot interdit", { exact: true })
     ).toBeVisible()
+    await expect(capacity(page)).toHaveText("Capacité1/ 1 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: ["foo"] } },
     ])
@@ -154,7 +178,7 @@ test.describe("with motion, which this flow keeps", () => {
     await page
       .getByRole("listitem")
       .filter({ hasText: "foo" })
-      .getByRole("button", { name: "Retirer" })
+      .getByRole("button", { name: "Retirer « foo »" })
       .click()
 
     expect(await (await leaving).jsonValue()).toEqual({
@@ -165,6 +189,7 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
+    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: [] } },
     ])
@@ -200,7 +225,7 @@ for (const { title, prefersReducedMotion } of [
       await logIn(ALDIS)
       await page.goto("/blocked-words")
       await page.waitForLoadState()
-      await page.getByLabel("Mot ou expression").fill("banane")
+      await page.getByLabel("Ajouter un mot ou une expression").fill("banane")
       const entering = page.waitForFunction(toastTransitions, undefined, {
         polling: "raf",
       })
@@ -227,24 +252,15 @@ for (const { title, prefersReducedMotion } of [
         discordState: {
           members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
           autoModerationRules: [
-            {
-              id: "1500000000000000001",
-              guild_id: "1100000000000000000",
-              name: "Mots interdits du panel",
-              creator_id: ALDIS.id,
-              event_type: AutoModerationRuleEventType.MessageSend,
-              trigger_type: AutoModerationRuleTriggerType.Keyword,
-              trigger_metadata: { keyword_filter: ["cerise", "abricot"] },
-              actions: [{ type: AutoModerationActionType.BlockMessage }],
-              enabled: true,
-              exempt_roles: [],
-              exempt_channels: [],
-            },
+            keywordRule(PANEL_RULE_ID, "Mots interdits du panel", [
+              "cerise",
+              "abricot",
+            ]),
           ],
         },
       })
 
-      test("a blocked word added between the two pushes the next one down while the one before stays still, then removed lets it back up, each word that moves sliding unless motion is reduced", async ({
+      test("a blocked word added between the two pushes the next one into the following cell of the grid while the one before stays still, then removed lets it back, each word that moves sliding unless motion is reduced", async ({
         page,
         logIn,
         checkAccessibility,
@@ -256,7 +272,7 @@ for (const { title, prefersReducedMotion } of [
         await logIn(ALDIS)
         await page.goto("/blocked-words")
         await expect(
-          page.getByText("2 mots interdits sur 1 000 possibles.")
+          page.getByText("2 mots interdits", { exact: true })
         ).toBeVisible()
         await page.waitForLoadState()
         await page.waitForFunction(() => document.activeViewTransition === null)
@@ -266,7 +282,7 @@ for (const { title, prefersReducedMotion } of [
           )
         ).toBe(prefersReducedMotion)
 
-        await page.getByLabel("Mot ou expression").fill("banane")
+        await page.getByLabel("Ajouter un mot ou une expression").fill("banane")
         const entering = page.waitForFunction(animationsByWord, undefined, {
           polling: "raf",
         })
@@ -288,7 +304,7 @@ for (const { title, prefersReducedMotion } of [
         })
         await words
           .filter({ hasText: "banane" })
-          .getByRole("button", { name: "Retirer" })
+          .getByRole("button", { name: "Retirer « banane »" })
           .click()
 
         expect(await (await leaving).jsonValue()).toEqual({
@@ -318,7 +334,7 @@ test("a write's toast stays while the staff member moves to another section, and
   await logIn(ALDIS)
   await page.goto("/blocked-words")
   await page.waitForLoadState()
-  await page.getByLabel("Mot ou expression").fill("foo")
+  await page.getByLabel("Ajouter un mot ou une expression").fill("foo")
   await page.getByRole("button", { name: "Ajouter" }).click()
   await readToast(added)
   await checkAccessibility()
@@ -336,7 +352,7 @@ test("a write's toast stays while the staff member moves to another section, and
   await expect(
     page.getByRole("heading", { level: 1, name: "Mots interdits" })
   ).toBeVisible()
-  await page.getByLabel("Mot ou expression").fill("bar")
+  await page.getByLabel("Ajouter un mot ou une expression").fill("bar")
   await page.getByRole("button", { name: "Ajouter" }).click()
   await readToast("« bar » est maintenant un mot interdit.")
   await expect(toast()).toHaveCount(1)
@@ -353,7 +369,7 @@ test("a refused blocked word stays in the field, which its message describes, an
   await logIn(ALDIS)
   await page.goto("/blocked-words")
 
-  const field = page.getByLabel("Mot ou expression")
+  const field = page.getByLabel("Ajouter un mot ou une expression")
   await field.fill(tooLong)
   await page.getByRole("button", { name: "Ajouter" }).click()
 
@@ -387,4 +403,82 @@ test("the page says whom the blocked words spare", async ({
     page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
   await checkAccessibility()
+})
+
+test.describe("with sixty blocked words, one of sixty characters, and another AutoMod rule", () => {
+  const longWord = "a".repeat(60)
+
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
+      autoModerationRules: [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", [
+          longWord,
+          ...Array.from(
+            { length: 59 },
+            (_, index) => `mot${String(index).padStart(2, "0")}`
+          ),
+        ]),
+        keywordRule("1500000000000000002", "Liens suspects", [
+          "bit.ly/",
+          "discord.gg/",
+          "gift.steam",
+        ]),
+      ],
+    },
+  })
+
+  test("the side column sits beside the list where both fit and sticks there as the page scrolls, then goes under it at 360 px, a rule opens its keywords, and a word too long for its tile is cut on screen while its tile gives it whole", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const list = page.getByRole("region", { name: "La liste" })
+    const exceptions = page.getByRole("region", { name: "Exceptions" })
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await expect(list.getByRole("listitem")).toHaveCount(60)
+    await expect(capacity(page)).toHaveText("Capacité60/ 1 000 mots")
+    await page.waitForLoadState()
+
+    const listBox = await list.boundingBox()
+    const exceptionsBox = await exceptions.boundingBox()
+    expect(exceptionsBox?.x).toBeGreaterThan(
+      (listBox?.x ?? Infinity) + (listBox?.width ?? 0)
+    )
+    await page.evaluate(() => {
+      window.scrollTo(0, 600)
+    })
+    await expect.poll(async () => (await exceptions.boundingBox())?.y).toBe(24)
+
+    const rule = page
+      .getByRole("listitem")
+      .filter({ hasText: "Liens suspects" })
+    const summary = rule.locator("summary")
+    await expect(summary).toHaveText("Liens suspects3 mots-clés")
+    await summary.click()
+    await expect(rule.getByRole("listitem")).toHaveText([
+      "bit.ly/",
+      "discord.gg/",
+      "gift.steam",
+    ])
+
+    const longTile = list.getByRole("listitem").filter({ hasText: longWord })
+    const longText = longTile.getByText(longWord, { exact: true })
+    await expect(longTile).toHaveAttribute("title", longWord)
+    await expect(longText).toBeVisible()
+    expect(
+      await longText.evaluate(
+        ({ scrollWidth, clientWidth }) => scrollWidth > clientWidth
+      )
+    ).toBe(true)
+    await checkAccessibility()
+
+    await page.setViewportSize({ width: 360, height: 720 })
+    const narrowListBox = await list.boundingBox()
+    expect((await exceptions.boundingBox())?.y).toBeGreaterThanOrEqual(
+      (narrowListBox?.y ?? Infinity) + (narrowListBox?.height ?? 0)
+    )
+  })
 })

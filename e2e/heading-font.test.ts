@@ -99,11 +99,7 @@ test("every page's h1 and h2, and the sidebar's « Shor », take EB Garamond, wh
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
-  await expectHeadingsInEbGaramond([
-    "Shor",
-    "Mots interdits",
-    "Autres règles AutoMod du serveur",
-  ])
+  await expectHeadingsInEbGaramond(["Shor", "Mots interdits", "La liste"])
   await checkAccessibility()
 
   await page

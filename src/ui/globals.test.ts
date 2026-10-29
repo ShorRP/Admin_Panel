@@ -25,6 +25,7 @@ const TEXT_PAIRS = [
   ["foreground", "background"],
   ["muted-foreground", "background"],
   ["muted-foreground", "muted"],
+  ["foreground", "muted"],
   ["muted-foreground", "card"],
   ["muted-foreground", "popover"],
   ["muted-foreground", "accent"],
@@ -245,11 +246,14 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     expect(themeContrast(theme, text, [surface])).toBeGreaterThanOrEqual(4.5)
   })
 
-  test("text in primary-foreground reaches 4.5:1 on primary/90 on background, the default button's hover fill", () => {
-    expect(
-      themeContrast(theme, "primary-foreground", ["background", "primary/90"])
-    ).toBeGreaterThanOrEqual(4.5)
-  })
+  test.each(["background", "card"])(
+    "text in primary-foreground reaches 4.5:1 on primary/90 on %s, the default button's hover fill",
+    (surface) => {
+      expect(
+        themeContrast(theme, "primary-foreground", [surface, "primary/90"])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
 
   test.each(["background", "card"])(
     "the field's border, input, reaches 3:1 on %s",
@@ -299,14 +303,16 @@ test.each(["background", "card"])(
 )
 
 test.each([
-  ["foreground", "input/30"],
-  ["foreground", "input/50"],
-  ["muted-foreground", "input/30"],
+  ["foreground", "input/30", "background"],
+  ["foreground", "input/50", "background"],
+  ["muted-foreground", "input/30", "background"],
+  ["foreground", "input/30", "card"],
+  ["muted-foreground", "input/30", "card"],
 ])(
-  "in dark, text in %s reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
-  (text, fill) => {
+  "in dark, text in %s reaches 4.5:1 on %s on %s, the fill of the field or of the outline button",
+  (text, fill, surface) => {
     expect(
-      themeContrast(themes.dark, text, ["background", fill])
+      themeContrast(themes.dark, text, [surface, fill])
     ).toBeGreaterThanOrEqual(4.5)
   }
 )
