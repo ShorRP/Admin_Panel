@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react"
 import { connection } from "next/server"
 
+import { readBlockedWordCount } from "@/blocked-words/read-blocked-word-count"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
@@ -21,6 +22,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
             </Suspense>
           }
           opensModeration={opensModerationOnceRead(staffMember)}
+          blockedWordCount={currentBlockedWordCount(staffMember)}
         />
         <div className="min-w-0 flex-1 px-[clamp(1.25rem,4vw,3.5rem)] pt-11 pb-24">
           {children}
@@ -34,6 +36,11 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
 async function currentStaffMember() {
   await connection()
   return await requireStaffMember(createDiscordApi())
+}
+
+async function currentBlockedWordCount(staffMember: Promise<StaffMember>) {
+  await connection()
+  return await readBlockedWordCount(createDiscordApi(), staffMember)
 }
 
 async function CurrentStaffMemberIdentity({

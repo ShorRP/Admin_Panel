@@ -358,6 +358,60 @@ test("a write's toast stays while the staff member moves to another section, and
   await expect(toast()).toHaveCount(1)
 })
 
+test("the count beside « Mots interdits » follows each blocked word added and removed, in the sidebar, then in the bar's menu on a 360 px screen", async ({
+  page,
+  logIn,
+  checkAccessibility,
+  readToast,
+}) => {
+  const field = page.getByLabel("Ajouter un mot ou une expression")
+  const remove = page.getByRole("button", { name: "Retirer « foo »" })
+  const sidebarLink = page
+    .getByRole("complementary")
+    .getByRole("link", { name: /^Mots interdits/ })
+  const openMenu = page
+    .getByRole("banner")
+    .getByRole("button", { name: "Ouvrir le menu" })
+  const menu = page.getByRole("dialog", { name: "Menu" })
+  const menuLink = menu.getByRole("link", { name: /^Mots interdits/ })
+
+  await logIn(ALDIS)
+  await page.goto("/blocked-words")
+  await expect(sidebarLink).toHaveAccessibleName("Mots interdits 0 mot")
+  await page.waitForLoadState()
+
+  await field.fill("foo")
+  await page.getByRole("button", { name: "Ajouter" }).click()
+  await readToast("« foo » est maintenant un mot interdit.")
+  await expect(sidebarLink).toHaveAccessibleName("Mots interdits 1 mot")
+  await expect(sidebarLink).toHaveText("Mots interdits11 mot")
+  await checkAccessibility()
+
+  await remove.click()
+  await readToast("« foo » n’est plus un mot interdit.")
+  await expect(sidebarLink).toHaveAccessibleName("Mots interdits 0 mot")
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  await openMenu.click()
+  await expect(menuLink).toHaveAccessibleName("Mots interdits 0 mot")
+  await page.keyboard.press("Escape")
+  await expect(menu).toBeHidden()
+
+  await field.fill("foo")
+  await page.getByRole("button", { name: "Ajouter" }).click()
+  await readToast("« foo » est maintenant un mot interdit.")
+  await openMenu.click()
+  await expect(menuLink).toHaveAccessibleName("Mots interdits 1 mot")
+  await checkAccessibility()
+  await page.keyboard.press("Escape")
+  await expect(menu).toBeHidden()
+
+  await remove.click()
+  await readToast("« foo » n’est plus un mot interdit.")
+  await openMenu.click()
+  await expect(menuLink).toHaveAccessibleName("Mots interdits 0 mot")
+})
+
 test("a refused blocked word stays in the field, which its message describes, and makes no toast", async ({
   page,
   logIn,

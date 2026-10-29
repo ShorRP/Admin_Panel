@@ -13,6 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { prerender } from "react-dom/static"
 import { expect, test } from "vitest"
 
+import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { ShorLogo } from "./shor-logo"
 import { StaffHeader } from "./staff-header"
 
@@ -78,13 +79,22 @@ function insideElement(html: string, element: "aside" | "header") {
 
 async function render(
   currentPath: string,
-  { member = "aldis", opensModeration = false } = {}
+  {
+    member = "aldis",
+    opensModeration = false,
+    blockedWordCount = null,
+  }: {
+    member?: string
+    opensModeration?: boolean
+    blockedWordCount?: number | null
+  } = {}
 ) {
   const { prelude } = await prerender(
     <StaffHeader
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      blockedWordCount={Promise.resolve(blockedWordCount)}
     />,
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
   )
@@ -202,6 +212,46 @@ test("each section's link shows its icon before its name, hidden from assistive 
       image: { drawing: drawing(<Gavel />), hidden: true },
     },
   ])
+})
+
+test("the blocked words' link shows their count's badge after the section's name, once Discord gives it, and no other section shows one", async () => {
+  const sections = links(
+    (
+      await render("/audit-log", {
+        opensModeration: true,
+        blockedWordCount: 12,
+      })
+    ).sidebar
+  ).slice(1)
+
+  expect(
+    sections.map(({ text, content }) => ({
+      text,
+      badge: content.includes(
+        renderToStaticMarkup(<BlockedWordCountBadge count={12} />)
+      ),
+    }))
+  ).toEqual([
+    { text: "Mots interdits1212 mots", badge: true },
+    { text: "Journal d’audit", badge: false },
+    { text: "Modération", badge: false },
+  ])
+})
+
+test("the badge shows 0 when the panel's rule holds no blocked word", async () => {
+  const [, blockedWords] = links(
+    (await render("/blocked-words", { blockedWordCount: 0 })).sidebar
+  )
+
+  expect(blockedWords?.text).toBe("Mots interdits00 mot")
+})
+
+test("no count from Discord leaves the blocked words' link without a badge", async () => {
+  const [, blockedWords] = links(
+    (await render("/blocked-words", { blockedWordCount: null })).sidebar
+  )
+
+  expect(blockedWords?.text).toBe("Mots interdits")
 })
 
 test('the current section\'s link alone carries aria-current="page"', async () => {

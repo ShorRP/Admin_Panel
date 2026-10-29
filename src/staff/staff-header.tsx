@@ -10,6 +10,7 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
 
+import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { Button } from "@/ui/button"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { Overline } from "@/ui/overline"
@@ -30,15 +31,23 @@ type Section = {
   href: string
   name: string
   Icon: LucideIcon
+  badge?: ReactNode
   current: "page" | undefined
 }
 
 type SectionLinkComponent = ComponentType<{ section: Section }>
 
-const SECTIONS = [
-  { href: "/blocked-words", name: "Mots interdits", Icon: Ban },
-  { href: "/audit-log", name: "Journal d’audit", Icon: ScrollText },
-] as const
+const BLOCKED_WORDS = {
+  href: "/blocked-words",
+  name: "Mots interdits",
+  Icon: Ban,
+}
+
+const AUDIT_LOG = {
+  href: "/audit-log",
+  name: "Journal d’audit",
+  Icon: ScrollText,
+}
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
@@ -56,12 +65,27 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  blockedWordCount: Promise<number | null>
 }) {
-  const sections = SECTIONS.map((section) => withCurrent(section, currentPath))
+  const sections = [
+    withCurrent(
+      {
+        ...BLOCKED_WORDS,
+        badge: (
+          <Suspense fallback={null}>
+            <BlockedWordCount count={blockedWordCount} />
+          </Suspense>
+        ),
+      },
+      currentPath
+    ),
+    withCurrent(AUDIT_LOG, currentPath),
+  ]
   const moderation = withCurrent(MODERATION, currentPath)
   return (
     <>
@@ -142,6 +166,11 @@ function ShownWhen({
   children: ReactNode
 }) {
   return use(shown) ? children : null
+}
+
+function BlockedWordCount({ count }: { count: Promise<number | null> }) {
+  const read = use(count)
+  return read === null ? null : <BlockedWordCountBadge count={read} />
 }
 
 function PanelLink({
@@ -234,7 +263,7 @@ function CurrentSectionBar() {
 }
 
 function SidebarSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -248,6 +277,7 @@ function SidebarSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && (
           <ViewTransition
             name="current-section-bar"
@@ -263,7 +293,7 @@ function SidebarSectionLink({
 }
 
 function MenuSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -277,6 +307,7 @@ function MenuSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && <CurrentSectionBar />}
       </SheetClose>
     </li>
