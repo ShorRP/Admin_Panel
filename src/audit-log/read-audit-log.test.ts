@@ -4,17 +4,20 @@ import {
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
 } from "discord-api-types/v10"
-import { expect, test } from "vitest"
+import { expect, onTestFinished, test, vi } from "vitest"
 
 import { addBlockedWord } from "@/blocked-words/add-blocked-word"
 import { removeBlockedWord } from "@/blocked-words/remove-blocked-word"
 import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
+import { changeTimeout } from "@/sanctions/change-timeout"
 import { findStaffMember } from "@/staff/staff-member"
-import { readAuditLog } from "./read-audit-log"
+import { readAuditLog, type AuditLogChange } from "./read-audit-log"
 
 const STAFF_ROLE_ID = "1300000000000000000"
+
+const MODERATION_ROLE_ID = "1300000000000000002"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -27,7 +30,7 @@ function discordWithStaff() {
 async function staffMemberOn(discord: FakeDiscord) {
   const staffMember = await findStaffMember(
     discord,
-    { staffRoleId: STAFF_ROLE_ID, moderationRoleIds: [] },
+    { staffRoleId: STAFF_ROLE_ID, moderationRoleIds: [MODERATION_ROLE_ID] },
     ALDIS.id
   )
   if (staffMember === null) {
@@ -42,12 +45,224 @@ function form(word: string) {
   return data
 }
 
-function shown(changes: { memberName: string; description: string }[]) {
-  return changes.map(({ memberName, description }) => ({
-    memberName,
-    description,
+function shown(changes: AuditLogChange[]) {
+  return changes.map((change) => ({
+    memberName: change.memberName,
+    description: change.kind === "rule" ? change.description : null,
   }))
 }
+
+const NOW = new Date("2026-10-28T14:00:00.000Z")
+
+function freezeTime() {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(NOW)
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
+const PANEL_ROLE = {
+  id: "1300000000000000021",
+  name: "Shor Panel",
+  position: 3,
+}
+
+const GUARD_ROLE = { id: "1300000000000000010", name: "Garde", position: 1 }
+
+const LYRA = {
+  id: "1400000000000000003",
+  username: "lyra",
+  global_name: "Lyra",
+}
+
+function discordWithModerator() {
+  return new FakeDiscord({
+    roles: [
+      { id: STAFF_ROLE_ID, name: "Staff", position: 6 },
+      { id: MODERATION_ROLE_ID, name: "Modération", position: 5 },
+      PANEL_ROLE,
+      GUARD_ROLE,
+    ],
+    applicationRoles: [PANEL_ROLE.id],
+    members: [
+      {
+        user: ALDIS,
+        avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8",
+        roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID],
+      },
+      { user: BRYN, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+      { user: LYRA, roles: [GUARD_ROLE.id] },
+    ],
+  })
+}
+
+function sanctionChanges(changes: AuditLogChange[]) {
+  return changes.flatMap((change) =>
+    change.kind === "sanction-change"
+      ? [
+          {
+            memberName: change.memberName,
+            sanctionChange: change.sanctionChange,
+            account: change.account,
+            reason: change.reason,
+          },
+        ]
+      : []
+  )
+}
+
+function timeOutForm(reason: string) {
+  const data = new FormData()
+  data.set("change", "time-out")
+  data.set("userId", LYRA.id)
+  data.set("duration", "3600")
+  data.set("reason", reason)
+  return data
+}
+
+test("a timeout given through the panel shows among the changes to the blocked words, under its staff member's name and avatar, with its end, its account and its reason", async () => {
+  freezeTime()
+  const discord = discordWithModerator()
+  const moderator = await staffMemberOn(discord)
+  await addBlockedWord(discord, moderator, form("foo"))
+  await changeTimeout(discord, moderator, timeOutForm("Insultes répétées"))
+  await addBlockedWord(discord, moderator, form("bar"))
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(changes).toEqual([
+    expect.objectContaining({ kind: "rule", description: "Ajout de « bar »" }),
+    {
+      kind: "sanction-change",
+      id: expect.any(String),
+      date: NOW,
+      memberName: "aldis",
+      avatarUrl:
+        "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
+      sanctionChange: {
+        kind: "timeout",
+        end: new Date("2026-10-28T15:00:00.000Z"),
+      },
+      account: { id: LYRA.id, name: "Lyra" },
+      reason: "Insultes répétées",
+    },
+    expect.objectContaining({ kind: "rule", description: "Ajout de « foo »" }),
+  ])
+})
+
+test("timeouts, kicks and bans made in Discord, and their lifting, show under their author's Discord name, with the reason typed there, if any, before the panel's rule exists", async () => {
+  const discord = discordWithModerator()
+  discord.modifyMemberAs(
+    BRYN.id,
+    LYRA.id,
+    { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+    "Spam"
+  )
+  discord.modifyMemberAs(BRYN.id, LYRA.id, {
+    communication_disabled_until: null,
+  })
+  discord.removeMemberAs(BRYN.id, LYRA.id, "Provocations")
+  discord.createBanAs(BRYN.id, LYRA.id, "Retour sous un autre nom")
+  discord.removeBanAs(BRYN.id, LYRA.id)
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  const byBryn = {
+    memberName: "Bryn la Rouge",
+    account: { id: LYRA.id, name: "Lyra" },
+  }
+  expect(sanctionChanges(changes)).toEqual([
+    { ...byBryn, sanctionChange: { kind: "ban-lift" }, reason: null },
+    {
+      ...byBryn,
+      sanctionChange: { kind: "ban" },
+      reason: "Retour sous un autre nom",
+    },
+    { ...byBryn, sanctionChange: { kind: "kick" }, reason: "Provocations" },
+    { ...byBryn, sanctionChange: { kind: "timeout-lift" }, reason: null },
+    {
+      ...byBryn,
+      sanctionChange: {
+        kind: "timeout",
+        end: new Date("2026-10-29T14:00:00.000Z"),
+      },
+      reason: "Spam",
+    },
+  ])
+})
+
+const INSULTS_RULE = {
+  name: "Insultes",
+  event_type: AutoModerationRuleEventType.MessageSend,
+  trigger_type: AutoModerationRuleTriggerType.Keyword,
+  trigger_metadata: { keyword_filter: ["crétin"] },
+  actions: [
+    {
+      type: AutoModerationActionType.Timeout,
+      metadata: { duration_seconds: 600 },
+    },
+  ],
+}
+
+test("AutoMod's timeouts never show, nor a change to a member but their timeout", async () => {
+  const discord = discordWithModerator()
+  const insults = discord.createAutoModerationRuleAs(BRYN.id, INSULTS_RULE)
+  discord.timeOutByAutoModeration(insults.id, LYRA.id)
+  discord.modifyMemberAs(BRYN.id, LYRA.id, { nick: "Lyra des Brumes" })
+
+  expect((await readAuditLog(discord, undefined)).changes).toEqual([])
+})
+
+test("a sanction against an account the audit log does not name shows it as « Compte inconnu »", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: BRYN }],
+    auditLogEntries: [
+      {
+        id: "1563530499194880000",
+        action_type: AuditLogEvent.MemberKick,
+        target_id: "1400000000000000099",
+        user_id: BRYN.id,
+      },
+    ],
+  })
+
+  const { changes } = await readAuditLog(discord, undefined)
+
+  expect(sanctionChanges(changes)).toEqual([
+    {
+      memberName: "Bryn la Rouge",
+      sanctionChange: { kind: "kick" },
+      account: { id: "1400000000000000099", name: "Compte inconnu" },
+      reason: null,
+    },
+  ])
+})
+
+test("a page holds the 50 newest changes, to the blocked words and to sanctions together, and its cursor leads to the older ones", async () => {
+  const discord = discordWithModerator()
+  const staffMember = await staffMemberOn(discord)
+  for (let index = 1; index <= 30; index++) {
+    await addBlockedWord(discord, staffMember, form(`mot${index}`))
+    discord.modifyMemberAs(
+      BRYN.id,
+      LYRA.id,
+      { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+      `Motif ${index}`
+    )
+  }
+
+  const newest = await readAuditLog(discord, undefined)
+  const older = await readAuditLog(discord, newest.older)
+
+  expect(newest.changes).toHaveLength(50)
+  expect(sanctionChanges(newest.changes)[0]?.reason).toBe("Motif 30")
+  expect(shown(newest.changes).at(-1)?.description).toBe("Ajout de « mot6 »")
+  expect(older.older).toBeNull()
+  expect(older.changes).toHaveLength(10)
+  expect(sanctionChanges(older.changes)[0]?.reason).toBe("Motif 5")
+  expect(shown(older.changes).at(-1)?.description).toBe("Ajout de « mot1 »")
+})
 
 test("the blocked words added and removed through the panel show newest first, under the staff member's name", async () => {
   const discord = discordWithStaff()
@@ -124,7 +339,7 @@ test("changes to other AutoMod rules never show, however many there are", async 
   ])
 })
 
-test("before the panel's rule exists, the audit log shows no change, even with other AutoMod rules changed", async () => {
+test("before the panel's rule exists, no change to an AutoMod rule shows", async () => {
   const discord = discordWithStaff()
   discord.createAutoModerationRuleAs(ALDIS.id, LINKS_RULE)
 
@@ -143,8 +358,8 @@ test("a page holds the 50 newest changes, and its cursor leads to the older ones
 
   expect(newest.before).toBeNull()
   expect(newest.changes).toHaveLength(50)
-  expect(newest.changes[0]?.description).toBe("Ajout de « mot51 »")
-  expect(newest.changes.at(-1)?.description).toBe("Ajout de « mot2 »")
+  expect(shown(newest.changes)[0]?.description).toBe("Ajout de « mot51 »")
+  expect(shown(newest.changes).at(-1)?.description).toBe("Ajout de « mot2 »")
   expect(older.before).toBe(newest.older)
   expect(older.older).toBeNull()
   expect(shown(older.changes)).toEqual([

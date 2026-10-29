@@ -526,7 +526,7 @@ export function describeDiscordApiContract(
       })
     })
 
-    test("a timeout sets its end on the member, a new one replaces it, and lifting it clears it, each in the audit log with its reason", async () => {
+    test("a timeout sets its end on the member, a new one replaces it, and lifting it clears it, each in the audit log with its reason, whose users name the member", async () => {
       const { discord, member } = connected()
       onTestFinished(() => liftTimeout(discord, member))
       const first = secondsFromNow(60)
@@ -562,6 +562,11 @@ export function describeDiscordApiContract(
         user_id: (await discord.getApplicationUser()).id,
       })
       expect(timeoutChangeOf(timeOutEntry)?.new_value).toBe(first.toISOString())
+      const updates = await discord.getAuditLog({
+        action_type: AuditLogEvent.MemberUpdate,
+        limit: 100,
+      })
+      expect(updates.users.map(({ id }) => id)).toContain(member)
       expect(timeoutChangeOf(await memberUpdateWith(discord, replace))).toEqual(
         { old_value: first.toISOString(), new_value: second.toISOString() }
       )

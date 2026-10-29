@@ -6,6 +6,7 @@ import { AuditLog } from "./audit-log"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
 
 const ADDITION: AuditLogChange = {
+  kind: "rule",
   id: "1563530499194880000",
   date: new Date("2026-10-24T12:32:00.000Z"),
   memberName: "aldis",
@@ -15,6 +16,7 @@ const ADDITION: AuditLogChange = {
 }
 
 const DISCORD_CHANGE: AuditLogChange = {
+  kind: "rule",
   id: "1563530499194880001",
   date: new Date("2026-12-01T09:05:00.000Z"),
   memberName: "Bryn la Rouge",
@@ -22,10 +24,31 @@ const DISCORD_CHANGE: AuditLogChange = {
   description: "Règle modifiée dans Discord",
 }
 
-function render(page: Partial<AuditLogPage>) {
+const TIMEOUT: AuditLogChange = {
+  kind: "sanction-change",
+  id: "1563530499194880002",
+  date: new Date("2026-12-02T10:00:00.000Z"),
+  memberName: "aldis",
+  avatarUrl: null,
+  sanctionChange: {
+    kind: "timeout",
+    end: new Date("2026-12-02T11:00:00.000Z"),
+  },
+  account: { id: "1400000000000000003", name: "Lyra" },
+  reason: "Insultes répétées",
+}
+
+function render(page: Partial<AuditLogPage>, opensModeration = false) {
   return renderToStaticMarkup(
-    <AuditLog page={{ changes: [], before: null, older: null, ...page }} />
+    <AuditLog
+      page={{ changes: [], before: null, older: null, ...page }}
+      opensModeration={opensModeration}
+    />
   )
+}
+
+function paragraphs(cell = "") {
+  return Array.from(cell.matchAll(/<p[^>]*>(.*?)<\/p>/g), ([, line]) => line)
 }
 
 function cells(html: string, tag: "th" | "td") {
@@ -120,11 +143,52 @@ test("each change shows its staff member's initials, hidden from assistive techn
   ])
 })
 
+test("a sanction says what changed, then the account it targets, then its reason", () => {
+  const html = render({ changes: [TIMEOUT] })
+
+  expect(rows(html).map(([, member]) => member)).toEqual(["aldis"])
+  expect(paragraphs(cells(html, "td")[0]?.[2])).toEqual([
+    'Exclusion temporaire jusqu’au <time dateTime="2026-12-02T11:00:00.000Z">2 déc. 2026, 12:00</time>',
+    "Compte : Lyra",
+    "Motif : Insultes répétées",
+  ])
+})
+
+test("a sanction without a reason says it has none", () => {
+  const html = render({
+    changes: [{ ...TIMEOUT, sanctionChange: { kind: "kick" }, reason: null }],
+  })
+
+  expect(paragraphs(cells(html, "td")[0]?.[2])).toEqual([
+    "Expulsion",
+    "Compte : Lyra",
+    "Aucun motif",
+  ])
+})
+
+test("for a staff member who moderates, a sanction's account links to its record", () => {
+  expect(links(render({ changes: [TIMEOUT] }, true))).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Lyra",
+      href: "/records/1400000000000000003",
+    },
+  ])
+})
+
+test("for a staff member who does not moderate, a sanction's account links nowhere", () => {
+  const html = render({ changes: [TIMEOUT] }, false)
+
+  expect(links(html)).toEqual([])
+  expect(text(html)).toContain("Compte : Lyra")
+})
+
 test("an empty audit log says so in one sentence, with no table", () => {
   const html = render({})
 
   expect(html).toContain(
-    "<p>Aucun changement des mots interdits ces 45 derniers jours.</p>"
+    "<p>Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.</p>"
   )
   expect(html).not.toContain("<table")
 })
