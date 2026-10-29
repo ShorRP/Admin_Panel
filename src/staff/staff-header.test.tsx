@@ -1,5 +1,14 @@
-import type { ReactElement } from "react"
-import { Ban, Gavel, LogOut, Menu, ScrollText } from "lucide-react"
+import type { ReactElement, ReactNode } from "react"
+import {
+  Ban,
+  Gavel,
+  LogOut,
+  Menu,
+  Monitor,
+  Moon,
+  ScrollText,
+  Sun,
+} from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { prerender } from "react-dom/static"
 import { expect, test } from "vitest"
@@ -69,13 +78,22 @@ function insideElement(html: string, element: "aside" | "header") {
 
 async function render(
   currentPath: string,
-  { member = "aldis", opensModeration = false } = {}
+  {
+    member = "aldis",
+    opensModeration = false,
+    blockedWordCount = null,
+  }: {
+    member?: string
+    opensModeration?: boolean
+    blockedWordCount?: ReactNode
+  } = {}
 ) {
   const { prelude } = await prerender(
     <StaffHeader
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      blockedWordCount={blockedWordCount}
     />,
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
   )
@@ -195,6 +213,32 @@ test("each section's link shows its icon before its name, hidden from assistive 
   ])
 })
 
+test("the blocked words' link shows the count it is given after the section's name, and no other section shows it, whichever is current", async () => {
+  const count = <span id="blocked-word-count">12</span>
+  const countMarkup = renderToStaticMarkup(count)
+  for (const currentPath of ["/blocked-words", "/audit-log"]) {
+    const sections = links(
+      (
+        await render(currentPath, {
+          opensModeration: true,
+          blockedWordCount: count,
+        })
+      ).sidebar
+    ).slice(1)
+
+    expect(
+      sections.map(({ content }) => ({
+        countAfterName: content.startsWith(`Mots interdits${countMarkup}`),
+        count: content.includes(countMarkup),
+      }))
+    ).toEqual([
+      { countAfterName: true, count: true },
+      { countAfterName: false, count: false },
+      { countAfterName: false, count: false },
+    ])
+  }
+})
+
 test('the current section\'s link alone carries aria-current="page"', async () => {
   expect(await currentLinks("/blocked-words")).toEqual([
     { text: "Mots interdits", href: "/blocked-words", current: "page" },
@@ -222,14 +266,33 @@ test("the moderation section is current on its search and on every record", asyn
   expect(await currentLinks("/recordsx")).toEqual([])
 })
 
-test("the sidebar's foot names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
+test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
   const { sidebar } = await render("/blocked-words", {
     member: "Brynja la Rouge",
   })
   const foot = sidebar.slice(sidebar.indexOf("</nav>"))
 
-  expect(textOf(foot)).toBe("Brynja la RougeSe déconnecter")
+  expect(textOf(foot)).toBe("AutoClairSombreBrynja la RougeSe déconnecter")
+  expect(/<div role="group" aria-label="Thème"/.test(foot)).toBe(true)
+  expect(
+    Array.from(
+      foot.matchAll(/<button[^>]*aria-pressed="true"[^>]*>(.*?)<\/button>/g),
+      ([, content = ""]) => textOf(content)
+    )
+  ).toEqual(["Auto"])
   expect(buttons(foot)).toEqual([
+    {
+      content: "Auto",
+      image: { drawing: drawing(<Monitor />), hidden: true },
+    },
+    {
+      content: "Clair",
+      image: { drawing: drawing(<Sun />), hidden: true },
+    },
+    {
+      content: "Sombre",
+      image: { drawing: drawing(<Moon />), hidden: true },
+    },
     {
       content: '<span class="sr-only">Se déconnecter</span>',
       image: { drawing: drawing(<LogOut />), hidden: true },

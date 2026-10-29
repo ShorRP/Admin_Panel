@@ -1,19 +1,52 @@
 import Link from "next/link"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { cn } from "cn"
+import {
+  ArrowLeft,
+  ArrowRight,
+  Ban,
+  ExternalLink,
+  ShieldBan,
+  Timer,
+  TimerOff,
+  Undo2,
+  UserX,
+} from "lucide-react"
 
 import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
 import { buttonVariants } from "@/ui/button"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { ParisTime } from "@/ui/paris-time"
+import { auditLogHref } from "./audit-log-href"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/ui/table"
-import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
+  CHANGE_BODY_CLASSES,
+  CHANGE_ICON_TILE_CLASSES,
+  CHANGE_ROW_CLASSES,
+  CHANGE_STAFF_MEMBER_CLASSES,
+  CHANGE_TIME_CLASSES,
+  DAY_CHANGES_CLASSES,
+  DAY_HEADER_CLASSES,
+  NO_CHANGE_CLASSES,
+  TEXT_LINK_CLASSES,
+} from "./audit-log-layout"
+import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
+import { ParisDay } from "./paris-day"
+import type {
+  AuditLogChange,
+  AuditLogDay,
+  AuditLogPage,
+} from "./read-audit-log"
+
+const CHANGE_ICONS = {
+  word: { Icon: Ban, color: "text-muted-foreground" },
+  rule: { Icon: ExternalLink, color: "text-muted-foreground" },
+  timeout: { Icon: Timer, color: "text-warning" },
+  "timeout-lift": { Icon: TimerOff, color: "text-success" },
+  kick: { Icon: UserX, color: "text-destructive" },
+  ban: { Icon: ShieldBan, color: "text-destructive" },
+  "ban-lift": { Icon: Undo2, color: "text-success" },
+}
+
+type ChangeIconKind = keyof typeof CHANGE_ICONS
 
 export function AuditLog({
   page,
@@ -22,85 +55,169 @@ export function AuditLog({
   page: AuditLogPage
   opensModeration: boolean
 }) {
-  const { changes, before, older } = page
+  const { type, days, before, older } = page
+  const oldest = days.at(-1)?.changes.at(-1)
   return (
-    <div className="flex flex-col gap-4">
-      {changes.length === 0 ? (
-        <p>
-          {before === null
-            ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
-            : "Aucun changement plus ancien."}
-        </p>
+    <div className="flex flex-col gap-7">
+      <AuditLogTypeFilter type={type} />
+      {days.length === 0 ? (
+        <NoChange type={type} before={before} />
       ) : (
-        <Table className="max-sm:block">
-          <TableHeader className="max-sm:sr-only">
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Membre du staff</TableHead>
-              <TableHead>Changement</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="max-sm:block">
-            {changes.map((change) => (
-              <TableRow
-                key={change.id}
-                className="max-sm:flex max-sm:flex-col max-sm:py-2"
-              >
-                <TableCell className="max-sm:px-0 max-sm:py-0.5">
-                  <ParisTime date={change.date} />
-                </TableCell>
-                <TableCell className="whitespace-normal max-sm:px-0 max-sm:py-0.5">
-                  <div className="flex items-center gap-2">
-                    <MemberAvatar
-                      name={change.memberName}
-                      avatarUrl={change.avatarUrl}
-                    />
-                    <div className="min-w-0 wrap-anywhere">
-                      {change.memberName}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="wrap-anywhere whitespace-normal max-sm:px-0 max-sm:py-0.5">
-                  {change.kind === "rule" ? (
-                    change.description
-                  ) : (
-                    <SanctionChangeDescription
-                      change={change}
-                      opensModeration={opensModeration}
-                    />
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        days.map((day) => (
+          <ChangesOfDay
+            key={day.date.toISOString()}
+            day={day}
+            opensModeration={opensModeration}
+          />
+        ))
       )}
-      {(before !== null || older !== null) && (
-        <nav
-          aria-label="Pages du journal d’audit"
-          className="flex flex-wrap gap-2"
-        >
-          {before !== null && (
-            <Link
-              href="/audit-log"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <ArrowLeft aria-hidden data-icon="inline-start" />
-              Revenir aux plus récents
-            </Link>
+      {(oldest !== undefined || before !== null || older !== null) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          {oldest !== undefined && (
+            <p className="text-xs text-muted-foreground">
+              Jusqu’au <ParisDay date={oldest.date} dateStyle="medium" />
+            </p>
           )}
-          {older !== null && (
-            <Link
-              href={`/audit-log?before=${older}`}
-              className={buttonVariants({ variant: "outline" })}
+          {(before !== null || older !== null) && (
+            <nav
+              aria-label="Pages du journal d’audit"
+              className="ms-auto flex flex-wrap gap-2"
             >
-              <ArrowRight aria-hidden data-icon="inline-start" />
-              Plus anciens
-            </Link>
+              {before !== null && (
+                <Link
+                  href={auditLogHref({ type })}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <ArrowLeft aria-hidden data-icon="inline-start" />
+                  Revenir aux plus récents
+                </Link>
+              )}
+              {older !== null && (
+                <Link
+                  href={auditLogHref({ type, before: older })}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <ArrowRight aria-hidden data-icon="inline-start" />
+                  Plus anciens
+                </Link>
+              )}
+            </nav>
           )}
-        </nav>
+        </div>
       )}
     </div>
+  )
+}
+
+function NoChange({ type, before }: Pick<AuditLogPage, "type" | "before">) {
+  return (
+    <div className={cn("flex flex-col items-center gap-3", NO_CHANGE_CLASSES)}>
+      <p>{noChangeMessage(type, before)}</p>
+      {type !== null && <ResetLink />}
+    </div>
+  )
+}
+
+function noChangeMessage(
+  type: AuditLogPage["type"],
+  before: AuditLogPage["before"]
+) {
+  if (before !== null) {
+    return "Aucun changement plus ancien."
+  }
+  return type === null
+    ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
+    : "Aucun changement de ce type ces 45 derniers jours."
+}
+
+function ChangesOfDay({
+  day: { date, changes },
+  opensModeration,
+}: {
+  day: AuditLogDay
+  opensModeration: boolean
+}) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <div className={DAY_HEADER_CLASSES}>
+        <h2 className="font-heading text-lg leading-[1.2] font-medium">
+          <ParisDay date={date} dateStyle="full" />
+        </h2>
+        <span aria-hidden className="h-px flex-1 bg-border" />
+      </div>
+      <ol className={DAY_CHANGES_CLASSES}>
+        {changes.map((change) => (
+          <ChangeRow
+            key={change.id}
+            change={change}
+            opensModeration={opensModeration}
+          />
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function ChangeRow({
+  change,
+  opensModeration,
+}: {
+  change: AuditLogChange
+  opensModeration: boolean
+}) {
+  return (
+    <li className={CHANGE_ROW_CLASSES}>
+      <span
+        className={cn(
+          CHANGE_TIME_CLASSES,
+          "font-mono text-xs text-muted-foreground"
+        )}
+      >
+        <ParisTime date={change.date} timeOnly />
+      </span>
+      <ChangeIcon kind={iconKindOf(change)} />
+      <div className={CHANGE_BODY_CLASSES}>
+        {change.kind === "rule" ? (
+          <p className="font-medium text-pretty wrap-anywhere">
+            {change.description}
+          </p>
+        ) : (
+          <SanctionChangeDescription
+            change={change}
+            opensModeration={opensModeration}
+          />
+        )}
+      </div>
+      <div className={CHANGE_STAFF_MEMBER_CLASSES}>
+        <MemberAvatar
+          name={change.memberName}
+          avatarUrl={change.avatarUrl}
+          size="sm"
+        />
+        <p
+          title={change.memberName}
+          className="min-w-0 text-[0.8125rem] wrap-anywhere text-muted-foreground sm:truncate"
+        >
+          {change.memberName}
+        </p>
+      </div>
+    </li>
+  )
+}
+
+function iconKindOf(change: AuditLogChange): ChangeIconKind {
+  if (change.kind === "rule") {
+    return change.madeInDiscord ? "rule" : "word"
+  }
+  return change.sanctionChange.kind
+}
+
+function ChangeIcon({ kind }: { kind: ChangeIconKind }) {
+  const { Icon, color } = CHANGE_ICONS[kind]
+  return (
+    <span aria-hidden className={cn(CHANGE_ICON_TILE_CLASSES, color)}>
+      <Icon className="size-3.75" />
+    </span>
   )
 }
 
@@ -112,25 +229,25 @@ function SanctionChangeDescription({
   opensModeration: boolean
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <p>
+    <>
+      <p className="font-medium text-pretty wrap-anywhere">
         <SanctionChangeSummary change={sanctionChange} />
       </p>
-      <p>
+      <p className="text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground">
         Compte :{" "}
         {opensModeration ? (
           <Link
             href={`/records/${account.id}`}
             prefetch={false}
-            className="underline underline-offset-4"
+            className={TEXT_LINK_CLASSES}
           >
             {account.name}
           </Link>
         ) : (
           account.name
         )}
+        {reason === null ? " · Aucun motif" : ` · Motif : ${reason}`}
       </p>
-      <p>{reason === null ? "Aucun motif" : `Motif : ${reason}`}</p>
-    </div>
+    </>
   )
 }

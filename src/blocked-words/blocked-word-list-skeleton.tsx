@@ -1,19 +1,37 @@
 import { cn } from "cn"
 
 import { Skeleton } from "@/ui/skeleton"
+import {
+  FILTER_FORM_WIDTH_CLASSES,
+  LIST_HEADER_CLASSES,
+} from "./blocked-word-list-layout"
+import { WORD_GRID_CLASSES, WORD_TILE_CLASSES } from "./word-tiles"
 
-const WORD_WIDTHS = ["w-28", "w-40", "w-32"] as const
+const WORD_WIDTHS = ["w-16", "w-24", "w-20", "w-28", "w-14", "w-32"] as const
 
 export function BlockedWordListSkeleton() {
   return (
-    <div role="status" className="flex flex-col gap-2">
+    <div role="status" className="flex flex-col gap-3.5">
       <span className="sr-only">Chargement des mots interdits…</span>
-      <Skeleton className="my-1 h-4 w-56 motion-reduce:animate-none" />
-      <div className="flex flex-col gap-1">
+      <div className={LIST_HEADER_CLASSES}>
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-6.5 w-24 motion-reduce:animate-none" />
+          <Skeleton className="h-3.5 w-28 motion-reduce:animate-none" />
+        </div>
+        <Skeleton
+          className={cn(
+            "h-8 motion-reduce:animate-none",
+            FILTER_FORM_WIDTH_CLASSES
+          )}
+        />
+      </div>
+      <div className={WORD_GRID_CLASSES}>
         {WORD_WIDTHS.map((width) => (
-          <div key={width} className="flex items-center justify-between gap-2">
-            <Skeleton className={cn("h-4 motion-reduce:animate-none", width)} />
-            <Skeleton className="h-8 w-24 motion-reduce:animate-none" />
+          <div key={width} className={cn("pr-2.5", WORD_TILE_CLASSES)}>
+            <Skeleton
+              className={cn("h-3.5 motion-reduce:animate-none", width)}
+            />
+            <Skeleton className="ml-auto size-4 shrink-0 motion-reduce:animate-none" />
           </div>
         ))}
       </div>

@@ -1,27 +1,31 @@
 import { LogIn, LogOut } from "lucide-react"
 
-import { Button, buttonVariants } from "@/ui/button"
+import { Button } from "@/ui/button"
 import { logOut } from "./actions"
-import { LoginNotice } from "./login-notice"
+import { LoginLink } from "./login-link"
+import { LOGIN_ACTION_CLASS, LoginNotice } from "./login-notice"
 
 export function LoginRefused() {
   return (
-    <LoginNotice title="Accès refusé">
-      <p>
-        Ce compte Discord n’a pas le rôle staff sur le serveur Discord de Shor.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <a href="/login" className={buttonVariants({ variant: "ghost" })}>
-          <LogIn aria-hidden data-icon="inline-start" />
-          Se reconnecter
-        </a>
-        <form action={logOut}>
-          <Button type="submit" variant="ghost">
-            <LogOut aria-hidden data-icon="inline-start" />
-            Se déconnecter
-          </Button>
-        </form>
-      </div>
+    <LoginNotice
+      title="Accès refusé"
+      actions={
+        <>
+          <LoginLink Icon={LogIn}>Se reconnecter</LoginLink>
+          <form action={logOut}>
+            <Button
+              type="submit"
+              variant="outline"
+              className={LOGIN_ACTION_CLASS}
+            >
+              <LogOut aria-hidden data-icon="inline-start" />
+              Se déconnecter
+            </Button>
+          </form>
+        </>
+      }
+    >
+      Ce compte Discord n’a pas le rôle staff sur le serveur Discord de Shor.
     </LoginNotice>
   )
 }

@@ -20,18 +20,28 @@ export function AddBlockedWordForm({
   action: (formData: FormData) => void
 }) {
   return (
-    <form action={action} className="flex flex-col gap-2">
-      <Label htmlFor={FIELD_ID}>Mot ou expression</Label>
-      <div className="flex flex-wrap gap-2">
+    <form
+      action={action}
+      className="flex flex-col rounded-xl border bg-card px-5 py-4.5"
+    >
+      <Label htmlFor={FIELD_ID} className="text-[0.8125rem] leading-4.5">
+        Ajouter un mot ou une expression
+      </Label>
+      <div className="mt-2.5 flex gap-2">
         <Input
           id={FIELD_ID}
           name="word"
           defaultValue={state?.ok === false ? state.word : ""}
           aria-describedby={ALERT_ID}
           autoComplete="off"
-          className="max-w-xs flex-1"
+          placeholder="Ex. : free nitro"
+          className="h-9.5 flex-1 px-3"
         />
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          className="h-9.5 px-3.5 has-data-[icon=inline-start]:pl-3"
+        >
           {pending ? (
             <>
               <LoaderCircle
@@ -49,7 +59,7 @@ export function AddBlockedWordForm({
           )}
         </Button>
       </div>
-      <p role="alert" id={ALERT_ID} className="text-sm">
+      <p role="alert" id={ALERT_ID} className="text-sm not-empty:mt-2.5">
         {state?.ok === false && <WriteFailureMessage message={state.message} />}
       </p>
     </form>

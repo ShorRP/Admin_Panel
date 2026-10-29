@@ -1,0 +1,8 @@
+{
+  "slots": {
+    "e2e": { "count": 1, "commands": ["pnpm test:e2e"] },
+    "build": { "count": 2, "commands": ["pnpm build"] },
+    "test": { "count": 2, "commands": ["pnpm test"] },
+    "merge": { "count": 1 }
+  }
+}

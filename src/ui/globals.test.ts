@@ -25,10 +25,12 @@ const TEXT_PAIRS = [
   ["foreground", "background"],
   ["muted-foreground", "background"],
   ["muted-foreground", "muted"],
+  ["foreground", "muted"],
   ["muted-foreground", "card"],
   ["muted-foreground", "popover"],
   ["muted-foreground", "accent"],
   ["primary-foreground", "primary"],
+  ["destructive-foreground", "destructive"],
   ["secondary-foreground", "secondary"],
   ["accent-foreground", "accent"],
   ["card-foreground", "card"],
@@ -37,6 +39,7 @@ const TEXT_PAIRS = [
   ["muted-foreground", "sidebar"],
   ["sidebar-primary-foreground", "sidebar-primary"],
   ["sidebar-accent-foreground", "sidebar-accent"],
+  ["muted-foreground", "sidebar-accent"],
   ["success", "background"],
   ["success", "card"],
   ["destructive", "background"],
@@ -52,35 +55,43 @@ const favicon = readFileSync(
   "utf8"
 )
 
-const light = customProperties(/^:root \{([^}]*)\}/m)
+const LIGHT_BLOCK = /^:root \{([^}]*)\}/m
+
+const DARK_BLOCK =
+  /^@media \(prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/m
+
+const light = customProperties(LIGHT_BLOCK)
 
 const themes = {
   light,
-  dark: new Map([
-    ...light,
-    ...customProperties(
-      /^@media \(prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/m
-    ),
-  ]),
+  dark: new Map([...light, ...customProperties(DARK_BLOCK)]),
 }
 
-function customProperties(block: RegExp): Theme {
-  const declarations = block.exec(css)?.[1]
-  if (declarations === undefined) {
+function declarations(block: RegExp): Theme {
+  const body = block.exec(css)?.[1]
+  if (body === undefined) {
     throw new Error(`globals.css holds no block that matches ${block}.`)
   }
   return new Map(
-    declarations
+    body
       .split(";")
       .map((declaration) => declaration.trim())
-      .filter((declaration) => declaration.startsWith("--"))
+      .filter((declaration) => declaration !== "")
       .map((declaration) => {
         const colon = declaration.indexOf(":")
         return [
-          declaration.slice(2, colon),
+          declaration.slice(0, colon),
           declaration.slice(colon + 1).trim(),
         ] as const
       })
+  )
+}
+
+function customProperties(block: RegExp): Theme {
+  return new Map(
+    Array.from(declarations(block))
+      .filter(([property]) => property.startsWith("--"))
+      .map(([property, value]) => [property.slice(2), value])
   )
 }
 
@@ -205,6 +216,24 @@ test("the measure gives black at 50% on white 3.95:1, the ratio of #808080", () 
   ).toBeCloseTo(3.95, 1)
 })
 
+test.each([
+  ["light", /^:root\[data-theme="light"\] \{([^}]*)\}/m, LIGHT_BLOCK],
+  ["dark", /^:root\[data-theme="dark"\] \{([^}]*)\}/m, DARK_BLOCK],
+])(
+  "the theme chosen as %s sets the same custom properties as the block the contrast tests measure, under its own color-scheme",
+  (scheme, chosen, measured) => {
+    expect(declarations(chosen)).toEqual(
+      new Map([
+        ["color-scheme", scheme],
+        ...Array.from(
+          customProperties(measured),
+          ([name, value]) => [`--${name}`, value] as const
+        ),
+      ])
+    )
+  }
+)
+
 test("the favicon draws the logo in dark's primary, on a tile of light's primary", () => {
   expect({ tile: faviconFill("rect"), logo: faviconFill("g") }).toEqual({
     tile: hex(themeColor(themes.light, "primary")),
@@ -219,11 +248,47 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     expect(themeContrast(theme, text, [surface])).toBeGreaterThanOrEqual(4.5)
   })
 
-  test("text in primary-foreground reaches 4.5:1 on primary/90 on background, the default button's hover fill", () => {
-    expect(
-      themeContrast(theme, "primary-foreground", ["background", "primary/90"])
-    ).toBeGreaterThanOrEqual(4.5)
-  })
+  test.each(["background", "card"])(
+    "text in primary-foreground reaches 4.5:1 on primary/90 on %s, the default button's hover fill",
+    (surface) => {
+      expect(
+        themeContrast(theme, "primary-foreground", [surface, "primary/90"])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
+
+  test.each(["background", "card"])(
+    "text in destructive-foreground reaches 4.5:1 on destructive/90 on %s, the red button's hover fill",
+    (surface) => {
+      expect(
+        themeContrast(theme, "destructive-foreground", [
+          surface,
+          "destructive/90",
+        ])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
+
+  test.each([
+    ["warning/6", "a running timeout's notice"],
+    ["destructive/10", "a banned account's notice"],
+  ])(
+    "text in foreground reaches 4.5:1 on %s on card, the fill of %s",
+    (fill) => {
+      expect(
+        themeContrast(theme, "foreground", ["card", fill])
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  )
+
+  test.each(["input", "ring/50"])(
+    "%s reaches 3:1 on warning/6 on card, around the lift's reason in a running timeout's notice",
+    (layer) => {
+      expect(
+        themeContrast(theme, layer, ["card", "warning/6"])
+      ).toBeGreaterThanOrEqual(3)
+    }
+  )
 
   test.each(["background", "card"])(
     "the field's border, input, reaches 3:1 on %s",
@@ -232,10 +297,19 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     }
   )
 
-  test.each(["background", "card", "popover"])(
+  test.each(["background", "card", "popover", "muted"])(
     "the focus ring, ring/50, reaches 3:1 on %s",
     (surface) => {
       expect(themeContrast(theme, "ring/50", [surface])).toBeGreaterThanOrEqual(
+        3
+      )
+    }
+  )
+
+  test.each(["muted", "card"])(
+    "the border of the theme chosen in the toggle, primary, reaches 3:1 on %s",
+    (surface) => {
+      expect(themeContrast(theme, "primary", [surface])).toBeGreaterThanOrEqual(
         3
       )
     }
@@ -264,14 +338,31 @@ test.each(["background", "card"])(
 )
 
 test.each([
-  ["foreground", "input/30"],
-  ["foreground", "input/50"],
-  ["muted-foreground", "input/30"],
+  ["foreground", "input/30", "background"],
+  ["foreground", "input/50", "background"],
+  ["muted-foreground", "input/30", "background"],
+  ["foreground", "input/30", "card"],
+  ["muted-foreground", "input/30", "card"],
 ])(
-  "in dark, text in %s reaches 4.5:1 on %s on background, the fill of the field or of the outline button",
-  (text, fill) => {
+  "in dark, text in %s reaches 4.5:1 on %s on %s, the fill of the field or of the outline button",
+  (text, fill, surface) => {
     expect(
-      themeContrast(themes.dark, text, ["background", fill])
+      themeContrast(themes.dark, text, [surface, fill])
     ).toBeGreaterThanOrEqual(4.5)
   }
 )
+
+test.each(["input/30", "input/50"])(
+  "in dark, text in foreground reaches 4.5:1 on %s on warning/6 on card, the fill of the outline button in a running timeout's notice",
+  (fill) => {
+    expect(
+      themeContrast(themes.dark, "foreground", ["card", "warning/6", fill])
+    ).toBeGreaterThanOrEqual(4.5)
+  }
+)
+
+test("in dark, text in foreground reaches 4.5:1 on input/30 on muted, the fill of the open tab", () => {
+  expect(
+    themeContrast(themes.dark, "foreground", ["muted", "input/30"])
+  ).toBeGreaterThanOrEqual(4.5)
+})

@@ -1,6 +1,6 @@
 import { test as base, expect } from "next/experimental/testmode/playwright"
 import AxeBuilder from "@axe-core/playwright"
-import type { Locator } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 
 import { DiscordError } from "@/discord/discord-error"
 import {
@@ -31,6 +31,12 @@ const LOCAL_AVATAR =
   '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#423020"/></svg>'
 
 export { expect }
+
+export type { Locator, Page }
+
+export function bodyBackground() {
+  return getComputedStyle(document.body).backgroundColor
+}
 
 export const test = base.extend<Fixtures>({
   discordState: [{}, { option: true }],
@@ -107,19 +113,11 @@ export const test = base.extend<Fixtures>({
       if (waitForLoad) {
         await page.waitForLoadState()
       }
-      const backgrounds = new Map<string, string>()
-      for (const scheme of ["light", "dark"] as const) {
-        await page.emulateMedia({ colorScheme: scheme })
+      async function checkTheme(theme: string) {
         await page.waitForFunction(() =>
           document
             .getAnimations()
             .every(({ playState }) => playState === "finished")
-        )
-        backgrounds.set(
-          scheme,
-          await page.evaluate(
-            () => getComputedStyle(document.body).backgroundColor
-          )
         )
         const { violations } = await new AxeBuilder({ page })
           .withTags(WCAG_22_AA_TAGS)
@@ -132,14 +130,28 @@ export const test = base.extend<Fixtures>({
               failureSummary,
             }))
           ),
-          `axe's WCAG 2.2 AA rules in ${scheme}`
+          `axe's WCAG 2.2 AA rules in ${theme}`
         ).toEqual([])
+        return await page.evaluate(bodyBackground)
       }
-      expect(
-        backgrounds.get("dark"),
-        "the page's background in dark, against light's"
-      ).not.toBe(backgrounds.get("light"))
-      await page.emulateMedia({ colorScheme })
+
+      const chosenTheme = await page.evaluate(
+        () => document.documentElement.dataset.theme
+      )
+      if (chosenTheme === undefined) {
+        const backgrounds = new Map<string, string>()
+        for (const scheme of ["light", "dark"] as const) {
+          await page.emulateMedia({ colorScheme: scheme })
+          backgrounds.set(scheme, await checkTheme(scheme))
+        }
+        expect(
+          backgrounds.get("dark"),
+          "the page's background in dark, against light's"
+        ).not.toBe(backgrounds.get("light"))
+        await page.emulateMedia({ colorScheme })
+      } else {
+        await checkTheme(`the theme chosen as ${chosenTheme}`)
+      }
 
       const viewport = page.viewportSize()
       if (viewport === null) {

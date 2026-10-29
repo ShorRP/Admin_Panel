@@ -2,9 +2,8 @@ import type { Snowflake } from "discord-api-types/v10"
 import { UserCheck } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { Label } from "@/ui/label"
-import { Textarea } from "@/ui/textarea"
-import { SANCTION_ALERT_ID } from "./sanction-form"
+import { ReasonField } from "./reason-field"
+import { CARD_BUTTON_CLASS } from "./sanction-form"
 import type { SanctionResult } from "./sanction-result"
 
 const REASON_ID = "ban-lift-reason"
@@ -23,23 +22,19 @@ export function BanLiftForm({
   const refused =
     state?.ok === false && state.change === "lift-ban" ? state : null
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-4.5">
       <input type="hidden" name="change" value="lift-ban" />
       <input type="hidden" name="userId" value={userId} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={REASON_ID}>Motif de la levée</Label>
-        <Textarea
-          id={REASON_ID}
-          name="reason"
-          defaultValue={refused?.reason ?? ""}
-          aria-describedby={SANCTION_ALERT_ID}
-        />
-      </div>
+      <ReasonField
+        id={REASON_ID}
+        label="Motif de la levée"
+        defaultValue={refused?.reason ?? ""}
+      />
       <Button
         type="submit"
         variant="outline"
         disabled={pending}
-        className="self-start"
+        className={CARD_BUTTON_CLASS}
       >
         <UserCheck aria-hidden data-icon="inline-start" />
         Lever le bannissement

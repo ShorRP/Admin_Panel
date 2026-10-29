@@ -1,18 +1,15 @@
 import { LogIn } from "lucide-react"
 
-import { buttonVariants } from "@/ui/button"
+import { LoginLink } from "./login-link"
 import { LoginNotice } from "./login-notice"
 
 export function LoggedOut() {
   return (
-    <LoginNotice title="Déconnexion">
-      <p>Ta session sur le panel est terminée.</p>
-      <div>
-        <a href="/login" className={buttonVariants({ variant: "ghost" })}>
-          <LogIn aria-hidden data-icon="inline-start" />
-          Se connecter
-        </a>
-      </div>
+    <LoginNotice
+      title="Ta session est terminée."
+      actions={<LoginLink Icon={LogIn}>Se connecter avec Discord</LoginLink>}
+    >
+      Reconnecte-toi avec ton compte Discord pour revenir au panel.
     </LoginNotice>
   )
 }

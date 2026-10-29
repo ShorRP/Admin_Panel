@@ -20,6 +20,8 @@ import {
 } from "@/sanctions/sanction-events"
 import { auditLogPages } from "./audit-log-pages"
 import { panelReasonOf, type PanelReason } from "./audit-log-reason"
+import { CHANGE_TYPES, type ChangeType } from "./change-type"
+import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
   id: Snowflake
@@ -27,7 +29,7 @@ export type AuditLogChange = {
   memberName: string
   avatarUrl: string | null
 } & (
-  | { kind: "rule"; description: string }
+  | { kind: "rule"; description: string; madeInDiscord: boolean }
   | {
       kind: "sanction-change"
       sanctionChange: SanctionChange
@@ -52,8 +54,11 @@ type EventReader = {
   changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
 }
 
+export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
+
 export type AuditLogPage = {
-  changes: AuditLogChange[]
+  type: ChangeType | null
+  days: AuditLogDay[]
   before: Snowflake | null
   older: Snowflake | null
 }
@@ -62,6 +67,13 @@ const AUTO_MOD_RULE_EVENTS = [
   AuditLogEvent.AutoModerationRuleCreate,
   AuditLogEvent.AutoModerationRuleUpdate,
 ]
+
+const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
+  "blocked-words": AUTO_MOD_RULE_EVENTS,
+  timeouts: [AuditLogEvent.MemberUpdate],
+  kicks: [AuditLogEvent.MemberKick],
+  bans: [AuditLogEvent.MemberBanAdd, AuditLogEvent.MemberBanRemove],
+}
 
 const CHANGES_PER_PAGE = 50
 
@@ -73,14 +85,16 @@ const CURSOR = z
   .nullable()
   .catch(null)
 
+const CHANGE_TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)
+
 export async function readAuditLog(
   discord: DiscordApi,
-  before: unknown
+  searchParams: { before?: unknown; type?: unknown }
 ): Promise<AuditLogPage> {
-  const cursor = CURSOR.parse(before)
-  const rule = (await discord.listAutoModerationRules()).find(isPanelRule)
+  const cursor = CURSOR.parse(searchParams.before)
+  const type = CHANGE_TYPE.parse(searchParams.type)
   const found: FoundChange[] = []
-  for (const reader of eventReaders(rule?.id)) {
+  for (const reader of await eventReadersOfType(discord, type)) {
     found.push(...(await changesOfEvent(discord, reader, cursor)))
   }
   const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
@@ -89,10 +103,14 @@ export async function readAuditLog(
     pageChanges.map(({ memberId }) => memberId)
   )
   return {
-    changes: pageChanges.map(({ memberId, change }) => ({
-      ...change,
-      avatarUrl: memberId === null ? null : (avatarUrls.get(memberId) ?? null),
-    })),
+    type,
+    days: byParisDay(
+      pageChanges.map(({ memberId, change }) => ({
+        ...change,
+        avatarUrl:
+          memberId === null ? null : (avatarUrls.get(memberId) ?? null),
+      }))
+    ),
     before: cursor,
     older:
       found.length > CHANGES_PER_PAGE
@@ -101,13 +119,31 @@ export async function readAuditLog(
   }
 }
 
-function eventReaders(ruleId: Snowflake | undefined): EventReader[] {
+async function eventReadersOfType(
+  discord: DiscordApi,
+  type: ChangeType | null
+) {
+  const events =
+    type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
+  const ruleId = events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
+    ? await panelRuleId(discord)
+    : null
+  return eventReaders(ruleId).filter(({ actionType }) =>
+    events.includes(actionType)
+  )
+}
+
+async function panelRuleId(discord: DiscordApi) {
+  return (await discord.listAutoModerationRules()).find(isPanelRule)?.id ?? null
+}
+
+function eventReaders(ruleId: Snowflake | null): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
       sanctionChangeOf(entry, event.changeOf(entry), users),
   }))
-  if (ruleId === undefined) {
+  if (ruleId === null) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
@@ -174,6 +210,7 @@ function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
     change: {
       kind: "rule",
       ...moment,
+      madeInDiscord: reason === null,
       description:
         reason === null
           ? "Règle modifiée dans Discord"
@@ -231,6 +268,19 @@ function momentOf(
     memberId: entry.user_id,
     memberName: user === undefined ? "Membre inconnu" : userName(user),
   }
+}
+
+function byParisDay(changes: AuditLogChange[]) {
+  const days: AuditLogDay[] = []
+  for (const change of changes) {
+    const day = days.at(-1)
+    if (day !== undefined && parisDayOf(day.date) === parisDayOf(change.date)) {
+      day.changes.push(change)
+    } else {
+      days.push({ date: change.date, changes: [change] })
+    }
+  }
+  return days
 }
 
 function newestFirst(left: FoundChange, right: FoundChange) {

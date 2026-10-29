@@ -8,7 +8,7 @@ The board covers this repository only. ShorBot's issues go on a board of their o
 
 Roles as Gilles stated them on 2026-10-23, then on 2026-10-27, while grilling the features that follow the MVP, when he took over what the POs decided until then, and on 2026-10-28, when he took ShorBot over from loanspac:
 
-- **The maintainer**, Gilles (`PothieuG`), decides what the panel does, in what order, and how: its features, a Priority the rules below leave open, milestones, what done means for a feature, the stack, the ADRs, the Size scale, labels and the tracker's other conventions. Only the maintainer merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**). He also develops ShorBot, the Bot (ADR 0003).
+- **The maintainer**, Gilles (`PothieuG`), decides what the panel does, in what order, and how: its features, a Priority the rules below leave open, milestones, what done means for a feature, the stack, the ADRs, the Size scale, labels and the tracker's other conventions. Only the maintainer, or an agent running `deliver-epic`, which only he starts, merges into `main` (`CLAUDE.md`, **Commits, PRs, issues**). He also develops ShorBot, the Bot (ADR 0003).
 - **The POs**, Lyra-Gates (`Lyra-Gates`) and Anaisenkit (`anatiti269`), know what only Shor's team knows: the staff's needs, which Anaisenkit brings, Shor's identity, such as its logo, and Shor's own facts, such as its Discord server's IDs. Their answers are facts the maintainer decides from, not decisions. Anaisenkit also develops on Shor.
 - **loanspac** (`LoanSpac`), also called Spar or Spac, developed ShorBot until 2026-10-28, and knows Shor's SkyMP server and launcher (`docs/agents/open-questions.md`).
 

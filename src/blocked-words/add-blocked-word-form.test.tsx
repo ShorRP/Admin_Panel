@@ -49,14 +49,15 @@ function button(html: string) {
   }
 }
 
-test("before any write, the form shows its labelled field, « Ajouter » after a hidden plus, and its alert region empty, with no status region", () => {
+test("before any write, the form shows its labelled field with an example for its placeholder, « Ajouter » after a hidden plus, and its alert region empty, with no status region", () => {
   const html = render(null)
 
   expect(html).toMatch(
-    /<label[^>]* for="blocked-word"[^>]*>Mot ou expression<\/label>/
+    /<label[^>]* for="blocked-word"[^>]*>Ajouter un mot ou une expression<\/label>/
   )
   expect(field(html)).toContain('id="blocked-word"')
   expect(field(html)).toContain('value=""')
+  expect(field(html)).toContain('placeholder="Ex. : free nitro"')
   expect(button(html)).toEqual({
     icon: drawing(Plus),
     iconHidden: true,

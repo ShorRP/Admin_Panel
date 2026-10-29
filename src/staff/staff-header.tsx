@@ -24,20 +24,29 @@ import {
 } from "@/ui/sheet"
 import { LogOutForm } from "./log-out-form"
 import { ShorLogo } from "./shor-logo"
+import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
 type Section = {
   href: string
   name: string
   Icon: LucideIcon
+  badge?: ReactNode
   current: "page" | undefined
 }
 
 type SectionLinkComponent = ComponentType<{ section: Section }>
 
-const SECTIONS = [
-  { href: "/blocked-words", name: "Mots interdits", Icon: Ban },
-  { href: "/audit-log", name: "Journal d’audit", Icon: ScrollText },
-] as const
+const BLOCKED_WORDS = {
+  href: "/blocked-words",
+  name: "Mots interdits",
+  Icon: Ban,
+}
+
+const AUDIT_LOG = {
+  href: "/audit-log",
+  name: "Journal d’audit",
+  Icon: ScrollText,
+}
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
@@ -55,12 +64,17 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  blockedWordCount: ReactNode
 }) {
-  const sections = SECTIONS.map((section) => withCurrent(section, currentPath))
+  const sections = [
+    withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
+    withCurrent(AUDIT_LOG, currentPath),
+  ]
   const moderation = withCurrent(MODERATION, currentPath)
   return (
     <>
@@ -75,9 +89,12 @@ export function StaffHeader({
           SectionLink={SidebarSectionLink}
           className="flex flex-1 flex-col gap-5.5 overflow-y-auto px-3 py-5"
         />
-        <div className="flex items-center gap-2 border-t px-3 py-3.5">
-          <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
-          <LogOutForm iconOnly />
+        <div className="flex flex-col gap-3 border-t px-3 py-3.5">
+          <StatefulThemeToggle />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
+            <LogOutForm iconOnly />
+          </div>
         </div>
       </aside>
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
@@ -105,6 +122,7 @@ export function StaffHeader({
                 className="flex flex-col gap-5.5 px-3"
               />
               <SheetFooter className="border-t">
+                <StatefulThemeToggle />
                 {member}
                 <LogOutForm />
               </SheetFooter>
@@ -229,7 +247,7 @@ function CurrentSectionBar() {
 }
 
 function SidebarSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -243,6 +261,7 @@ function SidebarSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && (
           <ViewTransition
             name="current-section-bar"
@@ -258,7 +277,7 @@ function SidebarSectionLink({
 }
 
 function MenuSectionLink({
-  section: { href, name, Icon, current },
+  section: { href, name, Icon, badge, current },
 }: {
   section: Section
 }) {
@@ -272,6 +291,7 @@ function MenuSectionLink({
       >
         <SectionIcon Icon={Icon} />
         {name}
+        {badge}
         {current && <CurrentSectionBar />}
       </SheetClose>
     </li>

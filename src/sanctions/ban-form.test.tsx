@@ -8,18 +8,19 @@ import type { SanctionResult } from "./sanction-result"
 const LYRA_ID = "1400000000000000003"
 
 function render({
-  notifies = true,
+  standing = "member",
   state = null,
   pending = false,
 }: {
-  notifies?: boolean
+  standing?: "member" | "absent"
   state?: SanctionResult | null
   pending?: boolean
 } = {}) {
   return renderToStaticMarkup(
     <BanForm
       userId={LYRA_ID}
-      notifies={notifies}
+      name="Lyra des Brumes"
+      standing={standing}
       state={state}
       pending={pending}
       action={() => {}}
@@ -39,6 +40,8 @@ function button(html: string) {
     icon: iconDrawing,
     iconHidden: /\saria-hidden="true"/.test(iconAttributes),
     text,
+    type: /\stype="([^"]*)"/.exec(tag)?.[1],
+    opensDialog: /\saria-haspopup="dialog"/.test(tag),
     disabled: /\sdisabled=""/.test(tag),
   }
 }
@@ -71,11 +74,19 @@ function reason(html: string) {
   )?.[1]
 }
 
+function sentence(html: string) {
+  return /<form[^>]*>(?:<input[^>]*\/>)*<p[^>]*>([^<]*)<\/p>/.exec(html)?.[1]
+}
+
+function placeholder(html: string) {
+  return /<textarea[^>]*\splaceholder="([^"]*)"/.exec(html)?.[1]
+}
+
 function notify(html: string) {
   return /<input type="checkbox"([^>]*)\/>/.exec(html)?.[1]
 }
 
-test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked", () => {
+test("a member can be banned with the messages to delete, none by default, a labelled reason and the direct message checked, through « Bannir », which opens the ban's confirmation rather than sending the form", () => {
   const html = render()
 
   expect(html.match(/<form/g)).toHaveLength(1)
@@ -101,19 +112,35 @@ test("a member can be banned with the messages to delete, none by default, a lab
   expect(html).toMatch(
     /<label[^>]*><input type="checkbox"[^>]*\/>Prévenir en message privé<\/label>/
   )
+  expect(html.match(/<button/g)).toHaveLength(1)
   expect(button(html)).toEqual({
     icon: drawing(Hammer),
     iconHidden: true,
     text: "Bannir",
+    type: "button",
+    opensDialog: true,
     disabled: false,
   })
 })
 
-test("an account absent from the Discord server is banned with no direct message to offer", () => {
-  const html = render({ notifies: false })
+test("a member's ban says that the account cannot come back until it is lifted, and asks for the reason as the member will read it", () => {
+  const html = render()
+
+  expect(sentence(html)).toBe(
+    "Le compte quitte le serveur Discord et ne peut plus le rejoindre tant que le bannissement n’est pas levé."
+  )
+  expect(placeholder(html)).toBe("Écris le motif tel que le membre le lira.")
+})
+
+test("an account absent from the Discord server is banned with no direct message to offer, after saying that only a ban remains", () => {
+  const html = render({ standing: "absent" })
 
   expect(notify(html)).toBeUndefined()
   expect(html).not.toContain("Prévenir en message privé")
+  expect(sentence(html)).toBe(
+    "Ce compte n’est pas membre du serveur Discord : seul un bannissement reste possible, pour l’empêcher d’y revenir."
+  )
+  expect(placeholder(html)).toBeUndefined()
   expect(button(html).text).toBe("Bannir")
 })
 

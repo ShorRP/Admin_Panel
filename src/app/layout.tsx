@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import type { Metadata } from "next"
 
+import { APPLY_STORED_THEME } from "@/ui/theme"
+
 import "@/ui/globals.css"
 
 export const metadata: Metadata = {
@@ -13,7 +15,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <script>{APPLY_STORED_THEME}</script>
+      </head>
       <body>{children}</body>
     </html>
   )
