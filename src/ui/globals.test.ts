@@ -211,6 +211,12 @@ describe.each(["light", "dark"] as const)("in %s", (scheme) => {
     expect(themeContrast(theme, text, [surface])).toBeGreaterThanOrEqual(4.5)
   })
 
+  test("text in primary-foreground reaches 4.5:1 on primary/90 on background, the default button's hover fill", () => {
+    expect(
+      themeContrast(theme, "primary-foreground", ["background", "primary/90"])
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
   test("the field's border, input, reaches 3:1 on background", () => {
     expect(
       themeContrast(theme, "input", ["background"])
