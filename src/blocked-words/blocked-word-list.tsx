@@ -1,10 +1,13 @@
 import { ViewTransition } from "react"
+import Link from "next/link"
 import { cn } from "cn"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
-import { counted, quoted } from "./french-text"
+import { BlockedWordFilterForm } from "./blocked-word-filter-form"
+import type { FilteredBlockedWords } from "./filter-blocked-words"
+import { counted, frenchNumber, quoted } from "./french-text"
 import { WORD_GRID_CLASSES, WORD_TILE_CLASSES } from "./word-tiles"
 import type { WriteResult } from "./write-result"
 
@@ -12,33 +15,50 @@ const HEADING_ID = "blocked-word-list"
 
 export function BlockedWordList({
   words,
+  total,
+  filter,
   state,
   pending,
   action,
-}: {
-  words: string[]
+}: FilteredBlockedWords & {
   state: WriteResult | null
   pending: boolean
   action: (formData: FormData) => void
 }) {
   return (
     <section aria-labelledby={HEADING_ID} className="flex flex-col">
-      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <h2
-          id={HEADING_ID}
-          className="font-heading text-[1.375rem] leading-[1.2] font-medium"
-        >
-          La liste
-        </h2>
-        {words.length > 0 && (
-          <p className="text-[0.8125rem] text-muted-foreground">
-            {counted(words.length, "mot interdit", "mots interdits")}
-          </p>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <h2
+            id={HEADING_ID}
+            className="font-heading text-[1.375rem] leading-[1.2] font-medium"
+          >
+            La liste
+          </h2>
+          {total > 0 && (
+            <p className="text-[0.8125rem] text-muted-foreground">
+              {filter === null
+                ? counted(total, "mot interdit", "mots interdits")
+                : `${frenchNumber(words.length)} sur ${frenchNumber(total)}`}
+            </p>
+          )}
+          {filter !== null && (
+            <Link
+              href="/blocked-words"
+              prefetch={false}
+              className="text-[0.8125rem] underline decoration-input underline-offset-3 hover:decoration-primary"
+            >
+              Tout afficher
+            </Link>
+          )}
+        </div>
+        <BlockedWordFilterForm key={filter ?? ""} filter={filter} />
       </div>
       {words.length === 0 && (
         <p className="mt-3.5 rounded-xl border border-dashed border-input px-5 py-7 text-center text-muted-foreground">
-          Aucun mot interdit pour l’instant.
+          {total === 0 || filter === null
+            ? "Aucun mot interdit pour l’instant."
+            : `Aucun mot interdit ne contient ${quoted(filter)}.`}
         </p>
       )}
       <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>

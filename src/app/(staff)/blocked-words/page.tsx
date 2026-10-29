@@ -6,6 +6,7 @@ import { BlockedWordCapacity } from "@/blocked-words/blocked-word-capacity"
 import { BlockedWordCapacitySkeleton } from "@/blocked-words/blocked-word-capacity-skeleton"
 import { BlockedWordListSkeleton } from "@/blocked-words/blocked-word-list-skeleton"
 import { BlockedWordsView } from "@/blocked-words/blocked-words-view"
+import { filterBlockedWords } from "@/blocked-words/filter-blocked-words"
 import { OtherAutoModRules } from "@/blocked-words/other-auto-mod-rules"
 import {
   readBlockedWords,
@@ -19,7 +20,9 @@ import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Mots interdits" }
 
-export default function BlockedWordsPage() {
+export default function BlockedWordsPage({
+  searchParams,
+}: PageProps<"/blocked-words">) {
   const blockedWords = blockedWordsFromDiscord()
   return (
     <ViewTransition
@@ -37,7 +40,10 @@ export default function BlockedWordsPage() {
           form={<StatefulAddBlockedWordForm />}
           list={
             <SuspenseWithSkeleton skeleton={<BlockedWordListSkeleton />}>
-              <ListFromDiscord blockedWords={blockedWords} />
+              <ListFromDiscord
+                blockedWords={blockedWords}
+                searchParams={searchParams}
+              />
             </SuspenseWithSkeleton>
           }
           otherRules={
@@ -65,9 +71,15 @@ async function CapacityFromDiscord({ blockedWords }: FromDiscordProps) {
   return <BlockedWordCapacity count={words.length} />
 }
 
-async function ListFromDiscord({ blockedWords }: FromDiscordProps) {
-  const { words } = await blockedWords
-  return <StatefulBlockedWordList words={words} />
+async function ListFromDiscord({
+  blockedWords,
+  searchParams,
+}: FromDiscordProps & Pick<PageProps<"/blocked-words">, "searchParams">) {
+  const [{ words }, { filter }] = await Promise.all([
+    blockedWords,
+    searchParams,
+  ])
+  return <StatefulBlockedWordList {...filterBlockedWords(words, filter)} />
 }
 
 async function OtherRulesFromDiscord({ blockedWords }: FromDiscordProps) {

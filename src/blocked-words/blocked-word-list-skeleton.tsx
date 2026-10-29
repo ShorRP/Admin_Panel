@@ -9,9 +9,12 @@ export function BlockedWordListSkeleton() {
   return (
     <div role="status" className="flex flex-col gap-3.5">
       <span className="sr-only">Chargement des mots interdits…</span>
-      <div className="flex items-center gap-2.5">
-        <Skeleton className="h-6.5 w-24 motion-reduce:animate-none" />
-        <Skeleton className="h-3.5 w-28 motion-reduce:animate-none" />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-6.5 w-24 motion-reduce:animate-none" />
+          <Skeleton className="h-3.5 w-28 motion-reduce:animate-none" />
+        </div>
+        <Skeleton className="h-8 w-full motion-reduce:animate-none sm:w-82" />
       </div>
       <div className={WORD_GRID_CLASSES}>
         {WORD_WIDTHS.map((width) => (

@@ -482,3 +482,95 @@ test.describe("with sixty blocked words, one of sixty characters, and another Au
     )
   })
 })
+
+test.describe("with four blocked words", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
+      autoModerationRules: [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", [
+          "abricot",
+          "free nitro",
+          "Nitro gratuit",
+          "steamcommunity.ru",
+        ]),
+      ],
+    },
+  })
+
+  test("a staff member filters the list by what a word contains, whatever its case, removes a word without losing the filter, finds none for another text, then shows the whole list again", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+    readToast,
+  }) => {
+    const list = page.getByRole("region", { name: "La liste" })
+    const words = list.getByRole("listitem")
+    const field = page.getByLabel("Filtrer la liste")
+    const showAll = list.getByRole("link", { name: "Tout afficher" })
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await expect(
+      list.getByText("4 mots interdits", { exact: true })
+    ).toBeVisible()
+    await expect(showAll).toHaveCount(0)
+    await page.waitForLoadState()
+
+    await field.fill("NITRO")
+    await page.getByRole("button", { name: "Filtrer", exact: true }).click()
+
+    await expect(page).toHaveURL("/blocked-words?filter=NITRO")
+    await expect(words).toHaveText([/^free nitro/, /^Nitro gratuit/])
+    await expect(list.getByText("2 sur 4", { exact: true })).toBeVisible()
+    await expect(field).toHaveValue("NITRO")
+    await expect(capacity(page)).toHaveText("Capacité4/ 1 000 mots")
+    await checkAccessibility()
+
+    await words
+      .filter({ hasText: "free nitro" })
+      .getByRole("button", { name: "Retirer « free nitro »" })
+      .click()
+
+    await readToast("« free nitro » n’est plus un mot interdit.")
+    await expect(page).toHaveURL("/blocked-words?filter=NITRO")
+    await expect(words).toHaveText([/^Nitro gratuit/])
+    await expect(list.getByText("1 sur 3", { exact: true })).toBeVisible()
+    await expect(field).toHaveValue("NITRO")
+    expect(await discord.listAutoModerationRules()).toMatchObject([
+      {
+        trigger_metadata: {
+          keyword_filter: ["abricot", "Nitro gratuit", "steamcommunity.ru"],
+        },
+      },
+    ])
+    await checkAccessibility()
+
+    await field.fill("xyz")
+    await page.getByRole("button", { name: "Filtrer", exact: true }).click()
+
+    await expect(page).toHaveURL("/blocked-words?filter=xyz")
+    await expect(
+      list.getByText("Aucun mot interdit ne contient « xyz ».")
+    ).toBeVisible()
+    await expect(list.getByText("0 sur 3", { exact: true })).toBeVisible()
+    await expect(words).toHaveCount(0)
+    await checkAccessibility()
+
+    await showAll.click()
+
+    await expect(page).toHaveURL("/blocked-words")
+    await expect(words).toHaveText([
+      /^abricot/,
+      /^Nitro gratuit/,
+      /^steamcommunity\.ru/,
+    ])
+    await expect(
+      list.getByText("3 mots interdits", { exact: true })
+    ).toBeVisible()
+    await expect(field).toHaveValue("")
+    await expect(showAll).toHaveCount(0)
+    await checkAccessibility()
+  })
+})
