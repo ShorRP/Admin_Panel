@@ -399,7 +399,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       AuditLogEvent.AutoModerationUserCommunicationDisabled,
       memberId,
       memberId,
-      undefined,
+      "Message contained keyword defined in AutoMod rule",
       {
         options: {
           auto_moderation_rule_name: rule.name,
