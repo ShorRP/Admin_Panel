@@ -1,7 +1,7 @@
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test } from "./fixtures"
+import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -114,6 +114,32 @@ test("a staff member reads the audit log, newest changes first, each beside its 
 
 const HELD_SCRIPT_MS = 1_000
 
+const HELD_SCRIPTS = "**/_next/static/chunks/*.js"
+
+async function logOutWithScriptsHeld(page: Page, links: Locator[]) {
+  const linksVisibleOnRelease: boolean[] = []
+  const holdScript: Parameters<Page["route"]>[1] = async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, HELD_SCRIPT_MS))
+    linksVisibleOnRelease.push(
+      (await Promise.all(links.map((link) => link.isVisible()))).every(Boolean)
+    )
+    await route.continue()
+  }
+  await page.route(HELD_SCRIPTS, holdScript)
+  await page
+    .getByRole("complementary")
+    .getByRole("button", { name: "Se déconnecter" })
+    .click()
+  await expect(page).toHaveURL("/login/logged-out")
+  expect(linksVisibleOnRelease[0]).toBe(true)
+  expect(
+    (await page.context().cookies()).filter(
+      ({ name }) => name === "__Host-session"
+    )
+  ).toEqual([])
+  await page.unroute(HELD_SCRIPTS, holdScript)
+}
+
 test("a staff member logs out from the audit log, with both pagination links still in view while the next page's script loads, and no page is prefetched", async ({
   page,
   logIn,
@@ -145,25 +171,7 @@ test("a staff member logs out from the audit log, with both pagination links sti
   await pagination.scrollIntoViewIfNeeded()
   await expect(newer).toBeInViewport()
   await expect(older).toBeInViewport()
-  const linksVisibleOnRelease: boolean[] = []
-  await page.route("**/_next/static/chunks/*.js", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, HELD_SCRIPT_MS))
-    linksVisibleOnRelease.push(
-      (await older.isVisible()) && (await newer.isVisible())
-    )
-    await route.continue()
-  })
-  await page
-    .getByRole("complementary")
-    .getByRole("button", { name: "Se déconnecter" })
-    .click()
-  await expect(page).toHaveURL("/login/logged-out")
-  expect(linksVisibleOnRelease[0]).toBe(true)
-  expect(
-    (await page.context().cookies()).filter(
-      ({ name }) => name === "__Host-session"
-    )
-  ).toEqual([])
+  await logOutWithScriptsHeld(page, [older, newer])
   expect(prefetchedPaths).toEqual([])
 })
 
@@ -209,6 +217,53 @@ test.describe("for a staff member who moderates", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Lyra" })
     ).toBeVisible()
+    await checkAccessibility()
+  })
+
+  test("a staff member who moderates logs out from the audit log, with its type filter, « Réinitialiser » and a sanction's link in view while the next page's script loads, and no page is prefetched", async ({
+    page,
+    logIn,
+    discord,
+    prefetchedPaths,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+    const timeouts = typeFilter.getByRole("link", { name: "Exclusions" })
+    const reset = page.getByRole("link", { name: "Réinitialiser" })
+    const account = page
+      .getByRole("listitem")
+      .filter({ hasText: "Exclusion temporaire jusqu’au" })
+      .getByRole("link", { name: "Lyra" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await checkAccessibility()
+
+    await timeouts.click()
+    await expect(page).toHaveURL("/audit-log?type=timeouts")
+    await expect(timeouts).toHaveAttribute("aria-current", "true")
+    await expect(account).toBeVisible()
+    await expect(typeFilter.getByRole("link")).toHaveCount(5)
+    const links = [
+      ...(await typeFilter.getByRole("link").all()),
+      reset,
+      account,
+    ]
+    await checkAccessibility()
+
+    for (const link of links) {
+      await expect(link).toBeInViewport()
+    }
+    await logOutWithScriptsHeld(page, links)
+    expect(prefetchedPaths).toEqual([])
     await checkAccessibility()
   })
 })
