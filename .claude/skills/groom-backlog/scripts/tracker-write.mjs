@@ -1,8 +1,8 @@
 import { pathToFileURL } from 'node:url'
 
 const WRITE_COMMANDS = [
-  /\bgh\s+issue\s+(create|edit|close|reopen|delete|transfer|develop)\b/,
-  /\bgh\s+pr\s+(create|merge|close|reopen|edit|ready)\b/,
+  /\bgh\s+issue\s+(create|new|edit|close|reopen|delete|transfer|develop)\b/,
+  /\bgh\s+pr\s+(create|new|merge|close|reopen|edit|ready)\b/,
   /\bgh\s+project\s+item-(add|create|edit|archive|delete)\b/,
 ]
 
