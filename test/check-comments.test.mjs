@@ -397,6 +397,82 @@ test("markdown files: a line that opens an HTML comment ends an inline code span
   ])
 })
 
+test("markdown files: a link definition to # or <> with a title is a comment", () => {
+  assert.deepEqual(
+    texts("[//]: # (why)\n[comment]: <> (also)\ntext\n", "a.md"),
+    ["[//]: # (why)", "[comment]: <> (also)"]
+  )
+  assert.deepEqual(texts("[//]: <> (why)\n", "a.md"), ["[//]: <> (why)"])
+  assert.deepEqual(texts("[comment]: # (why)\n", "a.md"), [
+    "[comment]: # (why)",
+  ])
+  assert.deepEqual(texts('[//]: # "why"\n', "a.md"), ['[//]: # "why"'])
+  assert.deepEqual(texts("[//]: # 'why'\n", "a.md"), ["[//]: # 'why'"])
+  assert.deepEqual(texts("[c]: #   (why)  \n", "a.md"), ["[c]: #   (why)"])
+  assert.deepEqual(texts("[//]: # (a \\) b)\r\n[//]: # (c)\r\n", "a.md"), [
+    "[//]: # (a \\) b)",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(checkFile("# Title\n\n[//]: # (why)\n", "a.md"), [
+    "a.md:3:1 [//]: # (why)",
+  ])
+})
+
+test("markdown files: an ordinary link definition is not a comment", () => {
+  for (const text of [
+    '[docs]: https://exemple.fr "Titre"\n',
+    "[docs]: https://exemple.fr\n",
+    '[docs]: #section "Titre"\n',
+    "[docs]: <> not-a-title\n",
+    "[//]: #\n",
+    "[docs]: # \n",
+    "[//]: # (why) and more\n",
+    "[//]: # (why\n",
+    "[//]: # (a (b) c)\n",
+    "text [//]: # (why)\n",
+    "[]: # (why)\n",
+    "[ ]: # (why)\n",
+    "\\[//]: # (why)\n",
+  ]) {
+    assert.deepEqual(texts(text, "a.md"), [], text)
+  }
+})
+
+test("markdown files: a link definition that comments sits in a line of its own, in a quote or a list too", () => {
+  assert.deepEqual(texts("   [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts(">> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("- [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("1. [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> - [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("text\n[//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("-[//]: # (why)\n", "a.md"), [])
+})
+
+test("markdown files: a code block or a code span holds no link definition that comments", () => {
+  assert.deepEqual(texts("```md\n[//]: # (sample)\n```\n", "a.md"), [])
+  assert.deepEqual(texts("~~~\n[//]: # (sample)\n~~~\n", "a.md"), [])
+  assert.deepEqual(texts("Use `[//]: # (sample)` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\n[//]: # (sample)\nb` here\n", "a.md"), [])
+  assert.deepEqual(texts("```\ncode\n```\n[//]: # (why)\n", "a.md"), [
+    "[//]: # (why)",
+  ])
+})
+
+test("markdown files: comments of both kinds are found once each, in order", () => {
+  assert.deepEqual(texts("[//]: # (a)\n\n<!-- b -->\n[//]: # (c)\n", "a.md"), [
+    "[//]: # (a)",
+    "<!-- b -->",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n-->\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n-->",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n",
+  ])
+})
+
 test("python files: a # comment is found, a # in a string is not", () => {
   assert.deepEqual(texts("# header\nx = 1  # why\n", "a.py"), [
     "# header",

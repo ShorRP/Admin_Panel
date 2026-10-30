@@ -56,6 +56,13 @@ const COMMENTLESS_EXTENSIONS = new Set([
 ])
 const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
 const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
+const MARKDOWN_BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|(?:[-*+]|\d{1,9}[.)])(?=[ \t])))*[ \t]*`
+const MARKDOWN_LINK_LABEL = String.raw`\[(?![ \t]*\])[^\[\]\r\n]+\]:`
+const MARKDOWN_LINK_TITLE = String.raw`(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|\((?:[^()\\\r\n]|\\.)*\))`
+const MARKDOWN_LINK_COMMENT = new RegExp(
+  String.raw`^(${MARKDOWN_BLOCK_PREFIX})(${MARKDOWN_LINK_LABEL}[ \t]*(?:#|<>)[ \t]+${MARKDOWN_LINK_TITLE})[ \t]*\r?$`,
+  "gm"
+)
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
   "single-quoted-scalar",
@@ -271,6 +278,25 @@ function maskMarkdownCode(text) {
   return masked + maskCodeSpans(paragraph)
 }
 
+function markdownLinkComments(masked) {
+  return [...masked.matchAll(MARKDOWN_LINK_COMMENT)].map((match) => {
+    const start = match.index + match[1].length
+    return { start, end: start + match[2].length }
+  })
+}
+
+function markdownComments(text) {
+  const masked = maskMarkdownCode(text)
+  const htmlComments = delimitedComments(masked, { block: [["<!--", "-->"]] })
+  const linkComments = markdownLinkComments(masked).filter(
+    (link) =>
+      !htmlComments.some(
+        (html) => link.start >= html.start && link.start < html.end
+      )
+  )
+  return [...htmlComments, ...linkComments].sort((a, b) => a.start - b.start)
+}
+
 function pythonTripleQuotedEnd(text, start, delimiter) {
   for (let i = start; i < text.length; i++) {
     if (text[i] === "\\") i++
@@ -366,9 +392,7 @@ export function findComments(text, file) {
     case "markup":
       return delimitedComments(text, { block: [["<!--", "-->"]] })
     case "markdown":
-      return delimitedComments(maskMarkdownCode(text), {
-        block: [["<!--", "-->"]],
-      })
+      return markdownComments(text)
     case "python":
       return pythonComments(text)
     case "powershell":
