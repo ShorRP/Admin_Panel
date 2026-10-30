@@ -56,6 +56,12 @@ Ne réponds pas à ce message : personne ne le lit.
 
 Le staff de Shor`
 
+const READS = [
+  ["getMember", ROUTES.guildMember],
+  ["getGuild", ROUTES.guild],
+  ["getApplicationUser", ROUTES.currentUser],
+] as const
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] })
   vi.setSystemTime(NOW)
@@ -457,12 +463,6 @@ test("Discord unavailable during the lifting of a timeout says the lifting may o
     reason: "Erreur de cible",
   })
 })
-
-const READS = [
-  ["getMember", ROUTES.guildMember],
-  ["getGuild", ROUTES.guild],
-  ["getApplicationUser", ROUTES.currentUser],
-] as const
 
 test.each(READS)(
   "Discord unavailable at %s, before a timeout, says it did not happen, keeps the form, and sends no direct message",
