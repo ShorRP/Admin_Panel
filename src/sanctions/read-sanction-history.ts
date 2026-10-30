@@ -91,7 +91,7 @@ function historyEntryOf(
         kind: "auto-moderation",
         ruleName: entry.options?.auto_moderation_rule_name ?? null,
       },
-      reason: entry.reason ?? null,
+      reason: null,
     }
   }
   const author = attributionOf(entry, users, applicationId)
