@@ -96,6 +96,19 @@ test("the PR hook checks the repository that holds the session's folder, a subfo
   )
 })
 
+test("the PR hook's refusal does not call a file it cannot read a comment", () => {
+  withTemporaryRepository({ "notes.xyz": "hello\n" }, (dir) => {
+    const result = runHook(hookInput("gh pr create", dir))
+    const output = JSON.parse(result.stdout).hookSpecificOutput
+    const reason = output.permissionDecisionReason
+    assert.equal(output.permissionDecision, "deny")
+    assert.match(reason, /\nnotes\.xyz: unknown file type/)
+    assert.match(reason, /settle each file it cannot read as its line says/)
+    assert.doesNotMatch(reason, /Remove these/)
+    assert.doesNotMatch(reason, /comment\(s\) found/)
+  })
+})
+
 test("the PR hook refuses a PR from a folder that is in no repository, since it has nothing to check", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
   try {
@@ -158,6 +171,64 @@ test("the script checks the repository that holds the folder it runs from, a sub
       assert.equal(accepted.stdout, "")
     }
   )
+})
+
+const runScript = (files) => {
+  let result
+  withTemporaryRepository(files, (dir) => {
+    result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+    })
+  })
+  return result
+}
+
+const footerOf = (stdout) => stdout.trimEnd().split("\n\n").at(-1).split("\n")
+
+const MOVE_THE_WHY =
+  "This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name."
+
+test("the script's footer counts a comment as a comment and gives the advice on the why", () => {
+  const result = runScript({ "dirty.js": "export const a = 1 // why\n" })
+  assert.equal(result.status, 1)
+  assert.deepEqual(footerOf(result.stdout), [
+    `1 comment(s) found. ${MOVE_THE_WHY}`,
+  ])
+})
+
+test("the script's footer counts a file of an unknown type apart and gives no advice on the why", () => {
+  const result = runScript({ "notes.xyz": "hello\n" })
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /^notes\.xyz: unknown file type/m)
+  assert.deepEqual(footerOf(result.stdout), [
+    "1 file(s) of an unknown type, so their comments cannot be checked.",
+  ])
+})
+
+test("the script's footer counts a file that cannot be parsed apart and gives no advice on the why", () => {
+  const result = runScript({ "broken.js": "const = ;" })
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /^broken\.js: cannot be parsed/m)
+  assert.deepEqual(footerOf(result.stdout), [
+    "1 file(s) cannot be parsed, so their comments cannot be checked.",
+  ])
+})
+
+test("the script's footer counts comments, files that cannot be parsed and unknown types each on its own line", () => {
+  const result = runScript({
+    "a.js": "// one\n// two\n",
+    "b.js": "export const b = 1 // three\n",
+    "broken.js": "const = ;",
+    "notes.xyz": "hello\n",
+    "other.abc": "hello\n",
+  })
+  assert.equal(result.status, 1)
+  assert.deepEqual(footerOf(result.stdout), [
+    `3 comment(s) found. ${MOVE_THE_WHY}`,
+    "1 file(s) cannot be parsed, so their comments cannot be checked.",
+    "2 file(s) of an unknown type, so their comments cannot be checked.",
+  ])
 })
 
 const texts = (text, file) =>
