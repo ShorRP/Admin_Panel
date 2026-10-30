@@ -1,11 +1,9 @@
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { pathToFileURL } from "node:url"
 import { parse } from "@babel/parser"
 import { parseAllDocuments, Parser } from "yaml"
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
 const SCRIPT_PLUGINS = {
   ".js": ["jsx"],
@@ -238,7 +236,21 @@ function repositoryFiles(root) {
   )
 }
 
-export function checkRepository(root = ROOT) {
+function repositoryRoot(cwd) {
+  const git = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd,
+    encoding: "utf8",
+  })
+  if (git.error) throw git.error
+  if (git.status !== 0) {
+    throw new Error(
+      `no git repository found from ${cwd}: ${git.stderr.trim().split("\n")[0]}`
+    )
+  }
+  return git.stdout.trim()
+}
+
+export function checkRepository(root) {
   return repositoryFiles(root)
     .filter((file) => familyOf(file))
     .flatMap((file) =>
@@ -250,7 +262,15 @@ export function checkRepository(root = ROOT) {
 }
 
 function main() {
-  const problems = checkRepository()
+  let root
+  try {
+    root = repositoryRoot(process.cwd())
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 2
+    return
+  }
+  const problems = checkRepository(root)
   if (!problems.length) return
   console.log(problems.join("\n"))
   console.log(

@@ -16,10 +16,13 @@ import {
 const HOOK = fileURLToPath(
   new URL("../.claude/hooks/check-comments-before-pr.mjs", import.meta.url)
 )
+const SCRIPT = fileURLToPath(
+  new URL("../scripts/check-comments.mjs", import.meta.url)
+)
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create through without a word", () => {
+test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
   const result = runHook(
     JSON.stringify({
       tool_name: "Bash",
@@ -35,6 +38,126 @@ test("the PR hook refuses a call it cannot read", () => {
   const output = JSON.parse(result.stdout).hookSpecificOutput
   assert.equal(output.permissionDecision, "deny")
   assert.match(output.permissionDecisionReason, /could not read this call/)
+})
+
+function withTemporaryRepository(files, callback) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: dir })
+    for (const [file, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true })
+      fs.writeFileSync(path.join(dir, file), text)
+    }
+    callback(dir)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+const hookInput = (command, cwd) =>
+  JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
+
+for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+  test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny")
+        assert.match(output.permissionDecisionReason, /dirty\.js:1:20 \/\/ why/)
+      }
+    )
+  })
+
+  test(`the PR hook lets \`${command}\` through when the session's repository holds no comment`, () => {
+    withTemporaryRepository({ "clean.js": "export const a = 1\n" }, (dir) => {
+      const result = runHook(hookInput(command, dir))
+      assert.equal(result.status, 0)
+      assert.equal(result.stdout, "")
+    })
+  })
+}
+
+test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const result = runHook(
+        hookInput("gh pr create", path.join(dir, "packages", "app"))
+      )
+      const output = JSON.parse(result.stdout).hookSpecificOutput
+      assert.equal(output.permissionDecision, "deny")
+      assert.match(output.permissionDecisionReason, /\ndirty\.js:1:20 \/\/ why/)
+    }
+  )
+})
+
+test("the PR hook refuses a PR from a folder that is in no repository, since it has nothing to check", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [HOOK], {
+      input: hookInput("gh pr create", dir),
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    const output = JSON.parse(result.stdout).hookSpecificOutput
+    const reason = output.permissionDecisionReason
+    assert.equal(output.permissionDecision, "deny")
+    assert.match(reason, /could not run/)
+    assert.match(reason, /no git repository found from /)
+    assert.ok(reason.includes(path.basename(dir)))
+    assert.doesNotMatch(reason, /pnpm install/)
+    assert.doesNotMatch(reason, /\n\s+at /)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script, run in a folder that is in no repository, fails with one line that names the folder", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    assert.equal(result.status, 2)
+    assert.equal(result.stdout, "")
+    assert.equal(result.stderr.trimEnd().split("\n").length, 1)
+    assert.match(result.stderr, /^no git repository found from /)
+    assert.ok(result.stderr.includes(path.basename(dir)))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script checks the repository that holds the folder it runs from, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const cwd = path.join(dir, "packages", "app")
+      const refused = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(refused.status, 1)
+      assert.match(refused.stdout, /^dirty\.js:1:20 \/\/ why$/m)
+      fs.writeFileSync(path.join(dir, "dirty.js"), "export const a = 1\n")
+      const accepted = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(accepted.status, 0)
+      assert.equal(accepted.stdout, "")
+    }
+  )
 })
 
 const texts = (text, file) =>
