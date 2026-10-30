@@ -7,7 +7,10 @@ import {
 } from "discord-api-types/v10"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
+import { auditLogReason } from "@/audit-log/audit-log-reason"
+import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
+import { ROUTES } from "@/discord/routes"
 import { readRecord } from "@/records/read-record"
 import { findStaffMember } from "@/staff/staff-member"
 import { changeTimeout } from "./change-timeout"
@@ -192,6 +195,48 @@ test("a timeout given then lifted by hand in Discord shows under its author's Di
       reason: "Spam",
     },
   ])
+})
+
+test("a timeout typed by hand in Discord with a reason in the panel's format shows as given in Discord, under its author's Discord name, with the whole reason", async () => {
+  const discord = discordWithLyra()
+  const forgedReason = auditLogReason(
+    await moderatorOn(discord),
+    "Insultes répétées"
+  )
+  discord.modifyMemberAs(
+    BRYN.id,
+    LYRA.id,
+    { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+    forgedReason
+  )
+
+  expect(await historyOf(discord, LYRA.id)).toEqual([
+    {
+      id: expect.any(String),
+      date: NOW,
+      change: { kind: "timeout", end: new Date("2026-10-29T14:00:00.000Z") },
+      author: { kind: "discord", memberName: "Bryn la Rouge" },
+      reason: forgedReason,
+    },
+  ])
+})
+
+test("a failed read of the panel's application is thrown, rather than leaving every sanction read as given in Discord", async () => {
+  const discord = discordWithLyra()
+  await changeTimeout(
+    discord,
+    await moderatorOn(discord),
+    timeOutForm("Insultes répétées")
+  )
+  const record = await readRecord(discord, LYRA.id)
+  const unavailable = new DiscordError({
+    method: "GET",
+    route: ROUTES.currentUser,
+    status: 503,
+  })
+  discord.failNext("getApplicationUser", unavailable)
+
+  await expect(readSanctionHistory(discord, record)).rejects.toBe(unavailable)
 })
 
 test("only the account's own sanctions show, and no change of a member but their timeout", async () => {

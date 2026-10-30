@@ -19,8 +19,8 @@ import {
   type SanctionChange,
 } from "@/sanctions/sanction-events"
 import { auditLogPages } from "./audit-log-pages"
-import { panelReasonOf, type PanelReason } from "./audit-log-reason"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
+import { attributionOf, type EntryAttribution } from "./entry-attribution"
 import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
@@ -51,7 +51,11 @@ type Users = Map<Snowflake, APIUser>
 
 type EventReader = {
   actionType: AuditLogEvent
-  changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
+  changeOf: (
+    entry: APIAuditLogEntry,
+    users: Users,
+    applicationId: Snowflake
+  ) => FoundChange | null
 }
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
@@ -94,8 +98,14 @@ export async function readAuditLog(
   const cursor = CURSOR.parse(searchParams.before)
   const type = CHANGE_TYPE.parse(searchParams.type)
   const found: FoundChange[] = []
-  for (const reader of await eventReadersOfType(discord, type)) {
-    found.push(...(await changesOfEvent(discord, reader, cursor)))
+  const [readers, application] = await Promise.all([
+    eventReadersOfType(discord, type),
+    discord.getApplicationUser(),
+  ])
+  for (const reader of readers) {
+    found.push(
+      ...(await changesOfEvent(discord, reader, cursor, application.id))
+    )
   }
   const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
@@ -140,16 +150,25 @@ async function panelRuleId(discord: DiscordApi) {
 function eventReaders(ruleId: Snowflake | null): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
-    changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      sanctionChangeOf(entry, event.changeOf(entry), users),
+    changeOf: (
+      entry: APIAuditLogEntry,
+      users: Users,
+      applicationId: Snowflake
+    ) => sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
   }))
   if (ruleId === null) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
-    changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      entry.target_id === ruleId ? ruleChangeOf(entry, users) : null,
+    changeOf: (
+      entry: APIAuditLogEntry,
+      users: Users,
+      applicationId: Snowflake
+    ) =>
+      entry.target_id === ruleId
+        ? ruleChangeOf(entry, users, applicationId)
+        : null,
   }))
   return [...ruleReaders, ...sanctionReaders]
 }
@@ -184,13 +203,14 @@ async function avatarUrlOf(discord: DiscordApi, memberId: Snowflake) {
 async function changesOfEvent(
   discord: DiscordApi,
   { actionType, changeOf }: EventReader,
-  olderThan: Snowflake | null
+  olderThan: Snowflake | null,
+  applicationId: Snowflake
 ) {
   const changes: FoundChange[] = []
   for await (const log of auditLogPages(discord, actionType, olderThan)) {
     const users = new Map(log.users.map((user) => [user.id, user]))
     for (const entry of log.audit_log_entries) {
-      const change = changeOf(entry, users)
+      const change = changeOf(entry, users, applicationId)
       if (change !== null) {
         changes.push(change)
       }
@@ -202,19 +222,22 @@ async function changesOfEvent(
   return changes
 }
 
-function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
-  const reason = panelReasonIn(entry)
-  const { memberId, ...moment } = momentOf(entry, reason, users)
+function ruleChangeOf(
+  entry: APIAuditLogEntry,
+  users: Users,
+  applicationId: Snowflake
+): FoundChange {
+  const author = attributionOf(entry, users, applicationId)
   return {
-    memberId,
+    memberId: author.memberId,
     change: {
       kind: "rule",
-      ...moment,
-      madeInDiscord: reason === null,
+      ...momentOf(entry, author),
+      madeInDiscord: author.kind === "discord",
       description:
-        reason === null
-          ? "Règle modifiée dans Discord"
-          : capitalized(reason.change),
+        author.kind === "panel"
+          ? capitalized(author.reason)
+          : "Règle modifiée dans Discord",
     },
   }
 }
@@ -222,52 +245,31 @@ function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
 function sanctionChangeOf(
   entry: APIAuditLogEntry,
   sanctionChange: SanctionChange | null,
-  users: Users
+  users: Users,
+  applicationId: Snowflake
 ): FoundChange | null {
   if (sanctionChange === null || entry.target_id === null) {
     return null
   }
-  const reason = panelReasonIn(entry)
-  const { memberId, ...moment } = momentOf(entry, reason, users)
+  const author = attributionOf(entry, users, applicationId)
   const account = users.get(entry.target_id)
   return {
-    memberId,
+    memberId: author.memberId,
     change: {
       kind: "sanction-change",
-      ...moment,
+      ...momentOf(entry, author),
       sanctionChange,
       account: {
         id: entry.target_id,
         name: account === undefined ? "Compte inconnu" : userName(account),
       },
-      reason: reason === null ? (entry.reason ?? null) : reason.change,
+      reason: author.reason,
     },
   }
 }
 
-function panelReasonIn(entry: APIAuditLogEntry) {
-  return entry.reason === undefined ? null : panelReasonOf(entry.reason)
-}
-
-function momentOf(
-  entry: APIAuditLogEntry,
-  reason: PanelReason | null,
-  users: Users
-) {
-  const moment = { id: entry.id, date: snowflakeDate(entry.id) }
-  if (reason !== null) {
-    return {
-      ...moment,
-      memberId: reason.staffMemberId,
-      memberName: reason.staffMemberName,
-    }
-  }
-  const user = users.get(entry.user_id ?? "")
-  return {
-    ...moment,
-    memberId: entry.user_id,
-    memberName: user === undefined ? "Membre inconnu" : userName(user),
-  }
+function momentOf(entry: APIAuditLogEntry, { memberName }: EntryAttribution) {
+  return { id: entry.id, date: snowflakeDate(entry.id), memberName }
 }
 
 function byParisDay(changes: AuditLogChange[]) {
