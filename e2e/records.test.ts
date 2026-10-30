@@ -1,3 +1,5 @@
+import { AuditLogEvent } from "discord-api-types/v10"
+
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
 
@@ -29,6 +31,10 @@ const LYSANNE = {
 
 const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
 
+const CORVUS_BAN_REASON = "Aldis (1400000000000000001) : insultes répétées"
+
+const APPLICATION_ID = "1200000000000000000"
+
 test.use({
   discordState: {
     roles: [GUARD],
@@ -44,11 +50,20 @@ test.use({
     bans: [
       {
         user: CORVUS,
-        reason: "Aldis (1400000000000000001) : insultes répétées",
+        reason: CORVUS_BAN_REASON,
       },
       { user: LYSANNE },
     ],
     users: [HALDOR],
+    auditLogEntries: [
+      {
+        id: "1563530499194880000",
+        action_type: AuditLogEvent.MemberBanAdd,
+        target_id: CORVUS.id,
+        user_id: APPLICATION_ID,
+        reason: CORVUS_BAN_REASON,
+      },
+    ],
   },
 })
 
@@ -203,6 +218,7 @@ test("a mention or an ID opens its account's record directly, banned, absent or 
   await expect(main).toContainText("Compte banni@corvus")
   await expect(details).toContainText("insultes répétées")
   await expect(details).toContainText("Aldis")
+  await expect(details).not.toContainText("(1400000000000000001)")
   await checkAccessibility()
 
   await page.goto("/records")
