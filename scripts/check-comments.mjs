@@ -648,11 +648,14 @@ function isCommentless(file) {
   )
 }
 
-export function checkFile(text, file) {
+function inspectFile(text, file) {
   if (isCommentless(file)) return []
   if (!familyOf(file))
     return [
-      `${file}: unknown file type, so its comments cannot be checked (teach scripts/check-comments.mjs to read it, or list it there as a type without comments)`,
+      {
+        kind: "unknown-type",
+        line: `${file}: unknown file type, so its comments cannot be checked (teach scripts/check-comments.mjs to read it, or list it there as a type without comments)`,
+      },
     ]
   try {
     return findComments(text, file).map((range) => {
@@ -662,13 +665,20 @@ export function checkFile(text, file) {
         .split("\n")[0]
         .trim()
         .slice(0, 80)
-      return `${file}:${line}:${column} ${snippet}`
+      return { kind: "comment", line: `${file}:${line}:${column} ${snippet}` }
     })
   } catch (error) {
     return [
-      `${file}: cannot be parsed, so its comments cannot be checked (${error.message.split("\n")[0]})`,
+      {
+        kind: "unparsable",
+        line: `${file}: cannot be parsed, so its comments cannot be checked (${error.message.split("\n")[0]})`,
+      },
     ]
   }
+}
+
+export function checkFile(text, file) {
+  return inspectFile(text, file).map(({ line }) => line)
 }
 
 function repositoryFiles(root) {
@@ -696,15 +706,44 @@ function repositoryRoot(cwd) {
   return git.stdout.trim()
 }
 
-export function checkRepository(root) {
+function inspectRepository(root) {
   return repositoryFiles(root)
     .filter((file) => !isCommentless(file))
     .flatMap((file) =>
-      checkFile(
+      inspectFile(
         fs.readFileSync(path.join(root, file), "utf8"),
         file.replaceAll("\\", "/")
       )
     )
+}
+
+export function checkRepository(root) {
+  return inspectRepository(root).map(({ line }) => line)
+}
+
+const FOOTERS = [
+  [
+    "comment",
+    (count) =>
+      `${count} comment(s) found. This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name.`,
+  ],
+  [
+    "unparsable",
+    (count) =>
+      `${count} file(s) cannot be parsed, so their comments cannot be checked.`,
+  ],
+  [
+    "unknown-type",
+    (count) =>
+      `${count} file(s) of an unknown type, so their comments cannot be checked.`,
+  ],
+]
+
+function footerOf(problems) {
+  return FOOTERS.flatMap(([kind, say]) => {
+    const count = problems.filter((problem) => problem.kind === kind).length
+    return count ? [say(count)] : []
+  }).join("\n")
 }
 
 function main() {
@@ -716,12 +755,10 @@ function main() {
     process.exitCode = 2
     return
   }
-  const problems = checkRepository(root)
+  const problems = inspectRepository(root)
   if (!problems.length) return
-  console.log(problems.join("\n"))
-  console.log(
-    `\n${problems.length} comment(s) found. This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name.`
-  )
+  console.log(problems.map(({ line }) => line).join("\n"))
+  console.log(`\n${footerOf(problems)}`)
   process.exitCode = 1
 }
 
