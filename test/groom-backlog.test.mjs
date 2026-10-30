@@ -1566,10 +1566,12 @@ test('setup: a missing "Waiting on" field is reported instead of written', () =>
 test("hook: tracker writes are recognized, reads and the skill itself are not", () => {
   const writes = [
     'gh issue create --title "x" --body "y"',
+    'gh issue new --title "x" --body "y"',
     "gh issue edit 35 --add-label needs-info",
     'gh issue close 7 --comment "fait"',
     "gh pr merge 38 --squash",
     "gh pr create --fill",
+    "gh pr new --fill",
     "gh project item-edit --id X --field-id Y",
     "gh api --method POST repos/PothieuG/EsportCards/issues/1/sub_issues -F sub_issue_id=42",
     "gh api repos/PothieuG/EsportCards/issues/5/dependencies/blocked_by -F issue_id=9",

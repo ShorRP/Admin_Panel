@@ -38,6 +38,10 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
+const SHELL_BREAKS = /[\s;&|()<>]/
+const DOTENV_VALUE_OPENER =
+  /[ \t]*(?:export[ \t]+)?[\w.-]+(?:[ \t]*=[ \t]*|:[ \t]+)(["'`])/y
+const DOTENV_VALUE_TAIL = /[ \t]*(?:#[^\r\n]*)?\r?(?:\n|$)/y
 const COMMENTLESS_FILES = new Set(["pnpm-lock.yaml"])
 const COMMENTLESS_EXTENSIONS = new Set([
   ".png",
@@ -58,6 +62,13 @@ const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
 const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
 const YAML_HEADER_FENCE = /^---[ \t]*\r?\n?$/
 const YAML_KEY_LINE = /^[^\s#][^:\r\n]*:(?:[ \t]|\r?\n?$)/
+const MARKDOWN_BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|(?:[-*+]|\d{1,9}[.)])(?=[ \t])))*[ \t]*`
+const MARKDOWN_LINK_LABEL = String.raw`\[(?![ \t]*\])[^\[\]\r\n]+\]:`
+const MARKDOWN_LINK_TITLE = String.raw`(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|\((?:[^()\\\r\n]|\\.)*\))`
+const MARKDOWN_LINK_COMMENT = new RegExp(
+  String.raw`^(${MARKDOWN_BLOCK_PREFIX})(${MARKDOWN_LINK_LABEL}[ \t]*(?:#|<>)[ \t]+${MARKDOWN_LINK_TITLE})[ \t]*\r?$`,
+  "gm"
+)
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
   "single-quoted-scalar",
@@ -85,7 +96,11 @@ export function familyOf(file) {
   return null
 }
 
-function scriptComments(text, extension, offset = 0) {
+function scriptComments(
+  text,
+  extension,
+  { offset = 0, allowDirectives = true } = {}
+) {
   const ast = parse(text, {
     sourceType: "unambiguous",
     plugins: SCRIPT_PLUGINS[extension],
@@ -96,6 +111,7 @@ function scriptComments(text, extension, offset = 0) {
   return ast.comments
     .filter(
       (comment) =>
+        !allowDirectives ||
         !DIRECTIVES.some((directive) => directive.test(comment.value))
     )
     .map((comment) => ({
@@ -113,12 +129,38 @@ function closingQuote(text, start) {
   return text.length
 }
 
-function delimitedComments(text, { line = [], block = [], quotes = [] }) {
+function isSqlIdentifierCharacter(character) {
+  return (
+    character !== undefined &&
+    (/[\w$]/.test(character) || character.charCodeAt(0) > 127)
+  )
+}
+
+function opensEscapeString(text, start) {
+  const prefix = text[start - 1]
+  return (
+    text[start] === "'" &&
+    (prefix === "E" || prefix === "e") &&
+    !isSqlIdentifierCharacter(text[start - 2])
+  )
+}
+
+function closingSqlQuote(text, start) {
+  const escapes = opensEscapeString(text, start)
+  let end = quotedEnd(text, start, { escapes })
+  while (text[end] === text[start]) end = quotedEnd(text, end, { escapes })
+  return end - 1
+}
+
+function delimitedComments(
+  text,
+  { line = [], block = [], quotes = [], closing = closingQuote }
+) {
   const found = []
   let i = 0
   while (i < text.length) {
     if (quotes.includes(text[i])) {
-      i = closingQuote(text, i) + 1
+      i = closing(text, i) + 1
       continue
     }
     const opener = block.find(([open]) => text.startsWith(open, i))
@@ -164,12 +206,11 @@ function maskFlowYamlScalars(text) {
   return masked
 }
 
-function hashComments(text, { allowShebang }) {
+function hashComments(text) {
   const found = []
   let offset = 0
   for (const rawLine of text.split("\n")) {
-    const isShebang = allowShebang && offset === 0 && rawLine.startsWith("#!")
-    const line = isShebang ? "" : rawLine.replace(/\r$/, "")
+    const line = rawLine.replace(/\r$/, "")
     let quote = null
     for (let i = 0; i < line.length; i++) {
       const char = line[i]
@@ -191,6 +232,227 @@ function hashComments(text, { allowShebang }) {
     offset += rawLine.length + 1
   }
   return found
+}
+
+function lineEnd(text, from) {
+  const newline = text.indexOf("\n", from)
+  const end = newline === -1 ? text.length : newline
+  return text[end - 1] === "\r" ? end - 1 : end
+}
+
+function neverClosed(text, at, what) {
+  const line = text.slice(0, at).split("\n").length
+  return new Error(`the ${what} opened on line ${line} is never closed`)
+}
+
+function quotedEnd(
+  text,
+  quoteAt,
+  { escapes, delimiter = text[quoteAt], oneLine = false }
+) {
+  for (let i = quoteAt + delimiter.length; i < text.length; i++) {
+    if (oneLine && text[i] === "\n") break
+    if (escapes && text[i] === "\\" && text[i + 1] !== "\n") i++
+    else if (text.startsWith(delimiter, i)) return i + delimiter.length
+  }
+  throw neverClosed(text, quoteAt, `${text[quoteAt]} quote`)
+}
+
+function arithmeticEnd(text, at) {
+  let depth = 0
+  for (let i = at; i < text.length; i++) {
+    if (text[i] === "(") depth++
+    else if (text[i] === ")" && --depth === 0)
+      return text[i - 1] === ")" ? i + 1 : null
+  }
+  return null
+}
+
+function heredocAt(text, at) {
+  let i = at + 2
+  const strip = text[i] === "-"
+  if (strip) i++
+  while (text[i] === " " || text[i] === "\t") i++
+  let delimiter = ""
+  while (i < text.length && !SHELL_BREAKS.test(text[i])) {
+    if (text[i] === "'" || text[i] === '"') {
+      const end = quotedEnd(text, i, { escapes: text[i] === '"' })
+      delimiter += text.slice(i + 1, end - 1)
+      i = end
+    } else if (text[i] === "\\") {
+      delimiter += text[i + 1] ?? ""
+      i += 2
+    } else delimiter += text[i++]
+  }
+  return delimiter ? { delimiter, strip, at, end: i } : null
+}
+
+function heredocBodyEnd(text, from, { delimiter, strip, at }) {
+  let i = from
+  while (i < text.length) {
+    const newline = text.indexOf("\n", i)
+    const next = newline === -1 ? text.length : newline + 1
+    const line = text.slice(i, lineEnd(text, i))
+    if ((strip ? line.replace(/^\t+/, "") : line) === delimiter) return next
+    i = next
+  }
+  throw neverClosed(text, at, "here-document")
+}
+
+function shellComments(text) {
+  const found = []
+  let i = text.startsWith("#!") ? lineEnd(text, 0) : 0
+
+  function substitution() {
+    const start = i
+    if (text[i + 2] === "(") {
+      const end = arithmeticEnd(text, i + 1)
+      if (end !== null) {
+        i = end
+        return
+      }
+    }
+    i += 2
+    commands(")", start)
+  }
+
+  function doubleQuoted() {
+    const start = i++
+    while (i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === '"') {
+        i++
+        return
+      } else if (char === "$" && text[i + 1] === "(") substitution()
+      else if (char === "`") {
+        i++
+        commands("`", i - 1)
+      } else i++
+    }
+    throw neverClosed(text, start, '" quote')
+  }
+
+  function commands(closer, start) {
+    const heredocs = []
+    let depth = 0
+    let closed = false
+    while (!closed && i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      else if (char === '"') doubleQuoted()
+      else if (char === "$" && text[i + 1] === "'")
+        i = quotedEnd(text, i + 1, { escapes: true })
+      else if (char === "$" && text[i + 1] === "(") substitution()
+      else if (char === "`") {
+        i++
+        if (closer === "`") closed = true
+        else commands("`", i - 1)
+      } else if (char === "(") {
+        const end = text[i + 1] === "(" ? arithmeticEnd(text, i) : null
+        if (end === null) depth++
+        i = end ?? i + 1
+      } else if (char === ")") {
+        if (closer === ")" && depth === 0) closed = true
+        else depth = Math.max(0, depth - 1)
+        i++
+      } else if (char === "<" && text[i + 1] === "<") {
+        if (text[i + 2] === "<") i += 3
+        else {
+          const heredoc = heredocAt(text, i)
+          if (heredoc) heredocs.push(heredoc)
+          i = heredoc ? heredoc.end : i + 2
+        }
+      } else if (char === "\n") {
+        i++
+        for (const heredoc of heredocs.splice(0))
+          i = heredocBodyEnd(text, i, heredoc)
+      } else if (char === "#" && (i === 0 || SHELL_BREAKS.test(text[i - 1]))) {
+        const end = lineEnd(text, i)
+        found.push({ start: i, end })
+        i = end
+      } else i++
+    }
+    if (closer && !closed)
+      throw neverClosed(text, start, closer === ")" ? "$(" : closer)
+    if (heredocs.length)
+      throw neverClosed(text, heredocs[0].at, "here-document")
+  }
+
+  commands(null, 0)
+  return found
+}
+
+function tomlComments(text) {
+  const found = []
+  let i = 0
+  while (i < text.length) {
+    const char = text[i]
+    if (char === "#") {
+      const end = lineEnd(text, i)
+      found.push({ start: i, end })
+      i = end
+    } else if (char === '"' || char === "'") {
+      const delimiter = text.startsWith(char.repeat(3), i)
+        ? char.repeat(3)
+        : char
+      const oneLine = delimiter === char
+      i = quotedEnd(text, i, { escapes: char === '"', delimiter, oneLine })
+      while (!oneLine && text[i] === char) i++
+    } else i++
+  }
+  return found
+}
+
+function dotenvValueEnd(text, lineStart) {
+  DOTENV_VALUE_OPENER.lastIndex = lineStart
+  const opener = DOTENV_VALUE_OPENER.exec(text)
+  if (!opener) return null
+  const quote = opener[1]
+  const closings = []
+  const escaped = []
+  for (let i = lineStart + opener[0].length; i < text.length; i++) {
+    if (text[i] === "\\" && text[i + 1] === quote) escaped.unshift(++i)
+    else if (text[i] === quote) {
+      closings.push(i)
+      break
+    }
+  }
+  for (const closing of [...closings, ...escaped]) {
+    DOTENV_VALUE_TAIL.lastIndex = closing + 1
+    if (DOTENV_VALUE_TAIL.test(text)) return closing + 1
+  }
+  return null
+}
+
+function dotenvComments(text) {
+  const found = []
+  let lineStart = 0
+  while (lineStart < text.length) {
+    const valueEnd = dotenvValueEnd(text, lineStart)
+    const from = valueEnd ?? lineStart
+    const stop = lineEnd(text, from)
+    for (let i = from; i < stop; i++) {
+      if (
+        text[i] === "#" &&
+        (valueEnd !== null || i === 0 || /\s/.test(text[i - 1]))
+      ) {
+        found.push({ start: i, end: stop })
+        break
+      }
+    }
+    lineStart = stop + (text[stop] === "\r" ? 2 : 1)
+  }
+  return found
+}
+
+function hashFileComments(text, file) {
+  const extension = path.extname(file).toLowerCase()
+  if (extension === ".sh") return shellComments(text)
+  if (extension === ".toml") return tomlComments(text)
+  if (path.basename(file).startsWith(".env")) return dotenvComments(text)
+  return hashComments(text)
 }
 
 function blankedOut(text) {
@@ -275,7 +537,7 @@ function maskMarkdownCode(text) {
 
 function yamlHeaderOf(text) {
   const lines = text.match(/[^\n]*\n|[^\n]+/g) ?? []
-  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0].replace(/^﻿/, "")))
+  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0].replace(/^\uFEFF/, "")))
     return null
   const bodyStart = lines[0].length
   let offset = bodyStart
@@ -299,14 +561,31 @@ function yamlHeaderComments(body) {
   } catch {
     source = body.replace(/["']/g, "x")
   }
-  return hashComments(source, { allowShebang: false })
+  return hashComments(source)
+}
+
+function markdownLinkComments(masked) {
+  return [...masked.matchAll(MARKDOWN_LINK_COMMENT)].map((match) => {
+    const start = match.index + match[1].length
+    return { start, end: start + match[2].length }
+  })
+}
+
+function markdownBodyComments(text) {
+  const masked = maskMarkdownCode(text)
+  const htmlComments = delimitedComments(masked, { block: [["<!--", "-->"]] })
+  const linkComments = markdownLinkComments(masked).filter(
+    (link) =>
+      !htmlComments.some(
+        (html) => link.start >= html.start && link.start < html.end
+      )
+  )
+  return [...htmlComments, ...linkComments].sort((a, b) => a.start - b.start)
 }
 
 function markdownComments(text) {
   const header = yamlHeaderOf(text)
-  const fromHtml = (markdown) =>
-    delimitedComments(maskMarkdownCode(markdown), { block: [["<!--", "-->"]] })
-  if (!header) return fromHtml(text)
+  if (!header) return markdownBodyComments(text)
   const fromHeader = yamlHeaderComments(
     text.slice(header.bodyStart, header.bodyEnd)
   ).map((range) => ({
@@ -315,16 +594,10 @@ function markdownComments(text) {
   }))
   return [
     ...fromHeader,
-    ...fromHtml(blankedOut(text.slice(0, header.end)) + text.slice(header.end)),
+    ...markdownBodyComments(
+      blankedOut(text.slice(0, header.end)) + text.slice(header.end)
+    ),
   ]
-}
-
-function pythonTripleQuotedEnd(text, start, delimiter) {
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === "\\") i++
-    else if (text.startsWith(delimiter, i)) return i + delimiter.length
-  }
-  throw new Error(`unterminated ${delimiter} string`)
 }
 
 function pythonComments(text) {
@@ -335,7 +608,7 @@ function pythonComments(text) {
       text.startsWith(quotes, i)
     )
     if (triple) {
-      i = pythonTripleQuotedEnd(text, i + triple.length, triple)
+      i = quotedEnd(text, i, { escapes: true, delimiter: triple })
     } else if (text[i] === '"' || text[i] === "'") {
       i = closingQuote(text, i) + 1
     } else if (text[i] === "#") {
@@ -405,7 +678,10 @@ export function findComments(text, file) {
     case "script":
       return scriptComments(text, extension)
     case "json":
-      return scriptComments(`(${text}\n)`, ".js", 1)
+      return scriptComments(`(${text}\n)`, ".js", {
+        offset: 1,
+        allowDirectives: false,
+      })
     case "css":
       return delimitedComments(text, {
         block: [["/*", "*/"]],
@@ -424,11 +700,12 @@ export function findComments(text, file) {
         line: ["--"],
         block: [["/*", "*/"]],
         quotes: ["'", '"'],
+        closing: closingSqlQuote,
       })
     case "yaml":
-      return hashComments(maskFlowYamlScalars(text), { allowShebang: false })
+      return hashComments(maskFlowYamlScalars(text))
     case "hash":
-      return hashComments(text, { allowShebang: extension === ".sh" })
+      return hashFileComments(text, file)
     default:
       return []
   }
@@ -446,11 +723,14 @@ function isCommentless(file) {
   )
 }
 
-export function checkFile(text, file) {
+function inspectFile(text, file) {
   if (isCommentless(file)) return []
   if (!familyOf(file))
     return [
-      `${file}: unknown file type, so its comments cannot be checked (teach scripts/check-comments.mjs to read it, or list it there as a type without comments)`,
+      {
+        kind: "unknown-type",
+        line: `${file}: unknown file type, so its comments cannot be checked (teach scripts/check-comments.mjs to read it, or list it there as a type without comments)`,
+      },
     ]
   try {
     return findComments(text, file).map((range) => {
@@ -460,13 +740,20 @@ export function checkFile(text, file) {
         .split("\n")[0]
         .trim()
         .slice(0, 80)
-      return `${file}:${line}:${column} ${snippet}`
+      return { kind: "comment", line: `${file}:${line}:${column} ${snippet}` }
     })
   } catch (error) {
     return [
-      `${file}: cannot be parsed, so its comments cannot be checked (${error.message.split("\n")[0]})`,
+      {
+        kind: "unparsable",
+        line: `${file}: cannot be parsed, so its comments cannot be checked (${error.message.split("\n")[0]})`,
+      },
     ]
   }
+}
+
+export function checkFile(text, file) {
+  return inspectFile(text, file).map(({ line }) => line)
 }
 
 function repositoryFiles(root) {
@@ -494,15 +781,44 @@ function repositoryRoot(cwd) {
   return git.stdout.trim()
 }
 
-export function checkRepository(root) {
+function inspectRepository(root) {
   return repositoryFiles(root)
     .filter((file) => !isCommentless(file))
     .flatMap((file) =>
-      checkFile(
+      inspectFile(
         fs.readFileSync(path.join(root, file), "utf8"),
         file.replaceAll("\\", "/")
       )
     )
+}
+
+export function checkRepository(root) {
+  return inspectRepository(root).map(({ line }) => line)
+}
+
+const FOOTERS = [
+  [
+    "comment",
+    (count) =>
+      `${count} comment(s) found. This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name.`,
+  ],
+  [
+    "unparsable",
+    (count) =>
+      `${count} file(s) cannot be parsed, so their comments cannot be checked.`,
+  ],
+  [
+    "unknown-type",
+    (count) =>
+      `${count} file(s) of an unknown type, so their comments cannot be checked.`,
+  ],
+]
+
+function footerOf(problems) {
+  return FOOTERS.flatMap(([kind, say]) => {
+    const count = problems.filter((problem) => problem.kind === kind).length
+    return count ? [say(count)] : []
+  }).join("\n")
 }
 
 function main() {
@@ -514,12 +830,10 @@ function main() {
     process.exitCode = 2
     return
   }
-  const problems = checkRepository(root)
+  const problems = inspectRepository(root)
   if (!problems.length) return
-  console.log(problems.join("\n"))
-  console.log(
-    `\n${problems.length} comment(s) found. This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name.`
-  )
+  console.log(problems.map(({ line }) => line).join("\n"))
+  console.log(`\n${footerOf(problems)}`)
   process.exitCode = 1
 }
 
