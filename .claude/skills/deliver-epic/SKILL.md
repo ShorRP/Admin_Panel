@@ -15,7 +15,7 @@ The process lives here; the repository's rules live in its `CLAUDE.md` and the t
 
 **Done when** the epic is closed, every box of its body checked when it has any, or nothing in scope moves without Gilles; `groom-backlog`'s `plan` proposes no op; no worktree and no local branch of the run is left, but those the report names; the epic carries the comment of the agents' decisions; your report is written and Gilles notified (**The end**).
 
-**The main checkout** is not the run's: another session may hold it, on another branch, under uncommitted changes. The run reads it and runs `git fetch` there, and never pulls, switches or writes in it.
+**The main checkout** is not the run's: another session may hold it, on another branch, under uncommitted changes. The run reads it and runs `git fetch` there, and leaves its branch, its files and its history as they are.
 
 ## The run's folder
 
@@ -41,7 +41,7 @@ A holder is a PBI's number, or `orchestrator` for your own `groom-backlog` runs.
 
 The run takes the epic's open sub-issues labelled both `ready-for-agent` and `skill:implement`, those `groom-backlog` adds to the epic during the run included. The others stay out: `ready-for-human`, `needs-info`, `needs-triage`, and a skill label other than `skill:implement`, such as `skill:grill-with-docs`, `skill:grill-me` or `skill:to-questionnaire`; so does one assigned to someone, or carrying an open PR, when the run reaches it, since another session holds it. Each one out, and the tickets that wait on it, go into the journal and the report. Leaving one out is no stop.
 
-The epic grows only under the bar of `brief.md`, step 4 (**Loose ends**): each ticket in the epic costs a full delivery. Hold the agents to it at review.
+The epic grows only under the bar of `brief.md`, **Loose ends**: each ticket in the epic costs a full delivery. Hold the agents to it at review.
 
 A PBI is **ready** when it is in scope and open, every ticket that blocks it is closed (`gh api repos/<owner>/<repo>/issues/<m>/dependencies/blocked_by`), and no agent of the run holds it. The sub-issues' order (`gh api repos/<owner>/<repo>/issues/<n>/sub_issues`) is the order of implementation `groom-backlog` keeps: take ready PBIs in it.
 
@@ -59,11 +59,15 @@ A standby session that takes the run over skips this section but its step 1, rea
 
 ## The loop
 
-Every turn after the first starts with an agent's end or message, or with the app's note that a standby session ended a turn: the app wakes the session that opened one each time it does (`start_session`'s description). Such a note carries no work: end that turn in one line, before the relay as after it. So does a `<ci-monitor-event>`: the app binds the PRs the agents open to this session with Auto-fix on, against `rules.md`, rule 1, so call `set_monitor` with `auto_fix: false` and the PR's `url` the first time one names a PR, then end the turn in one line, since the PBI agent owns its PR and its CI. In each other turn:
+Every turn after the first starts with an agent's end or message, with the app's note that a standby session ended a turn (the app wakes the session that opened one each time it does, `start_session`'s description), or with a `<ci-monitor-event>`. A note or an event carries no work: end that turn in one line, before the relay as after it.
+
+The app binds each PR an agent opens to this session with Auto-fix on, against `rules.md`, rule 1. The first `<ci-monitor-event>` that names a given PR is the sign: call `set_monitor` with `auto_fix: false` and that PR's `url`, since the PBI agent owns its PR and its CI.
+
+In each other turn:
 
 1. **Relay check.** After an agent's return, read `get_usage` for `self`: at 50 % of the context window, follow **Relay**.
 2. **Settle** what the agent returned, by the step of **A PBI** it ends, and update the journal.
-3. **Fill.** While fewer than 8 PBI agents are **in flight**, each from its launch to its final report, start the next ready PBI (**A PBI**, step 1), unless its ticket names a file that a PBI in flight changes: it waits until that one has merged, so that its plan builds on what landed. The files of a PBI in flight are those its ticket names, then those its validated plan lists; keep them in the journal. Reviews run one at a time (**A PBI**, step 3), so their two reviewers bring the run to 10 sub-agents at most, its limit.
+3. **Fill.** While fewer than 8 PBI agents are **in flight**, each from its launch to its final report, start the next ready PBI (**A PBI**, step 1). A ready PBI whose ticket names a file that a PBI in flight changes waits until that one has merged, so that its plan builds on what landed: the files of a PBI in flight are those its ticket names, then those its validated plan lists. Reviews run one at a time (**A PBI**, step 3), so their two reviewers bring the run to 10 sub-agents at most, its limit.
 
 The run never pauses for the plan's usage limits. Waiting is the notifications' job: poll nothing.
 
@@ -78,7 +82,7 @@ The run never pauses for the plan's usage limits. Waiting is the notifications' 
 3. **Review.** The agent ends its turn with « ready for review ». Once no other review runs, run the Skill tool's `mattpocock-skills:code-review` yourself, so that the reviewers read the work without its author's view and every sub-agent of the run stays in your count: the fixed point is `git -C <worktree> merge-base origin/<default branch> <branch>`, since a `cd` into a worktree moves your primary directory, and the spec is the ticket. Start its two reviewers with `model: "sonnet"` and `effort: "xhigh"`, and give them the worktree's path, the ticket and a budget of about 300 words each, about 150 on a diff under 20 lines, but not your opinion. Have the Spec reviewer run the changed code on hard inputs for each criterion, since that is where the defects have shown. Then settle each finding, each decision and each loose end the agent reports against the bar of **Scope**: keep it or drop it, with a reason, reading of the diff only what a finding or a decision names. Send the agent what you kept.
 4. **Delivery.** The agent fixes, opens the PR, waits for CI, merges inside the merge slot, runs `groom-backlog` and reports (`brief.md`, steps 5 to 9). A stop on the way follows **Stops**, three failures on one cause **A stuck PBI**.
 5. **What an agent lacks.** A step that needs a tool the agent reports it lacks, such as the app's built-in browser, you take yourself, and hand the agent its result, a file in its worktree say; when only Gilles can take it, it is a stop.
-6. **Check, then clean.** From outside the worktree, run `node .claude/skills/deliver-epic/scripts/finish-pbi.mjs <m> <PR> <worktree> <branch>`. It checks that the PR is merged and the ticket closed, that the worktree is clean, then unlocks it, removes it under `.claude/worktrees/` only, prunes, deletes the branch, and the `worktree-…` branch the harness left, once each is an ancestor of `origin/<default branch>`, and frees the PBI's slots, with a line per step. Exit 1 means a step refused, failed or kept a branch that origin's default branch does not hold: read its last line, fix what it names and run it again, and list a branch it kept in the report, forcing nothing. Then:
+6. **Check, then clean.** From outside the worktree, run `node .claude/skills/deliver-epic/scripts/finish-pbi.mjs <m> <PR> <worktree> <branch>`. It checks the PR and the ticket on GitHub, removes the worktree, deletes the merged branches, frees the PBI's slots, and prints a line per step. Exit 1 means a line begins `refused:`, `failed:` or `kept:`: fix what it names and run it again, or list the branch it kept in the report. Then:
    - check that the ticket carries its closing comment, and its box is checked in the epic when the epic has one;
    - read the epic's sub-issues again, since `groom-backlog` may have added one or moved the order, and update the journal.
 
@@ -114,5 +118,5 @@ When the epic is closed, or nothing in scope moves without Gilles:
 
 1. take the merge slot as `orchestrator`, run `groom-backlog` one last time on the epic, then release it;
 2. comment on the epic, in French, under the heading of `rules.md` (rule 3), every decision the agents took, each with its ticket and its PR;
-3. write your report to Gilles, in French: a table of PBI, PR, merge commit, decisions, tickets opened, and stop or setting aside, verified facts apart from inferences; then the tickets left out and why, the branches `git branch -d` refused, and the standby sessions left, which he may archive;
+3. write your report to Gilles, in French: a table of PBI, PR, merge commit, decisions, tickets opened, and stop or setting aside, verified facts apart from inferences; then the tickets left out and why, the branches `finish-pbi.mjs` kept, and the standby sessions left, which he may archive;
 4. notify him with `PushNotification`: « Epic #<n> livré », or what waits for him.
