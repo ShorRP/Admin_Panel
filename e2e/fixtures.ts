@@ -121,6 +121,10 @@ export const test = base.extend<Fixtures>({
             .getAnimations()
             .every(({ playState }) => playState === "finished")
         )
+        await expect(
+          page,
+          "the page's title, which Next.js mounts anew with each response"
+        ).toHaveTitle(/\S/)
         const { violations } = await new AxeBuilder({ page })
           .withTags(WCAG_22_AA_TAGS)
           .analyze()
