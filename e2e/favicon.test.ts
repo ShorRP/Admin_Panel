@@ -19,8 +19,15 @@ test("a staff page, and a login page once the member logs out, point to Shor's f
     type: "image/svg+xml",
     body: readFileSync("src/app/icon.svg", "utf8"),
   }
+  const icons = page.locator('link[rel="icon"]')
+  function distinctIconHrefs() {
+    return icons.evaluateAll((links) => [
+      ...new Set(links.map((link) => link.getAttribute("href"))),
+    ])
+  }
   async function servedIcon() {
-    const href = await page.locator('link[rel="icon"]').getAttribute("href")
+    await expect.poll(distinctIconHrefs).toHaveLength(1)
+    const href = await icons.first().getAttribute("href")
     if (href === null) {
       throw new Error("The page's icon link has no href.")
     }
