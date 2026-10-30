@@ -397,6 +397,98 @@ test("markdown files: a line that opens an HTML comment ends an inline code span
   ])
 })
 
+test("markdown files: a # comment of the YAML header is found", () => {
+  assert.deepEqual(texts("---\n# why\nname: x\n---\n\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\nname: x # why\n---\n\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    texts("---\r\n# why\r\nname: x\r\n---\r\n\r\ntext\r\n", "SKILL.md"),
+    ["# why"]
+  )
+  assert.deepEqual(texts("---  \n# why\n---\t\ntext\n", "SKILL.md"), ["# why"])
+  assert.deepEqual(texts("---\n# why\n---", "SKILL.md"), ["# why"])
+  assert.deepEqual(
+    checkFile("---\nname: x\n  # why\nother: y\n---\n\ntext\n", "SKILL.md"),
+    ["SKILL.md:3:3 # why"]
+  )
+})
+
+test("markdown files: a YAML header holds a comment only where YAML does", () => {
+  assert.deepEqual(texts("---\n---\n\n# Title\n", "a.md"), [])
+  assert.deepEqual(texts("---\nname: x\ndescription: a#b\n---\n", "a.md"), [])
+  assert.deepEqual(texts('---\ndescription: "Deliver #12"\n---\n', "a.md"), [])
+  assert.deepEqual(texts('---\nkey: "a\n  # b"\n---\n', "a.md"), [])
+  assert.deepEqual(texts("---\nkey: 'a\n  # b' # why\n---\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\nnote: rock 'n roll # why\n---\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\ndescription: a <!-- b -->\n---\n", "a.md"), [])
+})
+
+test("markdown files: only --- closes a YAML header, not ...", () => {
+  const [line, ...others] = checkFile("---\nname: x\n...\ntext\n", "a.md")
+  assert.match(line, /^a\.md: cannot be parsed/)
+  assert.deepEqual(others, [])
+})
+
+test("markdown files: what follows the YAML header is Markdown, so a # title is a heading", () => {
+  assert.deepEqual(texts("---\nname: x\n---\n\n# Title\n\ntext\n", "a.md"), [])
+  assert.deepEqual(texts("---\nname: x\n---\n# Title\n", "a.md"), [])
+  assert.deepEqual(
+    checkFile("---\nname: x\n---\n\ntext\n\n<!-- why -->\n", "a.md"),
+    ["a.md:7:1 <!-- why -->"]
+  )
+  assert.deepEqual(
+    texts(
+      "---\nname: x\n---\n```\n<!-- sample -->\n```\n<!-- why -->\n",
+      "a.md"
+    ),
+    ["<!-- why -->"]
+  )
+  assert.deepEqual(
+    texts("---\ndescription: |\n  ```\n---\n<!-- why -->\n", "a.md"),
+    ["<!-- why -->"]
+  )
+})
+
+test("markdown files: a --- that is not on the first line is a separator, not a YAML header", () => {
+  assert.deepEqual(
+    texts("# Title\n\n---\nkey: x\n# not a comment\n---\n\ntext\n", "a.md"),
+    []
+  )
+  assert.deepEqual(texts("\n---\n# not a comment\n---\n", "a.md"), [])
+  assert.deepEqual(texts("----\n# not a comment\n----\n", "a.md"), [])
+  assert.deepEqual(texts("text\n---\n\n<!-- why -->\n", "a.md"), [
+    "<!-- why -->",
+  ])
+})
+
+test("markdown files: a YAML header that is not valid YAML is read line by line, quotes ignored", () => {
+  const description =
+    "description: Reconcile the backlog with the work: settle the tickets"
+  assert.deepEqual(
+    texts(`---\nname: x\n${description}\n---\n\ntext\n`, "a.md"),
+    []
+  )
+  assert.deepEqual(
+    texts(`---\nname: x\n${description}\n# why\n---\n\ntext\n`, "a.md"),
+    ["# why"]
+  )
+  assert.deepEqual(
+    texts(`---\n${description}\nnote: rock 'n roll # why\n---\n`, "a.md"),
+    ["# why"]
+  )
+  assert.deepEqual(texts('---\nk: "unclosed\n# why\n---\n', "a.md"), ["# why"])
+  assert.deepEqual(texts(`---\n${description}\nq: "see # 12"\n---\n`, "a.md"), [
+    '# 12"',
+  ])
+})
+
 test("python files: a # comment is found, a # in a string is not", () => {
   assert.deepEqual(texts("# header\nx = 1  # why\n", "a.py"), [
     "# header",
@@ -485,6 +577,11 @@ for (const [construct, file, source] of [
   ['a python """ string', "a.py", 'x = """abc\n# no\n'],
   ["a markdown ``` code fence", "a.md", "```\nx\n\n<!-- hidden -->\n"],
   ["a markdown ~~~ code fence", "a.md", "~~~\nx\n\n<!-- hidden -->\n"],
+  [
+    "a markdown --- YAML header",
+    "a.md",
+    "---\n# hidden\nname: x\n\n<!-- hidden -->\n",
+  ],
   ["a powershell <# block comment", "a.ps1", "<# abc\nGet-Item\n"],
   ["a powershell ' string", "a.ps1", "$x = 'abc\n# no\n"],
   ['a powershell " string', "a.ps1", '$x = "abc\n# no\n'],
@@ -568,13 +665,18 @@ test("the repository check reads markdown, reports an unknown type and leaves co
     fs.writeFileSync(path.join(dir, "clean.md"), "# Title\n\n`<!-- code -->`\n")
     fs.writeFileSync(path.join(dir, "dirty.md"), "# Title\n\n<!-- why -->\n")
     fs.writeFileSync(
+      path.join(dir, "SKILL.md"),
+      "---\n# why\nname: x\n---\n\n# Title\n"
+    )
+    fs.writeFileSync(
       path.join(dir, "logo.png"),
       Buffer.from([0x89, 0x50, 0x4e])
     )
     fs.writeFileSync(path.join(dir, "notes.xyz"), "hello\n")
     const problems = checkRepository(dir)
-    assert.equal(problems.length, 2)
+    assert.equal(problems.length, 3)
     assert.ok(problems.includes("dirty.md:3:1 <!-- why -->"))
+    assert.ok(problems.includes("SKILL.md:2:1 # why"))
     assert.ok(
       problems.some((line) => line.startsWith("notes.xyz: unknown file type"))
     )

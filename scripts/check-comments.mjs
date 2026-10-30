@@ -56,6 +56,7 @@ const COMMENTLESS_EXTENSIONS = new Set([
 ])
 const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
 const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
+const YAML_HEADER_FENCE = /^---[ \t]*\r?\n?$/
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
   "single-quoted-scalar",
@@ -271,6 +272,47 @@ function maskMarkdownCode(text) {
   return masked + maskCodeSpans(paragraph)
 }
 
+function yamlHeaderOf(text) {
+  const lines = text.match(/[^\n]*\n|[^\n]+/g) ?? []
+  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0])) return null
+  const bodyStart = lines[0].length
+  let offset = bodyStart
+  for (const line of lines.slice(1)) {
+    if (YAML_HEADER_FENCE.test(line)) {
+      return { bodyStart, bodyEnd: offset, end: offset + line.length }
+    }
+    offset += line.length
+  }
+  throw new Error("unterminated YAML header")
+}
+
+function yamlHeaderComments(body) {
+  let source
+  try {
+    source = maskFlowYamlScalars(body)
+  } catch {
+    source = body.replace(/["']/g, "x")
+  }
+  return hashComments(source, { allowShebang: false })
+}
+
+function markdownComments(text) {
+  const header = yamlHeaderOf(text)
+  const fromHtml = (markdown) =>
+    delimitedComments(maskMarkdownCode(markdown), { block: [["<!--", "-->"]] })
+  if (!header) return fromHtml(text)
+  const fromHeader = yamlHeaderComments(
+    text.slice(header.bodyStart, header.bodyEnd)
+  ).map((range) => ({
+    start: range.start + header.bodyStart,
+    end: range.end + header.bodyStart,
+  }))
+  return [
+    ...fromHeader,
+    ...fromHtml(blankedOut(text.slice(0, header.end)) + text.slice(header.end)),
+  ]
+}
+
 function pythonTripleQuotedEnd(text, start, delimiter) {
   for (let i = start; i < text.length; i++) {
     if (text[i] === "\\") i++
@@ -366,9 +408,7 @@ export function findComments(text, file) {
     case "markup":
       return delimitedComments(text, { block: [["<!--", "-->"]] })
     case "markdown":
-      return delimitedComments(maskMarkdownCode(text), {
-        block: [["<!--", "-->"]],
-      })
+      return markdownComments(text)
     case "python":
       return pythonComments(text)
     case "powershell":
