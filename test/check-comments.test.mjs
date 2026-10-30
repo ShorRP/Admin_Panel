@@ -96,17 +96,29 @@ test("the PR hook checks the repository that holds the session's folder, a subfo
   )
 })
 
-test("the PR hook's refusal does not call a file it cannot read a comment", () => {
-  withTemporaryRepository({ "notes.xyz": "hello\n" }, (dir) => {
-    const result = runHook(hookInput("gh pr create", dir))
-    const output = JSON.parse(result.stdout).hookSpecificOutput
-    const reason = output.permissionDecisionReason
-    assert.equal(output.permissionDecision, "deny")
-    assert.match(reason, /\nnotes\.xyz: unknown file type/)
-    assert.match(reason, /settle each file it cannot read as its line says/)
-    assert.doesNotMatch(reason, /Remove these/)
-    assert.doesNotMatch(reason, /comment\(s\) found/)
-  })
+test("the PR hook's refusal does not call a file it cannot read a comment, and says what to do with each kind of line", () => {
+  withTemporaryRepository(
+    { "notes.xyz": "hello\n", "broken.js": "const = ;" },
+    (dir) => {
+      const result = runHook(hookInput("gh pr create", dir))
+      const output = JSON.parse(result.stdout).hookSpecificOutput
+      const reason = output.permissionDecisionReason
+      assert.equal(output.permissionDecision, "deny")
+      assert.match(reason, /\nnotes\.xyz: unknown file type/)
+      assert.match(reason, /\nbroken\.js: cannot be parsed/)
+      assert.match(
+        reason,
+        /Remove each comment, fix each file that cannot be parsed/
+      )
+      assert.match(
+        reason,
+        /teach scripts\/check-comments\.mjs each unknown file type or list it there as a type without comments/
+      )
+      assert.doesNotMatch(reason, /Remove these/)
+      assert.doesNotMatch(reason, /settle/)
+      assert.doesNotMatch(reason, /comment\(s\) found/)
+    }
+  )
 })
 
 test("the PR hook refuses a PR from a folder that is in no repository, since it has nothing to check", () => {

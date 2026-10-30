@@ -29,7 +29,7 @@ try {
     })
     if (check.status === 1 && check.stdout) {
       deny(
-        `The repository holds no comments, and the check must be able to read every file (CLAUDE.md, No comments). Remove each comment and settle each file it cannot read as its line says, commit, push, then create the PR again:\n${check.stdout}`
+        `The repository holds no comments, and the check must be able to read every file (CLAUDE.md, No comments). Remove each comment, fix each file that cannot be parsed, and teach scripts/check-comments.mjs each unknown file type or list it there as a type without comments, commit, push, then create the PR again:\n${check.stdout}`
       )
     } else if (check.status !== 0) {
       deny(
