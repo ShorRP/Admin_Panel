@@ -7,6 +7,10 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 
 import {
+  finishPbi,
+  githubForge,
+} from "../.claude/skills/deliver-epic/scripts/finish-pbi.mjs"
+import {
   loadSlots,
   releaseSlots,
   slotsDir,
@@ -15,6 +19,12 @@ import {
 
 const SCRIPT = fileURLToPath(
   new URL("../.claude/skills/deliver-epic/scripts/slots.mjs", import.meta.url)
+)
+const FINISH_SCRIPT = fileURLToPath(
+  new URL(
+    "../.claude/skills/deliver-epic/scripts/finish-pbi.mjs",
+    import.meta.url
+  )
 )
 
 const runSlots = (cwd, ...args) =>
@@ -231,3 +241,437 @@ test(
     })
   }
 )
+
+const GIT_IDENTITY = {
+  GIT_AUTHOR_NAME: "Test",
+  GIT_AUTHOR_EMAIL: "test@example.com",
+  GIT_COMMITTER_NAME: "Test",
+  GIT_COMMITTER_EMAIL: "test@example.com",
+}
+
+function gitIn(cwd, ...args) {
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, ...GIT_IDENTITY },
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim()
+}
+
+function withPbi(callback) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deliver-epic-pbi-"))
+  const origin = path.join(root, "origin.git")
+  const repository = path.join(root, path.basename(root))
+  const worktree = path.join(repository, ".claude", "worktrees", "agent-1a2b")
+  const branch = "tooling/feature"
+  try {
+    gitIn(root, "init", "--quiet", "--bare", "-b", "main", origin)
+    gitIn(root, "clone", "--quiet", origin, repository)
+    fs.writeFileSync(path.join(repository, ".gitignore"), "node_modules\n")
+    gitIn(repository, "add", ".")
+    gitIn(repository, "commit", "--quiet", "-m", "Start")
+    gitIn(repository, "push", "--quiet", "--set-upstream", "origin", "main")
+    gitIn(repository, "branch", "worktree-agent-1a2b")
+    gitIn(repository, "worktree", "add", "--quiet", "-b", branch, worktree)
+    gitIn(repository, "worktree", "lock", "--reason", "claude agent", worktree)
+    fs.writeFileSync(path.join(worktree, "feature.txt"), "one")
+    gitIn(worktree, "add", ".")
+    gitIn(worktree, "commit", "--quiet", "-m", "Feature")
+    gitIn(worktree, "push", "--quiet", "--set-upstream", "origin", branch)
+    fs.writeFileSync(path.join(worktree, "feature.txt"), "two")
+    gitIn(worktree, "commit", "--quiet", "-am", "Merge main")
+    let deep = path.join(worktree, "node_modules")
+    for (let level = 0; level < 12; level++)
+      deep = path.join(deep, "a".repeat(30))
+    fs.mkdirSync(deep, { recursive: true })
+    fs.writeFileSync(path.join(deep, "file.txt"), "installed")
+    gitIn(repository, "switch", "--quiet", "-c", "another-session")
+    const mergeIntoOrigin = () => {
+      gitIn(worktree, "push", "--quiet", "origin", "HEAD:refs/heads/merge-tip")
+      gitIn(origin, "update-ref", "refs/heads/main", "refs/heads/merge-tip")
+    }
+    return callback({ repository, worktree, branch, mergeIntoOrigin })
+  } finally {
+    fs.rmSync(slotsDir(repository), { recursive: true, force: true })
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+}
+
+const MERGED_AND_CLOSED = {
+  defaultBranch: () => "main",
+  pullRequest: () => ({ state: "MERGED", baseRefName: "main" }),
+  issue: () => ({ state: "CLOSED" }),
+}
+
+const finishArguments = (pbi, extra = {}) => ({
+  repository: pbi.repository,
+  ticket: 7,
+  pr: 70,
+  worktree: pbi.worktree,
+  branch: pbi.branch,
+  forge: MERGED_AND_CLOSED,
+  ...extra,
+})
+
+const branchesOf = (repository) =>
+  gitIn(repository, "branch", "--format=%(refname:lstrip=2)").split("\n")
+
+function assertRefusedAndUntouched(pbi, extra, message) {
+  const result = finishPbi(finishArguments(pbi, extra))
+  assert.equal(result.ok, false, result.lines.join("\n"))
+  assert.match(result.lines.at(-1), message)
+  assert.equal(fs.existsSync(pbi.worktree), true)
+  assert.ok(branchesOf(pbi.repository).includes(pbi.branch))
+}
+
+test("finishing a PBI removes its locked worktree whatever the depth of its node_modules, and its branch once origin's default branch holds it, though that branch is ahead of its upstream", () => {
+  withPbi(({ repository, worktree, branch, mergeIntoOrigin }) => {
+    mergeIntoOrigin()
+    assert.equal(
+      gitIn(repository, "rev-list", "--count", `origin/${branch}..${branch}`),
+      "1"
+    )
+    const result = finishPbi({
+      repository,
+      ticket: 7,
+      pr: 70,
+      worktree,
+      branch,
+      forge: MERGED_AND_CLOSED,
+    })
+    assert.equal(result.ok, true, result.lines.join("\n"))
+    assert.equal(fs.existsSync(worktree), false)
+    assert.ok(
+      !gitIn(repository, "worktree", "list", "--porcelain").includes(
+        "agent-1a2b"
+      )
+    )
+    assert.ok(!branchesOf(repository).includes(branch))
+  })
+})
+
+test("finishing a PBI whose PR is not merged removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      {
+        forge: {
+          ...MERGED_AND_CLOSED,
+          pullRequest: () => ({ state: "OPEN", baseRefName: "main" }),
+        },
+      },
+      /^refused: pull request #70 is OPEN, not MERGED$/
+    )
+  })
+})
+
+test("finishing a PBI whose PR merged into another branch than the default removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      {
+        forge: {
+          ...MERGED_AND_CLOSED,
+          pullRequest: () => ({ state: "MERGED", baseRefName: "release" }),
+        },
+      },
+      /^refused: pull request #70 merged into release, not into the default branch main$/
+    )
+  })
+})
+
+test("finishing a PBI whose ticket is still open removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      {
+        forge: {
+          ...MERGED_AND_CLOSED,
+          issue: () => ({ state: "OPEN" }),
+        },
+      },
+      /^refused: ticket #7 is OPEN, not CLOSED$/
+    )
+  })
+})
+
+test("finishing a PBI whose worktree holds an untracked file removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    fs.writeFileSync(path.join(pbi.worktree, "notes.md"), "unfinished")
+    assertRefusedAndUntouched(
+      pbi,
+      {},
+      /^refused: the worktree is not clean: \?\? notes\.md$/
+    )
+  })
+})
+
+test("finishing a PBI whose worktree git cannot read as one removes nothing, rather than judge the main checkout's files", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    fs.rmSync(path.join(pbi.worktree, ".git"))
+    assertRefusedAndUntouched(
+      pbi,
+      {},
+      /^refused: .*agent-1a2b is not a working tree git can read$/
+    )
+  })
+})
+
+test("finishing a PBI under another branch name than the worktree's removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      { branch: "tooling/other" },
+      /^refused: the worktree has tooling\/feature checked out, not tooling\/other$/
+    )
+  })
+})
+
+test("finishing a PBI removes only a folder under the repository's .claude/worktrees", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    const worktrees = path.join(pbi.repository, ".claude", "worktrees")
+    for (const outside of [
+      pbi.repository,
+      worktrees,
+      path.join(worktrees, "..", ".."),
+      path.dirname(pbi.repository),
+    ]) {
+      const result = finishPbi(finishArguments(pbi, { worktree: outside }))
+      assert.equal(result.ok, false, outside)
+      assert.match(
+        result.lines.at(-1),
+        /^refused: the worktree is not under the repository's \.claude\/worktrees\/$/
+      )
+    }
+    assert.equal(fs.existsSync(path.join(pbi.repository, ".git")), true)
+    assert.equal(fs.existsSync(pbi.worktree), true)
+  })
+})
+
+test("finishing a PBI refuses a folder that git does not know as a worktree, empty or not", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    const stranger = path.join(
+      pbi.repository,
+      ".claude",
+      "worktrees",
+      "stranger"
+    )
+    fs.mkdirSync(stranger)
+    const result = finishPbi(finishArguments(pbi, { worktree: stranger }))
+    assert.equal(result.ok, false)
+    assert.match(
+      result.lines.at(-1),
+      /^refused: .*stranger is not a worktree of this repository$/
+    )
+    assert.equal(fs.existsSync(stranger), true)
+  })
+})
+
+test("finishing a PBI from inside its worktree is refused, since the folder could not be removed", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      { cwd: path.join(pbi.worktree, "node_modules") },
+      /^refused: run this from outside the worktree/
+    )
+  })
+})
+
+test("finishing a PBI keeps a branch that origin's default branch does not hold, with a line saying so", () => {
+  withPbi((pbi) => {
+    const result = finishPbi(finishArguments(pbi))
+    assert.equal(result.ok, false)
+    assert.match(
+      result.lines.at(-1),
+      /^kept: branch tooling\/feature is not an ancestor of origin\/main$/
+    )
+    assert.equal(fs.existsSync(pbi.worktree), false)
+    assert.ok(branchesOf(pbi.repository).includes(pbi.branch))
+  })
+})
+
+test("finishing a PBI judges the branch, not a tag of the same name that origin's default branch holds", () => {
+  withPbi((pbi) => {
+    gitIn(pbi.repository, "tag", pbi.branch, "main")
+    const result = finishPbi(finishArguments(pbi))
+    assert.equal(result.ok, false, result.lines.join("\n"))
+    assert.match(result.lines.at(-1), /^kept: branch tooling\/feature /)
+    assert.ok(branchesOf(pbi.repository).includes(pbi.branch))
+  })
+})
+
+test("finishing a PBI deletes the harness's leftover worktree-<folder> branch with it", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assert.ok(branchesOf(pbi.repository).includes("worktree-agent-1a2b"))
+    const result = finishPbi(finishArguments(pbi))
+    assert.equal(result.ok, true, result.lines.join("\n"))
+    assert.ok(!branchesOf(pbi.repository).includes("worktree-agent-1a2b"))
+  })
+})
+
+test("finishing a PBI never deletes the default branch the PR merged into", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      { branch: "main" },
+      /^refused: branch main is the branch the pull request merged into$/
+    )
+    assert.ok(branchesOf(pbi.repository).includes("main"))
+  })
+})
+
+test("finishing a PBI prints one line per step it takes", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    const { lines } = finishPbi(finishArguments(pbi))
+    assert.deepEqual(lines, [
+      "pull request #70: merged into main",
+      "ticket #7: closed",
+      "worktree: clean",
+      "worktree: unlocked",
+      "worktree: removed",
+      "worktree: pruned",
+      "slots: 7 held none",
+      "branch worktree-agent-1a2b: deleted, an ancestor of origin/main",
+      "branch tooling/feature: deleted, an ancestor of origin/main",
+    ])
+  })
+})
+
+test("finishing a PBI frees the places its holder took, whatever became of its branch", () => {
+  withPbi((pbi) => {
+    const dir = slotsDir(pbi.repository)
+    takeSlot(dir, loadSlots(), { slot: "merge", holder: "7" })
+    const { lines } = finishPbi(finishArguments(pbi))
+    assert.ok(lines.includes("slots: released merge for 7"), lines.join("\n"))
+    assert.equal(
+      takeSlot(dir, loadSlots(), { slot: "merge", holder: "8" }).taken,
+      true
+    )
+  })
+})
+
+test("finishing a PBI again after it finished says what was already done and succeeds", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assert.equal(finishPbi(finishArguments(pbi)).ok, true)
+    const again = finishPbi(finishArguments(pbi))
+    assert.equal(again.ok, true, again.lines.join("\n"))
+    assert.deepEqual(again.lines.slice(2), [
+      "worktree: already removed",
+      "worktree: pruned",
+      "slots: 7 held none",
+      "branch tooling/feature: already gone",
+    ])
+  })
+})
+
+test("finishing a PBI whose worktree folder is gone but still registered unlocks it and prunes it", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    fs.rmSync(pbi.worktree, { recursive: true, force: true })
+    const result = finishPbi(finishArguments(pbi))
+    assert.equal(result.ok, true, result.lines.join("\n"))
+    assert.deepEqual(result.lines.slice(2, 5), [
+      "worktree: unlocked",
+      "worktree: already removed",
+      "worktree: pruned",
+    ])
+    assert.ok(
+      !gitIn(pbi.repository, "worktree", "list", "--porcelain").includes(
+        "agent-1a2b"
+      )
+    )
+    assert.ok(!branchesOf(pbi.repository).includes(pbi.branch))
+  })
+})
+
+test("finishing a PBI says why git refused when it cannot delete a branch", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    gitIn(pbi.repository, "worktree", "unlock", pbi.worktree)
+    fs.rmSync(pbi.worktree, { recursive: true, force: true })
+    gitIn(pbi.repository, "worktree", "prune")
+    gitIn(pbi.repository, "switch", "--quiet", pbi.branch)
+    const result = finishPbi(finishArguments(pbi))
+    assert.equal(result.ok, false)
+    assert.match(
+      result.lines.at(-1),
+      /^failed: .*cannot delete branch 'tooling\/feature'/i
+    )
+  })
+})
+
+test("the command line finishes from the repository of the folder it runs in, and refuses from inside the worktree", () => {
+  withPbi((pbi) => {
+    const refused = spawnSync(
+      process.execPath,
+      [FINISH_SCRIPT, "7", "70", pbi.worktree, pbi.branch],
+      { cwd: pbi.worktree, encoding: "utf8" }
+    )
+    assert.equal(refused.status, 1, refused.stderr)
+    assert.match(
+      refused.stdout,
+      /^refused: run this from outside the worktree/m
+    )
+    const lost = spawnSync(process.execPath, [FINISH_SCRIPT, "7"], {
+      cwd: pbi.repository,
+      encoding: "utf8",
+    })
+    assert.equal(lost.status, 2)
+    assert.match(
+      lost.stderr,
+      /usage: node .*finish-pbi\.mjs <ticket> <pr> <worktree> <branch>/
+    )
+  })
+})
+
+test("the forge reads a pull request, a ticket and the default branch through gh", () => {
+  const asked = []
+  const forge = githubForge((args) => {
+    asked.push(args)
+    if (args[0] === "pr") return '{"state":"MERGED","baseRefName":"main"}'
+    if (args[0] === "issue") return '{"state":"CLOSED"}'
+    return '{"defaultBranchRef":{"name":"main"}}'
+  })
+  assert.deepEqual(forge.pullRequest(70), {
+    state: "MERGED",
+    baseRefName: "main",
+  })
+  assert.deepEqual(forge.issue(7), { state: "CLOSED" })
+  assert.equal(forge.defaultBranch(), "main")
+  assert.deepEqual(asked, [
+    ["pr", "view", "70", "--json", "state,baseRefName"],
+    ["issue", "view", "7", "--json", "state"],
+    ["repo", "view", "--json", "defaultBranchRef"],
+  ])
+})
+
+test("finishing a PBI whose forge cannot be read ends with a line saying so and removes nothing", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    assertRefusedAndUntouched(
+      pbi,
+      {
+        forge: {
+          ...MERGED_AND_CLOSED,
+          issue: () => {
+            throw new Error("gh: could not resolve to an Issue\nsecond line")
+          },
+        },
+      },
+      /^failed: gh: could not resolve to an Issue$/
+    )
+  })
+})
