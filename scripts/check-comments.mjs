@@ -90,8 +90,7 @@ function closingQuote(text, start) {
   return text.length
 }
 
-function endsSqlWord(text, index) {
-  const character = text[index]
+function isSqlIdentifierCharacter(character) {
   return (
     character !== undefined &&
     (/[\w$]/.test(character) || character.charCodeAt(0) > 127)
@@ -100,7 +99,11 @@ function endsSqlWord(text, index) {
 
 function opensEscapeString(text, start) {
   const prefix = text[start - 1]
-  return (prefix === "E" || prefix === "e") && !endsSqlWord(text, start - 2)
+  return (
+    text[start] === "'" &&
+    (prefix === "E" || prefix === "e") &&
+    !isSqlIdentifierCharacter(text[start - 2])
+  )
 }
 
 function closingSqlQuote(text, start) {

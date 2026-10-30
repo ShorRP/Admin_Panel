@@ -110,6 +110,8 @@ test("sql files: a string on several lines is a value, up to its closing quote",
   assert.deepEqual(texts("select 'a\n/* b */'", "q.sql"), [])
   assert.deepEqual(texts("select 'it''s\n-- b'", "q.sql"), [])
   assert.deepEqual(texts("select 'a\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select "a\n-- b" -- why', "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select "a""b\n-- x" -- why', "q.sql"), ["-- why"])
   assert.deepEqual(checkFile("select 'a\n-- b'\n-- why", "q.sql"), [
     "q.sql:3:1 -- why",
   ])
@@ -135,6 +137,7 @@ test("sql files: a backslash escapes only inside an escape string, so another st
     "-- why",
   ])
   assert.deepEqual(texts("select E'it\\'s\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select E"x\\" -- why\nfrom "y"', "q.sql"), ["-- why"])
   assert.deepEqual(texts("select e'it\\'s\n-- b'", "q.sql"), [])
   assert.deepEqual(texts("E'a\\'\n-- b'", "q.sql"), [])
   assert.deepEqual(texts("select(E'a\\'\n-- b')", "q.sql"), [])
