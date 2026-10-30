@@ -6,6 +6,7 @@ import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import { userName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
+import { deName } from "./de-name"
 import { unlessDiscordUnavailable } from "./discord-unavailable"
 import type { BanLiftFields, BanLiftResult } from "./sanction-result"
 import { submittedBanLift } from "./submitted-ban-lift"
@@ -45,7 +46,7 @@ export async function liftBan(
   }
   return {
     ok: true,
-    message: `Le bannissement de ${userName(ban.user)} est levé.`,
+    message: `Le bannissement ${deName(userName(ban.user))} est levé.`,
   }
 }
 

@@ -6,6 +6,7 @@ import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
+import { deName } from "./de-name"
 import { unlessDiscordUnavailable } from "./discord-unavailable"
 import { kickDirectMessage } from "./kick-direct-message"
 import { sanctionAfterDirectMessage } from "./sanction-after-direct-message"
@@ -47,7 +48,7 @@ export async function kickMember(
     directMessage: fields.notify ? kickDirectMessage(reason) : null,
     sanction: () =>
       discord.removeMember(member.user.id, auditLogReason(staffMember, reason)),
-    landed: `L’expulsion de ${name} a eu lieu.`,
+    landed: `L’expulsion ${deName(name)} a eu lieu.`,
     maybeLanded: MAYBE_KICKED,
     fields,
   })

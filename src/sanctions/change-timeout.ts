@@ -7,6 +7,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { memberName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
 import { formatParisTime } from "@/ui/paris-time"
+import { deName } from "./de-name"
 import { DIRECT_MESSAGE_OUTCOMES, sendDirectMessage } from "./direct-message"
 import { unlessDiscordUnavailable } from "./discord-unavailable"
 import { readSanctionRefusals } from "./sanction-refusal"
@@ -65,7 +66,10 @@ export async function changeTimeout(
     return failure(MAYBE_CHANGED[fields.change], fields)
   }
   if (end === null) {
-    return { ok: true, message: `L’exclusion temporaire de ${name} est levée.` }
+    return {
+      ok: true,
+      message: `L’exclusion temporaire ${deName(name)} est levée.`,
+    }
   }
   const timedOut = `${name} est en exclusion temporaire jusqu’au ${formatParisTime(end)}.`
   if (fields.change !== "time-out" || !fields.notify) {
