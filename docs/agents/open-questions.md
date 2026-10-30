@@ -2,20 +2,6 @@
 
 Decisions or facts the code and its history can't explain. Each entry gives the question, where it shows up, who is likely to know, and what is blocked on it. Remove an entry once it is answered, and record the answer where it belongs: `GLOSSARY.md`, an ADR, or the ticket it unblocks.
 
-## Does Shor make money?
-
-- **Question:** Does Shor sell anything, such as VIP status or perks for supporters?
-- **Where it shows up:** Vercel's Hobby plan restricts users to non-commercial, personal use (https://vercel.com/docs/plans/hobby, updated 2026-09-14).
-- **Who is likely to know:** the POs, Lyra-Gates and Anaisenkit.
-- **Blocked on it:** hosting the panel on Vercel's Hobby plan, so the first production deploy.
-
-## Which Discord server and which staff role?
-
-- **Question:** What are the IDs of Shor's Discord server and of the role, or roles, that make a member staff?
-- **Where it shows up:** the Admin Panel lets in only members holding the staff role, re-checked on every page view and every write (ADR 0005). The IDs are configuration, so development can go on without them. ShorBot's expected features, as Gilles relayed them on 2026-10-23, name a Staff role (« les membres du rôle Staff »). The moderation section narrows to two more lists, `MODERATION_ROLE_IDS` for the roles that moderate and `BAN_ROLE_IDS` for those that also ban (ADR 0005, #27): which roles go in each is part of it too.
-- **Who is likely to know:** Anaisenkit, or any staff member with Discord's Developer Mode on.
-- **Blocked on it:** the first production deploy, and the moderation section in production (#183).
-
 ## How do Shor's whitelist and launcher work?
 
 - **Question:** Where does the whitelist live: in Shor's SkyMP server, in its launcher, in a Discord role, or elsewhere? Who grants it today, and how? Can anything outside the game read or change it, and does the game know a player's Discord account?
@@ -42,4 +28,4 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 - **Question:** What is Shor legally: an association, a company, or an informal group? Who, by name or role, is responsible for the personal data the panel processes, and where does a member send a request to access, correct or delete theirs?
 - **Where it shows up:** Discord's Developer Terms of Service ask every application for a privacy policy that says « how users can request deletion of such data » (§5a, Wayback Machine copy of 2026-09-27, last updated 2024-06-06), and a GDPR notice names whoever is responsible and how to reach them (inferred from articles 13 and 14, not read here; `docs/personal-data.md`).
 - **Who is likely to know:** the POs, and Gilles for the contact if he is the one who answers.
-- **Blocked on it:** the final text of `/privacy` (#186), which keeps a placeholder until then, and so the first production deploy.
+- **Blocked on it:** the final text of `/privacy` (#186), which keeps a placeholder until then.

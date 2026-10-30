@@ -35,4 +35,4 @@ Facts behind it, read on 2026-10-23:
 - Logging out only ends the session, so it skips the check: a member who lost the staff role can still log out.
 - `proxy.ts` only sends a visitor without a readable session to `/login`; it authorizes nothing.
 - A sanction also reads the Discord server, for its owner and its roles' positions and permissions, and the application's own member, to compare their positions, and so does a record that offers one (#179).
-- A section's lists are configuration: until the POs say which roles moderate and which ban (`docs/agents/open-questions.md`), production cannot fill them.
+- A section's lists are configuration, which production fills with the roles that moderate and ban on Shor's Discord server (Gilles, 2026-10-29, on #183).
