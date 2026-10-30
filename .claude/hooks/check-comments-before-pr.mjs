@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url"
 const SCRIPT = fileURLToPath(
   new URL("../../scripts/check-comments.mjs", import.meta.url)
 )
-const CREATE_PR = /\bgh\s+pr\s+(?:create|new)\b/
+const REPO_FLAG = String.raw`(?:-R(?:\s+|=)?|--repo(?:\s+|=))[^\s=]\S*`
+const CREATE_PR = new RegExp(
+  String.raw`\bgh(?:\s+${REPO_FLAG})*\s+pr(?:\s+${REPO_FLAG})*\s+(?:create|new)\b`
+)
+const LINE_CONTINUATION = /[\\`]\r?\n/g
 
 function deny(reason) {
   process.stdout.write(
@@ -22,14 +26,15 @@ let input = ""
 for await (const chunk of process.stdin) input += chunk
 try {
   const { cwd, tool_input: toolInput } = JSON.parse(input)
-  if (CREATE_PR.test(String(toolInput?.command ?? ""))) {
+  const command = String(toolInput?.command ?? "")
+  if (CREATE_PR.test(command.replace(LINE_CONTINUATION, " "))) {
     const check = spawnSync(process.execPath, [SCRIPT], {
       cwd: cwd || process.cwd(),
       encoding: "utf8",
     })
     if (check.status === 1 && check.stdout) {
       deny(
-        `The repository holds no comments (CLAUDE.md, No comments). Remove these, commit, push, then create the PR again:\n${check.stdout}`
+        `The repository holds no comments, and the check must be able to read every file (CLAUDE.md, No comments). Remove each comment, fix each file that cannot be parsed, and teach scripts/check-comments.mjs each unknown file type or list it there as a type without comments, commit, push, then create the PR again:\n${check.stdout}`
       )
     } else if (check.status !== 0) {
       deny(
