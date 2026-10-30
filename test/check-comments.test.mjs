@@ -466,17 +466,26 @@ test("sql files: a backslash escapes only inside an escape string, so another st
     "-- why",
   ])
   const [line] = checkFile("select E'a\\'\n-- b\n", "q.sql")
-  assert.match(line, /^q\.sql: cannot be parsed.*\(1:9\)/)
+  assert.match(
+    line,
+    /^q\.sql: cannot be parsed.*quote opened on line 1 is never/
+  )
 })
 
 test("sql files: a string that never closes makes the file unreadable, rather than hiding what follows", () => {
-  for (const text of [
-    "select 'a\n-- b\n",
-    'select "a\n-- b\n',
-    "select 'a\n-- b",
+  for (const [text, openedOn] of [
+    ["select 'a\n-- b\n", 1],
+    ['select "a\n-- b\n', 1],
+    ["select 'a\n-- b", 1],
+    ["select 1;\nselect 'a\n-- b\n", 2],
   ]) {
     const [line, ...others] = checkFile(text, "q.sql")
-    assert.match(line, /^q\.sql: cannot be parsed.*\(1:8\)/)
+    assert.match(
+      line,
+      new RegExp(
+        `^q\\.sql: cannot be parsed.*quote opened on line ${openedOn} is never`
+      )
+    )
     assert.deepEqual(others, [])
   }
 })

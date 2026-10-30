@@ -144,17 +144,10 @@ function opensEscapeString(text, start) {
 }
 
 function closingSqlQuote(text, start) {
-  const quote = text[start]
   const escapes = opensEscapeString(text, start)
-  for (let i = start + 1; i < text.length; i++) {
-    if (escapes && text[i] === "\\") i++
-    else if (text[i] === quote) {
-      if (text[i + 1] !== quote) return i
-      i++
-    }
-  }
-  const { line, column } = position(text, start)
-  throw new Error(`Unterminated string (${line}:${column})`)
+  let end = quotedEnd(text, start, { escapes })
+  while (text[end] === text[start]) end = quotedEnd(text, end, { escapes })
+  return end - 1
 }
 
 function delimitedComments(
