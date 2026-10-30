@@ -22,17 +22,6 @@ const SCRIPT = fileURLToPath(
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
-  const result = runHook(
-    JSON.stringify({
-      tool_name: "Bash",
-      tool_input: { command: "gh pr view 3" },
-    })
-  )
-  assert.equal(result.status, 0)
-  assert.equal(result.stdout, "")
-})
-
 test("the PR hook refuses a call it cannot read", () => {
   const result = runHook("not json")
   const output = JSON.parse(result.stdout).hookSpecificOutput
@@ -57,7 +46,17 @@ function withTemporaryRepository(files, callback) {
 const hookInput = (command, cwd) =>
   JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
 
-for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+for (const command of [
+  "gh pr create --fill",
+  "gh pr new --fill",
+  "gh -R o/r pr create --fill",
+  "gh --repo o/r pr new --fill",
+  "gh --repo=o/r pr create",
+  "gh -R=o/r pr create",
+  "gh -Ro/r pr create",
+  "gh pr -R o/r create",
+  "gh -R a/b pr -R c/d new",
+]) {
   test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
     withTemporaryRepository(
       { "dirty.js": "export const a = 1 // why\n" },
@@ -78,6 +77,43 @@ for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
     })
   })
 }
+
+for (const command of [
+  "gh pr view 3",
+  "gh -R o/r pr view 3",
+  "gh --repo=o/r pr list --state open",
+  "gh -R o/r issue create --title x",
+  "gh -R o/r pr checkout new",
+]) {
+  test(`the PR hook lets \`${command}\` through without a word, though the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        assert.equal(result.status, 0)
+        assert.equal(result.stdout, "")
+      }
+    )
+  })
+}
+
+test("the PR hook refuses a PR whose command a line continuation splits, in bash or in PowerShell", () => {
+  withTemporaryRepository(
+    { "dirty.js": "export const a = 1 // why\n" },
+    (dir) => {
+      for (const command of [
+        "gh \\\n  -R o/r \\\n  pr create",
+        "gh pr \\\r\n  new --fill",
+        "gh `\n  pr create",
+      ]) {
+        const result = runHook(hookInput(command, dir))
+        assert.notEqual(result.stdout, "", JSON.stringify(command))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny", JSON.stringify(command))
+      }
+    }
+  )
+})
 
 test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
   withTemporaryRepository(
