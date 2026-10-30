@@ -22,17 +22,6 @@ const SCRIPT = fileURLToPath(
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
-  const result = runHook(
-    JSON.stringify({
-      tool_name: "Bash",
-      tool_input: { command: "gh pr view 3" },
-    })
-  )
-  assert.equal(result.status, 0)
-  assert.equal(result.stdout, "")
-})
-
 test("the PR hook refuses a call it cannot read", () => {
   const result = runHook("not json")
   const output = JSON.parse(result.stdout).hookSpecificOutput
@@ -57,7 +46,17 @@ function withTemporaryRepository(files, callback) {
 const hookInput = (command, cwd) =>
   JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
 
-for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+for (const command of [
+  "gh pr create --fill",
+  "gh pr new --fill",
+  "gh -R o/r pr create --fill",
+  "gh --repo o/r pr new --fill",
+  "gh --repo=o/r pr create",
+  "gh -R=o/r pr create",
+  "gh -Ro/r pr create",
+  "gh pr -R o/r create",
+  "gh -R a/b pr -R c/d new",
+]) {
   test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
     withTemporaryRepository(
       { "dirty.js": "export const a = 1 // why\n" },
@@ -79,6 +78,43 @@ for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
   })
 }
 
+for (const command of [
+  "gh pr view 3",
+  "gh -R o/r pr view 3",
+  "gh --repo=o/r pr list --state open",
+  "gh -R o/r issue create --title x",
+  "gh -R o/r pr checkout new",
+]) {
+  test(`the PR hook lets \`${command}\` through without a word, though the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        assert.equal(result.status, 0)
+        assert.equal(result.stdout, "")
+      }
+    )
+  })
+}
+
+test("the PR hook refuses a PR whose command a line continuation splits, in bash or in PowerShell", () => {
+  withTemporaryRepository(
+    { "dirty.js": "export const a = 1 // why\n" },
+    (dir) => {
+      for (const command of [
+        "gh \\\n  -R o/r \\\n  pr create",
+        "gh pr \\\r\n  new --fill",
+        "gh `\n  pr create",
+      ]) {
+        const result = runHook(hookInput(command, dir))
+        assert.notEqual(result.stdout, "", JSON.stringify(command))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny", JSON.stringify(command))
+      }
+    }
+  )
+})
+
 test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
   withTemporaryRepository(
     {
@@ -92,6 +128,31 @@ test("the PR hook checks the repository that holds the session's folder, a subfo
       const output = JSON.parse(result.stdout).hookSpecificOutput
       assert.equal(output.permissionDecision, "deny")
       assert.match(output.permissionDecisionReason, /\ndirty\.js:1:20 \/\/ why/)
+    }
+  )
+})
+
+test("the PR hook's refusal does not call a file it cannot read a comment, and says what to do with each kind of line", () => {
+  withTemporaryRepository(
+    { "notes.xyz": "hello\n", "broken.js": "const = ;" },
+    (dir) => {
+      const result = runHook(hookInput("gh pr create", dir))
+      const output = JSON.parse(result.stdout).hookSpecificOutput
+      const reason = output.permissionDecisionReason
+      assert.equal(output.permissionDecision, "deny")
+      assert.match(reason, /\nnotes\.xyz: unknown file type/)
+      assert.match(reason, /\nbroken\.js: cannot be parsed/)
+      assert.match(
+        reason,
+        /Remove each comment, fix each file that cannot be parsed/
+      )
+      assert.match(
+        reason,
+        /teach scripts\/check-comments\.mjs each unknown file type or list it there as a type without comments/
+      )
+      assert.doesNotMatch(reason, /Remove these/)
+      assert.doesNotMatch(reason, /settle/)
+      assert.doesNotMatch(reason, /comment\(s\) found/)
     }
   )
 })
@@ -158,6 +219,64 @@ test("the script checks the repository that holds the folder it runs from, a sub
       assert.equal(accepted.stdout, "")
     }
   )
+})
+
+const runScript = (files) => {
+  let result
+  withTemporaryRepository(files, (dir) => {
+    result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+    })
+  })
+  return result
+}
+
+const footerOf = (stdout) => stdout.trimEnd().split("\n\n").at(-1).split("\n")
+
+const MOVE_THE_WHY =
+  "This repository holds none: move the why to the commit message, an ADR, GLOSSARY.md or a test name."
+
+test("the script's footer counts a comment as a comment and gives the advice on the why", () => {
+  const result = runScript({ "dirty.js": "export const a = 1 // why\n" })
+  assert.equal(result.status, 1)
+  assert.deepEqual(footerOf(result.stdout), [
+    `1 comment(s) found. ${MOVE_THE_WHY}`,
+  ])
+})
+
+test("the script's footer counts a file of an unknown type apart and gives no advice on the why", () => {
+  const result = runScript({ "notes.xyz": "hello\n" })
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /^notes\.xyz: unknown file type/m)
+  assert.deepEqual(footerOf(result.stdout), [
+    "1 file(s) of an unknown type, so their comments cannot be checked.",
+  ])
+})
+
+test("the script's footer counts a file that cannot be parsed apart and gives no advice on the why", () => {
+  const result = runScript({ "broken.js": "const = ;" })
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /^broken\.js: cannot be parsed/m)
+  assert.deepEqual(footerOf(result.stdout), [
+    "1 file(s) cannot be parsed, so their comments cannot be checked.",
+  ])
+})
+
+test("the script's footer counts comments, files that cannot be parsed and unknown types each on its own line", () => {
+  const result = runScript({
+    "a.js": "// one\n// two\n",
+    "b.js": "export const b = 1 // three\n",
+    "broken.js": "const = ;",
+    "notes.xyz": "hello\n",
+    "other.abc": "hello\n",
+  })
+  assert.equal(result.status, 1)
+  assert.deepEqual(footerOf(result.stdout), [
+    `3 comment(s) found. ${MOVE_THE_WHY}`,
+    "1 file(s) cannot be parsed, so their comments cannot be checked.",
+    "2 file(s) of an unknown type, so their comments cannot be checked.",
+  ])
 })
 
 const texts = (text, file) =>
@@ -255,6 +374,46 @@ test("json files: comments are found, valid json has none", () => {
   ])
 })
 
+const DIRECTIVE_COMMENTS = [
+  '/// <reference types="next" />',
+  "// eslint-disable-next-line no-console",
+  "// @ts-expect-error",
+  "/* @vite-ignore */",
+  "/* webpackIgnore: true */",
+]
+
+for (const comment of DIRECTIVE_COMMENTS) {
+  test(`json files: ${comment} is a comment, since no tool reads a directive there`, () => {
+    assert.deepEqual(texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.json"), [
+      comment,
+    ])
+  })
+}
+
+test("script files: the tool directives are allowed alone in every script extension", () => {
+  const source = [
+    '/// <reference types="next" />',
+    "// eslint-disable-next-line no-console, @next/next/no-img-element",
+    "console.log(1)",
+    "// @ts-expect-error",
+    "use(1)",
+    "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
+  ].join("\n")
+  for (const extension of [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".jsx",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".tsx",
+  ]) {
+    assert.deepEqual(texts(source, `src/a${extension}`), [], extension)
+  }
+})
+
 test("css, markup and sql comments are found outside strings", () => {
   assert.deepEqual(texts('a { content: "/* no */" } /* yes */', "app.css"), [
     "/* yes */",
@@ -263,6 +422,80 @@ test("css, markup and sql comments are found outside strings", () => {
   assert.deepEqual(texts("select '--no' -- yes\n/* also */", "q.sql"), [
     "-- yes",
     "/* also */",
+  ])
+})
+
+test("sql files: a string on several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts("select 'a\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts('select "a\n-- b"', "q.sql"), [])
+  assert.deepEqual(texts("select 'a\n/* b */'", "q.sql"), [])
+  assert.deepEqual(texts("select 'it''s\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("select 'a\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select "a\n-- b" -- why', "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select "a""b\n-- x" -- why', "q.sql"), ["-- why"])
+  assert.deepEqual(checkFile("select 'a\n-- b'\n-- why", "q.sql"), [
+    "q.sql:3:1 -- why",
+  ])
+})
+
+test("sql files: a backslash escapes only inside an escape string, so another string still ends at its quote", () => {
+  assert.deepEqual(texts("select 'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select \"C:\\\"; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select date'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select EE'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select _e'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select éE'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select E'it\\'s\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(texts('select E"x\\" -- why\nfrom "y"', "q.sql"), ["-- why"])
+  assert.deepEqual(texts("select e'it\\'s\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("E'a\\'\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("select(E'a\\'\n-- b')", "q.sql"), [])
+  assert.deepEqual(texts("select E'a''b\\'c\n-- b' -- why", "q.sql"), [
+    "-- why",
+  ])
+  const [line] = checkFile("select E'a\\'\n-- b\n", "q.sql")
+  assert.match(
+    line,
+    /^q\.sql: cannot be parsed.*quote opened on line 1 is never/
+  )
+})
+
+test("sql files: a string that never closes makes the file unreadable, rather than hiding what follows", () => {
+  for (const [text, openedOn] of [
+    ["select 'a\n-- b\n", 1],
+    ['select "a\n-- b\n', 1],
+    ["select 'a\n-- b", 1],
+    ["select 1;\nselect 'a\n-- b\n", 2],
+  ]) {
+    const [line, ...others] = checkFile(text, "q.sql")
+    assert.match(
+      line,
+      new RegExp(
+        `^q\\.sql: cannot be parsed.*quote opened on line ${openedOn} is never`
+      )
+    )
+    assert.deepEqual(others, [])
+  }
+})
+
+test("css files: a string ends with its line", () => {
+  assert.deepEqual(texts("a { content: 'x\n}\n/* why */", "app.css"), [
+    "/* why */",
+  ])
+  assert.deepEqual(texts('a { content: "x\n}\n/* why */', "app.css"), [
+    "/* why */",
   ])
 })
 
@@ -578,6 +811,82 @@ test("markdown files: a line that opens an HTML comment ends an inline code span
   ])
 })
 
+test("markdown files: a link definition to # or <> with a title is a comment", () => {
+  assert.deepEqual(
+    texts("[//]: # (why)\n[comment]: <> (also)\ntext\n", "a.md"),
+    ["[//]: # (why)", "[comment]: <> (also)"]
+  )
+  assert.deepEqual(texts("[//]: <> (why)\n", "a.md"), ["[//]: <> (why)"])
+  assert.deepEqual(texts("[comment]: # (why)\n", "a.md"), [
+    "[comment]: # (why)",
+  ])
+  assert.deepEqual(texts('[//]: # "why"\n', "a.md"), ['[//]: # "why"'])
+  assert.deepEqual(texts("[//]: # 'why'\n", "a.md"), ["[//]: # 'why'"])
+  assert.deepEqual(texts("[c]: #   (why)  \n", "a.md"), ["[c]: #   (why)"])
+  assert.deepEqual(texts("[//]: # (a \\) b)\r\n[//]: # (c)\r\n", "a.md"), [
+    "[//]: # (a \\) b)",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(checkFile("# Title\n\n[//]: # (why)\n", "a.md"), [
+    "a.md:3:1 [//]: # (why)",
+  ])
+})
+
+test("markdown files: an ordinary link definition is not a comment", () => {
+  for (const text of [
+    '[docs]: https://example.com "Title"\n',
+    "[docs]: https://example.com\n",
+    '[docs]: #section "Title"\n',
+    "[docs]: <> not-a-title\n",
+    "[//]: #\n",
+    "[docs]: # \n",
+    "[//]: # (why) and more\n",
+    "[//]: # (why\n",
+    "[//]: # (a (b) c)\n",
+    "text [//]: # (why)\n",
+    "[]: # (why)\n",
+    "[ ]: # (why)\n",
+    "\\[//]: # (why)\n",
+  ]) {
+    assert.deepEqual(texts(text, "a.md"), [], text)
+  }
+})
+
+test("markdown files: a link definition that comments sits in a line of its own, in a quote or a list too", () => {
+  assert.deepEqual(texts("   [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts(">> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("- [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("1. [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> - [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("text\n[//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("-[//]: # (why)\n", "a.md"), [])
+})
+
+test("markdown files: a code block or a code span holds no link definition that comments", () => {
+  assert.deepEqual(texts("```md\n[//]: # (sample)\n```\n", "a.md"), [])
+  assert.deepEqual(texts("~~~\n[//]: # (sample)\n~~~\n", "a.md"), [])
+  assert.deepEqual(texts("Use `[//]: # (sample)` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\n[//]: # (sample)\nb` here\n", "a.md"), [])
+  assert.deepEqual(texts("```\ncode\n```\n[//]: # (why)\n", "a.md"), [
+    "[//]: # (why)",
+  ])
+})
+
+test("markdown files: comments of both kinds are found once each, in order", () => {
+  assert.deepEqual(texts("[//]: # (a)\n\n<!-- b -->\n[//]: # (c)\n", "a.md"), [
+    "[//]: # (a)",
+    "<!-- b -->",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n-->\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n-->",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n",
+  ])
+})
+
 test("python files: a # comment is found, a # in a string is not", () => {
   assert.deepEqual(texts("# header\nx = 1  # why\n", "a.py"), [
     "# header",
@@ -659,6 +968,16 @@ test("jsonc files: // and /* */ comments are found, valid json has none", () => 
     texts('{\n  // why\n  "a": 1, /* also */\n}', "tsconfig.jsonc"),
     ["// why", "/* also */"]
   )
+})
+
+test("jsonc files: a tool directive is a comment, as in a json file", () => {
+  for (const comment of DIRECTIVE_COMMENTS) {
+    assert.deepEqual(
+      texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.jsonc"),
+      [comment],
+      comment
+    )
+  }
 })
 
 for (const [construct, file, source] of [
