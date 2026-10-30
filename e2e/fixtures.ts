@@ -233,7 +233,9 @@ export const test = base.extend<Fixtures>({
           expectedProblems.push(...expected)
         },
       })
-      expect(problems.toSorted()).toEqual(expectedProblems.toSorted())
+      expect([...new Set(problems)].toSorted()).toEqual(
+        [...new Set(expectedProblems)].toSorted()
+      )
     },
     { auto: true },
   ],

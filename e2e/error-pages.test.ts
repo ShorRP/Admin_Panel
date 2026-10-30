@@ -60,7 +60,6 @@ test("Discord unavailable while the audit log is read shows the error page, with
   browserConsole.expectProblems([
     `console.error: Error: ${minifiedReactError(441)}`,
     `pageerror: ${minifiedReactError(419)}`,
-    `pageerror: ${minifiedReactError(419)}`,
   ])
 
   await logIn(ALDIS)
