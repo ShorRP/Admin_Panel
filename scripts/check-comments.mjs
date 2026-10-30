@@ -36,7 +36,7 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
-const SKIPPED_FILES = new Set(["pnpm-lock.yaml"])
+const COMMENTLESS_FILES = new Set(["pnpm-lock.yaml"])
 const COMMENTLESS_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -53,7 +53,7 @@ const COMMENTLESS_EXTENSIONS = new Set([
   ".eot",
 ])
 const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
-const POWERSHELL_TOKEN_START = /[\s;|&,(){}]/
+const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
   "single-quoted-scalar",
@@ -63,7 +63,6 @@ const FLOW_YAML_SCALARS = new Set([
 export function familyOf(file) {
   const base = path.basename(file)
   const extension = path.extname(file).toLowerCase()
-  if (SKIPPED_FILES.has(base)) return null
   if (SCRIPT_PLUGINS[extension]) return "script"
   if (extension === ".json" || extension === ".jsonc") return "json"
   if (extension === ".md") return "markdown"
@@ -259,14 +258,18 @@ function maskMarkdownCode(text) {
     } else if (line.trim() === "") {
       masked += maskCodeSpans(paragraph) + line
       paragraph = ""
+    } else if (MARKDOWN_COMMENT_OPENING.test(line)) {
+      masked += maskCodeSpans(paragraph)
+      paragraph = line
     } else {
       paragraph += line
     }
   }
+  if (fence) throw new Error(`unterminated ${fence} code fence`)
   return masked + maskCodeSpans(paragraph)
 }
 
-function closingTriple(text, start, delimiter) {
+function pythonTripleQuotedEnd(text, start, delimiter) {
   for (let i = start; i < text.length; i++) {
     if (text[i] === "\\") i++
     else if (text.startsWith(delimiter, i)) return i + delimiter.length
@@ -282,7 +285,7 @@ function pythonComments(text) {
       text.startsWith(quotes, i)
     )
     if (triple) {
-      i = closingTriple(text, i + triple.length, triple)
+      i = pythonTripleQuotedEnd(text, i + triple.length, triple)
     } else if (text[i] === '"' || text[i] === "'") {
       i = closingQuote(text, i) + 1
     } else if (text[i] === "#") {
@@ -326,13 +329,10 @@ function powershellComments(text) {
       if (close === -1) throw new Error("unterminated <# block comment")
       found.push({ start: i, end: close + 2 })
       i = close + 2
-    } else if (
-      char === "#" &&
-      (i === 0 || POWERSHELL_TOKEN_START.test(text[i - 1]))
-    ) {
+    } else if (char === "#") {
       const newline = text.indexOf("\n", i)
       const end = newline === -1 ? text.length : newline
-      found.push({ start: i, end })
+      if (i > 0 || !text.startsWith("#!")) found.push({ start: i, end })
       i = end
     } else if (char === "@" && (text[i + 1] === '"' || text[i + 1] === "'")) {
       const end = powershellHereStringEnd(text, i)
@@ -393,7 +393,7 @@ function position(text, offset) {
 
 function isCommentless(file) {
   return (
-    SKIPPED_FILES.has(path.basename(file)) ||
+    COMMENTLESS_FILES.has(path.basename(file)) ||
     COMMENTLESS_EXTENSIONS.has(path.extname(file).toLowerCase())
   )
 }

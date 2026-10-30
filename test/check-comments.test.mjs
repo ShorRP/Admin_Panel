@@ -198,7 +198,6 @@ test("markdown files: a fenced code block holds no comment", () => {
   assert.deepEqual(texts("~~~\n<!-- sample -->\n~~~\n", "a.md"), [])
   assert.deepEqual(texts("````\n```\n<!-- sample -->\n```\n````\n", "a.md"), [])
   assert.deepEqual(texts("   ```\r\n<!-- sample -->\r\n   ```\r\n", "a.md"), [])
-  assert.deepEqual(texts("```\n<!-- sample -->\n", "a.md"), [])
   assert.deepEqual(texts("```\ncode\n```\n<!-- why -->\n", "a.md"), [
     "<!-- why -->",
   ])
@@ -211,11 +210,29 @@ test("markdown files: a fenced code block holds no comment", () => {
 test("markdown files: an inline code span holds no comment", () => {
   assert.deepEqual(texts("Use `<!-- sample -->` here\n", "a.md"), [])
   assert.deepEqual(texts("Use ``a ` <!-- sample -->`` here\n", "a.md"), [])
-  assert.deepEqual(texts("Use `a\n<!-- sample -->` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\nb <!-- sample -->` here\n", "a.md"), [])
   assert.deepEqual(texts("a ` b <!-- why -->\n", "a.md"), ["<!-- why -->"])
   assert.deepEqual(texts("`a\n\n<!-- why --> b`\n", "a.md"), ["<!-- why -->"])
   assert.deepEqual(texts("\\`<!-- why -->`\n", "a.md"), ["<!-- why -->"])
   assert.deepEqual(texts("`a` <!-- why --> `b`\n", "a.md"), ["<!-- why -->"])
+})
+
+test("markdown files: a line that opens an HTML comment ends an inline code span", () => {
+  assert.deepEqual(
+    texts("It's the `x flag\n<!-- hidden -->\nand `y` flag\n", "a.md"),
+    ["<!-- hidden -->"]
+  )
+  assert.deepEqual(texts("Use `a\n<!-- sample -->` here\n", "a.md"), [
+    "<!-- sample -->",
+  ])
+  assert.deepEqual(texts("Use `a\n   <!-- why -->\nb`\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("Use `a\n    <!-- sample -->\nb`\n", "a.md"), [])
+  assert.deepEqual(texts("a <!-- why --> and `b`\n<!-- also -->\n", "a.md"), [
+    "<!-- why -->",
+    "<!-- also -->",
+  ])
 })
 
 test("python files: a # comment is found, a # in a string is not", () => {
@@ -253,8 +270,34 @@ test("powershell files: line and block comments are found", () => {
   ])
 })
 
-test("powershell files: a # in a string, here-string or word is code", () => {
-  assert.deepEqual(texts("Write-Host 'a # b' \"c # d\" e#f\n", "a.ps1"), [])
+test("powershell files: a # outside a string is a comment, wherever it comes", () => {
+  for (const [source, comment] of [
+    ["$a =# c1\n", "# c1"],
+    ["$b=#c2\n", "#c2"],
+    ["$c = 1 +# c3\n", "# c3"],
+    ["$d = [#c4\n", "#c4"],
+    ["1..3#c7\n", "#c7"],
+    ['"x"#c8\n', "#c8"],
+    ["$a.b#c9\n", "#c9"],
+    ["echo a#b\n", "#b"],
+  ]) {
+    assert.deepEqual(texts(source, "a.ps1"), [comment], source)
+  }
+})
+
+test("powershell files: a subexpression that holds quotes in a string is read as code, so its # is reported", () => {
+  assert.deepEqual(texts('$s = "a $("b # c") d"\n', "a.ps1"), ['# c") d"'])
+})
+
+test("powershell files: a shebang is allowed on the first line only", () => {
+  assert.deepEqual(texts("#!/usr/bin/env pwsh\nGet-Item\n", "run.ps1"), [])
+  assert.deepEqual(texts("Get-Item\n#!/usr/bin/env pwsh\n", "run.ps1"), [
+    "#!/usr/bin/env pwsh",
+  ])
+})
+
+test("powershell files: a # in a string or here-string is code", () => {
+  assert.deepEqual(texts("Write-Host 'a # b' \"c # d\"\n", "a.ps1"), [])
   assert.deepEqual(texts("Write-Host 'it''s # b'\n", "a.ps1"), [])
   assert.deepEqual(texts('Write-Host "say `"# no`" end"\n', "a.ps1"), [])
   assert.deepEqual(texts("Write-Host `# no\n", "a.ps1"), [])
@@ -278,6 +321,8 @@ test("jsonc files: // and /* */ comments are found, valid json has none", () => 
 for (const [construct, file, source] of [
   ["a python ''' string", "a.py", "x = '''abc\n# no\n"],
   ['a python """ string', "a.py", 'x = """abc\n# no\n'],
+  ["a markdown ``` code fence", "a.md", "```\nx\n\n<!-- hidden -->\n"],
+  ["a markdown ~~~ code fence", "a.md", "~~~\nx\n\n<!-- hidden -->\n"],
   ["a powershell <# block comment", "a.ps1", "<# abc\nGet-Item\n"],
   ["a powershell ' string", "a.ps1", "$x = 'abc\n# no\n"],
   ['a powershell " string', "a.ps1", '$x = "abc\n# no\n'],
@@ -304,7 +349,6 @@ test("a file of an unknown type is reported, since its comments cannot be checke
 })
 
 test("files of a type without comments report nothing", () => {
-  assert.equal(familyOf("pnpm-lock.yaml"), null)
   for (const file of [
     "pnpm-lock.yaml",
     "docs/design/a.png",
