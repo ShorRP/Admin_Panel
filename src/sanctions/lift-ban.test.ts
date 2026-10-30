@@ -29,6 +29,24 @@ const ESKIL = {
   global_name: "Eskil",
 }
 
+const LYRA = {
+  id: "1400000000000000003",
+  username: "lyra",
+  global_name: "Lyra",
+}
+
+const HALDOR = {
+  id: "1400000000000000005",
+  username: "haldor",
+  global_name: "Haldor",
+}
+
+const OLAF = {
+  id: "1400000000000000007",
+  username: "olaf",
+  global_name: "Olaf le Fort",
+}
+
 const OUTSIDER = { id: "1400000000000000008", username: "outsider" }
 
 function discordWith() {
@@ -40,7 +58,12 @@ function discordWith() {
       { user: EIRA, roles: [STAFF.id, MODERATION.id] },
     ],
     users: [OUTSIDER],
-    bans: [{ user: ESKIL, reason: "Spam" }],
+    bans: [
+      { user: ESKIL, reason: "Spam" },
+      { user: OLAF, reason: "Spam" },
+      { user: LYRA, reason: "Spam" },
+      { user: HALDOR, reason: "Spam" },
+    ],
   })
 }
 
@@ -89,7 +112,7 @@ test("a staff member who bans lifts a ban, with their reason in the audit log, a
 
   expect(result).toEqual({
     ok: true,
-    message: "Le bannissement de Eskil est levé.",
+    message: "Le bannissement d’Eskil est levé.",
   })
   expect(await discord.getBan(ESKIL.id)).toBeNull()
   expect(await discord.getMember(ESKIL.id)).toBeNull()
@@ -101,6 +124,23 @@ test("a staff member who bans lifts a ban, with their reason in the audit log, a
     },
   ])
   expect(discord.directMessagesTo(ESKIL.id)).toEqual([])
+})
+
+test("the message names the account whose ban is lifted after « d’ » when its name starts with a vowel, and after « de » otherwise", async () => {
+  const discord = discordWith()
+  const staffMember = await staffMemberOn(discord)
+
+  for (const [userId, message] of [
+    [ESKIL.id, "Le bannissement d’Eskil est levé."],
+    [OLAF.id, "Le bannissement d’Olaf le Fort est levé."],
+    [LYRA.id, "Le bannissement de Lyra est levé."],
+    [HALDOR.id, "Le bannissement de Haldor est levé."],
+  ] as const) {
+    expect(await liftBan(discord, staffMember, liftForm({ userId }))).toEqual({
+      ok: true,
+      message,
+    })
+  }
 })
 
 test("a reason is required, of 400 characters at most, and a refused form keeps what was typed", async () => {

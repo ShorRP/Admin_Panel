@@ -282,6 +282,24 @@ test("lifting a timeout clears it, with its reason in the audit log, and sends n
   expect(discord.directMessagesTo(LYRA.id)).toEqual([])
 })
 
+test("the message that says a timeout is lifted names the member after « d’ » when their name starts with a vowel, and after « de » otherwise", async () => {
+  for (const [nick, message] of [
+    ["Élodie", "L’exclusion temporaire d’Élodie est levée."],
+    ["Aldis le Roux", "L’exclusion temporaire d’Aldis le Roux est levée."],
+    ["Lyra", "L’exclusion temporaire de Lyra est levée."],
+    ["Haldor", "L’exclusion temporaire de Haldor est levée."],
+  ] as const) {
+    const discord = discordWith({
+      nick,
+      communication_disabled_until: "2026-11-01T10:00:00.000Z",
+    })
+
+    expect(
+      await changeTimeout(discord, await staffMemberOn(discord), liftForm())
+    ).toEqual({ ok: true, message })
+  }
+})
+
 test("a member whose timeout has ended, or who had none, has no timeout to lift", async () => {
   for (const communication_disabled_until of [
     null,

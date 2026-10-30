@@ -6,7 +6,7 @@ import {
 import { expect, test } from "vitest"
 
 import { DiscordError } from "@/discord/discord-error"
-import { FakeDiscord } from "@/discord/fake-discord"
+import { FakeDiscord, type FakeMember } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { findStaffMember } from "@/staff/staff-member"
 import { banAccount } from "./ban-account"
@@ -60,14 +60,14 @@ Ne réponds pas à ce message : personne ne le lit.
 
 Le staff de Shor`
 
-function discordWith() {
+function discordWith(lyra: Partial<FakeMember> = {}) {
   return new FakeDiscord({
     roles: [STAFF, MODERATION, BANS, PANEL, ADMIN, GUARD],
     applicationRoles: [PANEL.id],
     members: [
       { user: ALDIS, roles: [STAFF.id, MODERATION.id, BANS.id] },
       { user: BRYNJA, roles: [STAFF.id] },
-      { user: LYRA, roles: [GUARD.id] },
+      { user: LYRA, roles: [GUARD.id], ...lyra },
       { user: EIRA, roles: [STAFF.id, MODERATION.id] },
       { user: HALDOR, roles: [ADMIN.id] },
     ],
@@ -188,7 +188,7 @@ test("an account absent from the Discord server is banned by its ID, with no dir
 
   expect(result).toEqual({
     ok: true,
-    message: "Le bannissement de outsider a eu lieu.",
+    message: "Le bannissement d’outsider a eu lieu.",
   })
   expect(await bans(discord)).toEqual([
     {
@@ -197,6 +197,25 @@ test("an account absent from the Discord server is banned by its ID, with no dir
     },
   ])
   expect(discord.directMessagesTo(OUTSIDER.id)).toEqual([])
+})
+
+test("the message names the banned account after « d’ » when its name starts with a vowel, and after « de » otherwise", async () => {
+  for (const [nick, message] of [
+    ["Élodie", "Le bannissement d’Élodie a eu lieu."],
+    ["Aldis le Roux", "Le bannissement d’Aldis le Roux a eu lieu."],
+    ["Lyra", "Le bannissement de Lyra a eu lieu."],
+    ["Haldor", "Le bannissement de Haldor a eu lieu."],
+  ] as const) {
+    const discord = discordWith({ nick })
+
+    expect(
+      await banAccount(
+        discord,
+        await staffMemberOn(discord),
+        banForm({ notify: false })
+      )
+    ).toEqual({ ok: true, message })
+  }
 })
 
 test("a direct message asked for an account that is no longer a member, as when it leaves once its record shows, is refused by Discord, which the result says, and the ban lands all the same", async () => {
@@ -211,7 +230,7 @@ test("a direct message asked for an account that is no longer a member, as when 
   ).toEqual({
     ok: true,
     message:
-      "Le bannissement de outsider a eu lieu. outsider n’a pas reçu le message privé : Discord l’a refusé.",
+      "Le bannissement d’outsider a eu lieu. outsider n’a pas reçu le message privé : Discord l’a refusé.",
   })
   expect(await discord.getBan(OUTSIDER.id)).not.toBeNull()
 })
