@@ -149,6 +149,25 @@ test("without the direct message, the member is kicked and receives none", async
   expect(discord.directMessagesTo(LYRA.id)).toEqual([])
 })
 
+test("the message names the kicked member after « d’ » when their name starts with a vowel, and after « de » otherwise", async () => {
+  for (const [nick, message] of [
+    ["Élodie", "L’expulsion d’Élodie a eu lieu."],
+    ["Aldis le Roux", "L’expulsion d’Aldis le Roux a eu lieu."],
+    ["Lyra", "L’expulsion de Lyra a eu lieu."],
+    ["Haldor", "L’expulsion de Haldor a eu lieu."],
+  ] as const) {
+    const discord = discordWith({ nick })
+
+    expect(
+      await kickMember(
+        discord,
+        await staffMemberOn(discord),
+        kickForm({ notify: false })
+      )
+    ).toEqual({ ok: true, message })
+  }
+})
+
 test("a member who refuses direct messages is kicked all the same, and the result says they did not receive it", async () => {
   const discord = discordWith({ allowsDirectMessages: false })
 

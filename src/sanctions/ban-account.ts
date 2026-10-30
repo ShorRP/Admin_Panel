@@ -7,6 +7,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { memberName, userName } from "@/discord/member-name"
 import type { StaffMember } from "@/staff/staff-member"
 import { banDirectMessage } from "./ban-direct-message"
+import { deName } from "./de-name"
 import { unlessDiscordUnavailable } from "./discord-unavailable"
 import { sanctionAfterDirectMessage } from "./sanction-after-direct-message"
 import { readSanctionRefusals } from "./sanction-refusal"
@@ -54,7 +55,7 @@ export async function banAccount(
         { delete_message_seconds: deleteMessageSeconds },
         auditLogReason(staffMember, reason)
       ),
-    landed: `Le bannissement de ${target.name} a eu lieu.`,
+    landed: `Le bannissement ${deName(target.name)} a eu lieu.`,
     maybeLanded: MAYBE_BANNED,
     fields,
   })

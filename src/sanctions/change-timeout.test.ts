@@ -56,6 +56,12 @@ Ne réponds pas à ce message : personne ne le lit.
 
 Le staff de Shor`
 
+const READS = [
+  ["getMember", ROUTES.guildMember],
+  ["getGuild", ROUTES.guild],
+  ["getApplicationUser", ROUTES.currentUser],
+] as const
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] })
   vi.setSystemTime(NOW)
@@ -282,6 +288,24 @@ test("lifting a timeout clears it, with its reason in the audit log, and sends n
   expect(discord.directMessagesTo(LYRA.id)).toEqual([])
 })
 
+test("the message that says a timeout is lifted names the member after « d’ » when their name starts with a vowel, and after « de » otherwise", async () => {
+  for (const [nick, message] of [
+    ["Élodie", "L’exclusion temporaire d’Élodie est levée."],
+    ["Aldis le Roux", "L’exclusion temporaire d’Aldis le Roux est levée."],
+    ["Lyra", "L’exclusion temporaire de Lyra est levée."],
+    ["Haldor", "L’exclusion temporaire de Haldor est levée."],
+  ] as const) {
+    const discord = discordWith({
+      nick,
+      communication_disabled_until: "2026-11-01T10:00:00.000Z",
+    })
+
+    expect(
+      await changeTimeout(discord, await staffMemberOn(discord), liftForm())
+    ).toEqual({ ok: true, message })
+  }
+})
+
 test("a member whose timeout has ended, or who had none, has no timeout to lift", async () => {
   for (const communication_disabled_until of [
     null,
@@ -434,13 +458,17 @@ test("Discord unavailable during a timeout says it may or may not have landed, k
   expect(discord.directMessagesTo(LYRA.id)).toEqual([])
 })
 
-test("Discord unavailable while a timeout is lifted says the lifting may or may not have landed", async () => {
+test("Discord unavailable during the lifting of a timeout says the lifting may or may not have landed, and keeps the form", async () => {
   const discord = discordWith({
     communication_disabled_until: "2026-11-01T10:00:00.000Z",
   })
   discord.failNext(
-    "getGuild",
-    new DiscordError({ method: "GET", route: ROUTES.guild })
+    "modifyMember",
+    new DiscordError({
+      method: "PATCH",
+      route: ROUTES.guildMember,
+      status: 503,
+    })
   )
 
   expect(
@@ -453,6 +481,50 @@ test("Discord unavailable while a timeout is lifted says the lifting may or may 
     reason: "Erreur de cible",
   })
 })
+
+test.each(READS)(
+  "Discord unavailable at %s, before a timeout, says it did not happen, keeps the form, and sends no direct message",
+  async (method, route) => {
+    const discord = discordWith()
+    const staffMember = await staffMemberOn(discord)
+    discord.failNext(method, new DiscordError({ method: "GET", route }))
+
+    expect(await changeTimeout(discord, staffMember, timeOutForm())).toEqual({
+      ok: false,
+      message:
+        "Discord n’a pas répondu : l’exclusion temporaire n’a pas eu lieu. Réessaie.",
+      change: "time-out",
+      reason: "Insultes répétées",
+      duration: "3600",
+      notify: true,
+    })
+    expect(await timeoutEndOf(discord, LYRA.id)).toBeNull()
+    expect(await memberUpdateReasons(discord)).toEqual([])
+    expect(discord.directMessagesTo(LYRA.id)).toEqual([])
+  }
+)
+
+test.each(READS)(
+  "Discord unavailable at %s, before the lifting of a timeout, says it did not happen and keeps the form",
+  async (method, route) => {
+    const discord = discordWith({
+      communication_disabled_until: "2026-11-01T10:00:00.000Z",
+    })
+    const staffMember = await staffMemberOn(discord)
+    discord.failNext(method, new DiscordError({ method: "GET", route }))
+
+    expect(await changeTimeout(discord, staffMember, liftForm())).toEqual({
+      ok: false,
+      message: "Discord n’a pas répondu : la levée n’a pas eu lieu. Réessaie.",
+      change: "lift",
+      reason: "Erreur de cible",
+    })
+    expect(await timeoutEndOf(discord, LYRA.id)).toBe(
+      "2026-11-01T10:00:00.000Z"
+    )
+    expect(await memberUpdateReasons(discord)).toEqual([])
+  }
+)
 
 test("a panel error is thrown, before or after the timeout", async () => {
   const missingPermissions = new DiscordError({
