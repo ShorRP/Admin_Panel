@@ -291,6 +291,46 @@ test("json files: comments are found, valid json has none", () => {
   ])
 })
 
+const DIRECTIVE_COMMENTS = [
+  '/// <reference types="next" />',
+  "// eslint-disable-next-line no-console",
+  "// @ts-expect-error",
+  "/* @vite-ignore */",
+  "/* webpackIgnore: true */",
+]
+
+for (const comment of DIRECTIVE_COMMENTS) {
+  test(`json files: ${comment} is a comment, since no tool reads a directive there`, () => {
+    assert.deepEqual(texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.json"), [
+      comment,
+    ])
+  })
+}
+
+test("script files: the tool directives are allowed alone in every script extension", () => {
+  const source = [
+    '/// <reference types="next" />',
+    "// eslint-disable-next-line no-console, @next/next/no-img-element",
+    "console.log(1)",
+    "// @ts-expect-error",
+    "use(1)",
+    "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
+  ].join("\n")
+  for (const extension of [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".jsx",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".tsx",
+  ]) {
+    assert.deepEqual(texts(source, `src/a${extension}`), [], extension)
+  }
+})
+
 test("css, markup and sql comments are found outside strings", () => {
   assert.deepEqual(texts('a { content: "/* no */" } /* yes */', "app.css"), [
     "/* yes */",
@@ -695,6 +735,16 @@ test("jsonc files: // and /* */ comments are found, valid json has none", () => 
     texts('{\n  // why\n  "a": 1, /* also */\n}', "tsconfig.jsonc"),
     ["// why", "/* also */"]
   )
+})
+
+test("jsonc files: a tool directive is a comment, as in a json file", () => {
+  for (const comment of DIRECTIVE_COMMENTS) {
+    assert.deepEqual(
+      texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.jsonc"),
+      [comment],
+      comment
+    )
+  }
 })
 
 for (const [construct, file, source] of [
