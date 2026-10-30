@@ -232,7 +232,7 @@ test("a mention or an ID opens its account's record directly, banned, absent or 
   await checkAccessibility()
 })
 
-test("a staff member who does not moderate sees no « Modération », and the section's pages show the not-found page, beside the navigation", async ({
+test("a staff member who does not moderate sees no « Modération », and the section's pages show the not-found page, beside the navigation, though their tab still names the section", async ({
   page,
   logIn,
   checkAccessibility,
@@ -253,6 +253,7 @@ test("a staff member who does not moderate sees no « Modération », and the se
   await expect(page.getByRole("heading", { name: "Modération" })).toHaveCount(0)
   await expect(sidebar).toContainText("brynja")
   await expect(sidebar).not.toContainText("Modération")
+  await expect(page).toHaveTitle("Modération – Panel de Shor")
   await checkAccessibility()
 
   await page.goto(`/records/${LYRA.id}`)
@@ -262,6 +263,7 @@ test("a staff member who does not moderate sees no « Modération », and the se
   await expect(page.getByText("Lyra des Brumes")).toHaveCount(0)
   await expect(sidebar).toContainText("brynja")
   await expect(sidebar).not.toContainText("Modération")
+  await expect(page).toHaveTitle("Fiche – Panel de Shor")
   await checkAccessibility()
 })
 

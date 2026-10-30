@@ -49,7 +49,7 @@ test("an unknown URL shows the French not-found page, without the navigation, wh
   ).toBeVisible()
 })
 
-test("Discord unavailable during a read shows the error page, without the navigation, with its reference, then « Réessayer » shows the page", async ({
+test("Discord unavailable while the audit log is read shows the error page, without the navigation, with its reference, then « Réessayer » shows the page", async ({
   page,
   discord,
   logIn,
@@ -62,18 +62,22 @@ test("Discord unavailable during a read shows the error page, without the naviga
     `pageerror: ${minifiedReactError(419)}`,
     `pageerror: ${minifiedReactError(419)}`,
   ])
+
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.waitForLoadState()
   discord.failNext(
-    "listAutoModerationRules",
+    "getAuditLog",
     new DiscordError({
       method: "GET",
-      route: ROUTES.autoModerationRules,
+      route: ROUTES.guildAuditLog,
       status: 503,
     })
   )
 
-  await logIn(ALDIS)
+  await page.goto("/audit-log")
 
-  await expect(page).toHaveURL("/blocked-words")
+  await expect(page).toHaveURL("/audit-log")
   await expect(
     page.getByRole("heading", { level: 1, name: "Page indisponible" })
   ).toHaveCSS("font-family", /^"EB Garamond",/)
@@ -92,7 +96,9 @@ test("Discord unavailable during a read shows the error page, without the naviga
   await main.getByRole("button", { name: "Réessayer" }).click()
 
   await expect(
-    page.getByText("Aucun mot interdit pour l’instant.")
+    page.getByText(
+      "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
+    )
   ).toBeVisible()
   await expect(page.getByRole("complementary")).toContainText("aldis")
   await checkAccessibility()
