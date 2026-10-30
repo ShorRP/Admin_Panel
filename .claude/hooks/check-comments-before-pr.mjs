@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 const SCRIPT = fileURLToPath(
   new URL("../../scripts/check-comments.mjs", import.meta.url)
 )
-const CREATE_PR = /\bgh\s+pr\s+create\b/
+const CREATE_PR = /\bgh\s+pr\s+(?:create|new)\b/
 
 function deny(reason) {
   process.stdout.write(
