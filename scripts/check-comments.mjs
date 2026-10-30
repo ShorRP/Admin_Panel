@@ -38,6 +38,8 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
+const SQL_DOLLAR_DELIMITER =
+  /\$(?:(?:[A-Za-z_]|[^\x00-\x7F])(?:\w|[^\x00-\x7F])*)?\$/y
 const SHELL_BREAKS = /[\s;&|()<>]/
 const SHELL_KEYWORD =
   /(?:case(?=\s)|[!{](?=\s)|(?:esac|in|then|do|else|elif|if|while|until|time)(?=[\s;&|()<>]|$))/y
@@ -154,15 +156,38 @@ function closingSqlQuote(text, start) {
   return end - 1
 }
 
-function delimitedComments(
-  text,
-  { line = [], block = [], quotes = [], closing = closingQuote }
-) {
+function dollarQuotedBodyAt(text, at) {
+  if (text[at] !== "$" || isSqlIdentifierCharacter(text[at - 1])) return null
+  SQL_DOLLAR_DELIMITER.lastIndex = at
+  const opening = SQL_DOLLAR_DELIMITER.exec(text)
+  if (!opening) return null
+  const delimiter = opening[0]
+  const start = at + delimiter.length
+  const end = text.indexOf(delimiter, start)
+  if (end === -1) throw neverClosed(text, at, `${delimiter} string`)
+  return { start, end, after: end + delimiter.length }
+}
+
+function delimitedComments(text, options, from = 0) {
+  const {
+    line = [],
+    block = [],
+    quotes = [],
+    closing = closingQuote,
+    bodyAt,
+  } = options
   const found = []
-  let i = 0
+  let i = from
   while (i < text.length) {
     if (quotes.includes(text[i])) {
       i = closing(text, i) + 1
+      continue
+    }
+    const body = bodyAt?.(text, i)
+    if (body) {
+      const bounded = `${text.slice(0, body.start - 1)} ${text.slice(body.start, body.end)}`
+      found.push(...delimitedComments(bounded, options, body.start))
+      i = body.after
       continue
     }
     const opener = block.find(([open]) => text.startsWith(open, i))
@@ -778,6 +803,7 @@ export function findComments(text, file) {
         block: [["/*", "*/"]],
         quotes: ["'", '"'],
         closing: closingSqlQuote,
+        bodyAt: dollarQuotedBodyAt,
       })
     case "yaml":
       return hashComments(maskFlowYamlScalars(text))

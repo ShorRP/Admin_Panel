@@ -490,6 +490,176 @@ test("sql files: a string that never closes makes the file unreadable, rather th
   }
 })
 
+const unreadableSql = (text, cause) => {
+  const [line, ...others] = checkFile(text, "q.sql")
+  assert.equal(
+    line,
+    `q.sql: cannot be parsed, so its comments cannot be checked (${cause})`,
+    text
+  )
+  assert.deepEqual(others, [], text)
+}
+
+test("sql files: a quote left open in a $$ body makes the file unreadable, rather than closing on a quote past the body", () => {
+  unreadableSql(
+    "select $$a'b$$; -- why\nselect $$c'd$$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    'select $$a"b$$; -- why\nselect $$c"d$$;\n',
+    'the " quote opened on line 1 is never closed'
+  )
+  unreadableSql(
+    "select $$don't$$;\n-- why\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $f$don't$f$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select 1;\nselect $$ E'a\\' $$; -- why\nselect 'x';\n",
+    "the ' quote opened on line 2 is never closed"
+  )
+})
+
+test("sql files: a $$ or $tag$ delimiter that is never closed makes the file unreadable, tag case included", () => {
+  unreadableSql(
+    "select 1;\nselect $$ x;\n-- why\n",
+    "the $$ string opened on line 2 is never closed"
+  )
+  unreadableSql(
+    "select $f$ x $g$; -- why\n",
+    "the $f$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $A$ x $a$; -- why\n",
+    "the $A$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $é$ x $e$; -- why\n",
+    "the $é$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $$ x $f$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: nested bodies with other tags are each read to their own delimiter", () => {
+  const nested =
+    "do $outer$\nbegin\n  execute $inner$ select 'a' -- inner\n$inner$; -- outer\nend\n$outer$;\n"
+  assert.deepEqual(checkFile(nested, "q.sql"), [
+    "q.sql:3:30 -- inner",
+    "q.sql:4:10 -- outer",
+  ])
+  assert.deepEqual(
+    texts("select $a$ $b$ x /* y */ $b$ /* z */ $a$; -- w", "q.sql"),
+    ["/* y */", "/* z */", "-- w"]
+  )
+  assert.deepEqual(texts("select $a$ select '$b$' $a$ -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(
+    texts("select $a$$b$ x -- why\n$b$$a$; -- after\n", "q.sql"),
+    ["-- why", "-- after"]
+  )
+  unreadableSql(
+    "select $a$ x $b$ it's $b$ y $a$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $a$ $b$ $a$ $b$; -- why\n",
+    "the $b$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $a$ x $b$ y $$ z $b$ $a$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: a body ends at the first closing delimiter, even one inside a string of the body", () => {
+  unreadableSql(
+    "select $$ 'x$$'; -- why\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $$ a $$ b $$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: a $$ or $tag$ body is SQL up to its delimiter, so its comments are found and its strings read as elsewhere", () => {
+  assert.deepEqual(
+    checkFile(
+      "create function f() returns int as $$\n  select 'a' -- why\n$$ language sql;\n",
+      "q.sql"
+    ),
+    ["q.sql:2:14 -- why"]
+  )
+  assert.deepEqual(
+    checkFile(
+      "create function f() returns int as $body$\n  select 'a' /* why */\n$body$ language sql;\n",
+      "q.sql"
+    ),
+    ["q.sql:2:14 /* why */"]
+  )
+  assert.deepEqual(texts("select $$ a -- why $$; -- after\n", "q.sql"), [
+    "-- why ",
+    "-- after",
+  ])
+  assert.deepEqual(texts("select $é$ a /* why */ $é$ -- after\n", "q.sql"), [
+    "/* why */",
+    "-- after",
+  ])
+  assert.deepEqual(texts("select $$ 'a\n-- b' $$;\n", "q.sql"), [])
+  assert.deepEqual(texts("select $$ 'it''s -- b' $$; -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts('select $$ "a\n-- b" $$; -- why\n', "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select $$ E'it\\'s -- b' $$; -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(checkFile("select $$ E'it\\'s' -- why\n$$;\n", "q.sql"), [
+    "q.sql:1:20 -- why",
+  ])
+  assert.deepEqual(checkFile("select $$E'it\\'s' -- why\n$$;\n", "q.sql"), [
+    "q.sql:1:19 -- why",
+  ])
+  assert.deepEqual(checkFile("select $f$E'it\\'s' -- why\n$f$;\n", "q.sql"), [
+    "q.sql:1:20 -- why",
+  ])
+  assert.deepEqual(texts("select $$ a /* b $$; -- why\n", "q.sql"), [
+    "/* b ",
+    "-- why",
+  ])
+  assert.deepEqual(texts("select $$$$; -- why\n", "q.sql"), ["-- why"])
+})
+
+test("sql files: a $ that opens no delimiter opens none", () => {
+  for (const [text, comments] of [
+    ["select * from t where a = $1 and b = $2; -- why\n", ["-- why"]],
+    ["select $1$2; -- why\n", ["-- why"]],
+    ["select $1$; -- why\n", ["-- why"]],
+    ["select $a b; -- why\n", ["-- why"]],
+    ["select $ 5; -- why\n", ["-- why"]],
+    ["select a$b, c$d; -- why\n", ["-- why"]],
+    ["select a$$b; -- why\n", ["-- why"]],
+    ["select a$b$ from t; -- why\n", ["-- why"]],
+    ["select select$$x; -- why\n", ["-- why"]],
+    ["select x1$$y; -- why\n", ["-- why"]],
+    ["select é$$y; -- why\n", ["-- why"]],
+    ["select '$$'; -- why\n", ["-- why"]],
+    ['select "$$"; -- why\n', ["-- why"]],
+    ["select 1; -- a $$\nselect 2;\n", ["-- a $$"]],
+    ["select 1; /* a $$ */ select 2; -- why\n", ["/* a $$ */", "-- why"]],
+  ]) {
+    assert.deepEqual(texts(text, "q.sql"), comments, text)
+  }
+})
+
 test("css files: a string ends with its line", () => {
   assert.deepEqual(texts("a { content: 'x\n}\n/* why */", "app.css"), [
     "/* why */",
