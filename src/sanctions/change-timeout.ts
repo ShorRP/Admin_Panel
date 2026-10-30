@@ -17,9 +17,15 @@ import {
 } from "./submitted-timeout-change"
 import { timeoutDirectMessage } from "./timeout-direct-message"
 
-type AppliedChange = { name: string; member: APIGuildMember; end: Date | null }
+type CheckedChange = { name: string; member: APIGuildMember }
 
-const DISCORD_UNAVAILABLE = {
+const NOT_CHANGED = {
+  "time-out":
+    "Discord n’a pas répondu : l’exclusion temporaire n’a pas eu lieu. Réessaie.",
+  lift: "Discord n’a pas répondu : la levée n’a pas eu lieu. Réessaie.",
+}
+
+const MAYBE_CHANGED = {
   "time-out":
     "Discord n’a pas répondu : l’exclusion temporaire est peut-être passée, peut-être pas. Recharge la page pour vérifier, puis réessaie.",
   lift: "Discord n’a pas répondu : la levée est peut-être passée, peut-être pas. Recharge la page pour vérifier, puis réessaie.",
@@ -37,15 +43,27 @@ export async function changeTimeout(
   if (!submitted.ok) {
     return failure(submitted.message, submitted.fields)
   }
-  const { fields, reason } = submitted
-  const applied = await unlessDiscordUnavailable(
-    () => applyChange(discord, staffMember, submitted),
-    DISCORD_UNAVAILABLE[fields.change]
+  const { fields, reason, seconds } = submitted
+  const checked = await unlessDiscordUnavailable(
+    () => checkChange(discord, staffMember, submitted),
+    NOT_CHANGED[fields.change]
   )
-  if (typeof applied === "string") {
-    return failure(applied, fields)
+  if (typeof checked === "string") {
+    return failure(checked, fields)
   }
-  const { name, member, end } = applied
+  const { name, member } = checked
+  const end = seconds === null ? null : new Date(Date.now() + seconds * 1000)
+  const changed = await unlessDiscordUnavailable(async () => {
+    await discord.modifyMember(
+      member.user.id,
+      { communication_disabled_until: end?.toISOString() ?? null },
+      auditLogReason(staffMember, reason)
+    )
+    return true
+  }, false)
+  if (!changed) {
+    return failure(MAYBE_CHANGED[fields.change], fields)
+  }
   if (end === null) {
     return { ok: true, message: `L’exclusion temporaire de ${name} est levée.` }
   }
@@ -64,11 +82,11 @@ export async function changeTimeout(
   }
 }
 
-async function applyChange(
+async function checkChange(
   discord: DiscordApi,
   staffMember: StaffMember,
-  { userId, reason, seconds }: Extract<SubmittedTimeoutChange, { ok: true }>
-): Promise<AppliedChange | string> {
+  { userId, seconds }: Extract<SubmittedTimeoutChange, { ok: true }>
+): Promise<CheckedChange | string> {
   const member = userId === null ? null : await discord.getMember(userId)
   if (member === null) {
     return "Ce compte n’est pas membre du serveur Discord."
@@ -86,13 +104,7 @@ async function applyChange(
   if (seconds === null && !isTimedOut(member)) {
     return `${name} n’est pas en exclusion temporaire.`
   }
-  const end = seconds === null ? null : new Date(Date.now() + seconds * 1000)
-  await discord.modifyMember(
-    member.user.id,
-    { communication_disabled_until: end?.toISOString() ?? null },
-    auditLogReason(staffMember, reason)
-  )
-  return { name, member, end }
+  return { name, member }
 }
 
 function isTimedOut({ communication_disabled_until }: APIGuildMember) {
