@@ -7,7 +7,7 @@ import { ESLint } from "eslint"
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const eslint = new ESLint({ cwd: ROOT })
 
-const bannedTsComments = async (directive) => {
+const banTsCommentMessages = async (directive) => {
   const [result] = await eslint.lintText(
     `${directive}\nexport const n: number = "x"\n`,
     { filePath: path.join(ROOT, "src", "probe.ts") }
@@ -18,13 +18,13 @@ const bannedTsComments = async (directive) => {
 }
 
 test("a lone @ts-expect-error passes the lint", async () => {
-  assert.deepEqual(await bannedTsComments("// @ts-expect-error"), [])
+  assert.deepEqual(await banTsCommentMessages("// @ts-expect-error"), [])
 })
 
 test("@ts-ignore is refused by the lint", async () => {
-  assert.equal((await bannedTsComments("// @ts-ignore")).length, 1)
+  assert.equal((await banTsCommentMessages("// @ts-ignore")).length, 1)
 })
 
 test("@ts-nocheck is refused by the lint", async () => {
-  assert.equal((await bannedTsComments("// @ts-nocheck")).length, 1)
+  assert.equal((await banTsCommentMessages("// @ts-nocheck")).length, 1)
 })

@@ -18,7 +18,7 @@ const SCRIPT_PLUGINS = {
   ".tsx": ["typescript", "jsx"],
 }
 
-const RULE_NAME = String.raw`@?[\w-]+(?:/[\w-]+)*`
+const RULE_NAME = String.raw`@?[A-Za-z0-9][\w-]*(?:/[A-Za-z0-9][\w-]*)*`
 
 const DIRECTIVES = [
   /^\/\s*<reference\s/,

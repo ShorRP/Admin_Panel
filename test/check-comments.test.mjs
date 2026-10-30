@@ -90,24 +90,40 @@ test("script files: indispensable tool directives are allowed alone", () => {
   assert.deepEqual(texts(source, "src/a.tsx"), [])
 })
 
-for (const comment of [
+const refusedDirectives = (reason, comments) => {
+  for (const comment of comments) {
+    test(`script files: ${comment} is a comment, ${reason}`, () => {
+      assert.deepEqual(texts(`${comment}\nexport const a = 1\n`, "src/a.ts"), [
+        comment,
+      ])
+    })
+  }
+}
+
+refusedDirectives("since a directive is allowed only alone", [
   "// @ts-expect-error wrong on purpose",
+  "// eslint-disable-next-line no-console -- why",
+  "// eslint-disable-next-line no-console why",
+])
+
+refusedDirectives("since the check never allows that directive", [
   "// @ts-ignore",
   "// @ts-nocheck",
   "/* eslint-disable */",
   "/* eslint-disable no-console */",
   "/* eslint-enable */",
   "// eslint-disable-line no-console",
+])
+
+refusedDirectives("since a rule name starts with a letter or a digit", [
   "// eslint-disable-next-line",
-  "// eslint-disable-next-line no-console -- why",
-  "// eslint-disable-next-line no-console why",
-]) {
-  test(`script files: ${comment} is a comment, since a directive is allowed only alone`, () => {
-    assert.deepEqual(texts(`${comment}\nexport const a = 1\n`, "src/a.ts"), [
-      comment,
-    ])
-  })
-}
+  "// eslint-disable-next-line --",
+  "// eslint-disable-next-line -",
+  "// eslint-disable-next-line ---",
+  "// eslint-disable-next-line _",
+  "// eslint-disable-next-line no-console, --",
+  "// eslint-disable-next-line plugin/-",
+])
 
 test("json files: comments are found, valid json has none", () => {
   assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.json"), [])
