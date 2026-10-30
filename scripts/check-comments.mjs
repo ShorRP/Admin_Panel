@@ -57,6 +57,7 @@ const COMMENTLESS_EXTENSIONS = new Set([
 const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
 const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
 const YAML_HEADER_FENCE = /^---[ \t]*\r?\n?$/
+const YAML_KEY_LINE = /^[^\s#][^:\r\n]*:(?:[ \t]|\r?\n?$)/
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
   "single-quoted-scalar",
@@ -274,16 +275,21 @@ function maskMarkdownCode(text) {
 
 function yamlHeaderOf(text) {
   const lines = text.match(/[^\n]*\n|[^\n]+/g) ?? []
-  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0])) return null
+  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0].replace(/^﻿/, "")))
+    return null
   const bodyStart = lines[0].length
   let offset = bodyStart
+  let hasKey = false
   for (const line of lines.slice(1)) {
     if (YAML_HEADER_FENCE.test(line)) {
+      if (!hasKey) return null
       return { bodyStart, bodyEnd: offset, end: offset + line.length }
     }
+    hasKey ||= YAML_KEY_LINE.test(line)
     offset += line.length
   }
-  throw new Error("unterminated YAML header")
+  if (hasKey) throw new Error("unterminated YAML header")
+  return null
 }
 
 function yamlHeaderComments(body) {

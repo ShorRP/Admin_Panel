@@ -408,8 +408,13 @@ test("markdown files: a # comment of the YAML header is found", () => {
     texts("---\r\n# why\r\nname: x\r\n---\r\n\r\ntext\r\n", "SKILL.md"),
     ["# why"]
   )
-  assert.deepEqual(texts("---  \n# why\n---\t\ntext\n", "SKILL.md"), ["# why"])
-  assert.deepEqual(texts("---\n# why\n---", "SKILL.md"), ["# why"])
+  assert.deepEqual(texts("---  \n# why\nname: x\n---\t\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\n# why\nname: x\n---", "SKILL.md"), ["# why"])
+  assert.deepEqual(texts("---\ntags:\n  - a\n  # why\n---\n", "SKILL.md"), [
+    "# why",
+  ])
   assert.deepEqual(
     checkFile("---\nname: x\n  # why\nother: y\n---\n\ntext\n", "SKILL.md"),
     ["SKILL.md:3:3 # why"]
@@ -466,6 +471,32 @@ test("markdown files: a --- that is not on the first line is a separator, not a 
   assert.deepEqual(texts("text\n---\n\n<!-- why -->\n", "a.md"), [
     "<!-- why -->",
   ])
+})
+
+test("markdown files: a first-line --- with no key: line before the next is a rule, not a YAML header", () => {
+  assert.deepEqual(texts("---\n\n<!-- why -->\n\ntext\n\n---\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("---\n\n# Title\n\n---\n", "a.md"), [])
+  assert.deepEqual(texts("---\n# Title\n---\n", "a.md"), [])
+  assert.deepEqual(
+    texts("---\n\nSee http://example.com\n\n---\n# Title\n", "a.md"),
+    []
+  )
+  assert.deepEqual(checkFile("---\n\ntext\n\n<!-- why -->\n", "a.md"), [
+    "a.md:5:1 <!-- why -->",
+  ])
+  assert.deepEqual(checkFile("---\n\n# Title\n", "a.md"), [])
+})
+
+test("markdown files: a byte order mark before the opening --- is part of the YAML header", () => {
+  assert.deepEqual(texts("﻿---\n# why\nname: x\n---\n\ntext\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(checkFile("﻿---\nname: x\n---\n\n<!-- why -->\n", "a.md"), [
+    "a.md:5:1 <!-- why -->",
+  ])
+  assert.deepEqual(texts("﻿# Title\n\n---\nname: x\n---\n", "a.md"), [])
 })
 
 test("markdown files: a YAML header that is not valid YAML is read line by line, quotes ignored", () => {
