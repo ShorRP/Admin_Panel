@@ -136,7 +136,7 @@ test("a member's timeout shows until it ends, and no longer once it has ended", 
   ).toMatchObject({ kind: "member", timedOutUntil: null })
 })
 
-test("a ban given through the panel shows its reason without the panel’s prefix, and the staff member who gave it", async () => {
+test("a ban given through the panel shows its reason without the panel's prefix, and the staff member who gave it", async () => {
   const discord = discordWithLyra()
   await banAccount(
     discord,
@@ -160,7 +160,7 @@ test("a ban given through the panel shows its reason without the panel’s prefi
   })
 })
 
-test("a ban given by hand in Discord shows its whole reason and no staff member, though the reason follows the panel’s format", async () => {
+test("a ban given by hand in Discord shows its whole reason and no staff member, though the reason follows the panel's format", async () => {
   const discord = discordWithLyra()
   const reason = auditLogReason(await aldisOn(discord), "insultes répétées")
   discord.createBanAs(BRYNJA.id, LYRA.id, reason)
@@ -193,7 +193,7 @@ test("a ban shows the reason Discord keeps whole when it follows no format, and 
   })
 })
 
-test("a ban whose entry has left the audit log shows as given in Discord, whole reason and no staff member, though the reason follows the panel’s format", async () => {
+test("a ban whose entry has left the audit log shows as given in Discord, whole reason and no staff member, though the reason follows the panel's format", async () => {
   const reason = auditLogReason(
     await aldisOn(discordWithLyra()),
     "insultes répétées"
@@ -207,7 +207,7 @@ test("a ban whose entry has left the audit log shows as given in Discord, whole 
   })
 })
 
-test("a ban given again by hand after the panel’s was lifted shows as given in Discord", async () => {
+test("a ban given again by hand after the panel's was lifted shows as given in Discord", async () => {
   const discord = discordWithLyra()
   await banAccount(
     discord,
@@ -258,7 +258,7 @@ test("a failed read of the audit log is thrown rather than leaving a ban read as
   await expect(readRecord(discord, LYRA.id)).rejects.toBe(unavailable)
 })
 
-test("a failed read of the panel’s application is thrown rather than leaving a ban of the panel read as given in Discord", async () => {
+test("a failed read of the panel's application is thrown rather than leaving a ban of the panel read as given in Discord", async () => {
   const discord = discordWithLyra()
   await banAccount(
     discord,
