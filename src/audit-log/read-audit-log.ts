@@ -51,11 +51,7 @@ type Users = Map<Snowflake, APIUser>
 
 type EventReader = {
   actionType: AuditLogEvent
-  changeOf: (
-    entry: APIAuditLogEntry,
-    users: Users,
-    applicationId: Snowflake
-  ) => FoundChange | null
+  changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
 }
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
@@ -98,14 +94,8 @@ export async function readAuditLog(
   const cursor = CURSOR.parse(searchParams.before)
   const type = CHANGE_TYPE.parse(searchParams.type)
   const found: FoundChange[] = []
-  const [readers, application] = await Promise.all([
-    eventReadersOfType(discord, type),
-    discord.getApplicationUser(),
-  ])
-  for (const reader of readers) {
-    found.push(
-      ...(await changesOfEvent(discord, reader, cursor, application.id))
-    )
+  for (const reader of await eventReadersOfType(discord, type)) {
+    found.push(...(await changesOfEvent(discord, reader, cursor)))
   }
   const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
@@ -135,10 +125,13 @@ async function eventReadersOfType(
 ) {
   const events =
     type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
-  const ruleId = events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
-    ? await panelRuleId(discord)
-    : null
-  return eventReaders(ruleId).filter(({ actionType }) =>
+  const [ruleId, application] = await Promise.all([
+    events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
+      ? panelRuleId(discord)
+      : null,
+    discord.getApplicationUser(),
+  ])
+  return eventReaders(ruleId, application.id).filter(({ actionType }) =>
     events.includes(actionType)
   )
 }
@@ -147,25 +140,21 @@ async function panelRuleId(discord: DiscordApi) {
   return (await discord.listAutoModerationRules()).find(isPanelRule)?.id ?? null
 }
 
-function eventReaders(ruleId: Snowflake | null): EventReader[] {
+function eventReaders(
+  ruleId: Snowflake | null,
+  applicationId: Snowflake
+): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
-    changeOf: (
-      entry: APIAuditLogEntry,
-      users: Users,
-      applicationId: Snowflake
-    ) => sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
+    changeOf: (entry: APIAuditLogEntry, users: Users) =>
+      sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
   }))
   if (ruleId === null) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
-    changeOf: (
-      entry: APIAuditLogEntry,
-      users: Users,
-      applicationId: Snowflake
-    ) =>
+    changeOf: (entry: APIAuditLogEntry, users: Users) =>
       entry.target_id === ruleId
         ? ruleChangeOf(entry, users, applicationId)
         : null,
@@ -203,14 +192,13 @@ async function avatarUrlOf(discord: DiscordApi, memberId: Snowflake) {
 async function changesOfEvent(
   discord: DiscordApi,
   { actionType, changeOf }: EventReader,
-  olderThan: Snowflake | null,
-  applicationId: Snowflake
+  olderThan: Snowflake | null
 ) {
   const changes: FoundChange[] = []
   for await (const log of auditLogPages(discord, actionType, olderThan)) {
     const users = new Map(log.users.map((user) => [user.id, user]))
     for (const entry of log.audit_log_entries) {
-      const change = changeOf(entry, users, applicationId)
+      const change = changeOf(entry, users)
       if (change !== null) {
         changes.push(change)
       }
