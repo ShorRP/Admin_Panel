@@ -166,19 +166,16 @@ test("yaml files: a quote outside a quoted string hides no comment", () => {
   assert.deepEqual(texts(workflow, "ci.yml"), ["# why"])
 })
 
-test("hash files other than yaml: every quote ends with its line", () => {
+test("plain hash files: every quote ends with its line", () => {
   assert.deepEqual(texts('"odd name\n# why\n', ".gitignore"), ["# why"])
   assert.deepEqual(texts("[*]\nx = 'a\n# why\n", ".editorconfig"), ["# why"])
-  assert.deepEqual(texts("GREETING='hello\n# why\nOTHER=1\n", ".env"), [
-    "# why",
-  ])
-  assert.deepEqual(texts('python -c "\nprint(1)\n"\n# why\n', "run.sh"), [
-    "# why",
-  ])
 })
 
 test("shell files: a quoted string spanning several lines is a value, up to its closing quote", () => {
   assert.deepEqual(texts('echo "a\n# b"\n', "run.sh"), [])
+  assert.deepEqual(texts('python -c "\nprint(1)\n"\n# why\n', "run.sh"), [
+    "# why",
+  ])
   assert.deepEqual(texts("echo 'a\n# b' # why\n", "run.sh"), ["# why"])
   assert.deepEqual(texts("echo $'a\\'\n# b'\n", "run.sh"), [])
   assert.deepEqual(texts('echo "say \\"hi\\"\n# b"\n# why\n', "run.sh"), [
@@ -197,6 +194,71 @@ test("shell files: the first line may be a shebang, the quotes after it are read
   assert.deepEqual(texts('#!/usr/bin/env bash\necho "a\n# b"\n', "run.sh"), [])
 })
 
+test("shell files: a here-document body is text up to its delimiter's line, whatever it holds", () => {
+  const twice =
+    "cat <<EOF\ndon't\nEOF\n# hidden real comment\ncat <<EOF\ncan't\nEOF\n"
+  assert.deepEqual(texts(twice, "run.sh"), ["# hidden real comment"])
+  assert.deepEqual(texts("cat <<EOF\ndon't\nEOF\necho ok\n", "run.sh"), [])
+  assert.deepEqual(texts("cat <<EOF\n# a\n  EOF\nEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<-EOF\n\t# a\n\tEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<'EOF' | tr a b\n# a\nEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('cat <<"E O" # why\n# a\nE O\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts("cat <<\\EOF\n# a\nEOF\n# why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts("cat <<A <<B\n# a\nA\nit's\nB\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<EOF\r\n# a\r\nEOF\r\n# why\r\n", "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: a here-string is no here-document, nor is a shift", () => {
+  assert.deepEqual(texts("cat <<<word\n# why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('cat <<<"a\n# b"\n# why\n', "run.sh"), ["# why"])
+  assert.deepEqual(
+    texts(
+      'echo $((1<<3)) "$((1 << 3))" $(( (1<<2) + 1 ))\n(( x <<= 1 )) # why\n',
+      "run.sh"
+    ),
+    ["# why"]
+  )
+})
+
+test("shell files: a command substitution inside double quotes is shell, with its own quotes and comments", () => {
+  assert.deepEqual(texts('x="$(\n echo a # inner\n)"\n', "run.sh"), ["# inner"])
+  assert.deepEqual(texts('x="`echo a # inner\n`"\n', "run.sh"), ["# inner"])
+  assert.deepEqual(texts('echo "$(echo \'"\')" # why\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "$(echo "a # b")" "$(x)" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('echo "$(echo "$(echo \'"\')")" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('echo "\\$(not a substitution" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("x=$(cat <<EOF\ndon't\nEOF\n) # why\n", "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: a # starts a comment after a metacharacter, not inside a word", () => {
+  assert.deepEqual(texts("echo a;# it's\n", "run.sh"), ["# it's"])
+  assert.deepEqual(texts("a|# one\nb&# two\n(# three\n)\n", "run.sh"), [
+    "# one",
+    "# two",
+    "# three",
+  ])
+  assert.deepEqual(texts("a>#four\nb<#five\n", "run.sh"), ["#four", "#five"])
+  assert.deepEqual(texts("echo a=#b ${x#y} $#\n", "run.sh"), [])
+})
+
 test("env files: a quoted value spanning several lines is a value, up to its closing quote", () => {
   assert.deepEqual(texts('KEY="a\n# b"\n', ".env.example"), [])
   assert.deepEqual(texts("KEY='a\n# b'\n", ".env"), [])
@@ -207,6 +269,20 @@ test("env files: a quoted value spanning several lines is a value, up to its clo
   assert.deepEqual(texts('KEY="say \\"hi\\"\n# b"\n# why\n', ".env"), ["# why"])
   assert.deepEqual(texts('KEY="a\n# b"# glued\n', ".env"), ["# glued"])
   assert.deepEqual(texts('KEY="a\r\n# b"\r\n# why\r\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY: "a\n# b"\nNEXT:  1 # why\n', ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\'\n# b'\n# why\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY=`a\\`\n# b`\n# why\n", ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="a\\"\n# b"\n# why\n', ".env"), ["# why"])
+})
+
+test("env files: a closing quote is the first one that ends its value, as dotenv backtracks to it", () => {
+  assert.deepEqual(texts("KEY='C:\\dir\\' # why\nNEXT=1\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\'b\\'\n# c' # why\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\' # why\nB=x'y\n# c\n", ".env"), [
+    "# why",
+    "# c",
+  ])
+  assert.deepEqual(texts("KEY='a\\' x\n# b\nOTHER='\n# c\n", ".env"), ["# c"])
 })
 
 test("env files: a quote that opens no value hides no comment", () => {
@@ -255,6 +331,18 @@ test("a quote that is never closed hides no comment: the file is reported as unp
     checkFile("echo 'a\n# why\necho 'b'\n", "run.sh")[0],
     /^run\.sh: cannot be parsed/
   )
+  for (const source of [
+    "cat <<EOF\nbody\n# why\n",
+    "cat <<EOF",
+    "cat <<-EOF\nbody\n  EOF\n",
+    'echo "$(echo a\n# why\n',
+    'echo "`echo a\n# why\n',
+    'echo "$(echo a)\n# why\n',
+  ]) {
+    const [line, ...rest] = checkFile(source, "run.sh")
+    assert.match(line, /^run\.sh: cannot be parsed.*opened on line 1 is never/)
+    assert.deepEqual(rest, [])
+  }
   assert.deepEqual(checkFile('KEY="a\n# why\nOTHER=1\n', ".env.example"), [
     ".env.example:2:1 # why",
   ])

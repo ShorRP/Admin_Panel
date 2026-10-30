@@ -36,8 +36,9 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
+const SHELL_BREAKS = /[\s;&|()<>]/
 const DOTENV_VALUE_OPENER =
-  /[ \t]*(?:export[ \t]+)?[\w.-]+[ \t]*=[ \t]*(["'`])/y
+  /[ \t]*(?:export[ \t]+)?[\w.-]+(?:[ \t]*=[ \t]*|:[ \t]+)(["'`])/y
 const DOTENV_VALUE_TAIL = /[ \t]*(?:#[^\r\n]*)?\r?(?:\n|$)/y
 const SKIPPED_FILES = new Set(["pnpm-lock.yaml"])
 const FLOW_YAML_SCALARS = new Set([
@@ -178,7 +179,12 @@ function lineEnd(text, from) {
   return text[end - 1] === "\r" ? end - 1 : end
 }
 
-function findQuotedEnd(
+function neverClosed(text, at, what) {
+  const line = text.slice(0, at).split("\n").length
+  return new Error(`the ${what} opened on line ${line} is never closed`)
+}
+
+function quotedEnd(
   text,
   quoteAt,
   { escapes, delimiter = text[quoteAt], oneLine = false }
@@ -188,34 +194,132 @@ function findQuotedEnd(
     if (escapes && text[i] === "\\" && text[i + 1] !== "\n") i++
     else if (text.startsWith(delimiter, i)) return i + delimiter.length
   }
+  throw neverClosed(text, quoteAt, `${text[quoteAt]} quote`)
+}
+
+function arithmeticEnd(text, at) {
+  let depth = 0
+  for (let i = at; i < text.length; i++) {
+    if (text[i] === "(") depth++
+    else if (text[i] === ")" && --depth === 0)
+      return text[i - 1] === ")" ? i + 1 : null
+  }
   return null
 }
 
-function quotedEnd(text, quoteAt, options) {
-  const end = findQuotedEnd(text, quoteAt, options)
-  if (end !== null) return end
-  const line = text.slice(0, quoteAt).split("\n").length
-  throw new Error(
-    `the ${text[quoteAt]} quote opened on line ${line} is never closed`
-  )
+function heredocAt(text, at) {
+  let i = at + 2
+  const strip = text[i] === "-"
+  if (strip) i++
+  while (text[i] === " " || text[i] === "\t") i++
+  let delimiter = ""
+  while (i < text.length && !SHELL_BREAKS.test(text[i])) {
+    if (text[i] === "'" || text[i] === '"') {
+      const end = quotedEnd(text, i, { escapes: text[i] === '"' })
+      delimiter += text.slice(i + 1, end - 1)
+      i = end
+    } else if (text[i] === "\\") {
+      delimiter += text[i + 1] ?? ""
+      i += 2
+    } else delimiter += text[i++]
+  }
+  return delimiter ? { delimiter, strip, at, end: i } : null
+}
+
+function heredocBodyEnd(text, from, { delimiter, strip, at }) {
+  let i = from
+  while (i < text.length) {
+    const newline = text.indexOf("\n", i)
+    const next = newline === -1 ? text.length : newline + 1
+    const line = text.slice(i, lineEnd(text, i))
+    if ((strip ? line.replace(/^\t+/, "") : line) === delimiter) return next
+    i = next
+  }
+  throw neverClosed(text, at, "here-document")
 }
 
 function shellComments(text) {
   const found = []
   let i = text.startsWith("#!") ? lineEnd(text, 0) : 0
-  while (i < text.length) {
-    const char = text[i]
-    if (char === "\\") i += 2
-    else if (char === "'" || char === '"')
-      i = quotedEnd(text, i, { escapes: char === '"' })
-    else if (char === "$" && text[i + 1] === "'")
-      i = quotedEnd(text, i + 1, { escapes: true })
-    else if (char === "#" && (i === 0 || /\s/.test(text[i - 1]))) {
-      const end = lineEnd(text, i)
-      found.push({ start: i, end })
-      i = end
-    } else i++
+
+  function substitution() {
+    const start = i
+    if (text[i + 2] === "(") {
+      const end = arithmeticEnd(text, i + 1)
+      if (end !== null) {
+        i = end
+        return
+      }
+    }
+    i += 2
+    commands(")", start)
   }
+
+  function doubleQuoted() {
+    const start = i++
+    while (i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === '"') {
+        i++
+        return
+      } else if (char === "$" && text[i + 1] === "(") substitution()
+      else if (char === "`") {
+        i++
+        commands("`", i - 1)
+      } else i++
+    }
+    throw neverClosed(text, start, '" quote')
+  }
+
+  function commands(closer, start) {
+    const heredocs = []
+    let depth = 0
+    let closed = false
+    while (!closed && i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      else if (char === '"') doubleQuoted()
+      else if (char === "$" && text[i + 1] === "'")
+        i = quotedEnd(text, i + 1, { escapes: true })
+      else if (char === "$" && text[i + 1] === "(") substitution()
+      else if (char === "`") {
+        i++
+        if (closer === "`") closed = true
+        else commands("`", i - 1)
+      } else if (char === "(") {
+        const end = text[i + 1] === "(" ? arithmeticEnd(text, i) : null
+        if (end === null) depth++
+        i = end ?? i + 1
+      } else if (char === ")") {
+        if (closer === ")" && depth === 0) closed = true
+        else depth = Math.max(0, depth - 1)
+        i++
+      } else if (char === "<" && text[i + 1] === "<") {
+        if (text[i + 2] === "<") i += 3
+        else {
+          const heredoc = heredocAt(text, i)
+          if (heredoc) heredocs.push(heredoc)
+          i = heredoc ? heredoc.end : i + 2
+        }
+      } else if (char === "\n") {
+        i++
+        for (const heredoc of heredocs.splice(0))
+          i = heredocBodyEnd(text, i, heredoc)
+      } else if (char === "#" && (i === 0 || SHELL_BREAKS.test(text[i - 1]))) {
+        const end = lineEnd(text, i)
+        found.push({ start: i, end })
+        i = end
+      } else i++
+    }
+    if (closer && !closed)
+      throw neverClosed(text, start, closer === ")" ? "$(" : closer)
+    if (heredocs.length)
+      throw neverClosed(text, heredocs[0].at, "here-document")
+  }
+
+  commands(null, 0)
   return found
 }
 
@@ -244,11 +348,21 @@ function dotenvValueEnd(text, lineStart) {
   DOTENV_VALUE_OPENER.lastIndex = lineStart
   const opener = DOTENV_VALUE_OPENER.exec(text)
   if (!opener) return null
-  const quoteAt = lineStart + opener[0].length - 1
-  const end = findQuotedEnd(text, quoteAt, { escapes: text[quoteAt] === '"' })
-  if (end === null) return null
-  DOTENV_VALUE_TAIL.lastIndex = end
-  return DOTENV_VALUE_TAIL.test(text) ? end : null
+  const quote = opener[1]
+  const closings = []
+  const escaped = []
+  for (let i = lineStart + opener[0].length; i < text.length; i++) {
+    if (text[i] === "\\" && text[i + 1] === quote) escaped.unshift(++i)
+    else if (text[i] === quote) {
+      closings.push(i)
+      break
+    }
+  }
+  for (const closing of [...closings, ...escaped]) {
+    DOTENV_VALUE_TAIL.lastIndex = closing + 1
+    if (DOTENV_VALUE_TAIL.test(text)) return closing + 1
+  }
+  return null
 }
 
 function dotenvComments(text) {
@@ -267,8 +381,7 @@ function dotenvComments(text) {
         break
       }
     }
-    const newline = text.indexOf("\n", from)
-    lineStart = newline === -1 ? text.length : newline + 1
+    lineStart = stop + (text[stop] === "\r" ? 2 : 1)
   }
   return found
 }
