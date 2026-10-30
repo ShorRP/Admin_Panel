@@ -177,10 +177,152 @@ test("hash files other than yaml: every quote ends with its line", () => {
   ])
 })
 
-test("files without comments, or of a kind the check skips, report nothing", () => {
-  assert.equal(familyOf("README.md"), null)
+test("markdown files: an HTML comment is found, on one line or several", () => {
+  assert.deepEqual(texts("# Title\n\n<!-- why -->\ntext\n", "docs/a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("text <!-- a\nb --> text\n", "README.md"), [
+    "<!-- a\nb -->",
+  ])
+  assert.deepEqual(
+    texts("# Title\n\nPlain *text* and a [link](#id).\n", "a.md"),
+    []
+  )
+  assert.deepEqual(checkFile("a\n\n```\nx\n```\n<!-- why -->\n", "a.md"), [
+    "a.md:6:1 <!-- why -->",
+  ])
+})
+
+test("markdown files: a fenced code block holds no comment", () => {
+  assert.deepEqual(texts("```html\n<!-- sample -->\n```\n", "a.md"), [])
+  assert.deepEqual(texts("~~~\n<!-- sample -->\n~~~\n", "a.md"), [])
+  assert.deepEqual(texts("````\n```\n<!-- sample -->\n```\n````\n", "a.md"), [])
+  assert.deepEqual(texts("   ```\r\n<!-- sample -->\r\n   ```\r\n", "a.md"), [])
+  assert.deepEqual(texts("```\n<!-- sample -->\n", "a.md"), [])
+  assert.deepEqual(texts("```\ncode\n```\n<!-- why -->\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("```\ncode\n~~~\n<!-- sample -->\n```\n", "a.md"), [])
+  assert.deepEqual(texts("```\r\ncode\r\n```\r\n<!-- why -->\r\n", "a.md"), [
+    "<!-- why -->",
+  ])
+})
+
+test("markdown files: an inline code span holds no comment", () => {
+  assert.deepEqual(texts("Use `<!-- sample -->` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use ``a ` <!-- sample -->`` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\n<!-- sample -->` here\n", "a.md"), [])
+  assert.deepEqual(texts("a ` b <!-- why -->\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("`a\n\n<!-- why --> b`\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("\\`<!-- why -->`\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("`a` <!-- why --> `b`\n", "a.md"), ["<!-- why -->"])
+})
+
+test("python files: a # comment is found, a # in a string is not", () => {
+  assert.deepEqual(texts("# header\nx = 1  # why\n", "a.py"), [
+    "# header",
+    "# why",
+  ])
+  assert.deepEqual(texts("x = 'a # b'\ny = \"a # b\"\n", "a.py"), [])
+  assert.deepEqual(texts('x = "a \\" # b"\n', "a.py"), [])
+  assert.deepEqual(texts('doc = """\n# not\n"""\nz = 1  # why\n', "a.py"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("doc = '''a ' # b\n\\''' # c\n'''\n", "a.py"), [])
+})
+
+test("python files: a shebang is allowed on the first line only", () => {
+  assert.deepEqual(texts("#!/usr/bin/env python3\nx = 1\n", "run.py"), [])
+  assert.deepEqual(texts("x = 1\n#!/usr/bin/env python3\n", "run.py"), [
+    "#!/usr/bin/env python3",
+  ])
+})
+
+test("powershell files: line and block comments are found", () => {
+  assert.deepEqual(texts("# header\nGet-Item # why\n", "a.ps1"), [
+    "# header",
+    "# why",
+  ])
+  assert.deepEqual(texts("<# a\nb #>\nGet-Item <# c #> -Path x\n", "a.ps1"), [
+    "<# a\nb #>",
+    "<# c #>",
+  ])
+  assert.deepEqual(texts("if ($a) {# why\n}\nGet-Item;# also\n", "a.ps1"), [
+    "# why",
+    "# also",
+  ])
+})
+
+test("powershell files: a # in a string, here-string or word is code", () => {
+  assert.deepEqual(texts("Write-Host 'a # b' \"c # d\" e#f\n", "a.ps1"), [])
+  assert.deepEqual(texts("Write-Host 'it''s # b'\n", "a.ps1"), [])
+  assert.deepEqual(texts('Write-Host "say `"# no`" end"\n', "a.ps1"), [])
+  assert.deepEqual(texts("Write-Host `# no\n", "a.ps1"), [])
+  assert.deepEqual(texts('$s = "multi\n# no\nline"\n$x = 1 # why\n', "a.ps1"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    texts('@"\n# no\n a "@ b\n"@\n@\'\n# no\n\'@\n$x # why\n', "a.ps1"),
+    ["# why"]
+  )
+})
+
+test("jsonc files: // and /* */ comments are found, valid json has none", () => {
+  assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.jsonc"), [])
+  assert.deepEqual(
+    texts('{\n  // why\n  "a": 1, /* also */\n}', "tsconfig.jsonc"),
+    ["// why", "/* also */"]
+  )
+})
+
+for (const [construct, file, source] of [
+  ["a python ''' string", "a.py", "x = '''abc\n# no\n"],
+  ['a python """ string', "a.py", 'x = """abc\n# no\n'],
+  ["a powershell <# block comment", "a.ps1", "<# abc\nGet-Item\n"],
+  ["a powershell ' string", "a.ps1", "$x = 'abc\n# no\n"],
+  ['a powershell " string', "a.ps1", '$x = "abc\n# no\n'],
+  ['a powershell @" here-string', "a.ps1", '$x = @"\nabc\n# no\n a "@ b\n'],
+  ["a powershell @' here-string", "a.ps1", "$x = @'\nabc\n# no\n a '@ b\n"],
+]) {
+  test(`${construct} that never closes is reported as unparsable`, () => {
+    const [line, ...others] = checkFile(source, file)
+    assert.match(
+      line,
+      new RegExp(`^${file.replace(".", "\\.")}: cannot be parsed`)
+    )
+    assert.deepEqual(others, [])
+  })
+}
+
+test("a file of an unknown type is reported, since its comments cannot be checked", () => {
+  assert.equal(familyOf("data/notes.xyz"), null)
+  for (const file of ["data/notes.xyz", "LICENSE", "a.mdx"]) {
+    const [line, ...others] = checkFile("hello\n", file)
+    assert.match(line, new RegExp(`^${file}: unknown file type`))
+    assert.deepEqual(others, [])
+  }
+})
+
+test("files of a type without comments report nothing", () => {
   assert.equal(familyOf("pnpm-lock.yaml"), null)
-  assert.deepEqual(texts("# Title", "docs/a.md"), [])
+  for (const file of [
+    "pnpm-lock.yaml",
+    "docs/design/a.png",
+    "photo.JPG",
+    "a.jpeg",
+    "a.gif",
+    "a.webp",
+    "a.avif",
+    "favicon.ico",
+    "a.bmp",
+    "font.woff",
+    "font.woff2",
+    "font.ttf",
+    "font.otf",
+    "font.eot",
+  ]) {
+    assert.deepEqual(checkFile("# not a comment\n", file), [])
+  }
 })
 
 test("a report line names the file, the line and the column", () => {
@@ -208,6 +350,28 @@ test("the repository check covers tracked and untracked files, not ignored ones"
     fs.writeFileSync(path.join(dir, "dirty.js"), "export const a = 1 // why\n")
     fs.writeFileSync(path.join(dir, "ignored.js"), "// ignored\n")
     assert.deepEqual(checkRepository(dir), ["dirty.js:1:20 // why"])
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the repository check reads markdown, reports an unknown type and leaves commentless files unread", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: dir })
+    fs.writeFileSync(path.join(dir, "clean.md"), "# Title\n\n`<!-- code -->`\n")
+    fs.writeFileSync(path.join(dir, "dirty.md"), "# Title\n\n<!-- why -->\n")
+    fs.writeFileSync(
+      path.join(dir, "logo.png"),
+      Buffer.from([0x89, 0x50, 0x4e])
+    )
+    fs.writeFileSync(path.join(dir, "notes.xyz"), "hello\n")
+    const problems = checkRepository(dir)
+    assert.equal(problems.length, 2)
+    assert.ok(problems.includes("dirty.md:3:1 <!-- why -->"))
+    assert.ok(
+      problems.some((line) => line.startsWith("notes.xyz: unknown file type"))
+    )
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

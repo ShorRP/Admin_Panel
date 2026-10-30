@@ -29,11 +29,15 @@ Three things are in **French**: chat with the user, GitHub issues and their boar
 
 ## No comments
 
-The repository holds no comments, in any file that supports them: code, tests, scripts, CSS, HTML, SQL, YAML, `.env.example`, whose variables are documented in the README. Two exceptions only: a shebang, and a tool directive the code needs to work (`eslint-disable…`, `@ts-expect-error`, `/// <reference …>`, `@vite-ignore`, `webpackIgnore`), in the forms **Directives** allows.
+The repository holds no comments, in any file that supports them: code, tests, scripts, CSS, HTML, Markdown, SQL, YAML, Python, PowerShell, `.env.example`, whose variables are documented in the README. Two exceptions only: a shebang, and a tool directive the code needs to work (`eslint-disable…`, `@ts-expect-error`, `/// <reference …>`, `@vite-ignore`, `webpackIgnore`), in the forms **Directives** allows.
 
 What a comment would say goes elsewhere: the why of a change in its commit message, a decision in an ADR, a term in `GLOSSARY.md`, an invariant in a test and its name. Code copied from elsewhere, such as skymp-heavy-rp or EsportCards, loses its comments on the way in.
 
 `pnpm check:comments` checks every tracked or untracked, non-ignored file. A hook runs it before `gh pr create`, and CI on every PR and every push to `main`.
+
+It reads these types (`familyOf`, in `scripts/check-comments.mjs`): script files (`.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts`, `.tsx`), JSON (`.json`, `.jsonc`: `//` and `/* */`), CSS (`.css`, `.scss`), markup (`.html`, `.htm`, `.svg`, `.xml`), Markdown (`.md`: `<!-- -->`), SQL (`.sql`), YAML (`.yml`, `.yaml`), Python (`.py`: `#`), PowerShell (`.ps1`: `#` and `<# #>`), and the files with `#` comments: `.toml`, `.sh`, `.env*`, `.gitignore`, `.gitattributes`, `.prettierignore`, `.git-blame-ignore-revs`, `.npmrc`, `.editorconfig` and `Dockerfile`. In Markdown, a fenced code block (` ``` ` or `~~~`) and an inline code span are code, not comments, so a passage may quote `<!-- -->` in either, as **The browser's console** and a line of **Gotchas** do; an indented code block is not recognised, so a comment in one is reported (decided by the agent on 2026-10-30, on #22, for Gilles to review).
+
+A file of any other type is reported as « unknown file type » until the script reads it or lists it as commentless, which it does for images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.avif`, `.ico`, `.bmp`), fonts (`.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`) and `pnpm-lock.yaml`: it does not tell text from binary, so a new type of either fails the check until it is listed (decided by the agent on 2026-10-30, on #22, for Gilles to review). A file it cannot parse is reported too, including a Python `'''` or `"""`, a PowerShell `<#`, `'`, `"` or here-string that never closes, so that the rest of the file is never skipped.
 
 ## Facts and docs
 
