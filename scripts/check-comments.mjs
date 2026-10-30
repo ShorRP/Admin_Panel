@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
@@ -233,10 +233,17 @@ function repositoryFiles(root) {
 }
 
 function repositoryRoot(cwd) {
-  return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+  const git = spawnSync("git", ["rev-parse", "--show-toplevel"], {
     cwd,
     encoding: "utf8",
-  }).trim()
+  })
+  if (git.error) throw git.error
+  if (git.status !== 0) {
+    throw new Error(
+      `no git repository found from ${cwd}: ${git.stderr.trim().split("\n")[0]}`
+    )
+  }
+  return git.stdout.trim()
 }
 
 export function checkRepository(root) {
@@ -251,7 +258,15 @@ export function checkRepository(root) {
 }
 
 function main() {
-  const problems = checkRepository(repositoryRoot(process.cwd()))
+  let root
+  try {
+    root = repositoryRoot(process.cwd())
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 2
+    return
+  }
+  const problems = checkRepository(root)
   if (!problems.length) return
   console.log(problems.join("\n"))
   console.log(

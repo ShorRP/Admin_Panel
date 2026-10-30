@@ -16,6 +16,9 @@ import {
 const HOOK = fileURLToPath(
   new URL("../.claude/hooks/check-comments-before-pr.mjs", import.meta.url)
 )
+const SCRIPT = fileURLToPath(
+  new URL("../scripts/check-comments.mjs", import.meta.url)
+)
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
@@ -36,10 +39,6 @@ test("the PR hook refuses a call it cannot read", () => {
   assert.equal(output.permissionDecision, "deny")
   assert.match(output.permissionDecisionReason, /could not read this call/)
 })
-
-const SCRIPT = fileURLToPath(
-  new URL("../scripts/check-comments.mjs", import.meta.url)
-)
 
 function withTemporaryRepository(files, callback) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
@@ -106,8 +105,31 @@ test("the PR hook refuses a PR from a folder that is in no repository, since it 
       env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
     })
     const output = JSON.parse(result.stdout).hookSpecificOutput
+    const reason = output.permissionDecisionReason
     assert.equal(output.permissionDecision, "deny")
-    assert.match(output.permissionDecisionReason, /could not run/)
+    assert.match(reason, /could not run/)
+    assert.match(reason, /no git repository found from /)
+    assert.ok(reason.includes(path.basename(dir)))
+    assert.doesNotMatch(reason, /pnpm install/)
+    assert.doesNotMatch(reason, /\n\s+at /)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script, run in a folder that is in no repository, fails with one line that names the folder", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    assert.equal(result.status, 2)
+    assert.equal(result.stdout, "")
+    assert.equal(result.stderr.trimEnd().split("\n").length, 1)
+    assert.match(result.stderr, /^no git repository found from /)
+    assert.ok(result.stderr.includes(path.basename(dir)))
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
