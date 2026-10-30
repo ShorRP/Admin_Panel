@@ -41,6 +41,8 @@ const HASH_FILES = new Set([
 const SQL_DOLLAR_DELIMITER =
   /\$(?:(?:[A-Za-z_]|[^\x00-\x7F])(?:\w|[^\x00-\x7F])*)?\$/y
 const SHELL_BREAKS = /[\s;&|()<>]/
+const SHELL_KEYWORD =
+  /(?:case(?=\s)|[!{](?=\s)|(?:esac|in|then|do|else|elif|if|while|until|time)(?=[\s;&|()<>]|$))/y
 const DOTENV_VALUE_OPENER =
   /[ \t]*(?:export[ \t]+)?[\w.-]+(?:[ \t]*=[ \t]*|:[ \t]+)(["'`])/y
 const DOTENV_VALUE_TAIL = /[ \t]*(?:#[^\r\n]*)?\r?(?:\n|$)/y
@@ -324,6 +326,31 @@ function heredocBodyEnd(text, from, { delimiter, strip, at }) {
   throw neverClosed(text, at, "here-document")
 }
 
+function shellKeywordAt(text, at) {
+  if (at > 0 && !SHELL_BREAKS.test(text[at - 1])) return null
+  SHELL_KEYWORD.lastIndex = at
+  return SHELL_KEYWORD.exec(text)?.[0] ?? null
+}
+
+function followShellKeyword(word, atStart, cases, depth) {
+  const current = cases.at(-1)
+  if (word === "in") {
+    if (!current || current.open) return false
+    current.open = true
+    return true
+  }
+  if (!atStart) return false
+  if (word === "case") {
+    cases.push({ depth, open: false })
+    return false
+  }
+  if (word === "esac") {
+    if (current?.open) cases.pop()
+    return false
+  }
+  return true
+}
+
 function shellComments(text) {
   const found = []
   let i = text.startsWith("#!") ? lineEnd(text, 0) : 0
@@ -341,6 +368,37 @@ function shellComments(text) {
     commands(")", start)
   }
 
+  function expansion(closer) {
+    const char = text[i]
+    const next = text[i + 1]
+    if (char === "`" && closer !== "`") {
+      i++
+      commands("`", i - 1)
+    } else if (char === "$" && next === "$") i += 2
+    else if (char === "$" && next === "{") parameter()
+    else if (char === "$" && next === "(") substitution()
+    else return false
+    return true
+  }
+
+  function parameter() {
+    const start = i
+    i += 2
+    while (i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === "}") {
+        i++
+        return
+      } else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      else if (char === '"') doubleQuoted()
+      else if (char === "$" && text[i + 1] === "'")
+        i = quotedEnd(text, i + 1, { escapes: true })
+      else if (!expansion()) i++
+    }
+    throw neverClosed(text, start, "${")
+  }
+
   function doubleQuoted() {
     const start = i++
     while (i < text.length) {
@@ -349,38 +407,49 @@ function shellComments(text) {
       else if (char === '"') {
         i++
         return
-      } else if (char === "$" && text[i + 1] === "(") substitution()
-      else if (char === "`") {
-        i++
-        commands("`", i - 1)
-      } else i++
+      } else if (!expansion()) i++
     }
     throw neverClosed(text, start, '" quote')
   }
 
   function commands(closer, start) {
     const heredocs = []
+    const cases = []
     let depth = 0
     let closed = false
+    let commandStarts = true
     while (!closed && i < text.length) {
       const char = text[i]
-      if (char === "\\") i += 2
-      else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      const atStart = commandStarts
+      commandStarts = false
+      if (expansion(closer)) continue
+      if (char === "\\") {
+        commandStarts = atStart && text[i + 1] === "\n"
+        i += 2
+      } else if (char === " " || char === "\t") {
+        commandStarts = atStart
+        i++
+      } else if (char === "'") i = quotedEnd(text, i, { escapes: false })
       else if (char === '"') doubleQuoted()
       else if (char === "$" && text[i + 1] === "'")
         i = quotedEnd(text, i + 1, { escapes: true })
-      else if (char === "$" && text[i + 1] === "(") substitution()
       else if (char === "`") {
         i++
-        if (closer === "`") closed = true
-        else commands("`", i - 1)
+        closed = true
       } else if (char === "(") {
         const end = text[i + 1] === "(" ? arithmeticEnd(text, i) : null
         if (end === null) depth++
+        commandStarts = end === null
         i = end ?? i + 1
       } else if (char === ")") {
-        if (closer === ")" && depth === 0) closed = true
-        else depth = Math.max(0, depth - 1)
+        const current = cases.at(-1)
+        const endsPattern = current?.open && depth === current.depth
+        if (!endsPattern && closer === ")" && depth === 0) closed = true
+        else if (!endsPattern) depth = Math.max(0, depth - 1)
+        commandStarts = true
+        i++
+      } else if (char === ";" || char === "&" || char === "|") {
+        commandStarts = true
         i++
       } else if (char === "<" && text[i + 1] === "<") {
         if (text[i + 2] === "<") i += 3
@@ -393,11 +462,19 @@ function shellComments(text) {
         i++
         for (const heredoc of heredocs.splice(0))
           i = heredocBodyEnd(text, i, heredoc)
+        commandStarts = true
       } else if (char === "#" && (i === 0 || SHELL_BREAKS.test(text[i - 1]))) {
         const end = lineEnd(text, i)
         found.push({ start: i, end })
         i = end
-      } else i++
+      } else {
+        const word = shellKeywordAt(text, i)
+        if (word === null) i++
+        else {
+          i += word.length
+          commandStarts = followShellKeyword(word, atStart, cases, depth)
+        }
+      }
     }
     if (closer && !closed)
       throw neverClosed(text, start, closer === ")" ? "$(" : closer)

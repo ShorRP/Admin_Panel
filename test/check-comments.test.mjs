@@ -813,6 +813,162 @@ test("shell files: a command substitution inside double quotes is shell, with it
   ])
 })
 
+test("shell files: the ) that ends a case pattern does not end the command substitution around it", () => {
+  assert.deepEqual(
+    texts('x="$(case a in\n a) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n a|b) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts("x=$(case a in\n a) echo ;; # shown\n esac)\n", "run.sh"),
+    ["# shown"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n (a) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n @(a|b)) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in\n a) echo ;& # one\n b) echo ;;& # two\n esac)"\n',
+      "run.sh"
+    ),
+    ["# one", "# two"]
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in\n a) case b in\n b) echo ;; # inner\n esac ;; # outer\n esac)"\n',
+      "run.sh"
+    ),
+    ["# inner", "# outer"]
+  )
+})
+
+test("shell files: a case is found after every word that starts a command", () => {
+  for (const [start, end] of [
+    ["if true; then", "; fi"],
+    ["if", "; then :; fi"],
+    ["if false; then :; elif", "; then :; fi"],
+    ["if true; then :; else", "; fi"],
+    ["while true; do", "; done"],
+    ["while", "; do :; done"],
+    ["until", "; do :; done"],
+    ["true &&", ""],
+    ["true ||", ""],
+    ["echo a |", ""],
+    ["echo a;", ""],
+    ["{", "; }"],
+    ["true; (", " )"],
+    ["f()", ""],
+    ["f() {", "; }"],
+    ["!", ""],
+    ["time", ""],
+    ["true && \\\n", ""],
+  ])
+    assert.deepEqual(
+      texts(
+        `x="$(${start} case a in\n a) echo ;; # hidden\n esac${end})"\n`,
+        "run.sh"
+      ),
+      ["# hidden"],
+      start
+    )
+})
+
+test("shell files: case and esac are keywords only where a command starts", () => {
+  assert.deepEqual(texts('x="$(echo case a in b)" # after\n', "run.sh"), [
+    "# after",
+  ])
+  assert.deepEqual(texts('x="$(echo a esac)" # after\n', "run.sh"), ["# after"])
+  assert.deepEqual(texts('x="$(y=case echo)" # after\n', "run.sh"), ["# after"])
+  assert.deepEqual(texts('x="$(case a in esac)" # after\n', "run.sh"), [
+    "# after",
+  ])
+  assert.deepEqual(
+    texts('x="$(case case in\n case) echo p ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case in in in) echo p ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+})
+
+test("shell files: a case in a command substitution leaves the end of that substitution where it is", () => {
+  assert.deepEqual(
+    texts("x=\"$(case a in a) echo '\"' ;; esac)\" # it's\n", "run.sh"),
+    ["# it's"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in a) echo ;; esac) # text"\n', "run.sh"),
+    []
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in a) echo ;; esac)" # after\ny="$(echo b)" # also\n',
+      "run.sh"
+    ),
+    ["# after", "# also"]
+  )
+})
+
+test("shell files: a ) inside ${…} does not end the command substitution around it", () => {
+  assert.deepEqual(texts('x="$(echo ${y#a)} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts('x="$(echo "${y:-")"}" # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts("x=\"$(echo ${y:-')'} # hidden\n)\"\n", "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts('x="$(echo ${y:-${z#a)}} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(
+    texts('x="$(echo ${y:-$(echo ")")} # hidden\n)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(texts('x="$(echo ${y//\\}/)} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+})
+
+test("shell files: a # inside ${…} is no comment", () => {
+  assert.deepEqual(texts("echo ${y:-a # b} # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "${y:-a # b}" ${#y} ${y#a} # why\n', "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: $$ is one token, so the { after it opens no parameter", () => {
+  assert.deepEqual(texts("echo $${x # c}\n", "run.sh"), ["# c}"])
+  assert.deepEqual(texts('x="$(echo $${y # c\n)"\n', "run.sh"), ["# c"])
+  assert.deepEqual(texts("echo $$${x # y}\n", "run.sh"), [])
+})
+
+test("shell files: a ${ that is never closed is reported as unparsable", () => {
+  for (const source of [
+    "echo ${y\n# why\n",
+    'echo "${y"\n# why\n',
+    "echo ${y:-${z}\n# why\n",
+  ]) {
+    const [line, ...rest] = checkFile(source, "run.sh")
+    assert.match(line, /^run\.sh: cannot be parsed.*opened on line 1 is never/)
+    assert.deepEqual(rest, [])
+  }
+  assert.match(
+    checkFile('echo "${y:-\'}"\n# why\n', "run.sh")[0],
+    /^run\.sh: cannot be parsed.*' quote opened on line 1/
+  )
+})
+
 test("shell files: a # starts a comment after a metacharacter, not inside a word", () => {
   assert.deepEqual(texts("echo a;# it's\n", "run.sh"), ["# it's"])
   assert.deepEqual(texts("a|# one\nb&# two\n(# three\n)\n", "run.sh"), [
