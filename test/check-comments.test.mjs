@@ -683,8 +683,12 @@ test("shell files: the ) that ends a case pattern does not end the command subst
 test("shell files: a case is found after every word that starts a command", () => {
   for (const [start, end] of [
     ["if true; then", "; fi"],
-    ["while true; do", "; done"],
+    ["if", "; then :; fi"],
+    ["if false; then :; elif", "; then :; fi"],
     ["if true; then :; else", "; fi"],
+    ["while true; do", "; done"],
+    ["while", "; do :; done"],
+    ["until", "; do :; done"],
     ["true &&", ""],
     ["true ||", ""],
     ["echo a |", ""],
@@ -713,6 +717,9 @@ test("shell files: case and esac are keywords only where a command starts", () =
   ])
   assert.deepEqual(texts('x="$(echo a esac)" # after\n', "run.sh"), ["# after"])
   assert.deepEqual(texts('x="$(y=case echo)" # after\n', "run.sh"), ["# after"])
+  assert.deepEqual(texts('x="$(case a in esac)" # after\n', "run.sh"), [
+    "# after",
+  ])
   assert.deepEqual(
     texts('x="$(case case in\n case) echo p ;; # hidden\n esac)"\n', "run.sh"),
     ["# hidden"]
@@ -768,6 +775,12 @@ test("shell files: a # inside ${…} is no comment", () => {
   assert.deepEqual(texts('echo "${y:-a # b}" ${#y} ${y#a} # why\n', "run.sh"), [
     "# why",
   ])
+})
+
+test("shell files: $$ is one token, so the { after it opens no parameter", () => {
+  assert.deepEqual(texts("echo $${x # c}\n", "run.sh"), ["# c}"])
+  assert.deepEqual(texts('x="$(echo $${y # c\n)"\n', "run.sh"), ["# c"])
+  assert.deepEqual(texts("echo $$${x # y}\n", "run.sh"), [])
 })
 
 test("shell files: a ${ that is never closed is reported as unparsable", () => {
