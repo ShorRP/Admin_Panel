@@ -16,10 +16,13 @@ import {
 const HOOK = fileURLToPath(
   new URL("../.claude/hooks/check-comments-before-pr.mjs", import.meta.url)
 )
+const SCRIPT = fileURLToPath(
+  new URL("../scripts/check-comments.mjs", import.meta.url)
+)
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create through without a word", () => {
+test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
   const result = runHook(
     JSON.stringify({
       tool_name: "Bash",
@@ -35,6 +38,126 @@ test("the PR hook refuses a call it cannot read", () => {
   const output = JSON.parse(result.stdout).hookSpecificOutput
   assert.equal(output.permissionDecision, "deny")
   assert.match(output.permissionDecisionReason, /could not read this call/)
+})
+
+function withTemporaryRepository(files, callback) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: dir })
+    for (const [file, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true })
+      fs.writeFileSync(path.join(dir, file), text)
+    }
+    callback(dir)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+const hookInput = (command, cwd) =>
+  JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
+
+for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+  test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny")
+        assert.match(output.permissionDecisionReason, /dirty\.js:1:20 \/\/ why/)
+      }
+    )
+  })
+
+  test(`the PR hook lets \`${command}\` through when the session's repository holds no comment`, () => {
+    withTemporaryRepository({ "clean.js": "export const a = 1\n" }, (dir) => {
+      const result = runHook(hookInput(command, dir))
+      assert.equal(result.status, 0)
+      assert.equal(result.stdout, "")
+    })
+  })
+}
+
+test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const result = runHook(
+        hookInput("gh pr create", path.join(dir, "packages", "app"))
+      )
+      const output = JSON.parse(result.stdout).hookSpecificOutput
+      assert.equal(output.permissionDecision, "deny")
+      assert.match(output.permissionDecisionReason, /\ndirty\.js:1:20 \/\/ why/)
+    }
+  )
+})
+
+test("the PR hook refuses a PR from a folder that is in no repository, since it has nothing to check", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [HOOK], {
+      input: hookInput("gh pr create", dir),
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    const output = JSON.parse(result.stdout).hookSpecificOutput
+    const reason = output.permissionDecisionReason
+    assert.equal(output.permissionDecision, "deny")
+    assert.match(reason, /could not run/)
+    assert.match(reason, /no git repository found from /)
+    assert.ok(reason.includes(path.basename(dir)))
+    assert.doesNotMatch(reason, /pnpm install/)
+    assert.doesNotMatch(reason, /\n\s+at /)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script, run in a folder that is in no repository, fails with one line that names the folder", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    assert.equal(result.status, 2)
+    assert.equal(result.stdout, "")
+    assert.equal(result.stderr.trimEnd().split("\n").length, 1)
+    assert.match(result.stderr, /^no git repository found from /)
+    assert.ok(result.stderr.includes(path.basename(dir)))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script checks the repository that holds the folder it runs from, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const cwd = path.join(dir, "packages", "app")
+      const refused = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(refused.status, 1)
+      assert.match(refused.stdout, /^dirty\.js:1:20 \/\/ why$/m)
+      fs.writeFileSync(path.join(dir, "dirty.js"), "export const a = 1\n")
+      const accepted = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(accepted.status, 0)
+      assert.equal(accepted.stdout, "")
+    }
+  )
 })
 
 const texts = (text, file) =>
@@ -74,17 +197,56 @@ test("script files: a JSX comment is found, a shebang is not", () => {
   assert.deepEqual(texts(source, "src/a.tsx"), ["/* hidden */"])
 })
 
-test("script files: indispensable tool directives are allowed", () => {
+test("script files: indispensable tool directives are allowed alone", () => {
   const source = [
     '/// <reference types="next" />',
     "// eslint-disable-next-line no-console",
     "console.log(1)",
-    "// @ts-expect-error wrong on purpose",
+    "// eslint-disable-next-line react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment",
+    "use(1)",
+    "export const A = () => <div>{/* eslint-disable-next-line @next/next/no-img-element */}</div>",
+    "// @ts-expect-error",
     'const n: number = "x"',
     "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
   ].join("\n")
-  assert.deepEqual(texts(source, "src/a.ts"), [])
+  assert.deepEqual(texts(source, "src/a.tsx"), [])
 })
+
+const refusedDirectives = (reason, comments) => {
+  for (const comment of comments) {
+    test(`script files: ${comment} is a comment, ${reason}`, () => {
+      assert.deepEqual(texts(`${comment}\nexport const a = 1\n`, "src/a.ts"), [
+        comment,
+      ])
+    })
+  }
+}
+
+refusedDirectives("since a directive is allowed only alone", [
+  "// @ts-expect-error wrong on purpose",
+  "// eslint-disable-next-line no-console -- why",
+  "// eslint-disable-next-line no-console why",
+])
+
+refusedDirectives("since the check never allows that directive", [
+  "// @ts-ignore",
+  "// @ts-nocheck",
+  "/* eslint-disable */",
+  "/* eslint-disable no-console */",
+  "/* eslint-enable */",
+  "// eslint-disable-line no-console",
+])
+
+refusedDirectives("since a rule name starts with a letter or a digit", [
+  "// eslint-disable-next-line",
+  "// eslint-disable-next-line --",
+  "// eslint-disable-next-line -",
+  "// eslint-disable-next-line ---",
+  "// eslint-disable-next-line _",
+  "// eslint-disable-next-line no-console, --",
+  "// eslint-disable-next-line plugin/-",
+])
 
 test("json files: comments are found, valid json has none", () => {
   assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.json"), [])
