@@ -1,13 +1,15 @@
 import "server-only"
 
-import type {
-  APIBan,
-  APIGuildMember,
-  APIUser,
-  Snowflake,
+import {
+  AuditLogEvent,
+  type APIBan,
+  type APIGuildMember,
+  type APIUser,
+  type Snowflake,
 } from "discord-api-types/v10"
 
-import { panelReasonOf } from "@/audit-log/audit-log-reason"
+import { auditLogPages } from "@/audit-log/audit-log-pages"
+import { attributionOf } from "@/audit-log/entry-attribution"
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
@@ -64,7 +66,7 @@ export async function readRecord(
   if (ban !== null) {
     return {
       ...identityOf(ban.user, null, userAvatarUrl(ban.user)),
-      standing: bannedStanding(ban),
+      standing: await bannedStanding(discord, ban),
     }
   }
   const user = await discord.getUser(userId)
@@ -109,11 +111,37 @@ async function memberStanding(
   }
 }
 
-function bannedStanding({ reason }: APIBan): Standing {
-  const panelReason = reason === null ? null : panelReasonOf(reason)
-  return {
-    kind: "banned",
-    reason: panelReason?.change ?? reason,
-    staffMemberName: panelReason?.staffMemberName ?? null,
+async function bannedStanding(
+  discord: DiscordApi,
+  { user, reason }: APIBan
+): Promise<Standing> {
+  const found = await newestBanEntryOf(discord, user.id)
+  if (found === null) {
+    return { kind: "banned", reason, staffMemberName: null }
   }
+  const { id: applicationId } = await discord.getApplicationUser()
+  const attribution = attributionOf(found.entry, found.users, applicationId)
+  return attribution.kind === "panel"
+    ? {
+        kind: "banned",
+        reason: attribution.reason,
+        staffMemberName: attribution.memberName,
+      }
+    : { kind: "banned", reason, staffMemberName: null }
+}
+
+async function newestBanEntryOf(discord: DiscordApi, accountId: Snowflake) {
+  for await (const log of auditLogPages(
+    discord,
+    AuditLogEvent.MemberBanAdd,
+    null
+  )) {
+    const entry = log.audit_log_entries.find(
+      ({ target_id }) => target_id === accountId
+    )
+    if (entry !== undefined) {
+      return { entry, users: new Map(log.users.map((user) => [user.id, user])) }
+    }
+  }
+  return null
 }

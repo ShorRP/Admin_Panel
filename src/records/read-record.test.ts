@@ -1,8 +1,11 @@
 import { expect, test } from "vitest"
 
+import { auditLogReason } from "@/audit-log/audit-log-reason"
 import { DiscordError } from "@/discord/discord-error"
-import { FakeDiscord } from "@/discord/fake-discord"
+import { FakeDiscord, type FakeUser } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
+import { banAccount } from "@/sanctions/ban-account"
+import { findStaffMember } from "@/staff/staff-member"
 import { readRecord } from "./read-record"
 
 const LYRA = {
@@ -18,6 +21,64 @@ const GUARD = { id: "1300000000000000010", name: "Garde", position: 2 }
 const PLAYER = { id: "1300000000000000011", name: "Joueur", position: 1 }
 
 const COUNCIL = { id: "1300000000000000012", name: "Conseil", position: 5 }
+
+const STAFF = { id: "1300000000000000000", name: "Staff", position: 7 }
+
+const MODERATION = {
+  id: "1300000000000000002",
+  name: "Modération",
+  position: 6,
+}
+
+const BANS = { id: "1300000000000000003", name: "Bannissements", position: 5 }
+
+const PANEL = { id: "1300000000000000021", name: "Shor Panel", position: 3 }
+
+const ALDIS = { id: "1400000000000000001", username: "aldis" }
+
+const BRYNJA = { id: "1400000000000000002", username: "brynja" }
+
+const MODERATORS = {
+  roles: [STAFF, MODERATION, BANS, PANEL, GUARD],
+  applicationRoles: [PANEL.id],
+  members: [
+    { user: ALDIS, roles: [STAFF.id, MODERATION.id, BANS.id] },
+    { user: BRYNJA, roles: [STAFF.id, MODERATION.id] },
+  ],
+}
+
+function discordWithLyra(users: FakeUser[] = []) {
+  return new FakeDiscord({
+    ...MODERATORS,
+    members: [...MODERATORS.members, { user: LYRA, roles: [GUARD.id] }],
+    users,
+  })
+}
+
+async function aldisOn(discord: FakeDiscord) {
+  const staffMember = await findStaffMember(
+    discord,
+    {
+      staffRoleId: STAFF.id,
+      moderationRoleIds: [MODERATION.id],
+      banRoleIds: [BANS.id],
+    },
+    ALDIS.id
+  )
+  if (staffMember === null) {
+    throw new Error("Aldis is no staff member")
+  }
+  return staffMember
+}
+
+function banForm(reason: string) {
+  const data = new FormData()
+  data.set("change", "ban")
+  data.set("userId", LYRA.id)
+  data.set("reason", reason)
+  data.set("deleteMessages", "0")
+  return data
+}
 
 test("a member's record holds their names, ID, account creation, arrival on the Discord server and roles, highest first", async () => {
   const discord = new FakeDiscord({
@@ -75,19 +136,13 @@ test("a member's timeout shows until it ends, and no longer once it has ended", 
   ).toMatchObject({ kind: "member", timedOutUntil: null })
 })
 
-test("a banned account's record holds the reason Discord keeps, and names the staff member when the reason is in the panel's format", async () => {
-  const corvus = { id: "1400000000000000003", username: "corvus" }
-  const brynja = { id: "1400000000000000002", username: "brynja" }
-  const discord = new FakeDiscord({
-    bans: [
-      {
-        user: LYRA,
-        reason: "Aldis (1400000000000000001) : insultes répétées",
-      },
-      { user: corvus, reason: "spam" },
-      { user: brynja, reason: null },
-    ],
-  })
+test("a ban given through the panel shows its reason without the panel’s prefix, and the staff member who gave it", async () => {
+  const discord = discordWithLyra()
+  await banAccount(
+    discord,
+    await aldisOn(discord),
+    banForm("insultes répétées")
+  )
 
   expect(await readRecord(discord, LYRA.id)).toEqual({
     id: LYRA.id,
@@ -100,19 +155,124 @@ test("a banned account's record holds the reason Discord keeps, and names the st
     standing: {
       kind: "banned",
       reason: "insultes répétées",
-      staffMemberName: "Aldis",
+      staffMemberName: "aldis",
     },
   })
-  expect((await readRecord(discord, corvus.id))?.standing).toEqual({
+})
+
+test("a ban given by hand in Discord shows its whole reason and no staff member, though the reason follows the panel’s format", async () => {
+  const discord = discordWithLyra()
+  const reason = auditLogReason(await aldisOn(discord), "insultes répétées")
+  discord.createBanAs(BRYNJA.id, LYRA.id, reason)
+
+  expect((await readRecord(discord, LYRA.id))?.standing).toEqual({
+    kind: "banned",
+    reason,
+    staffMemberName: null,
+  })
+})
+
+test("a ban shows the reason Discord keeps whole when it follows no format, and none when it has none", async () => {
+  const corvus = { id: "1400000000000000003", username: "corvus" }
+  const discord = new FakeDiscord({
+    bans: [
+      { user: LYRA, reason: "spam" },
+      { user: corvus, reason: null },
+    ],
+  })
+
+  expect((await readRecord(discord, LYRA.id))?.standing).toEqual({
     kind: "banned",
     reason: "spam",
     staffMemberName: null,
   })
-  expect((await readRecord(discord, brynja.id))?.standing).toEqual({
+  expect((await readRecord(discord, corvus.id))?.standing).toEqual({
     kind: "banned",
     reason: null,
     staffMemberName: null,
   })
+})
+
+test("a ban whose entry has left the audit log shows as given in Discord, whole reason and no staff member, though the reason follows the panel’s format", async () => {
+  const reason = auditLogReason(
+    await aldisOn(discordWithLyra()),
+    "insultes répétées"
+  )
+  const discord = new FakeDiscord({ bans: [{ user: LYRA, reason }] })
+
+  expect((await readRecord(discord, LYRA.id))?.standing).toEqual({
+    kind: "banned",
+    reason,
+    staffMemberName: null,
+  })
+})
+
+test("a ban given again by hand after the panel’s was lifted shows as given in Discord", async () => {
+  const discord = discordWithLyra()
+  await banAccount(
+    discord,
+    await aldisOn(discord),
+    banForm("insultes répétées")
+  )
+  discord.removeBanAs(BRYNJA.id, LYRA.id)
+  discord.createBanAs(BRYNJA.id, LYRA.id, "spam")
+
+  expect((await readRecord(discord, LYRA.id))?.standing).toEqual({
+    kind: "banned",
+    reason: "spam",
+    staffMemberName: null,
+  })
+})
+
+test("a ban given through the panel is found among the entries past the first 100 bans the audit log holds", async () => {
+  const strangers = Array.from({ length: 100 }, (_, index) => ({
+    id: (BigInt("1600000000000000000") + BigInt(index)).toString(),
+    username: `stranger${index}`,
+  }))
+  const discord = discordWithLyra(strangers)
+  await banAccount(
+    discord,
+    await aldisOn(discord),
+    banForm("insultes répétées")
+  )
+  for (const stranger of strangers) {
+    discord.createBanAs(BRYNJA.id, stranger.id, "spam")
+  }
+
+  expect((await readRecord(discord, LYRA.id))?.standing).toEqual({
+    kind: "banned",
+    reason: "insultes répétées",
+    staffMemberName: "aldis",
+  })
+})
+
+test("a failed read of the audit log is thrown rather than leaving a ban read as given in Discord", async () => {
+  const discord = new FakeDiscord({ bans: [{ user: LYRA }] })
+  const unavailable = new DiscordError({
+    method: "GET",
+    route: ROUTES.guildAuditLog,
+    status: 503,
+  })
+  discord.failNext("getAuditLog", unavailable)
+
+  await expect(readRecord(discord, LYRA.id)).rejects.toBe(unavailable)
+})
+
+test("a failed read of the panel’s application is thrown rather than leaving a ban of the panel read as given in Discord", async () => {
+  const discord = discordWithLyra()
+  await banAccount(
+    discord,
+    await aldisOn(discord),
+    banForm("insultes répétées")
+  )
+  const unavailable = new DiscordError({
+    method: "GET",
+    route: ROUTES.currentUser,
+    status: 503,
+  })
+  discord.failNext("getApplicationUser", unavailable)
+
+  await expect(readRecord(discord, LYRA.id)).rejects.toBe(unavailable)
 })
 
 test("an account that is neither a member nor banned is absent from the Discord server, and shows its Discord avatar", async () => {
