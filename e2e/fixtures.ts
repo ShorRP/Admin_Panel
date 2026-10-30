@@ -20,8 +20,10 @@ type Fixtures = {
   readToast: (message: string | RegExp) => Promise<void>
   discordCdnRequests: string[]
   prefetchedPaths: string[]
-  browserConsole: void
+  browserConsole: BrowserConsole
 }
+
+type BrowserConsole = { expectProblems: (problems: string[]) => void }
 
 const WCAG_22_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
@@ -221,6 +223,7 @@ export const test = base.extend<Fixtures>({
   browserConsole: [
     async ({ page }, use) => {
       const problems: string[] = []
+      const expectedProblems: string[] = []
       page.on("console", (message) => {
         if (message.type() === "error" || message.type() === "warning") {
           problems.push(`console.${message.type()}: ${message.text()}`)
@@ -229,8 +232,14 @@ export const test = base.extend<Fixtures>({
       page.on("pageerror", (error) => {
         problems.push(`pageerror: ${error.message}`)
       })
-      await use()
-      expect(problems).toEqual([])
+      await use({
+        expectProblems: (expected) => {
+          expectedProblems.push(...expected)
+        },
+      })
+      expect([...new Set(problems)].toSorted()).toEqual(
+        [...new Set(expectedProblems)].toSorted()
+      )
     },
     { auto: true },
   ],
