@@ -19,4 +19,5 @@ After the MVP the panel stores what Discord cannot keep for it, personal data in
 
 - The project stores no personal data for the MVP.
 - Changes made directly in Discord's settings appear in the same audit log under the person's own name, without the panel's reason.
+- The panel reads an entry as its own only when the entry's author is the panel's application and its reason follows the format `Name (ID) : …`. A member who types that format by hand in Discord is read as any other member, under their own name and with their whole reason (#210).
 - When a database arrives, its audit rows identify the staff member by Discord ID.

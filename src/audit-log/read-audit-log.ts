@@ -19,8 +19,8 @@ import {
   type SanctionChange,
 } from "@/sanctions/sanction-events"
 import { auditLogPages } from "./audit-log-pages"
-import { panelReasonOf, type PanelReason } from "./audit-log-reason"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
+import { attributionOf, type EntryAttribution } from "./entry-attribution"
 import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
@@ -125,10 +125,13 @@ async function eventReadersOfType(
 ) {
   const events =
     type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
-  const ruleId = events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
-    ? await panelRuleId(discord)
-    : null
-  return eventReaders(ruleId).filter(({ actionType }) =>
+  const [ruleId, application] = await Promise.all([
+    events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
+      ? panelRuleId(discord)
+      : null,
+    discord.getApplicationUser(),
+  ])
+  return eventReaders(ruleId, application.id).filter(({ actionType }) =>
     events.includes(actionType)
   )
 }
@@ -137,11 +140,14 @@ async function panelRuleId(discord: DiscordApi) {
   return (await discord.listAutoModerationRules()).find(isPanelRule)?.id ?? null
 }
 
-function eventReaders(ruleId: Snowflake | null): EventReader[] {
+function eventReaders(
+  ruleId: Snowflake | null,
+  applicationId: Snowflake
+): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      sanctionChangeOf(entry, event.changeOf(entry), users),
+      sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
   }))
   if (ruleId === null) {
     return sanctionReaders
@@ -149,7 +155,9 @@ function eventReaders(ruleId: Snowflake | null): EventReader[] {
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      entry.target_id === ruleId ? ruleChangeOf(entry, users) : null,
+      entry.target_id === ruleId
+        ? ruleChangeOf(entry, users, applicationId)
+        : null,
   }))
   return [...ruleReaders, ...sanctionReaders]
 }
@@ -202,19 +210,22 @@ async function changesOfEvent(
   return changes
 }
 
-function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
-  const reason = panelReasonIn(entry)
-  const { memberId, ...moment } = momentOf(entry, reason, users)
+function ruleChangeOf(
+  entry: APIAuditLogEntry,
+  users: Users,
+  applicationId: Snowflake
+): FoundChange {
+  const author = attributionOf(entry, users, applicationId)
   return {
-    memberId,
+    memberId: author.memberId,
     change: {
       kind: "rule",
-      ...moment,
-      madeInDiscord: reason === null,
+      ...momentOf(entry, author),
+      madeInDiscord: author.kind === "discord",
       description:
-        reason === null
-          ? "Règle modifiée dans Discord"
-          : capitalized(reason.change),
+        author.kind === "panel"
+          ? capitalized(author.reason)
+          : "Règle modifiée dans Discord",
     },
   }
 }
@@ -222,52 +233,31 @@ function ruleChangeOf(entry: APIAuditLogEntry, users: Users): FoundChange {
 function sanctionChangeOf(
   entry: APIAuditLogEntry,
   sanctionChange: SanctionChange | null,
-  users: Users
+  users: Users,
+  applicationId: Snowflake
 ): FoundChange | null {
   if (sanctionChange === null || entry.target_id === null) {
     return null
   }
-  const reason = panelReasonIn(entry)
-  const { memberId, ...moment } = momentOf(entry, reason, users)
+  const author = attributionOf(entry, users, applicationId)
   const account = users.get(entry.target_id)
   return {
-    memberId,
+    memberId: author.memberId,
     change: {
       kind: "sanction-change",
-      ...moment,
+      ...momentOf(entry, author),
       sanctionChange,
       account: {
         id: entry.target_id,
         name: account === undefined ? "Compte inconnu" : userName(account),
       },
-      reason: reason === null ? (entry.reason ?? null) : reason.change,
+      reason: author.reason,
     },
   }
 }
 
-function panelReasonIn(entry: APIAuditLogEntry) {
-  return entry.reason === undefined ? null : panelReasonOf(entry.reason)
-}
-
-function momentOf(
-  entry: APIAuditLogEntry,
-  reason: PanelReason | null,
-  users: Users
-) {
-  const moment = { id: entry.id, date: snowflakeDate(entry.id) }
-  if (reason !== null) {
-    return {
-      ...moment,
-      memberId: reason.staffMemberId,
-      memberName: reason.staffMemberName,
-    }
-  }
-  const user = users.get(entry.user_id ?? "")
-  return {
-    ...moment,
-    memberId: entry.user_id,
-    memberName: user === undefined ? "Membre inconnu" : userName(user),
-  }
+function momentOf(entry: APIAuditLogEntry, { memberName }: EntryAttribution) {
+  return { id: entry.id, date: snowflakeDate(entry.id), memberName }
 }
 
 function byParisDay(changes: AuditLogChange[]) {

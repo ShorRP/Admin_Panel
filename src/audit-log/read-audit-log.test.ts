@@ -14,6 +14,7 @@ import { FakeDiscord, type FakeDiscordState } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { changeTimeout } from "@/sanctions/change-timeout"
 import { findStaffMember, type StaffMember } from "@/staff/staff-member"
+import { auditLogReason } from "./audit-log-reason"
 import { parisDayOf } from "./paris-day"
 import {
   readAuditLog,
@@ -332,6 +333,41 @@ test("a change made in Discord to the panel's rule shows under its author's Disc
   ).toEqual([true, true, false])
 })
 
+test("a timeout, a kick and a ban typed by hand in Discord with a reason in the panel's format show under their author's Discord name, with the whole reason", async () => {
+  const discord = discordWithModerator()
+  const forgedReason = auditLogReason(
+    await staffMemberOn(discord),
+    "Insultes répétées"
+  )
+  discord.modifyMemberAs(
+    BRYN.id,
+    LYRA.id,
+    { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+    forgedReason
+  )
+  discord.removeMemberAs(BRYN.id, LYRA.id, forgedReason)
+  discord.createBanAs(BRYN.id, LYRA.id, forgedReason)
+
+  const changes = changesOf(await readAuditLog(discord, {}))
+
+  const byBryn = {
+    memberName: "Bryn la Rouge",
+    account: { id: LYRA.id, name: "Lyra" },
+    reason: forgedReason,
+  }
+  expect(sanctionChanges(changes)).toEqual([
+    { ...byBryn, sanctionChange: { kind: "ban" } },
+    { ...byBryn, sanctionChange: { kind: "kick" } },
+    {
+      ...byBryn,
+      sanctionChange: {
+        kind: "timeout",
+        end: new Date("2026-10-29T14:00:00.000Z"),
+      },
+    },
+  ])
+})
+
 const LINKS_RULE = {
   name: "Liens",
   event_type: AutoModerationRuleEventType.MessageSend,
@@ -527,6 +563,41 @@ test("a change made in Discord carries its author's avatar", async () => {
   ])
 })
 
+test("a change to the panel's rule written by a member with a reason in the panel's format shows as made in Discord, under that member's name and avatar, not the staff member's the reason names", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      { user: ALDIS, avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8" },
+      { user: { ...BRYN, avatar: "0a1b2c3d4e5f60718293a4b5c6d7e8f9" } },
+    ],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [
+      {
+        ...panelAddition("1563530499194880000", "foo"),
+        user_id: BRYN.id,
+      },
+    ],
+  })
+
+  const changes = changesOf(await readAuditLog(discord, {}))
+
+  expect(
+    changes.map((change) => ({
+      memberName: change.memberName,
+      avatarUrl: change.avatarUrl,
+      description: change.kind === "rule" ? change.description : null,
+      madeInDiscord: change.kind === "rule" && change.madeInDiscord,
+    }))
+  ).toEqual([
+    {
+      memberName: "Bryn la Rouge",
+      avatarUrl:
+        "https://cdn.discordapp.com/avatars/1400000000000000002/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
+      description: "Règle modifiée dans Discord",
+      madeInDiscord: true,
+    },
+  ])
+})
+
 test("a member whose lookup Discord refuses shows no avatar on any of their changes, and the audit log shows all the same", async () => {
   const discord = new FakeDiscord({
     members: [{ user: ALDIS, avatar: "f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8" }],
@@ -714,6 +785,19 @@ test("a failed read of the audit log is thrown", async () => {
     status: 503,
   })
   discord.failNext("getAuditLog", unavailable)
+
+  await expect(readAuditLog(discord, {})).rejects.toBe(unavailable)
+})
+
+test("a failed read of the panel's application is thrown, rather than leaving every change read as made in Discord", async () => {
+  const discord = discordWithStaff()
+  await addBlockedWord(discord, await staffMemberOn(discord), form("foo"))
+  const unavailable = new DiscordError({
+    method: "GET",
+    route: ROUTES.currentUser,
+    status: 503,
+  })
+  discord.failNext("getApplicationUser", unavailable)
 
   await expect(readAuditLog(discord, {})).rejects.toBe(unavailable)
 })
