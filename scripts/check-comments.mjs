@@ -66,7 +66,11 @@ export function familyOf(file) {
   return null
 }
 
-function scriptComments(text, extension, offset = 0) {
+function scriptComments(
+  text,
+  extension,
+  { offset = 0, allowDirectives = true } = {}
+) {
   const ast = parse(text, {
     sourceType: "unambiguous",
     plugins: SCRIPT_PLUGINS[extension],
@@ -77,6 +81,7 @@ function scriptComments(text, extension, offset = 0) {
   return ast.comments
     .filter(
       (comment) =>
+        !allowDirectives ||
         !DIRECTIVES.some((directive) => directive.test(comment.value))
     )
     .map((comment) => ({
@@ -181,7 +186,10 @@ export function findComments(text, file) {
     case "script":
       return scriptComments(text, extension)
     case "json":
-      return scriptComments(`(${text}\n)`, ".js", 1)
+      return scriptComments(`(${text}\n)`, ".js", {
+        offset: 1,
+        allowDirectives: false,
+      })
     case "css":
       return delimitedComments(text, {
         block: [["/*", "*/"]],
