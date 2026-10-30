@@ -420,9 +420,9 @@ test("markdown files: a link definition to # or <> with a title is a comment", (
 
 test("markdown files: an ordinary link definition is not a comment", () => {
   for (const text of [
-    '[docs]: https://exemple.fr "Titre"\n',
-    "[docs]: https://exemple.fr\n",
-    '[docs]: #section "Titre"\n',
+    '[docs]: https://example.com "Title"\n',
+    "[docs]: https://example.com\n",
+    '[docs]: #section "Title"\n',
     "[docs]: <> not-a-title\n",
     "[//]: #\n",
     "[docs]: # \n",
