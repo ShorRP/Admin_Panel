@@ -20,6 +20,10 @@ _Avoid_: guild, the Discord, server (alone)
 
 ### People
 
+**Account**:
+A Discord account, whatever its standing on the Discord server: a member, a banned account, or one that is absent.
+_Avoid_: user (alone), profile
+
 **Member**:
 A Discord account on the Discord server. A banned account is no longer one.
 _Avoid_: user (alone), player
@@ -43,7 +47,7 @@ Shor's Discord bot, which reacts to what happens on the Discord server and serve
 _Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
-The Admin Panel's record of which staff member changed what, and when. Not the panel's logs, which say only why the panel failed.
+The Admin Panel's record of which staff member changed what, and when, beside the automatic sanctions. Not the panel's logs, which say only why the panel failed.
 _Avoid_: logs, moderation log
 
 ### Moderation
@@ -53,16 +57,20 @@ The approval that gives a player access to roleplay on Shor, granted by the staf
 _Avoid_: allowlist
 
 **Blocked word**:
-A word or phrase the staff forbid in messages on the Discord server. Not the opposite of the whitelist.
+A word or phrase the staff forbid in messages on the Discord server, which blocks the message and may carry an automatic sanction. Not the opposite of the whitelist.
 _Avoid_: blacklist, banned word, forbidden word
 
-**Panel's rule**:
-The AutoMod rule on the Discord server whose keywords are the blocked words, which the Admin Panel creates and keeps. Not the AutoMod rules the staff make in Discord, which the panel only shows.
+**Panel's rules**:
+The AutoMod rules on the Discord server whose keywords are the blocked words, one for each thing a blocked word can do, which the Admin Panel creates and keeps. Not the AutoMod rules the staff make in Discord, which the panel only shows.
 _Avoid_: blocked words rule, the rule (alone)
 
 **Sanction**:
-A measure the staff take against an account for its conduct on the Discord server: a warning, a timeout, a kick or a ban. Lifting a timeout or a ban is not a sanction.
+A measure taken against an account for its conduct on the Discord server, by the staff or automatically: a warning, a timeout, a kick or a ban. Lifting a timeout or a ban is not a sanction.
 _Avoid_: punishment, infraction, strike
+
+**Automatic sanction**:
+A timeout, a kick or a ban that falls with no staff member's action, when a member's message trips an AutoMod rule, such as a blocked word the staff tied to that sanction.
+_Avoid_: auto-sanction, AutoMod sanction
 
 **Warning**:
 The one sanction that exists only in the Admin Panel: a formal notice from the staff to a member, with its reason. A warning the member contests successfully, or that the staff gave in error, is cancelled and stays on record, marked as such.
