@@ -177,6 +177,99 @@ test("hash files other than yaml: every quote ends with its line", () => {
   ])
 })
 
+test("shell files: a quoted string spanning several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts('echo "a\n# b"\n', "run.sh"), [])
+  assert.deepEqual(texts("echo 'a\n# b' # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts("echo $'a\\'\n# b'\n", "run.sh"), [])
+  assert.deepEqual(texts('echo "say \\"hi\\"\n# b"\n# why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("echo 'a\\'\n# why\n", "run.sh"), ["# why"])
+})
+
+test("shell files: a quote that opens no string hides no comment", () => {
+  assert.deepEqual(texts("echo \\' \\\" # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "it\'s" # why\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts("echo $# ${#x} a#b # why\n", "run.sh"), ["# why"])
+})
+
+test("shell files: the first line may be a shebang, the quotes after it are read", () => {
+  assert.deepEqual(texts('#!/usr/bin/env bash\necho "a\n# b"\n', "run.sh"), [])
+})
+
+test("env files: a quoted value spanning several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts('KEY="a\n# b"\n', ".env.example"), [])
+  assert.deepEqual(texts("KEY='a\n# b'\n", ".env"), [])
+  assert.deepEqual(texts("KEY=`a\n# b`\n", ".env.local"), [])
+  assert.deepEqual(texts('export KEY = "a\n# b" # why\nNEXT=1\n', ".env"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('KEY="say \\"hi\\"\n# b"\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="a\n# b"# glued\n', ".env"), ["# glued"])
+  assert.deepEqual(texts('KEY="a\r\n# b"\r\n# why\r\n', ".env"), ["# why"])
+})
+
+test("env files: a quote that opens no value hides no comment", () => {
+  assert.deepEqual(texts("KEY=it's\n# why\nOTHER=x'\n", ".env"), ["# why"])
+  assert.deepEqual(texts('KEY=a "b # c"\n', ".env"), ['# c"'])
+  assert.deepEqual(texts('KEY="a\nb" tail\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts('A="abc\n# why\nB="def"\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="hello\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts("KEY=`hello\n# why\n", ".env"), ["# why"])
+})
+
+test("toml files: a multi-line string, basic or literal, is a value up to its closing delimiter", () => {
+  assert.deepEqual(texts('key = """\na\n# b\n"""\n', "x.toml"), [])
+  assert.deepEqual(texts("key = '''\na\n# b\n''' # why\n", "x.toml"), ["# why"])
+  assert.deepEqual(texts('key = """\na ""b"" \\"""\n# b\n"""\n', "x.toml"), [])
+  assert.deepEqual(texts('key = """a\n# b"""" # why\n', "x.toml"), ["# why"])
+  assert.deepEqual(texts("key = '''a\\\n# b''' # why\n", "x.toml"), ["# why"])
+  assert.deepEqual(texts('key = """\\\n  a # b\\\n"""\n', "x.toml"), [])
+})
+
+test("toml files: a # outside a string is a comment, a # inside one is not", () => {
+  const source = [
+    "# header",
+    'name = "a # b" # trailing',
+    "path = 'c:\\dir\\' #glued",
+    '"quoted # key" = 1',
+    "list = [1,2]# glued",
+    "[table] # why",
+    'empty = "" # after',
+  ].join("\n")
+  assert.deepEqual(texts(source, "x.toml"), [
+    "# header",
+    "# trailing",
+    "#glued",
+    "# glued",
+    "# why",
+    "# after",
+  ])
+})
+
+test("a quote that is never closed hides no comment: the file is reported as unparsable", () => {
+  const [shellLine, ...shellRest] = checkFile('echo "a\n# why\n', "run.sh")
+  assert.match(shellLine, /^run\.sh: cannot be parsed.*quote opened on line 1/)
+  assert.deepEqual(shellRest, [])
+  assert.match(
+    checkFile("echo 'a\n# why\necho 'b'\n", "run.sh")[0],
+    /^run\.sh: cannot be parsed/
+  )
+  assert.deepEqual(checkFile('KEY="a\n# why\nOTHER=1\n', ".env.example"), [
+    ".env.example:2:1 # why",
+  ])
+  for (const source of [
+    'key = """a\n# why\n',
+    "key = '''a\n# why\n",
+    'key = "a\n# why\n"\n',
+    "key = 'a\n# why\n",
+  ]) {
+    const [line, ...rest] = checkFile(source, "x.toml")
+    assert.match(line, /^x\.toml: cannot be parsed.*quote opened on line 1/)
+    assert.deepEqual(rest, [])
+  }
+})
+
 test("files without comments, or of a kind the check skips, report nothing", () => {
   assert.equal(familyOf("README.md"), null)
   assert.equal(familyOf("pnpm-lock.yaml"), null)

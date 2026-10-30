@@ -36,6 +36,9 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
+const DOTENV_VALUE_OPENER =
+  /[ \t]*(?:export[ \t]+)?[\w.-]+[ \t]*=[ \t]*(["'`])/y
+const DOTENV_VALUE_TAIL = /[ \t]*(?:#[^\r\n]*)?\r?(?:\n|$)/y
 const SKIPPED_FILES = new Set(["pnpm-lock.yaml"])
 const FLOW_YAML_SCALARS = new Set([
   "scalar",
@@ -141,12 +144,11 @@ function maskFlowYamlScalars(text) {
   return masked
 }
 
-function hashComments(text, { allowShebang }) {
+function hashComments(text) {
   const found = []
   let offset = 0
   for (const rawLine of text.split("\n")) {
-    const isShebang = allowShebang && offset === 0 && rawLine.startsWith("#!")
-    const line = isShebang ? "" : rawLine.replace(/\r$/, "")
+    const line = rawLine.replace(/\r$/, "")
     let quote = null
     for (let i = 0; i < line.length; i++) {
       const char = line[i]
@@ -168,6 +170,115 @@ function hashComments(text, { allowShebang }) {
     offset += rawLine.length + 1
   }
   return found
+}
+
+function lineEnd(text, from) {
+  const newline = text.indexOf("\n", from)
+  const end = newline === -1 ? text.length : newline
+  return text[end - 1] === "\r" ? end - 1 : end
+}
+
+function findQuotedEnd(
+  text,
+  quoteAt,
+  { escapes, delimiter = text[quoteAt], oneLine = false }
+) {
+  for (let i = quoteAt + delimiter.length; i < text.length; i++) {
+    if (oneLine && text[i] === "\n") break
+    if (escapes && text[i] === "\\" && text[i + 1] !== "\n") i++
+    else if (text.startsWith(delimiter, i)) return i + delimiter.length
+  }
+  return null
+}
+
+function quotedEnd(text, quoteAt, options) {
+  const end = findQuotedEnd(text, quoteAt, options)
+  if (end !== null) return end
+  const line = text.slice(0, quoteAt).split("\n").length
+  throw new Error(
+    `the ${text[quoteAt]} quote opened on line ${line} is never closed`
+  )
+}
+
+function shellComments(text) {
+  const found = []
+  let i = text.startsWith("#!") ? lineEnd(text, 0) : 0
+  while (i < text.length) {
+    const char = text[i]
+    if (char === "\\") i += 2
+    else if (char === "'" || char === '"')
+      i = quotedEnd(text, i, { escapes: char === '"' })
+    else if (char === "$" && text[i + 1] === "'")
+      i = quotedEnd(text, i + 1, { escapes: true })
+    else if (char === "#" && (i === 0 || /\s/.test(text[i - 1]))) {
+      const end = lineEnd(text, i)
+      found.push({ start: i, end })
+      i = end
+    } else i++
+  }
+  return found
+}
+
+function tomlComments(text) {
+  const found = []
+  let i = 0
+  while (i < text.length) {
+    const char = text[i]
+    if (char === "#") {
+      const end = lineEnd(text, i)
+      found.push({ start: i, end })
+      i = end
+    } else if (char === '"' || char === "'") {
+      const delimiter = text.startsWith(char.repeat(3), i)
+        ? char.repeat(3)
+        : char
+      const oneLine = delimiter === char
+      i = quotedEnd(text, i, { escapes: char === '"', delimiter, oneLine })
+      while (!oneLine && text[i] === char) i++
+    } else i++
+  }
+  return found
+}
+
+function dotenvValueEnd(text, lineStart) {
+  DOTENV_VALUE_OPENER.lastIndex = lineStart
+  const opener = DOTENV_VALUE_OPENER.exec(text)
+  if (!opener) return null
+  const quoteAt = lineStart + opener[0].length - 1
+  const end = findQuotedEnd(text, quoteAt, { escapes: text[quoteAt] === '"' })
+  if (end === null) return null
+  DOTENV_VALUE_TAIL.lastIndex = end
+  return DOTENV_VALUE_TAIL.test(text) ? end : null
+}
+
+function dotenvComments(text) {
+  const found = []
+  let lineStart = 0
+  while (lineStart < text.length) {
+    const valueEnd = dotenvValueEnd(text, lineStart)
+    const from = valueEnd ?? lineStart
+    const stop = lineEnd(text, from)
+    for (let i = from; i < stop; i++) {
+      if (
+        text[i] === "#" &&
+        (valueEnd !== null || i === 0 || /\s/.test(text[i - 1]))
+      ) {
+        found.push({ start: i, end: stop })
+        break
+      }
+    }
+    const newline = text.indexOf("\n", from)
+    lineStart = newline === -1 ? text.length : newline + 1
+  }
+  return found
+}
+
+function hashFileComments(text, file) {
+  const extension = path.extname(file).toLowerCase()
+  if (extension === ".sh") return shellComments(text)
+  if (extension === ".toml") return tomlComments(text)
+  if (path.basename(file).startsWith(".env")) return dotenvComments(text)
+  return hashComments(text)
 }
 
 export function findComments(text, file) {
@@ -192,9 +303,9 @@ export function findComments(text, file) {
         quotes: ["'", '"'],
       })
     case "yaml":
-      return hashComments(maskFlowYamlScalars(text), { allowShebang: false })
+      return hashComments(maskFlowYamlScalars(text))
     case "hash":
-      return hashComments(text, { allowShebang: extension === ".sh" })
+      return hashFileComments(text, file)
     default:
       return []
   }
