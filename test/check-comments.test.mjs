@@ -104,6 +104,68 @@ test("css, markup and sql comments are found outside strings", () => {
   ])
 })
 
+test("sql files: a string on several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts("select 'a\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts('select "a\n-- b"', "q.sql"), [])
+  assert.deepEqual(texts("select 'a\n/* b */'", "q.sql"), [])
+  assert.deepEqual(texts("select 'it''s\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("select 'a\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(checkFile("select 'a\n-- b'\n-- why", "q.sql"), [
+    "q.sql:3:1 -- why",
+  ])
+})
+
+test("sql files: a backslash escapes only inside an escape string, so another string still ends at its quote", () => {
+  assert.deepEqual(texts("select 'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select \"C:\\\"; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select date'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select EE'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select _e'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select éE'C:\\'; -- why\nselect 'x'", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select E'it\\'s\n-- b' -- why", "q.sql"), ["-- why"])
+  assert.deepEqual(texts("select e'it\\'s\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("E'a\\'\n-- b'", "q.sql"), [])
+  assert.deepEqual(texts("select(E'a\\'\n-- b')", "q.sql"), [])
+  assert.deepEqual(texts("select E'a''b\\'c\n-- b' -- why", "q.sql"), [
+    "-- why",
+  ])
+  const [line] = checkFile("select E'a\\'\n-- b\n", "q.sql")
+  assert.match(line, /^q\.sql: cannot be parsed.*\(1:9\)/)
+})
+
+test("sql files: a string that never closes makes the file unreadable, rather than hiding what follows", () => {
+  for (const text of [
+    "select 'a\n-- b\n",
+    'select "a\n-- b\n',
+    "select 'a\n-- b",
+  ]) {
+    const [line, ...others] = checkFile(text, "q.sql")
+    assert.match(line, /^q\.sql: cannot be parsed.*\(1:8\)/)
+    assert.deepEqual(others, [])
+  }
+})
+
+test("css files: a string ends with its line", () => {
+  assert.deepEqual(texts("a { content: 'x\n}\n/* why */", "app.css"), [
+    "/* why */",
+  ])
+  assert.deepEqual(texts('a { content: "x\n}\n/* why */', "app.css"), [
+    "/* why */",
+  ])
+})
+
 test("hash files: a # comment is found, a # inside a value or quotes is not", () => {
   const yaml = [
     "# header",

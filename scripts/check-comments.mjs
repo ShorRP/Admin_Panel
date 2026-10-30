@@ -90,12 +90,42 @@ function closingQuote(text, start) {
   return text.length
 }
 
-function delimitedComments(text, { line = [], block = [], quotes = [] }) {
+function endsSqlWord(text, index) {
+  const character = text[index]
+  return (
+    character !== undefined &&
+    (/[\w$]/.test(character) || character.charCodeAt(0) > 127)
+  )
+}
+
+function opensEscapeString(text, start) {
+  const prefix = text[start - 1]
+  return (prefix === "E" || prefix === "e") && !endsSqlWord(text, start - 2)
+}
+
+function closingSqlQuote(text, start) {
+  const quote = text[start]
+  const escapes = opensEscapeString(text, start)
+  for (let i = start + 1; i < text.length; i++) {
+    if (escapes && text[i] === "\\") i++
+    else if (text[i] === quote) {
+      if (text[i + 1] !== quote) return i
+      i++
+    }
+  }
+  const { line, column } = position(text, start)
+  throw new Error(`Unterminated string (${line}:${column})`)
+}
+
+function delimitedComments(
+  text,
+  { line = [], block = [], quotes = [], closing = closingQuote }
+) {
   const found = []
   let i = 0
   while (i < text.length) {
     if (quotes.includes(text[i])) {
-      i = closingQuote(text, i) + 1
+      i = closing(text, i) + 1
       continue
     }
     const opener = block.find(([open]) => text.startsWith(open, i))
@@ -190,6 +220,7 @@ export function findComments(text, file) {
         line: ["--"],
         block: [["/*", "*/"]],
         quotes: ["'", '"'],
+        closing: closingSqlQuote,
       })
     case "yaml":
       return hashComments(maskFlowYamlScalars(text), { allowShebang: false })
