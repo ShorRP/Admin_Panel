@@ -74,17 +74,40 @@ test("script files: a JSX comment is found, a shebang is not", () => {
   assert.deepEqual(texts(source, "src/a.tsx"), ["/* hidden */"])
 })
 
-test("script files: indispensable tool directives are allowed", () => {
+test("script files: indispensable tool directives are allowed alone", () => {
   const source = [
     '/// <reference types="next" />',
     "// eslint-disable-next-line no-console",
     "console.log(1)",
-    "// @ts-expect-error wrong on purpose",
+    "// eslint-disable-next-line react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment",
+    "use(1)",
+    "export const A = () => <div>{/* eslint-disable-next-line @next/next/no-img-element */}</div>",
+    "// @ts-expect-error",
     'const n: number = "x"',
     "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
   ].join("\n")
-  assert.deepEqual(texts(source, "src/a.ts"), [])
+  assert.deepEqual(texts(source, "src/a.tsx"), [])
 })
+
+for (const comment of [
+  "// @ts-expect-error wrong on purpose",
+  "// @ts-ignore",
+  "// @ts-nocheck",
+  "/* eslint-disable */",
+  "/* eslint-disable no-console */",
+  "/* eslint-enable */",
+  "// eslint-disable-line no-console",
+  "// eslint-disable-next-line",
+  "// eslint-disable-next-line no-console -- why",
+  "// eslint-disable-next-line no-console why",
+]) {
+  test(`script files: ${comment} is a comment, since a directive is allowed only alone`, () => {
+    assert.deepEqual(texts(`${comment}\nexport const a = 1\n`, "src/a.ts"), [
+      comment,
+    ])
+  })
+}
 
 test("json files: comments are found, valid json has none", () => {
   assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.json"), [])

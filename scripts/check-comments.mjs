@@ -18,10 +18,14 @@ const SCRIPT_PLUGINS = {
   ".tsx": ["typescript", "jsx"],
 }
 
+const RULE_NAME = String.raw`@?[\w-]+(?:/[\w-]+)*`
+
 const DIRECTIVES = [
   /^\/\s*<reference\s/,
-  /^\s*eslint-(?:disable|enable)(?:-next-line|-line)?(?:\s|$)/,
-  /^\s*@ts-expect-error(?:\s|$)/,
+  new RegExp(
+    String.raw`^\s*eslint-disable-next-line\s+${RULE_NAME}(?:\s*,\s*${RULE_NAME})*\s*$`
+  ),
+  /^\s*@ts-expect-error\s*$/,
   /^\s*@vite-ignore\s*$/,
   /^\s*webpackIgnore:\s*true\s*$/,
 ]
