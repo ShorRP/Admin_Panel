@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 const SCRIPT = fileURLToPath(
   new URL("../../scripts/check-comments.mjs", import.meta.url)
 )
-const CREATE_PR = /\bgh\s+pr\s+create\b/
+const CREATE_PR = /\bgh\s+pr\s+(?:create|new)\b/
 
 function deny(reason) {
   process.stdout.write(
@@ -33,7 +33,7 @@ try {
       )
     } else if (check.status !== 0) {
       deny(
-        `scripts/check-comments.mjs could not run, so the PR waits (run pnpm install first): ${check.stderr || check.error?.message}`
+        `scripts/check-comments.mjs could not run, so the PR waits: ${check.stderr || check.error?.message}`
       )
     }
   }

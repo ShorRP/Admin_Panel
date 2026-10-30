@@ -16,10 +16,13 @@ import {
 const HOOK = fileURLToPath(
   new URL("../.claude/hooks/check-comments-before-pr.mjs", import.meta.url)
 )
+const SCRIPT = fileURLToPath(
+  new URL("../scripts/check-comments.mjs", import.meta.url)
+)
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create through without a word", () => {
+test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
   const result = runHook(
     JSON.stringify({
       tool_name: "Bash",
@@ -35,6 +38,126 @@ test("the PR hook refuses a call it cannot read", () => {
   const output = JSON.parse(result.stdout).hookSpecificOutput
   assert.equal(output.permissionDecision, "deny")
   assert.match(output.permissionDecisionReason, /could not read this call/)
+})
+
+function withTemporaryRepository(files, callback) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: dir })
+    for (const [file, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true })
+      fs.writeFileSync(path.join(dir, file), text)
+    }
+    callback(dir)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+const hookInput = (command, cwd) =>
+  JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
+
+for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+  test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny")
+        assert.match(output.permissionDecisionReason, /dirty\.js:1:20 \/\/ why/)
+      }
+    )
+  })
+
+  test(`the PR hook lets \`${command}\` through when the session's repository holds no comment`, () => {
+    withTemporaryRepository({ "clean.js": "export const a = 1\n" }, (dir) => {
+      const result = runHook(hookInput(command, dir))
+      assert.equal(result.status, 0)
+      assert.equal(result.stdout, "")
+    })
+  })
+}
+
+test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const result = runHook(
+        hookInput("gh pr create", path.join(dir, "packages", "app"))
+      )
+      const output = JSON.parse(result.stdout).hookSpecificOutput
+      assert.equal(output.permissionDecision, "deny")
+      assert.match(output.permissionDecisionReason, /\ndirty\.js:1:20 \/\/ why/)
+    }
+  )
+})
+
+test("the PR hook refuses a PR from a folder that is in no repository, since it has nothing to check", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [HOOK], {
+      input: hookInput("gh pr create", dir),
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    const output = JSON.parse(result.stdout).hookSpecificOutput
+    const reason = output.permissionDecisionReason
+    assert.equal(output.permissionDecision, "deny")
+    assert.match(reason, /could not run/)
+    assert.match(reason, /no git repository found from /)
+    assert.ok(reason.includes(path.basename(dir)))
+    assert.doesNotMatch(reason, /pnpm install/)
+    assert.doesNotMatch(reason, /\n\s+at /)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script, run in a folder that is in no repository, fails with one line that names the folder", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: path.dirname(dir) },
+    })
+    assert.equal(result.status, 2)
+    assert.equal(result.stdout, "")
+    assert.equal(result.stderr.trimEnd().split("\n").length, 1)
+    assert.match(result.stderr, /^no git repository found from /)
+    assert.ok(result.stderr.includes(path.basename(dir)))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the script checks the repository that holds the folder it runs from, a subfolder included", () => {
+  withTemporaryRepository(
+    {
+      "dirty.js": "export const a = 1 // why\n",
+      "packages/app/clean.js": "export const b = 2\n",
+    },
+    (dir) => {
+      const cwd = path.join(dir, "packages", "app")
+      const refused = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(refused.status, 1)
+      assert.match(refused.stdout, /^dirty\.js:1:20 \/\/ why$/m)
+      fs.writeFileSync(path.join(dir, "dirty.js"), "export const a = 1\n")
+      const accepted = spawnSync(process.execPath, [SCRIPT], {
+        cwd,
+        encoding: "utf8",
+      })
+      assert.equal(accepted.status, 0)
+      assert.equal(accepted.stdout, "")
+    }
+  )
 })
 
 const texts = (text, file) =>
@@ -74,17 +197,56 @@ test("script files: a JSX comment is found, a shebang is not", () => {
   assert.deepEqual(texts(source, "src/a.tsx"), ["/* hidden */"])
 })
 
-test("script files: indispensable tool directives are allowed", () => {
+test("script files: indispensable tool directives are allowed alone", () => {
   const source = [
     '/// <reference types="next" />',
     "// eslint-disable-next-line no-console",
     "console.log(1)",
-    "// @ts-expect-error wrong on purpose",
+    "// eslint-disable-next-line react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment",
+    "use(1)",
+    "export const A = () => <div>{/* eslint-disable-next-line @next/next/no-img-element */}</div>",
+    "// @ts-expect-error",
     'const n: number = "x"',
     "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
   ].join("\n")
-  assert.deepEqual(texts(source, "src/a.ts"), [])
+  assert.deepEqual(texts(source, "src/a.tsx"), [])
 })
+
+const refusedDirectives = (reason, comments) => {
+  for (const comment of comments) {
+    test(`script files: ${comment} is a comment, ${reason}`, () => {
+      assert.deepEqual(texts(`${comment}\nexport const a = 1\n`, "src/a.ts"), [
+        comment,
+      ])
+    })
+  }
+}
+
+refusedDirectives("since a directive is allowed only alone", [
+  "// @ts-expect-error wrong on purpose",
+  "// eslint-disable-next-line no-console -- why",
+  "// eslint-disable-next-line no-console why",
+])
+
+refusedDirectives("since the check never allows that directive", [
+  "// @ts-ignore",
+  "// @ts-nocheck",
+  "/* eslint-disable */",
+  "/* eslint-disable no-console */",
+  "/* eslint-enable */",
+  "// eslint-disable-line no-console",
+])
+
+refusedDirectives("since a rule name starts with a letter or a digit", [
+  "// eslint-disable-next-line",
+  "// eslint-disable-next-line --",
+  "// eslint-disable-next-line -",
+  "// eslint-disable-next-line ---",
+  "// eslint-disable-next-line _",
+  "// eslint-disable-next-line no-console, --",
+  "// eslint-disable-next-line plugin/-",
+])
 
 test("json files: comments are found, valid json has none", () => {
   assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.json"), [])
@@ -358,10 +520,196 @@ test("a quote that is never closed hides no comment: the file is reported as unp
   }
 })
 
-test("files without comments, or of a kind the check skips, report nothing", () => {
-  assert.equal(familyOf("README.md"), null)
-  assert.equal(familyOf("pnpm-lock.yaml"), null)
-  assert.deepEqual(texts("# Title", "docs/a.md"), [])
+test("markdown files: an HTML comment is found, on one line or several", () => {
+  assert.deepEqual(texts("# Title\n\n<!-- why -->\ntext\n", "docs/a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("text <!-- a\nb --> text\n", "README.md"), [
+    "<!-- a\nb -->",
+  ])
+  assert.deepEqual(
+    texts("# Title\n\nPlain *text* and a [link](#id).\n", "a.md"),
+    []
+  )
+  assert.deepEqual(checkFile("a\n\n```\nx\n```\n<!-- why -->\n", "a.md"), [
+    "a.md:6:1 <!-- why -->",
+  ])
+})
+
+test("markdown files: a fenced code block holds no comment", () => {
+  assert.deepEqual(texts("```html\n<!-- sample -->\n```\n", "a.md"), [])
+  assert.deepEqual(texts("~~~\n<!-- sample -->\n~~~\n", "a.md"), [])
+  assert.deepEqual(texts("````\n```\n<!-- sample -->\n```\n````\n", "a.md"), [])
+  assert.deepEqual(texts("   ```\r\n<!-- sample -->\r\n   ```\r\n", "a.md"), [])
+  assert.deepEqual(texts("```\ncode\n```\n<!-- why -->\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("```\ncode\n~~~\n<!-- sample -->\n```\n", "a.md"), [])
+  assert.deepEqual(texts("```\r\ncode\r\n```\r\n<!-- why -->\r\n", "a.md"), [
+    "<!-- why -->",
+  ])
+})
+
+test("markdown files: an inline code span holds no comment", () => {
+  assert.deepEqual(texts("Use `<!-- sample -->` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use ``a ` <!-- sample -->`` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\nb <!-- sample -->` here\n", "a.md"), [])
+  assert.deepEqual(texts("a ` b <!-- why -->\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("`a\n\n<!-- why --> b`\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("\\`<!-- why -->`\n", "a.md"), ["<!-- why -->"])
+  assert.deepEqual(texts("`a` <!-- why --> `b`\n", "a.md"), ["<!-- why -->"])
+})
+
+test("markdown files: a line that opens an HTML comment ends an inline code span", () => {
+  assert.deepEqual(
+    texts("It's the `x flag\n<!-- hidden -->\nand `y` flag\n", "a.md"),
+    ["<!-- hidden -->"]
+  )
+  assert.deepEqual(texts("Use `a\n<!-- sample -->` here\n", "a.md"), [
+    "<!-- sample -->",
+  ])
+  assert.deepEqual(texts("Use `a\n   <!-- why -->\nb`\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("Use `a\n    <!-- sample -->\nb`\n", "a.md"), [])
+  assert.deepEqual(texts("a <!-- why --> and `b`\n<!-- also -->\n", "a.md"), [
+    "<!-- why -->",
+    "<!-- also -->",
+  ])
+})
+
+test("python files: a # comment is found, a # in a string is not", () => {
+  assert.deepEqual(texts("# header\nx = 1  # why\n", "a.py"), [
+    "# header",
+    "# why",
+  ])
+  assert.deepEqual(texts("x = 'a # b'\ny = \"a # b\"\n", "a.py"), [])
+  assert.deepEqual(texts('x = "a \\" # b"\n', "a.py"), [])
+  assert.deepEqual(texts('doc = """\n# not\n"""\nz = 1  # why\n', "a.py"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("doc = '''a ' # b\n\\''' # c\n'''\n", "a.py"), [])
+})
+
+test("python files: a shebang is allowed on the first line only", () => {
+  assert.deepEqual(texts("#!/usr/bin/env python3\nx = 1\n", "run.py"), [])
+  assert.deepEqual(texts("x = 1\n#!/usr/bin/env python3\n", "run.py"), [
+    "#!/usr/bin/env python3",
+  ])
+})
+
+test("powershell files: line and block comments are found", () => {
+  assert.deepEqual(texts("# header\nGet-Item # why\n", "a.ps1"), [
+    "# header",
+    "# why",
+  ])
+  assert.deepEqual(texts("<# a\nb #>\nGet-Item <# c #> -Path x\n", "a.ps1"), [
+    "<# a\nb #>",
+    "<# c #>",
+  ])
+  assert.deepEqual(texts("if ($a) {# why\n}\nGet-Item;# also\n", "a.ps1"), [
+    "# why",
+    "# also",
+  ])
+})
+
+test("powershell files: a # outside a string is a comment, wherever it comes", () => {
+  for (const [source, comment] of [
+    ["$a =# c1\n", "# c1"],
+    ["$b=#c2\n", "#c2"],
+    ["$c = 1 +# c3\n", "# c3"],
+    ["$d = [#c4\n", "#c4"],
+    ["1..3#c7\n", "#c7"],
+    ['"x"#c8\n', "#c8"],
+    ["$a.b#c9\n", "#c9"],
+    ["echo a#b\n", "#b"],
+  ]) {
+    assert.deepEqual(texts(source, "a.ps1"), [comment], source)
+  }
+})
+
+test("powershell files: a subexpression that holds quotes in a string is read as code, so its # is reported", () => {
+  assert.deepEqual(texts('$s = "a $("b # c") d"\n', "a.ps1"), ['# c") d"'])
+})
+
+test("powershell files: a shebang is allowed on the first line only", () => {
+  assert.deepEqual(texts("#!/usr/bin/env pwsh\nGet-Item\n", "run.ps1"), [])
+  assert.deepEqual(texts("Get-Item\n#!/usr/bin/env pwsh\n", "run.ps1"), [
+    "#!/usr/bin/env pwsh",
+  ])
+})
+
+test("powershell files: a # in a string or here-string is code", () => {
+  assert.deepEqual(texts("Write-Host 'a # b' \"c # d\"\n", "a.ps1"), [])
+  assert.deepEqual(texts("Write-Host 'it''s # b'\n", "a.ps1"), [])
+  assert.deepEqual(texts('Write-Host "say `"# no`" end"\n', "a.ps1"), [])
+  assert.deepEqual(texts("Write-Host `# no\n", "a.ps1"), [])
+  assert.deepEqual(texts('$s = "multi\n# no\nline"\n$x = 1 # why\n', "a.ps1"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    texts('@"\n# no\n a "@ b\n"@\n@\'\n# no\n\'@\n$x # why\n', "a.ps1"),
+    ["# why"]
+  )
+})
+
+test("jsonc files: // and /* */ comments are found, valid json has none", () => {
+  assert.deepEqual(texts('{ "a": "http://x" }', "tsconfig.jsonc"), [])
+  assert.deepEqual(
+    texts('{\n  // why\n  "a": 1, /* also */\n}', "tsconfig.jsonc"),
+    ["// why", "/* also */"]
+  )
+})
+
+for (const [construct, file, source] of [
+  ["a python ''' string", "a.py", "x = '''abc\n# no\n"],
+  ['a python """ string', "a.py", 'x = """abc\n# no\n'],
+  ["a markdown ``` code fence", "a.md", "```\nx\n\n<!-- hidden -->\n"],
+  ["a markdown ~~~ code fence", "a.md", "~~~\nx\n\n<!-- hidden -->\n"],
+  ["a powershell <# block comment", "a.ps1", "<# abc\nGet-Item\n"],
+  ["a powershell ' string", "a.ps1", "$x = 'abc\n# no\n"],
+  ['a powershell " string', "a.ps1", '$x = "abc\n# no\n'],
+  ['a powershell @" here-string', "a.ps1", '$x = @"\nabc\n# no\n a "@ b\n'],
+  ["a powershell @' here-string", "a.ps1", "$x = @'\nabc\n# no\n a '@ b\n"],
+]) {
+  test(`${construct} that never closes is reported as unparsable`, () => {
+    const [line, ...others] = checkFile(source, file)
+    assert.match(
+      line,
+      new RegExp(`^${file.replace(".", "\\.")}: cannot be parsed`)
+    )
+    assert.deepEqual(others, [])
+  })
+}
+
+test("a file of an unknown type is reported, since its comments cannot be checked", () => {
+  assert.equal(familyOf("data/notes.xyz"), null)
+  for (const file of ["data/notes.xyz", "LICENSE", "a.mdx"]) {
+    const [line, ...others] = checkFile("hello\n", file)
+    assert.match(line, new RegExp(`^${file}: unknown file type`))
+    assert.deepEqual(others, [])
+  }
+})
+
+test("files of a type without comments report nothing", () => {
+  for (const file of [
+    "pnpm-lock.yaml",
+    "docs/design/a.png",
+    "photo.JPG",
+    "a.jpeg",
+    "a.gif",
+    "a.webp",
+    "a.avif",
+    "favicon.ico",
+    "a.bmp",
+    "font.woff",
+    "font.woff2",
+    "font.ttf",
+    "font.otf",
+    "font.eot",
+  ]) {
+    assert.deepEqual(checkFile("# not a comment\n", file), [])
+  }
 })
 
 test("a report line names the file, the line and the column", () => {
@@ -389,6 +737,28 @@ test("the repository check covers tracked and untracked files, not ignored ones"
     fs.writeFileSync(path.join(dir, "dirty.js"), "export const a = 1 // why\n")
     fs.writeFileSync(path.join(dir, "ignored.js"), "// ignored\n")
     assert.deepEqual(checkRepository(dir), ["dirty.js:1:20 // why"])
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("the repository check reads markdown, reports an unknown type and leaves commentless files unread", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "check-comments-"))
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: dir })
+    fs.writeFileSync(path.join(dir, "clean.md"), "# Title\n\n`<!-- code -->`\n")
+    fs.writeFileSync(path.join(dir, "dirty.md"), "# Title\n\n<!-- why -->\n")
+    fs.writeFileSync(
+      path.join(dir, "logo.png"),
+      Buffer.from([0x89, 0x50, 0x4e])
+    )
+    fs.writeFileSync(path.join(dir, "notes.xyz"), "hello\n")
+    const problems = checkRepository(dir)
+    assert.equal(problems.length, 2)
+    assert.ok(problems.includes("dirty.md:3:1 <!-- why -->"))
+    assert.ok(
+      problems.some((line) => line.startsWith("notes.xyz: unknown file type"))
+    )
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

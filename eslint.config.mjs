@@ -7,6 +7,16 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    name: "admin-panel/ban-ts-comment",
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    rules: {
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        { "ts-expect-error": false },
+      ],
+    },
+  },
+  {
     name: "admin-panel/jsx-a11y-recommended-rules",
     files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: jsxA11y.flatConfigs.recommended.rules,
