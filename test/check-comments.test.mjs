@@ -22,17 +22,6 @@ const SCRIPT = fileURLToPath(
 const runHook = (input) =>
   spawnSync(process.execPath, [HOOK], { input, encoding: "utf8" })
 
-test("the PR hook lets every command but gh pr create and gh pr new through without a word", () => {
-  const result = runHook(
-    JSON.stringify({
-      tool_name: "Bash",
-      tool_input: { command: "gh pr view 3" },
-    })
-  )
-  assert.equal(result.status, 0)
-  assert.equal(result.stdout, "")
-})
-
 test("the PR hook refuses a call it cannot read", () => {
   const result = runHook("not json")
   const output = JSON.parse(result.stdout).hookSpecificOutput
@@ -57,7 +46,17 @@ function withTemporaryRepository(files, callback) {
 const hookInput = (command, cwd) =>
   JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command } })
 
-for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
+for (const command of [
+  "gh pr create --fill",
+  "gh pr new --fill",
+  "gh -R o/r pr create --fill",
+  "gh --repo o/r pr new --fill",
+  "gh --repo=o/r pr create",
+  "gh -R=o/r pr create",
+  "gh -Ro/r pr create",
+  "gh pr -R o/r create",
+  "gh -R a/b pr -R c/d new",
+]) {
   test(`the PR hook refuses \`${command}\` when the session's repository holds a comment`, () => {
     withTemporaryRepository(
       { "dirty.js": "export const a = 1 // why\n" },
@@ -78,6 +77,43 @@ for (const command of ["gh pr create --fill", "gh pr new --fill"]) {
     })
   })
 }
+
+for (const command of [
+  "gh pr view 3",
+  "gh -R o/r pr view 3",
+  "gh --repo=o/r pr list --state open",
+  "gh -R o/r issue create --title x",
+  "gh -R o/r pr checkout new",
+]) {
+  test(`the PR hook lets \`${command}\` through without a word, though the session's repository holds a comment`, () => {
+    withTemporaryRepository(
+      { "dirty.js": "export const a = 1 // why\n" },
+      (dir) => {
+        const result = runHook(hookInput(command, dir))
+        assert.equal(result.status, 0)
+        assert.equal(result.stdout, "")
+      }
+    )
+  })
+}
+
+test("the PR hook refuses a PR whose command a line continuation splits, in bash or in PowerShell", () => {
+  withTemporaryRepository(
+    { "dirty.js": "export const a = 1 // why\n" },
+    (dir) => {
+      for (const command of [
+        "gh \\\n  -R o/r \\\n  pr create",
+        "gh pr \\\r\n  new --fill",
+        "gh `\n  pr create",
+      ]) {
+        const result = runHook(hookInput(command, dir))
+        assert.notEqual(result.stdout, "", JSON.stringify(command))
+        const output = JSON.parse(result.stdout).hookSpecificOutput
+        assert.equal(output.permissionDecision, "deny", JSON.stringify(command))
+      }
+    }
+  )
+})
 
 test("the PR hook checks the repository that holds the session's folder, a subfolder included", () => {
   withTemporaryRepository(
@@ -338,6 +374,46 @@ test("json files: comments are found, valid json has none", () => {
   ])
 })
 
+const DIRECTIVE_COMMENTS = [
+  '/// <reference types="next" />',
+  "// eslint-disable-next-line no-console",
+  "// @ts-expect-error",
+  "/* @vite-ignore */",
+  "/* webpackIgnore: true */",
+]
+
+for (const comment of DIRECTIVE_COMMENTS) {
+  test(`json files: ${comment} is a comment, since no tool reads a directive there`, () => {
+    assert.deepEqual(texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.json"), [
+      comment,
+    ])
+  })
+}
+
+test("script files: the tool directives are allowed alone in every script extension", () => {
+  const source = [
+    '/// <reference types="next" />',
+    "// eslint-disable-next-line no-console, @next/next/no-img-element",
+    "console.log(1)",
+    "// @ts-expect-error",
+    "use(1)",
+    "await import(/* @vite-ignore */ n)",
+    "await import(/* webpackIgnore: true */ n)",
+  ].join("\n")
+  for (const extension of [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".jsx",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".tsx",
+  ]) {
+    assert.deepEqual(texts(source, `src/a${extension}`), [], extension)
+  }
+})
+
 test("css, markup and sql comments are found outside strings", () => {
   assert.deepEqual(texts('a { content: "/* no */" } /* yes */', "app.css"), [
     "/* yes */",
@@ -411,15 +487,196 @@ test("yaml files: a quote outside a quoted string hides no comment", () => {
   assert.deepEqual(texts(workflow, "ci.yml"), ["# why"])
 })
 
-test("hash files other than yaml: every quote ends with its line", () => {
+test("plain hash files: every quote ends with its line", () => {
   assert.deepEqual(texts('"odd name\n# why\n', ".gitignore"), ["# why"])
   assert.deepEqual(texts("[*]\nx = 'a\n# why\n", ".editorconfig"), ["# why"])
-  assert.deepEqual(texts("GREETING='hello\n# why\nOTHER=1\n", ".env"), [
-    "# why",
-  ])
+})
+
+test("shell files: a quoted string spanning several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts('echo "a\n# b"\n', "run.sh"), [])
   assert.deepEqual(texts('python -c "\nprint(1)\n"\n# why\n', "run.sh"), [
     "# why",
   ])
+  assert.deepEqual(texts("echo 'a\n# b' # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts("echo $'a\\'\n# b'\n", "run.sh"), [])
+  assert.deepEqual(texts('echo "say \\"hi\\"\n# b"\n# why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("echo 'a\\'\n# why\n", "run.sh"), ["# why"])
+})
+
+test("shell files: a quote that opens no string hides no comment", () => {
+  assert.deepEqual(texts("echo \\' \\\" # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "it\'s" # why\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts("echo $# ${#x} a#b # why\n", "run.sh"), ["# why"])
+})
+
+test("shell files: the first line may be a shebang, the quotes after it are read", () => {
+  assert.deepEqual(texts('#!/usr/bin/env bash\necho "a\n# b"\n', "run.sh"), [])
+})
+
+test("shell files: a here-document body is text up to its delimiter's line, whatever it holds", () => {
+  const twice =
+    "cat <<EOF\ndon't\nEOF\n# hidden real comment\ncat <<EOF\ncan't\nEOF\n"
+  assert.deepEqual(texts(twice, "run.sh"), ["# hidden real comment"])
+  assert.deepEqual(texts("cat <<EOF\ndon't\nEOF\necho ok\n", "run.sh"), [])
+  assert.deepEqual(texts("cat <<EOF\n# a\n  EOF\nEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<-EOF\n\t# a\n\tEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<'EOF' | tr a b\n# a\nEOF\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('cat <<"E O" # why\n# a\nE O\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts("cat <<\\EOF\n# a\nEOF\n# why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts("cat <<A <<B\n# a\nA\nit's\nB\n# why\n", "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("cat <<EOF\r\n# a\r\nEOF\r\n# why\r\n", "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: a here-string is no here-document, nor is a shift", () => {
+  assert.deepEqual(texts("cat <<<word\n# why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('cat <<<"a\n# b"\n# why\n', "run.sh"), ["# why"])
+  assert.deepEqual(
+    texts(
+      'echo $((1<<3)) "$((1 << 3))" $(( (1<<2) + 1 ))\n(( x <<= 1 )) # why\n',
+      "run.sh"
+    ),
+    ["# why"]
+  )
+})
+
+test("shell files: a command substitution inside double quotes is shell, with its own quotes and comments", () => {
+  assert.deepEqual(texts('x="$(\n echo a # inner\n)"\n', "run.sh"), ["# inner"])
+  assert.deepEqual(texts('x="`echo a # inner\n`"\n', "run.sh"), ["# inner"])
+  assert.deepEqual(texts('echo "$(echo \'"\')" # why\n', "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "$(echo "a # b")" "$(x)" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('echo "$(echo "$(echo \'"\')")" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('echo "\\$(not a substitution" # why\n', "run.sh"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("x=$(cat <<EOF\ndon't\nEOF\n) # why\n", "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: a # starts a comment after a metacharacter, not inside a word", () => {
+  assert.deepEqual(texts("echo a;# it's\n", "run.sh"), ["# it's"])
+  assert.deepEqual(texts("a|# one\nb&# two\n(# three\n)\n", "run.sh"), [
+    "# one",
+    "# two",
+    "# three",
+  ])
+  assert.deepEqual(texts("a>#four\nb<#five\n", "run.sh"), ["#four", "#five"])
+  assert.deepEqual(texts("echo a=#b ${x#y} $#\n", "run.sh"), [])
+})
+
+test("env files: a quoted value spanning several lines is a value, up to its closing quote", () => {
+  assert.deepEqual(texts('KEY="a\n# b"\n', ".env.example"), [])
+  assert.deepEqual(texts("KEY='a\n# b'\n", ".env"), [])
+  assert.deepEqual(texts("KEY=`a\n# b`\n", ".env.local"), [])
+  assert.deepEqual(texts('export KEY = "a\n# b" # why\nNEXT=1\n', ".env"), [
+    "# why",
+  ])
+  assert.deepEqual(texts('KEY="say \\"hi\\"\n# b"\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="a\n# b"# glued\n', ".env"), ["# glued"])
+  assert.deepEqual(texts('KEY="a\r\n# b"\r\n# why\r\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY: "a\n# b"\nNEXT:  1 # why\n', ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\'\n# b'\n# why\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY=`a\\`\n# b`\n# why\n", ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="a\\"\n# b"\n# why\n', ".env"), ["# why"])
+})
+
+test("env files: a closing quote is the first one that ends its value, as dotenv backtracks to it", () => {
+  assert.deepEqual(texts("KEY='C:\\dir\\' # why\nNEXT=1\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\'b\\'\n# c' # why\n", ".env"), ["# why"])
+  assert.deepEqual(texts("KEY='a\\' # why\nB=x'y\n# c\n", ".env"), [
+    "# why",
+    "# c",
+  ])
+  assert.deepEqual(texts("KEY='a\\' x\n# b\nOTHER='\n# c\n", ".env"), ["# c"])
+})
+
+test("env files: a quote that opens no value hides no comment", () => {
+  assert.deepEqual(texts("KEY=it's\n# why\nOTHER=x'\n", ".env"), ["# why"])
+  assert.deepEqual(texts('KEY=a "b # c"\n', ".env"), ['# c"'])
+  assert.deepEqual(texts('KEY="a\nb" tail\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts('A="abc\n# why\nB="def"\n', ".env"), ["# why"])
+  assert.deepEqual(texts('KEY="hello\n# why\n', ".env"), ["# why"])
+  assert.deepEqual(texts("KEY=`hello\n# why\n", ".env"), ["# why"])
+})
+
+test("toml files: a multi-line string, basic or literal, is a value up to its closing delimiter", () => {
+  assert.deepEqual(texts('key = """\na\n# b\n"""\n', "x.toml"), [])
+  assert.deepEqual(texts("key = '''\na\n# b\n''' # why\n", "x.toml"), ["# why"])
+  assert.deepEqual(texts('key = """\na ""b"" \\"""\n# b\n"""\n', "x.toml"), [])
+  assert.deepEqual(texts('key = """a\n# b"""" # why\n', "x.toml"), ["# why"])
+  assert.deepEqual(texts("key = '''a\\\n# b''' # why\n", "x.toml"), ["# why"])
+  assert.deepEqual(texts('key = """\\\n  a # b\\\n"""\n', "x.toml"), [])
+})
+
+test("toml files: a # outside a string is a comment, a # inside one is not", () => {
+  const source = [
+    "# header",
+    'name = "a # b" # trailing',
+    "path = 'c:\\dir\\' #glued",
+    '"quoted # key" = 1',
+    "list = [1,2]# glued",
+    "[table] # why",
+    'empty = "" # after',
+  ].join("\n")
+  assert.deepEqual(texts(source, "x.toml"), [
+    "# header",
+    "# trailing",
+    "#glued",
+    "# glued",
+    "# why",
+    "# after",
+  ])
+})
+
+test("a quote that is never closed hides no comment: the file is reported as unparsable", () => {
+  const [shellLine, ...shellRest] = checkFile('echo "a\n# why\n', "run.sh")
+  assert.match(shellLine, /^run\.sh: cannot be parsed.*quote opened on line 1/)
+  assert.deepEqual(shellRest, [])
+  assert.match(
+    checkFile("echo 'a\n# why\necho 'b'\n", "run.sh")[0],
+    /^run\.sh: cannot be parsed/
+  )
+  for (const source of [
+    "cat <<EOF\nbody\n# why\n",
+    "cat <<EOF",
+    "cat <<-EOF\nbody\n  EOF\n",
+    'echo "$(echo a\n# why\n',
+    'echo "`echo a\n# why\n',
+    'echo "$(echo a)\n# why\n',
+  ]) {
+    const [line, ...rest] = checkFile(source, "run.sh")
+    assert.match(line, /^run\.sh: cannot be parsed.*opened on line 1 is never/)
+    assert.deepEqual(rest, [])
+  }
+  assert.deepEqual(checkFile('KEY="a\n# why\nOTHER=1\n', ".env.example"), [
+    ".env.example:2:1 # why",
+  ])
+  for (const source of [
+    'key = """a\n# why\n',
+    "key = '''a\n# why\n",
+    'key = "a\n# why\n"\n',
+    "key = 'a\n# why\n",
+  ]) {
+    const [line, ...rest] = checkFile(source, "x.toml")
+    assert.match(line, /^x\.toml: cannot be parsed.*quote opened on line 1/)
+    assert.deepEqual(rest, [])
+  }
 })
 
 test("markdown files: an HTML comment is found, on one line or several", () => {
@@ -477,6 +734,82 @@ test("markdown files: a line that opens an HTML comment ends an inline code span
   assert.deepEqual(texts("a <!-- why --> and `b`\n<!-- also -->\n", "a.md"), [
     "<!-- why -->",
     "<!-- also -->",
+  ])
+})
+
+test("markdown files: a link definition to # or <> with a title is a comment", () => {
+  assert.deepEqual(
+    texts("[//]: # (why)\n[comment]: <> (also)\ntext\n", "a.md"),
+    ["[//]: # (why)", "[comment]: <> (also)"]
+  )
+  assert.deepEqual(texts("[//]: <> (why)\n", "a.md"), ["[//]: <> (why)"])
+  assert.deepEqual(texts("[comment]: # (why)\n", "a.md"), [
+    "[comment]: # (why)",
+  ])
+  assert.deepEqual(texts('[//]: # "why"\n', "a.md"), ['[//]: # "why"'])
+  assert.deepEqual(texts("[//]: # 'why'\n", "a.md"), ["[//]: # 'why'"])
+  assert.deepEqual(texts("[c]: #   (why)  \n", "a.md"), ["[c]: #   (why)"])
+  assert.deepEqual(texts("[//]: # (a \\) b)\r\n[//]: # (c)\r\n", "a.md"), [
+    "[//]: # (a \\) b)",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(checkFile("# Title\n\n[//]: # (why)\n", "a.md"), [
+    "a.md:3:1 [//]: # (why)",
+  ])
+})
+
+test("markdown files: an ordinary link definition is not a comment", () => {
+  for (const text of [
+    '[docs]: https://example.com "Title"\n',
+    "[docs]: https://example.com\n",
+    '[docs]: #section "Title"\n',
+    "[docs]: <> not-a-title\n",
+    "[//]: #\n",
+    "[docs]: # \n",
+    "[//]: # (why) and more\n",
+    "[//]: # (why\n",
+    "[//]: # (a (b) c)\n",
+    "text [//]: # (why)\n",
+    "[]: # (why)\n",
+    "[ ]: # (why)\n",
+    "\\[//]: # (why)\n",
+  ]) {
+    assert.deepEqual(texts(text, "a.md"), [], text)
+  }
+})
+
+test("markdown files: a link definition that comments sits in a line of its own, in a quote or a list too", () => {
+  assert.deepEqual(texts("   [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts(">> [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("- [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("1. [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("> - [//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("text\n[//]: # (why)\n", "a.md"), ["[//]: # (why)"])
+  assert.deepEqual(texts("-[//]: # (why)\n", "a.md"), [])
+})
+
+test("markdown files: a code block or a code span holds no link definition that comments", () => {
+  assert.deepEqual(texts("```md\n[//]: # (sample)\n```\n", "a.md"), [])
+  assert.deepEqual(texts("~~~\n[//]: # (sample)\n~~~\n", "a.md"), [])
+  assert.deepEqual(texts("Use `[//]: # (sample)` here\n", "a.md"), [])
+  assert.deepEqual(texts("Use `a\n[//]: # (sample)\nb` here\n", "a.md"), [])
+  assert.deepEqual(texts("```\ncode\n```\n[//]: # (why)\n", "a.md"), [
+    "[//]: # (why)",
+  ])
+})
+
+test("markdown files: comments of both kinds are found once each, in order", () => {
+  assert.deepEqual(texts("[//]: # (a)\n\n<!-- b -->\n[//]: # (c)\n", "a.md"), [
+    "[//]: # (a)",
+    "<!-- b -->",
+    "[//]: # (c)",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n-->\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n-->",
+  ])
+  assert.deepEqual(texts("<!--\n[//]: # (inside)\n", "a.md"), [
+    "<!--\n[//]: # (inside)\n",
   ])
 })
 
@@ -561,6 +894,16 @@ test("jsonc files: // and /* */ comments are found, valid json has none", () => 
     texts('{\n  // why\n  "a": 1, /* also */\n}', "tsconfig.jsonc"),
     ["// why", "/* also */"]
   )
+})
+
+test("jsonc files: a tool directive is a comment, as in a json file", () => {
+  for (const comment of DIRECTIVE_COMMENTS) {
+    assert.deepEqual(
+      texts(`{\n  ${comment}\n  "a": 1\n}\n`, "tsconfig.jsonc"),
+      [comment],
+      comment
+    )
+  }
 })
 
 for (const [construct, file, source] of [
