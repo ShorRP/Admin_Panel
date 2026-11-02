@@ -11,6 +11,7 @@ const ALDIS: FoundAccount = {
   username: "aldis",
   avatarUrl: null,
   standing: { kind: "member", timedOutUntil: null },
+  highestRole: null,
 }
 
 const ALDA: FoundAccount = {
@@ -19,6 +20,7 @@ const ALDA: FoundAccount = {
   username: "alda",
   avatarUrl: null,
   standing: { kind: "banned" },
+  highestRole: null,
 }
 
 const ALDRIC: FoundAccount = {
@@ -30,6 +32,7 @@ const ALDRIC: FoundAccount = {
     kind: "member",
     timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
   },
+  highestRole: null,
 }
 
 function listPage(overrides: Partial<AccountListPage> = {}): AccountListPage {
@@ -123,6 +126,80 @@ test("each account links to its record, beside its name, its username and its st
       href: "/records/1400000000000000005",
       texts: ["Aldric", "@aldric", "Exclu jusqu’au ", "2 nov. 2099, 19:30"],
     },
+  ])
+})
+
+test("a member who has a role shows the badge of their highest role in place of « Membre du serveur »", () => {
+  const guard = { name: "Garde de Blancherive", color: "#2ecc71" }
+
+  expect(
+    rowLinks(render(listPage({ accounts: [{ ...ALDIS, highestRole: guard }] })))
+  ).toEqual([
+    {
+      href: "/records/1400000000000000001",
+      texts: ["Aldis", "@aldis", "Garde de Blancherive"],
+    },
+  ])
+})
+
+test("a timed-out member who has a role shows the badge of their role and the end of their timeout, side by side, the role first", () => {
+  const html = render(
+    listPage({
+      accounts: [{ ...ALDRIC, highestRole: { name: "Garde", color: null } }],
+    })
+  )
+
+  expect(rowLinks(html)).toEqual([
+    {
+      href: "/records/1400000000000000005",
+      texts: [
+        "Aldric",
+        "@aldric",
+        "Garde",
+        "Exclu jusqu’au ",
+        "2 nov. 2099, 19:30",
+      ],
+    },
+  ])
+  expect(text(html).split("Heures de Paris.")).toHaveLength(2)
+})
+
+test("a banned account shows « Compte banni » and a member with no role « Membre du serveur », a timed-out one with no role the end of their timeout alone", () => {
+  expect(
+    rowLinks(render(listPage({ accounts: [ALDA, ALDIS, ALDRIC] }))).map(
+      ({ texts }) => texts.slice(2)
+    )
+  ).toEqual([
+    ["Compte banni"],
+    ["Membre du serveur"],
+    ["Exclu jusqu’au ", "2 nov. 2099, 19:30"],
+  ])
+})
+
+test("the dot of a role's badge is hidden from assistive technologies and takes the color of the role, a role with no color drawing it neutral", () => {
+  const html = render(
+    listPage({
+      accounts: [
+        { ...ALDIS, highestRole: { name: "Garde", color: "#e67e22" } },
+        {
+          ...ALDIS,
+          id: "1400000000000000006",
+          highestRole: { name: "Citoyen", color: null },
+        },
+      ],
+    })
+  )
+
+  const dots = Array.from(
+    html.matchAll(/<span([^>]*)><\/span>/g),
+    ([, attributes = ""]) => ({
+      hidden: /\saria-hidden="true"/.test(attributes),
+      style: /\sstyle="([^"]*)"/.exec(attributes)?.[1] ?? null,
+    })
+  )
+  expect(dots).toEqual([
+    { hidden: true, style: "background-color:#e67e22" },
+    { hidden: true, style: null },
   ])
 })
 

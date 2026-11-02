@@ -4,6 +4,7 @@ import { cn } from "cn"
 
 import { ParisTime } from "@/ui/paris-time"
 import type { AccountStanding } from "./account-standing"
+import { BADGE_CLASSES } from "./badge-classes"
 
 const standingDot = cva("size-1.5 shrink-0 rounded-full", {
   variants: {
@@ -27,12 +28,7 @@ export function StandingBadge({
 }) {
   const { tone, label } = lookOf(standing)
   return (
-    <span
-      className={cn(
-        "inline-flex min-h-6 items-center gap-1.75 rounded-full border px-2.5 py-0.5 text-xs text-foreground",
-        className
-      )}
-    >
+    <span className={cn(BADGE_CLASSES, className)}>
       <span aria-hidden className={standingDot({ tone })} />
       <span>{label}</span>
     </span>

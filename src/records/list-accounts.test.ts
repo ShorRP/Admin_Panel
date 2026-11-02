@@ -1,7 +1,11 @@
 import { expect, test } from "vitest"
 
 import { DiscordError } from "@/discord/discord-error"
-import { FakeDiscord, type FakeUser } from "@/discord/fake-discord"
+import {
+  FakeDiscord,
+  type FakeRole,
+  type FakeUser,
+} from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { isPanelError } from "@/monitoring/panel-error"
 import { listAccounts, type AccountListPage } from "./list-accounts"
@@ -15,6 +19,24 @@ const MISSING_ACCESS = new DiscordError({
 })
 
 const APPLICATION_NAME = "Shor Panel"
+
+function role(
+  index: number,
+  name: string,
+  position: number,
+  primaryColor = 0
+): FakeRole {
+  return {
+    id: (BigInt("1300000000000000000") + BigInt(index)).toString(),
+    name,
+    position,
+    colors: {
+      primary_color: primaryColor,
+      secondary_color: null,
+      tertiary_color: null,
+    },
+  }
+}
 
 function user(index: number, username: string): FakeUser {
   return {
@@ -230,6 +252,7 @@ test("each account keeps its username, its avatar and its standing, a member's t
         kind: "member",
         timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
       },
+      highestRole: null,
     },
     {
       id: user(2, "").id,
@@ -237,6 +260,7 @@ test("each account keeps its username, its avatar and its standing, a member's t
       username: "brynja",
       avatarUrl: null,
       standing: { kind: "member", timedOutUntil: null },
+      highestRole: null,
     },
     {
       id: user(3, "").id,
@@ -244,8 +268,143 @@ test("each account keeps its username, its avatar and its standing, a member's t
       username: "corvus",
       avatarUrl: `https://cdn.discordapp.com/avatars/${user(3, "").id}/6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c.webp?size=64`,
       standing: { kind: "banned" },
+      highestRole: null,
     },
   ])
+})
+
+test("a member's highest role is the one of the highest position among theirs, whatever the order the roles are held in or listed in, with its name and its color", async () => {
+  const guard = role(1, "Garde", 3, 0x2ecc71)
+  const scribe = role(2, "Scribe", 7, 0xe67e22)
+  const citizen = role(3, "Citoyen", 1, 0x3498db)
+  const outsider = role(4, "Étranger", 9, 0xff0000)
+  const discord = new FakeDiscord({
+    roles: [guard, outsider, citizen, scribe],
+    members: [
+      { user: user(1, "aldis"), roles: [citizen.id, scribe.id, guard.id] },
+      { user: user(2, "brynja"), roles: [guard.id, citizen.id] },
+      { user: user(3, "corvus"), roles: [citizen.id] },
+    ],
+  })
+
+  const list = await listPage(discord)
+
+  expect(
+    list.accounts
+      .slice(0, 3)
+      .map(({ username, highestRole }) => [username, highestRole])
+  ).toEqual([
+    ["aldis", { name: "Scribe", color: "#e67e22" }],
+    ["brynja", { name: "Garde", color: "#2ecc71" }],
+    ["corvus", { name: "Citoyen", color: "#3498db" }],
+  ])
+})
+
+test("two roles of the same position are told apart by their ID, the lower one the higher", async () => {
+  const older = role(1, "Ancien", 4, 0x112233)
+  const newer = role(2, "Récent", 4, 0x445566)
+  const discord = new FakeDiscord({
+    roles: [newer, older],
+    members: [
+      { user: user(1, "aldis"), roles: [newer.id, older.id] },
+      { user: user(2, "brynja"), roles: [older.id, newer.id] },
+    ],
+  })
+
+  const list = await listPage(discord)
+
+  expect(
+    list.accounts.slice(0, 2).map(({ highestRole }) => highestRole)
+  ).toEqual([
+    { name: "Ancien", color: "#112233" },
+    { name: "Ancien", color: "#112233" },
+  ])
+})
+
+test("a member with no role, or with only roles the Discord server no longer lists, has no highest role", async () => {
+  const guard = role(1, "Garde", 3, 0x2ecc71)
+  const discord = new FakeDiscord({
+    roles: [guard],
+    members: [
+      { user: user(1, "aldis") },
+      { user: user(2, "brynja"), roles: ["1300000000000000099"] },
+    ],
+  })
+
+  const list = await listPage(discord)
+
+  expect(
+    list.accounts.slice(0, 2).map(({ highestRole }) => highestRole)
+  ).toEqual([null, null])
+})
+
+test("a banned account has no highest role", async () => {
+  const discord = new FakeDiscord({
+    roles: [role(1, "Garde", 3, 0x2ecc71)],
+    bans: [{ user: user(1, "aldis") }],
+  })
+
+  const list = await listPage(discord)
+
+  expect(list.accounts[0]).toMatchObject({
+    username: "aldis",
+    standing: { kind: "banned" },
+    highestRole: null,
+  })
+})
+
+test("a role's color is its primary color written as six hexadecimal digits, and none when it is 0, its secondary and tertiary colors ignored", async () => {
+  const gradient: FakeRole = {
+    ...role(1, "Dégradé", 5, 0xe67e22),
+    colors: {
+      primary_color: 0xe67e22,
+      secondary_color: 0x3498db,
+      tertiary_color: 0x2ecc71,
+    },
+  }
+  const dark = role(2, "Ombre", 4, 0x00000f)
+  const plain = role(3, "Ordinaire", 3)
+  const discord = new FakeDiscord({
+    roles: [gradient, dark, plain],
+    members: [
+      { user: user(1, "aldis"), roles: [gradient.id] },
+      { user: user(2, "brynja"), roles: [dark.id] },
+      { user: user(3, "corvus"), roles: [plain.id] },
+    ],
+  })
+
+  const list = await listPage(discord)
+
+  expect(
+    list.accounts.slice(0, 3).map(({ highestRole }) => highestRole)
+  ).toEqual([
+    { name: "Dégradé", color: "#e67e22" },
+    { name: "Ombre", color: "#00000f" },
+    { name: "Ordinaire", color: null },
+  ])
+})
+
+test("the highest role of a member is shown though it has no color, whatever the colors of the roles below it", async () => {
+  const plain = role(1, "Ordinaire", 5)
+  const colored = role(2, "Coloré", 2, 0xe67e22)
+  const discord = new FakeDiscord({
+    roles: [plain, colored],
+    members: [{ user: user(1, "aldis"), roles: [colored.id, plain.id] }],
+  })
+
+  const list = await listPage(discord)
+
+  expect(list.accounts[0]?.highestRole).toEqual({
+    name: "Ordinaire",
+    color: null,
+  })
+})
+
+test("a roles' list Discord refuses is thrown, so that the page fails as when the members' list is refused", async () => {
+  const discord = sixtyAccounts()
+  discord.failNext("listRoles", MISSING_ACCESS)
+
+  await expect(listPage(discord)).rejects.toBe(MISSING_ACCESS)
 })
 
 test("an ID or a mention gives the record whatever the page, though the members' list cannot be read", async () => {

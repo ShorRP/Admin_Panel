@@ -1,11 +1,12 @@
 import "server-only"
 
-import type { Snowflake } from "discord-api-types/v10"
 import { z } from "zod"
 
 import type { DiscordApi } from "@/discord/discord-api"
+import { compareIds } from "./compare-ids"
 import { foundBan, foundMember, type FoundAccount } from "./found-account"
 import { readAllBans, readAllMembers } from "./read-all-accounts"
+import { highestRoleOf, rolesByHierarchy } from "./role-hierarchy"
 import { searchAccounts, type AccountSearch } from "./search-accounts"
 
 const ACCOUNTS_PER_PAGE = 25
@@ -41,12 +42,16 @@ export async function listAccounts(
   if (search.kind !== "none") {
     return search
   }
-  const [members, bans] = await Promise.all([
+  const [members, bans, roles] = await Promise.all([
     readAllMembers(discord),
     readAllBans(discord),
+    discord.listRoles(),
   ])
+  const hierarchy = rolesByHierarchy(roles)
   const accounts = [
-    ...members.map((member) => foundMember(discord, member)),
+    ...members.map((member) =>
+      foundMember(discord, member, highestRoleOf(member.roles, hierarchy))
+    ),
     ...bans.map(foundBan),
   ].toSorted(byNameThenId)
   return pageOf(accounts, PAGE.parse(page))
@@ -75,11 +80,5 @@ function pageOf(
 function byNameThenId(left: FoundAccount, right: FoundAccount) {
   return (
     nameCollator.compare(left.name, right.name) || compareIds(left.id, right.id)
-  )
-}
-
-function compareIds(left: Snowflake, right: Snowflake) {
-  return (
-    Number(BigInt(left) > BigInt(right)) - Number(BigInt(left) < BigInt(right))
   )
 }

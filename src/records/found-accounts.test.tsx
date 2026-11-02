@@ -11,6 +11,7 @@ const ALDIS: FoundAccount = {
   avatarUrl:
     "https://cdn.discordapp.com/avatars/1400000000000000001/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
   standing: { kind: "member", timedOutUntil: null },
+  highestRole: null,
 }
 
 const ALDA: FoundAccount = {
@@ -19,6 +20,7 @@ const ALDA: FoundAccount = {
   username: "alda",
   avatarUrl: null,
   standing: { kind: "banned" },
+  highestRole: null,
 }
 
 const ALDRIC: FoundAccount = {
@@ -30,6 +32,7 @@ const ALDRIC: FoundAccount = {
     kind: "member",
     timedOutUntil: new Date("2099-11-02T18:30:00.000Z"),
   },
+  highestRole: null,
 }
 
 function text(html: string) {
