@@ -506,7 +506,7 @@ test.describe("filtered by an author and an account", () => {
     },
   })
 
-  test("a staff member combines an author, an account and a type, keeps them from page to page and from type to type, reopens the copied link, reads an empty page, then clears them all through « Réinitialiser », which empties the fields too", async ({
+  test("a staff member combines an author, an account and a type, keeps them from page to page and from type to type, reopens the copied link, reads an empty page, then clears them all through « Réinitialiser », which empties the fields too", async ({
     page,
     logIn,
     discord,
@@ -563,7 +563,7 @@ test.describe("filtered by an author and an account", () => {
       .toEqual({ type: "timeouts", author: "BRYN", account: mention })
     await expect(changes).toHaveCount(50)
     await expect(changes.filter({ hasText: "bryn" })).toHaveCount(50)
-    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(50)
+    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(50)
     await expect(author).toHaveValue("BRYN")
     await expect(account).toHaveValue(mention)
     await expect(reset).toBeVisible()
@@ -580,7 +580,7 @@ test.describe("filtered by an author and an account", () => {
       })
     await expect(changes).toHaveCount(2)
     await expect(changes.filter({ hasText: "bryn" })).toHaveCount(2)
-    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(2)
+    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(2)
     await expect(author).toHaveValue("BRYN")
     await expect(account).toHaveValue(mention)
     await checkAccessibility()

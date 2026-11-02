@@ -51,7 +51,7 @@ function markedCurrent(text: string) {
   }))
 }
 
-test("with no filter chosen, the filter links each type, « Tout » marked as the current one, and offers no reset", () => {
+test("with no filter chosen, the filter links each type, « Tout » marked as the current one, and offers no reset", () => {
   const html = render({})
 
   expect(typeLinks(html)).toEqual(markedCurrent("Tout"))
@@ -64,7 +64,7 @@ test.each([
   ["kicks", "Expulsions"],
   ["bans", "Bannissements"],
 ] as const)(
-  "with the type %s chosen, the filter marks « %s » as the current one, and « Réinitialiser » leads back to every type",
+  "with the type %s chosen, the filter marks « %s » as the current one, and « Réinitialiser » leads back to every type",
   (type, text) => {
     const html = render({ type })
 
@@ -73,7 +73,7 @@ test.each([
   }
 )
 
-test("each link of the filter keeps the author and the account chosen, « Tout » included, and « Réinitialiser » drops them all", () => {
+test("each link of the filter keeps the author and the account chosen, « Tout » included, and « Réinitialiser » drops them all", () => {
   const html = render({
     type: "kicks",
     author: "bryn",
@@ -109,7 +109,7 @@ test.each([
   [{ author: "bryn" }, "?author=bryn"],
   [{ account: "Lyra des Brumes" }, "?account=Lyra+des+Brumes"],
 ])(
-  "with only %j chosen, « Tout » stays the current type and « Réinitialiser » shows, leading back to the unfiltered audit log",
+  "with only %j chosen, « Tout » stays the current type and « Réinitialiser » shows, leading back to the unfiltered audit log",
   (filters, query) => {
     const html = render(filters)
 

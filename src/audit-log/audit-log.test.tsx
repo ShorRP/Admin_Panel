@@ -444,7 +444,7 @@ test.each([
   [{ account: "lyra" }],
   [{ type: "kicks", author: "bryn", account: "lyra" }],
 ] as const)(
-  "an empty page filtered by an author or an account, %j, says that no change matches these filters in the last 45 days, and offers « Réinitialiser », which leads to every change",
+  "an empty page filtered by an author or an account, %j, says that no change matches these filters in the last 45 days, and offers « Réinitialiser », which leads to every change",
   (filters) => {
     const html = render(filters)
 
@@ -469,7 +469,7 @@ test("an empty page filtered by a type alone keeps saying that no change is of t
   )
 })
 
-test("an older page of an author's changes with none left says only that none is older, offers « Réinitialiser », and links back to that author's newest changes", () => {
+test("an older page of an author's changes with none left says only that none is older, offers « Réinitialiser », and links back to that author's newest changes", () => {
   const html = render({ author: "bryn", before: "1563530499194880001" })
 
   expect(text(html)).toBe(

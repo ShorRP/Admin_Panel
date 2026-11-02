@@ -91,7 +91,7 @@ test("the fields suggest what they take, a name, an ID or a mention", () => {
   expect(placeholders).toEqual(["Nom, ID ou mention", "Nom, ID ou mention"])
 })
 
-test("the form's button reads « Filtrer », after a hidden filter icon", () => {
+test("the form's button reads « Filtrer », after a hidden filter icon", () => {
   const [, iconAttributes = "", iconDrawing, text] =
     /<button[^>]*type="submit"[^>]*><svg([^>]*)>(.*?)<\/svg>(.*?)<\/button>/.exec(
       render({})

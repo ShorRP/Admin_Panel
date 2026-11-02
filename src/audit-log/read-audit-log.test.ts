@@ -1172,7 +1172,7 @@ test("an author who no longer holds the staff role, or no longer is on the Disco
   expect(summaries(aldisById)).toEqual([TIMEOUT_BY_PANEL, WORD_BY_PANEL])
 })
 
-test("a change whose author or account the audit log does not name is found by ID, and never by the « Membre inconnu » or « Compte inconnu » that stands in for the name", async () => {
+test("a change whose author or account the audit log does not name is found by ID, and never by the « Membre inconnu » or « Compte inconnu » that stands in for the name", async () => {
   const discord = new FakeDiscord({
     members: [{ user: BRYN }],
     auditLogEntries: [
