@@ -4,10 +4,9 @@ import { redirect } from "next/navigation"
 import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
-import { AccountList } from "@/records/account-list"
 import { AccountSearchForm } from "@/records/account-search-form"
 import { AccountSearchFormSkeleton } from "@/records/account-search-form-skeleton"
-import { FoundAccounts } from "@/records/found-accounts"
+import { AccountsView } from "@/records/accounts-view"
 import { FoundAccountsSkeleton } from "@/records/found-accounts-skeleton"
 import { listAccounts } from "@/records/list-accounts"
 import { recordHref } from "@/records/record-href"
@@ -67,9 +66,5 @@ async function AccountsFromDiscord({
   if (list.kind === "record") {
     redirect(recordHref(list.userId))
   }
-  return list.kind === "page" ? (
-    <AccountList list={list} />
-  ) : (
-    <FoundAccounts search={list} />
-  )
+  return <AccountsView list={list} />
 }

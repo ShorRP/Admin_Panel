@@ -3,6 +3,7 @@ import { ROUTES } from "@/discord/routes"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
+import { minifiedReactError } from "./minified-react-error"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -40,8 +41,8 @@ test.use({
   },
 })
 
-function minifiedReactError(code: number) {
-  return `Minified React error #${code}; visit https://react.dev/errors/${code} for the full message or use the non-minified dev environment for full errors and additional helpful warnings.`
+function ranks(first: number, last: number) {
+  return `${first}–${last} sur ${TOTAL}`
 }
 
 test("a staff member who moderates reads every account, 25 a page, without searching, then goes to the next page, to a page number, to the previous page and to the last, the URL following the page", async ({
@@ -64,14 +65,14 @@ test("a staff member who moderates reads every account, 25 a page, without searc
   await expect(page).toHaveURL("/blocked-words")
   await moderation.click()
   await expect(page).toHaveURL("/records")
-  await expect(rows(`1–25 sur ${TOTAL}`)).toHaveCount(25)
-  await expect(rows("1–25 sur 202").nth(0)).toHaveAccessibleName(
+  await expect(rows(ranks(1, 25))).toHaveCount(25)
+  await expect(rows(ranks(1, 25)).nth(0)).toHaveAccessibleName(
     /^aldis\s*@aldis\s*Membre du serveur$/
   )
-  await expect(rows("1–25 sur 202").nth(4)).toHaveAccessibleName(
+  await expect(rows(ranks(1, 25)).nth(4)).toHaveAccessibleName(
     /^compte-003\s*@compte-003\s*Exclu jusqu’au 2 nov\. 2099, 19:30$/
   )
-  await expect(rows("1–25 sur 202").nth(24)).toHaveAccessibleName(
+  await expect(rows(ranks(1, 25)).nth(24)).toHaveAccessibleName(
     /^compte-023\s*@compte-023\s*Membre du serveur$/
   )
   await expect(main).toContainText("Heures de Paris.")
@@ -83,8 +84,8 @@ test("a staff member who moderates reads every account, 25 a page, without searc
 
   await pagination.getByRole("link", { name: "Page suivante" }).click()
   await expect(page).toHaveURL("/records?page=2")
-  await expect(rows("26–50 sur 202")).toHaveCount(25)
-  await expect(rows("26–50 sur 202").nth(0)).toHaveAccessibleName(
+  await expect(rows(ranks(26, 50))).toHaveCount(25)
+  await expect(rows(ranks(26, 50)).nth(0)).toHaveAccessibleName(
     /^compte-024\s*@compte-024\s*Membre du serveur$/
   )
   await expect(current).toHaveText("Page 2")
@@ -93,25 +94,25 @@ test("a staff member who moderates reads every account, 25 a page, without searc
 
   await pagination.getByRole("link", { name: "Page 3", exact: true }).click()
   await expect(page).toHaveURL("/records?page=3")
-  await expect(rows("51–75 sur 202")).toHaveCount(25)
+  await expect(rows(ranks(51, 75))).toHaveCount(25)
   await expect(current).toHaveText("Page 3")
   await checkAccessibility()
 
   await pagination.getByRole("link", { name: "Page précédente" }).click()
   await expect(page).toHaveURL("/records?page=2")
-  await expect(rows("26–50 sur 202")).toHaveCount(25)
+  await expect(rows(ranks(26, 50))).toHaveCount(25)
 
   await pagination.getByRole("link", { name: "Page 1", exact: true }).click()
   await expect(page).toHaveURL("/records")
-  await expect(rows("1–25 sur 202")).toHaveCount(25)
+  await expect(rows(ranks(1, 25))).toHaveCount(25)
 
   await pagination.getByRole("link", { name: "Page 9", exact: true }).click()
   await expect(page).toHaveURL("/records?page=9")
-  await expect(rows("201–202 sur 202")).toHaveCount(2)
-  await expect(rows("201–202 sur 202").nth(0)).toHaveAccessibleName(
+  await expect(rows(ranks(201, 202))).toHaveCount(2)
+  await expect(rows(ranks(201, 202)).nth(0)).toHaveAccessibleName(
     /^exile-039\s*@exile-039\s*Compte banni$/
   )
-  await expect(rows("201–202 sur 202").nth(1)).toHaveAccessibleName(
+  await expect(rows(ranks(201, 202)).nth(1)).toHaveAccessibleName(
     /^Shor Panel\s*@Shor Panel\s*Membre du serveur$/
   )
   await expect(current).toHaveText("Page 9")
@@ -159,7 +160,7 @@ test("a page that is no page of the list shows the first, whatever it is, and a 
   checkAccessibility,
 }) => {
   const main = page.getByRole("main")
-  const firstPage = main.getByRole("list", { name: `1–25 sur ${TOTAL}` })
+  const firstPage = main.getByRole("list", { name: ranks(1, 25) })
   const field = page.getByLabel("Compte", { exact: true })
 
   await logIn(ALDIS)
@@ -172,9 +173,7 @@ test("a page that is no page of the list shows the first, whatever it is, and a 
   await checkAccessibility()
 
   await page.goto("/records?page=2")
-  await expect(
-    main.getByRole("list", { name: `26–50 sur ${TOTAL}` })
-  ).toBeVisible()
+  await expect(main.getByRole("list", { name: ranks(26, 50) })).toBeVisible()
   await field.fill("compte-00")
   await page.getByRole("button", { name: "Chercher" }).click()
   await expect(page).toHaveURL("/records?query=compte-00")

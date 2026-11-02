@@ -1,8 +1,6 @@
 import { expect, test } from "vitest"
 
-import { pageNumbersOf } from "./page-numbers"
-
-const GAP = "…"
+import { GAP, pageNumbersOf } from "./page-numbers"
 
 test("up to 7 pages, every page number shows", () => {
   expect(pageNumbersOf(1, 1)).toEqual([1])

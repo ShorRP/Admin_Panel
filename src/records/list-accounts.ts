@@ -31,7 +31,7 @@ const PAGE = z
   .optional()
   .catch(undefined)
 
-const names = new Intl.Collator("fr-FR", { sensitivity: "accent" })
+const nameCollator = new Intl.Collator("fr-FR", { sensitivity: "accent" })
 
 export async function listAccounts(
   discord: DiscordApi,
@@ -73,7 +73,9 @@ function pageOf(
 }
 
 function byNameThenId(left: FoundAccount, right: FoundAccount) {
-  return names.compare(left.name, right.name) || compareIds(left.id, right.id)
+  return (
+    nameCollator.compare(left.name, right.name) || compareIds(left.id, right.id)
+  )
 }
 
 function compareIds(left: Snowflake, right: Snowflake) {
