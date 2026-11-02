@@ -1,7 +1,8 @@
 import type { APIAutoModerationRule } from "discord-api-types/v10"
 
+import { frenchNumber } from "@/ui/french-number"
 import type { BlockedWordAction } from "./blocked-word-action"
-import { frenchNumber, quoted } from "./french-text"
+import { quoted } from "./french-text"
 import { MAX_KEYWORD_RULES, MAX_WORDS_PER_RULE } from "./limits"
 import { isKeywordRule, keywordsOf } from "./panel-rule"
 

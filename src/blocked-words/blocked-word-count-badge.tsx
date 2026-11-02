@@ -1,4 +1,5 @@
-import { counted, frenchNumber } from "./french-text"
+import { frenchNumber } from "@/ui/french-number"
+import { counted } from "./french-text"
 
 export function BlockedWordCountBadge({ count }: { count: number | null }) {
   if (count === null) {

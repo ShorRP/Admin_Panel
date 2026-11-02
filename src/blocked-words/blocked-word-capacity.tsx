@@ -1,6 +1,6 @@
+import { frenchNumber } from "@/ui/french-number"
 import { Overline } from "@/ui/overline"
 import { BLOCKED_WORD_ACTIONS } from "./blocked-word-action"
-import { frenchNumber } from "./french-text"
 import { MAX_WORDS_PER_RULE } from "./limits"
 
 const LABEL_ID = "blocked-word-capacity"

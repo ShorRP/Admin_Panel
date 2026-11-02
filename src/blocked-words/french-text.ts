@@ -1,4 +1,4 @@
-const frenchNumbers = new Intl.NumberFormat("fr-FR")
+import { frenchNumber } from "@/ui/french-number"
 
 const frenchPlurals = new Intl.PluralRules("fr-FR")
 
@@ -19,10 +19,6 @@ export function unquoted(text: string) {
     return null
   }
   return text.slice(OPENING_QUOTE.length, -CLOSING_QUOTE.length)
-}
-
-export function frenchNumber(value: number) {
-  return frenchNumbers.format(value)
 }
 
 export function counted(count: number, one: string, other: string) {
