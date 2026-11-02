@@ -25,7 +25,7 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 
 ## Who is responsible for the panel's personal data, and who answers requests?
 
-- **Question:** What is Shor legally: an association, a company, or an informal group? Who, by name or role, is responsible for the personal data the panel processes, and where does a member send a request to access, correct or delete theirs?
+- **Question:** What is Shor legally: an association, a company, or an informal group? Who, by name or role, is responsible for the personal data the panel processes, on which legal basis of the GDPR's art. 6 does it process what `docs/personal-data.md` lists under **Today**, and where does a member send a request to access, correct or delete theirs?
 - **Where it shows up:** Discord's Developer Terms of Service ask every application for a privacy policy that says « how users can request deletion of such data » (§5a, Wayback Machine copy of 2026-09-27, last updated 2024-06-06), and a GDPR notice names whoever is responsible and how to reach them (inferred from articles 13 and 14, not read here; `docs/personal-data.md`).
 - **Who is likely to know:** the POs, and Gilles for the contact if he is the one who answers.
-- **Blocked on it:** the final text of `/privacy` (#186), which keeps a placeholder until then.
+- **Blocked on it:** the final text of `/privacy`, whose section « Responsable et contact » says until then that both remain to be named and sends a request to Shor's staff on its Discord server, and which names no legal basis (`src/privacy-policy/privacy-policy.tsx`, #186).

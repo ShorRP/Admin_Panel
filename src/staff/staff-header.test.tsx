@@ -76,6 +76,10 @@ function insideElement(html: string, element: "aside" | "header") {
   return inside
 }
 
+function navOf(html: string) {
+  return /<nav[^>]*>(.*?)<\/nav>/.exec(html)?.[1] ?? ""
+}
+
 async function render(
   currentPath: string,
   {
@@ -114,13 +118,14 @@ async function currentLinks(currentPath: string) {
     .map(({ text, href, current }) => ({ text, href, current }))
 }
 
-test("the sidebar links to the panel, then to each section", async () => {
+test("the sidebar links to the panel, then to each section, then to the privacy policy", async () => {
   const { sidebar } = await render("/blocked-words")
 
   expect(links(sidebar).map(({ text, href }) => ({ text, href }))).toEqual([
     { text: "Shor Panel du staff", href: "/" },
     { text: "Mots interdits", href: "/blocked-words" },
     { text: "Journal d’audit", href: "/audit-log" },
+    { text: "Confidentialité", href: "/privacy" },
   ])
 })
 
@@ -196,8 +201,8 @@ test("a staff member who opens the moderation section also sees « Modération �
 })
 
 test("each section's link shows its icon before its name, hidden from assistive technologies", async () => {
-  const [, ...sections] = links(
-    (await render("/blocked-words", { opensModeration: true })).sidebar
+  const sections = links(
+    navOf((await render("/blocked-words", { opensModeration: true })).sidebar)
   )
 
   expect(sections.map(({ text, image }) => ({ text, image }))).toEqual([
@@ -221,13 +226,15 @@ test("the blocked words' link shows the count it is given after the section's na
   const countMarkup = renderToStaticMarkup(count)
   for (const currentPath of ["/blocked-words", "/audit-log"]) {
     const sections = links(
-      (
-        await render(currentPath, {
-          opensModeration: true,
-          blockedWordCount: count,
-        })
-      ).sidebar
-    ).slice(1)
+      navOf(
+        (
+          await render(currentPath, {
+            opensModeration: true,
+            blockedWordCount: count,
+          })
+        ).sidebar
+      )
+    )
 
     expect(
       sections.map(({ content }) => ({
@@ -269,13 +276,15 @@ test("the moderation section is current on its search and on every record", asyn
   expect(await currentLinks("/recordsx")).toEqual([])
 })
 
-test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then says what they are, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
+test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then says what they are, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone, then links to the privacy policy", async () => {
   const { sidebar } = await render("/blocked-words", {
     member: "Brynja la Rouge",
   })
   const foot = sidebar.slice(sidebar.indexOf("</nav>"))
 
-  expect(textOf(foot)).toBe("AutoClairSombreBrynja la RougeStaffSe déconnecter")
+  expect(textOf(foot)).toBe(
+    "AutoClairSombreBrynja la RougeStaffSe déconnecterConfidentialité"
+  )
   expect(/<div role="group" aria-label="Thème"/.test(foot)).toBe(true)
   expect(
     Array.from(
@@ -301,6 +310,26 @@ test("the sidebar's foot offers the theme toggle, on Auto until the browser read
       image: { drawing: drawing(<LogOut />), hidden: true },
     },
   ])
+})
+
+test("the sidebar's foot ends on a link to the privacy policy, below the staff member", async () => {
+  const { sidebar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+  })
+  const foot = sidebar.slice(sidebar.indexOf("</nav>"))
+
+  expect({
+    afterMember:
+      foot.indexOf("Confidentialité") > foot.indexOf("Brynja la Rouge"),
+    links: links(foot).map(({ text, href, current }) => ({
+      text,
+      href,
+      current,
+    })),
+  }).toEqual({
+    afterMember: true,
+    links: [{ text: "Confidentialité", href: "/privacy", current: undefined }],
+  })
 })
 
 test("the bar names the staff member, then shows a menu button with a hidden menu icon, named « Ouvrir le menu » to assistive technologies alone", async () => {

@@ -1,6 +1,6 @@
 # Personal data
 
-What the Admin Panel processes about people, why, where and for how long, and what the GDPR and Discord's terms ask of it before it stores more, as Gilles decided while grilling #27 on 2026-10-28. A change that starts or stops processing a personal datum updates this file in the same change (`CLAUDE.md`, **Security**). Every page below was read on 2026-10-28; a date after a URL is the page's own. Nobody on the project is a lawyer: the inferences are a developer's reading of the sources, worth checking with the CNIL or a lawyer before the store opens.
+What the Admin Panel processes about people, why, where and for how long, and what the GDPR and Discord's terms ask of it before it stores more, as Gilles decided while grilling #27 on 2026-10-28. A change that starts or stops processing a personal datum updates this file, and the privacy policy at `/privacy`, which says what **Today** says in French, with the date it shows, in the same change (`CLAUDE.md`, **Security**, **Privacy policy**). Every page below was read on 2026-10-28; a date after a URL is the page's own. Nobody on the project is a lawyer: the inferences are a developer's reading of the sources, worth checking with the CNIL or a lawyer before the store opens.
 
 ## What applies
 
@@ -20,7 +20,7 @@ What the panel processes on `main`, and with the moderation section that stores 
 - **What the logs and the alerts carry**: no member's ID, name or IP (`CLAUDE.md`, **What is never logged**).
 - **Who else touches it**: Vercel, which hosts the panel and keeps its runtime logs one hour (`CLAUDE.md`, **Log lines**), and Discord.
 
-Discord's §5a already applies, so the panel owes a privacy policy without any store (inferred): #186 publishes it at `/privacy`. ShorBot, the Bot (ADR 0003), is another Discord application, which owes one too and has no public page, so `/privacy` becomes the one policy of Shor's Discord applications: #186 covers the panel, and ShorBot's part comes with its first feature in production, from the record of its processing that ShorBot keeps in its own repository (Gilles, 2026-10-28). This file stays the panel's.
+Discord's §5a already applies, so the panel owes a privacy policy without any store (inferred): `/privacy` publishes it since #186, to anyone, with or without a session, and the login pages and the navigation link it. It says in French what this section says, for « Shor Panel » and « Shor Panel Dev », keeps a placeholder for whoever is responsible and where to write to them, and names no legal basis, both of which wait on « Who is responsible for the panel's personal data, and who answers requests? » (`docs/agents/open-questions.md`). Its link goes into the Developer Portal of both applications by hand (#341). ShorBot, the Bot (ADR 0003), is another Discord application, which owes one too and has no public page, so `/privacy` becomes the one policy of Shor's Discord applications: #186 covers the panel, and ShorBot's part comes with its first feature in production, from the record of its processing that ShorBot keeps in its own repository (Gilles, 2026-10-28). This file stays the panel's.
 
 ## Planned
 

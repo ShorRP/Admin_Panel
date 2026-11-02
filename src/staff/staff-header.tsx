@@ -45,6 +45,9 @@ type MemberRecord = { href: string; name: string }
 const MEMBER_LINK_CLASSES =
   "block min-w-0 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground"
 
+const PRIVACY_POLICY_LINK_CLASSES =
+  "self-start rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground"
+
 const BLOCKED_WORDS = {
   href: "/blocked-words",
   name: "Mots interdits",
@@ -112,6 +115,13 @@ export function StaffHeader({
             </div>
             <LogOutForm iconOnly />
           </div>
+          <Link
+            href="/privacy"
+            prefetch={false}
+            className={cn(PRIVACY_POLICY_LINK_CLASSES, "ml-1.5")}
+          >
+            Confidentialité
+          </Link>
         </div>
       </aside>
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
@@ -149,6 +159,14 @@ export function StaffHeader({
                   <MemberRole opensModeration={opensModeration} />
                 </div>
                 <LogOutForm />
+                <SheetClose
+                  nativeButton={false}
+                  role={undefined}
+                  render={<Link href="/privacy" prefetch={false} />}
+                  className={PRIVACY_POLICY_LINK_CLASSES}
+                >
+                  Confidentialité
+                </SheetClose>
               </SheetFooter>
             </SheetContent>
           </Sheet>

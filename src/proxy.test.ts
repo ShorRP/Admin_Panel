@@ -17,13 +17,14 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", SESSION_SECRET)
 })
 
-test("everything under /login and static files get through without the proxy", () => {
+test("everything under /login, the privacy policy and static files get through without the proxy", () => {
   for (const url of [
     "/login",
     "/login/callback?code=a-code&state=a-state",
     "/login/refused",
     "/login/failed",
     "/login/logged-out",
+    "/privacy",
     "/_next/static/chunks/main.js",
     "/_next/image?url=%2Flogo.png&w=64&q=75",
     "/favicon.ico",
@@ -34,7 +35,14 @@ test("everything under /login and static files get through without the proxy", (
 })
 
 test("any other route goes through the proxy", () => {
-  for (const url of ["/", "/blocked-words", "/audit-log", "/login-help"]) {
+  for (const url of [
+    "/",
+    "/blocked-words",
+    "/audit-log",
+    "/login-help",
+    "/privacy-notes",
+    "/privacy/archive",
+  ]) {
     expect(unstable_doesMiddlewareMatch({ config, url }), url).toBe(true)
   }
 })
