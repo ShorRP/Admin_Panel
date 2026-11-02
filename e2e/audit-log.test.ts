@@ -186,7 +186,7 @@ test("the time, the icon and the author's avatar of a row share one axis, the ro
   checkAccessibility,
 }) => {
   await discord.createAutoModerationRule(
-    newPanelRule(["mot0"]),
+    newPanelRule(blockedWordAction("block"), STAFF_ROLE_ID, ["mot0"]),
     addition("mot0")
   )
   discord.modifyMemberAs(
