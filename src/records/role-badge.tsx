@@ -1,6 +1,6 @@
 import { cn } from "cn"
 
-import { BADGE_CLASSES } from "./badge-classes"
+import { BADGE_CLASSES, BADGE_DOT_CLASSES } from "./badge-classes"
 import type { HighestRole } from "./role-hierarchy"
 
 export function RoleBadge({
@@ -15,7 +15,7 @@ export function RoleBadge({
       <span
         aria-hidden
         className={cn(
-          "size-1.5 shrink-0 rounded-full",
+          BADGE_DOT_CLASSES,
           color === null && "bg-muted-foreground"
         )}
         style={color === null ? undefined : { backgroundColor: color }}

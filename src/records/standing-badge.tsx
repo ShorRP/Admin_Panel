@@ -4,9 +4,9 @@ import { cn } from "cn"
 
 import { ParisTime } from "@/ui/paris-time"
 import type { AccountStanding } from "./account-standing"
-import { BADGE_CLASSES } from "./badge-classes"
+import { BADGE_CLASSES, BADGE_DOT_CLASSES } from "./badge-classes"
 
-const standingDot = cva("size-1.5 shrink-0 rounded-full", {
+const standingDot = cva(BADGE_DOT_CLASSES, {
   variants: {
     tone: {
       member: "bg-success",
