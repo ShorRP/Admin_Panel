@@ -112,6 +112,129 @@ test("a staff member reads the audit log, newest changes first, each beside its 
   await expect(newest.getByText("aldis", { exact: true })).toBeVisible()
 })
 
+const SAME_AXIS_TOLERANCE = 1
+
+async function boxOf(element: Locator) {
+  await expect(element).toBeVisible()
+  const box = await element.boundingBox()
+  if (box === null) {
+    throw new Error("The element has no box to measure.")
+  }
+  return box
+}
+
+async function verticalCentre(element: Locator) {
+  const { y, height } = await boxOf(element)
+  return y + height / 2
+}
+
+async function topOf(element: Locator) {
+  return (await boxOf(element)).y
+}
+
+async function bottomOf(element: Locator) {
+  const { y, height } = await boxOf(element)
+  return y + height
+}
+
+async function middleOf(row: Locator) {
+  const box = await boxOf(row)
+  const { top, bottom } = await row.evaluate((element) => ({
+    top: parseFloat(getComputedStyle(element).borderTopWidth),
+    bottom: parseFloat(getComputedStyle(element).borderBottomWidth),
+  }))
+  return box.y + top + (box.height - top - bottom) / 2
+}
+
+function cellsOf(row: Locator) {
+  const changed = row.locator("p").first().locator("xpath=..")
+  return {
+    time: row.locator("time").first(),
+    tile: row
+      .locator("span[aria-hidden]")
+      .filter({ has: row.page().locator("svg") }),
+    changed,
+    avatar: row.locator('[data-slot="avatar"]'),
+    author: row.getByText("aldis", { exact: true }),
+  }
+}
+
+async function expectOnOneAxis(
+  kind: string,
+  cells: Record<string, Locator>,
+  axis: number
+) {
+  for (const [name, cell] of Object.entries(cells)) {
+    expect(
+      Math.abs((await verticalCentre(cell)) - axis),
+      `the ${name} of the ${kind}'s row, against the axis at ${axis}`
+    ).toBeLessThanOrEqual(SAME_AXIS_TOLERANCE)
+  }
+}
+
+test("the time, the icon and the author's avatar of a row share one axis, the row's middle, on one line of text as on two, and on a phone they share a first line above what changed", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  await discord.createAutoModerationRule(
+    newPanelRule(["mot0"]),
+    addition("mot0")
+  )
+  discord.modifyMemberAs(
+    ALDIS.id,
+    LYRA.id,
+    { communication_disabled_until: inAnHour() },
+    "Insultes répétées"
+  )
+  const rows = {
+    "blocked word": page
+      .getByRole("listitem")
+      .filter({ hasText: "Ajout de « mot0 »" }),
+    sanction: page
+      .getByRole("listitem")
+      .filter({ hasText: "Exclusion temporaire jusqu’au" }),
+  }
+
+  await logIn(ALDIS)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/audit-log")
+  await expect(rows.sanction).toContainText(
+    "Compte : Lyra · Motif : Insultes répétées"
+  )
+  await expect(rows["blocked word"]).not.toContainText("Compte :")
+  await expect(rows.sanction.locator("img")).toBeVisible()
+  await checkAccessibility()
+
+  for (const [kind, row] of Object.entries(rows)) {
+    const { time, tile, changed, avatar, author } = cellsOf(row)
+    await expectOnOneAxis(
+      kind,
+      { time, tile, changed, avatar, author },
+      await middleOf(row)
+    )
+  }
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  for (const [kind, row] of Object.entries(rows)) {
+    const { time, tile, changed, avatar, author } = cellsOf(row)
+    await expectOnOneAxis(
+      kind,
+      { time, avatar, author },
+      await verticalCentre(tile)
+    )
+    const firstLine = [time, tile, avatar, author]
+    const firstLineBottom = Math.max(
+      ...(await Promise.all(firstLine.map(bottomOf)))
+    )
+    expect(
+      await topOf(changed),
+      `what changed in the ${kind}'s row, against the bottom of its first line`
+    ).toBeGreaterThanOrEqual(firstLineBottom)
+  }
+})
+
 const HELD_SCRIPT_MS = 1_000
 
 const HELD_SCRIPTS = "**/_next/static/chunks/*.js"

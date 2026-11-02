@@ -198,7 +198,7 @@ function ChangeRow({
         />
         <p
           title={change.memberName}
-          className="min-w-0 text-[0.8125rem] wrap-anywhere text-muted-foreground sm:truncate"
+          className="min-w-0 truncate text-[0.8125rem] text-muted-foreground"
         >
           {change.memberName}
         </p>
