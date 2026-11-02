@@ -6,9 +6,11 @@ import { connection } from "next/server"
 import { createDiscordApi } from "@/discord/discord-api"
 import { AccountSearchForm } from "@/records/account-search-form"
 import { AccountSearchFormSkeleton } from "@/records/account-search-form-skeleton"
-import { FoundAccounts } from "@/records/found-accounts"
+import { AccountsView } from "@/records/accounts-view"
 import { FoundAccountsSkeleton } from "@/records/found-accounts-skeleton"
-import { searchAccounts, searchedText } from "@/records/search-accounts"
+import { listAccounts } from "@/records/list-accounts"
+import { recordHref } from "@/records/record-href"
+import { searchedText } from "@/records/search-accounts"
 import { requireModerationAccess } from "@/staff/require-staff-member"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { PageHeader } from "@/ui/page-header"
@@ -38,7 +40,7 @@ export default function RecordsPage({ searchParams }: PageProps<"/records">) {
             <AccountSearchFormWithQuery searchParams={searchParams} />
           </Suspense>
           <SuspenseWithSkeleton skeleton={<FoundAccountsSkeleton />}>
-            <FoundAccountsFromDiscord searchParams={searchParams} />
+            <AccountsFromDiscord searchParams={searchParams} />
           </SuspenseWithSkeleton>
         </div>
       </main>
@@ -53,16 +55,16 @@ async function AccountSearchFormWithQuery({
   return <AccountSearchForm query={searchedText(query)} />
 }
 
-async function FoundAccountsFromDiscord({
+async function AccountsFromDiscord({
   searchParams,
 }: Pick<PageProps<"/records">, "searchParams">) {
   await connection()
   const discord = createDiscordApi()
   await requireModerationAccess(discord)
-  const { query } = await searchParams
-  const search = await searchAccounts(discord, query)
-  if (search.kind === "record") {
-    redirect(`/records/${search.userId}`)
+  const { query, page } = await searchParams
+  const list = await listAccounts(discord, { query, page })
+  if (list.kind === "record") {
+    redirect(recordHref(list.userId))
   }
-  return <FoundAccounts search={search} />
+  return <AccountsView list={list} />
 }

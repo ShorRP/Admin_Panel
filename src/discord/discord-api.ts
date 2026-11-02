@@ -13,6 +13,7 @@ import {
   type APIUser,
   type RESTGetAPIAuditLogQuery,
   type RESTGetAPIGuildBansQuery,
+  type RESTGetAPIGuildMembersQuery,
   type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPatchAPIGuildMemberJSONBody,
@@ -62,6 +63,7 @@ export type DiscordApi = {
   searchMembers(
     query: RESTGetAPIGuildMembersSearchQuery
   ): Promise<APIGuildMember[]>
+  listMembers(query: MembersQuery): Promise<APIGuildMember[]>
   getUser(userId: Snowflake): Promise<APIUser | null>
   getBan(userId: Snowflake): Promise<APIBan | null>
   listBans(query: BansQuery): Promise<APIBan[]>
@@ -69,6 +71,8 @@ export type DiscordApi = {
 }
 
 export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
+
+export type MembersQuery = Pick<RESTGetAPIGuildMembersQuery, "after" | "limit">
 
 export type Guild = Pick<APIGuild, "id" | "owner_id" | "roles">
 
@@ -261,6 +265,14 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
       return await call<APIGuildMember[]>({
         method: "GET",
         route: ROUTES.guildMembersSearch,
+        query: { ...query },
+      })
+    },
+
+    async listMembers(query) {
+      return await call<APIGuildMember[]>({
+        method: "GET",
+        route: ROUTES.guildMembers,
         query: { ...query },
       })
     },

@@ -365,6 +365,21 @@ test("listBans reads the bans after a user, up to its limit", async () => {
   )
 })
 
+test("listMembers reads the members after a user, up to its limit", async () => {
+  const { fetch, requests } = answering(Response.json([MEMBER]))
+
+  expect(
+    await restDiscordApi(ENV, fetch).listMembers({
+      after: USER_ID,
+      limit: 1000,
+    })
+  ).toEqual([MEMBER])
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/members?after=${USER_ID}&limit=1000`
+  )
+})
+
 test("listRoles reads the Discord server's roles", async () => {
   const { fetch, requests } = answering(Response.json([]))
 

@@ -9,6 +9,7 @@ import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test, type Locator, type Page } from "./fixtures"
+import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -247,34 +248,6 @@ test("the time, the icon and the author's avatar of a row share one axis, the ro
     )
   }
 })
-
-const HELD_SCRIPT_MS = 1_000
-
-const HELD_SCRIPTS = "**/_next/static/chunks/*.js"
-
-async function logOutWithScriptsHeld(page: Page, links: Locator[]) {
-  const linksVisibleOnRelease: boolean[] = []
-  const holdScript: Parameters<Page["route"]>[1] = async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, HELD_SCRIPT_MS))
-    linksVisibleOnRelease.push(
-      (await Promise.all(links.map((link) => link.isVisible()))).every(Boolean)
-    )
-    await route.continue()
-  }
-  await page.route(HELD_SCRIPTS, holdScript)
-  await page
-    .getByRole("complementary")
-    .getByRole("button", { name: "Se déconnecter" })
-    .click()
-  await expect(page).toHaveURL("/login/logged-out")
-  expect(linksVisibleOnRelease[0]).toBe(true)
-  expect(
-    (await page.context().cookies()).filter(
-      ({ name }) => name === "__Host-session"
-    )
-  ).toEqual([])
-  await page.unroute(HELD_SCRIPTS, holdScript)
-}
 
 test("a staff member logs out from the audit log, with both pagination links still in view while the next page's script loads, and no page is prefetched", async ({
   page,

@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import type { FoundAccount } from "./found-account"
 import { FoundAccounts } from "./found-accounts"
-import type { FoundAccount } from "./search-accounts"
 
 const ALDIS: FoundAccount = {
   id: "1400000000000000001",

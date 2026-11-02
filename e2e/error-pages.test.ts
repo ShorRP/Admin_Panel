@@ -2,15 +2,12 @@ import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
+import { minifiedReactError } from "./minified-react-error"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 const REPORT_CHANNEL_URL =
   "https://discord.com/channels/1545540661774913626/1550835033311412224"
-
-function minifiedReactError(code: number) {
-  return `Minified React error #${code}; visit https://react.dev/errors/${code} for the full message or use the non-minified dev environment for full errors and additional helpful warnings.`
-}
 
 test.use({
   discordState: { members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }] },

@@ -4,6 +4,7 @@ import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
+import { frenchNumber } from "@/ui/french-number"
 import { TextLink } from "@/ui/text-link"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import {
@@ -17,7 +18,7 @@ import { BlockedWordActionDialog } from "./blocked-word-action-dialog"
 import { BlockedWordFilterForm } from "./blocked-word-filter-form"
 import { LIST_HEADER_CLASSES } from "./blocked-word-list-layout"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
-import { counted, frenchNumber, quoted } from "./french-text"
+import { counted, quoted } from "./french-text"
 import { WORD_GRID_CLASSES, WORD_TILE_CLASSES } from "./word-tiles"
 import type { WriteResult } from "./write-result"
 

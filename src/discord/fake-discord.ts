@@ -31,6 +31,7 @@ import type {
   DmChannel,
   Guild,
   MemberChanges,
+  MembersQuery,
   Message,
   MessageBody,
 } from "./discord-api"
@@ -99,6 +100,8 @@ const DEFAULT_OWNER_ID = "1000000000000000000"
 const DEFAULT_AUDIT_LOG_LIMIT = 50
 
 const DEFAULT_SEARCH_LIMIT = 1
+
+const DEFAULT_MEMBERS_LIMIT = 1
 
 const DEFAULT_BANS_LIMIT = 1000
 
@@ -682,6 +685,17 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
             startsWithIgnoringCase(nick ?? null, query)
         )
         .slice(0, limit ?? DEFAULT_SEARCH_LIMIT)
+    )
+  }
+
+  listMembers({ after, limit }: MembersQuery) {
+    return this.answer("listMembers", () =>
+      [...this.members.values()]
+        .filter(
+          ({ user }) => after === undefined || BigInt(user.id) > BigInt(after)
+        )
+        .toSorted((left, right) => byId(left.user, right.user))
+        .slice(0, limit ?? DEFAULT_MEMBERS_LIMIT)
     )
   }
 
