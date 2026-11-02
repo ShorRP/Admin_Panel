@@ -610,6 +610,20 @@ export function describeDiscordApiContract(
       })
     })
 
+    test("every role of the Discord server carries a primary color, a whole number from 0, which is no color, to 0xffffff", async () => {
+      const { discord } = connected()
+
+      const roles = await discord.listRoles()
+
+      expect(roles.length).toBeGreaterThan(0)
+      for (const { name, colors } of roles) {
+        const color = colors.primary_color
+        expect(Number.isInteger(color), name).toBe(true)
+        expect(color, name).toBeGreaterThanOrEqual(0)
+        expect(color, name).toBeLessThanOrEqual(0xffffff)
+      }
+    })
+
     test("the Discord server names its owner, a member, and holds its roles, @everyone included", async () => {
       const { discord } = connected()
 
