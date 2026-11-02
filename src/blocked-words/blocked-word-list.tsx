@@ -1,9 +1,10 @@
 import { ViewTransition } from "react"
-import Link from "next/link"
 import { cn } from "cn"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/button"
+import { EmptyListFrame } from "@/ui/empty-list-frame"
+import { TextLink } from "@/ui/text-link"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { BlockedWordFilterForm } from "./blocked-word-filter-form"
 import { LIST_HEADER_CLASSES } from "./blocked-word-list-layout"
@@ -41,21 +42,17 @@ export function BlockedWordList({
             <p className="text-[0.8125rem] text-muted-foreground">{count}</p>
           )}
           {query !== null && (
-            <Link
-              href="/blocked-words"
-              prefetch={false}
-              className="text-[0.8125rem] underline decoration-input underline-offset-3 hover:decoration-primary"
-            >
+            <TextLink href="/blocked-words" className="text-[0.8125rem]">
               Tout afficher
-            </Link>
+            </TextLink>
           )}
         </div>
         <BlockedWordFilterForm key={query ?? ""} query={query} />
       </div>
       {words.length === 0 && (
-        <p className="mt-3.5 rounded-xl border border-dashed border-input px-5 py-7 text-center text-muted-foreground">
-          {nothingShown}
-        </p>
+        <EmptyListFrame className="mt-3.5">
+          <p>{nothingShown}</p>
+        </EmptyListFrame>
       )}
       <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>
         {words.map((word) => (

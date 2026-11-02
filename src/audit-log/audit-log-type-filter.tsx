@@ -1,13 +1,9 @@
 import Link from "next/link"
 import { cva } from "class-variance-authority"
-import { cn } from "cn"
 
+import { TextLink } from "@/ui/text-link"
 import { auditLogHref } from "./audit-log-href"
-import {
-  TEXT_LINK_CLASSES,
-  TYPE_FILTER_CLASSES,
-  TYPE_LINKS_CLASSES,
-} from "./audit-log-layout"
+import { TYPE_FILTER_CLASSES, TYPE_LINKS_CLASSES } from "./audit-log-layout"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
 
 const LABELS: Record<ChangeType, string> = {
@@ -64,12 +60,8 @@ export function AuditLogTypeFilter({ type }: { type: ChangeType | null }) {
 
 export function ResetLink() {
   return (
-    <Link
-      href={auditLogHref({ type: null })}
-      prefetch={false}
-      className={cn("text-[0.8125rem]", TEXT_LINK_CLASSES)}
-    >
+    <TextLink href={auditLogHref({ type: null })} className="text-[0.8125rem]">
       Réinitialiser
-    </Link>
+    </TextLink>
   )
 }
