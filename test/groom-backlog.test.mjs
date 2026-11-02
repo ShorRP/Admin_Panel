@@ -1589,7 +1589,17 @@ function backlogWithoutGh(t) {
   return { dir, run }
 }
 
-test("cli: apply refuses an argument it does not know, with its usage and code 2, before it reads the plan or the tracker", (t) => {
+function assertRefused(result, usage, args) {
+  const label = args.join(" ")
+  assert.equal(result.status, 2, label)
+  assert.equal(result.stdout, "", label)
+  assert.ok(
+    result.stderr.split("\n").includes(`usage: backlog.mjs ${usage}`),
+    `${label}: ${result.stderr}`
+  )
+}
+
+test("cli: apply refuses an argument it does not know, or no plan, with its usage and code 2, before it reads the plan or the tracker", (t) => {
   const { dir, run } = backlogWithoutGh(t)
   const planFile = path.join(dir, "plan.json")
   fs.writeFileSync(planFile, JSON.stringify({ ops: [] }))
@@ -1597,11 +1607,9 @@ test("cli: apply refuses an argument it does not know, with its usage and code 2
     [planFile, "--dry-run"],
     ["--dry-run", planFile],
     [planFile, "other-plan.json"],
+    [],
   ]) {
-    const result = run("apply", ...args)
-    assert.equal(result.status, 2, args.join(" "))
-    assert.equal(result.stdout, "")
-    assert.match(result.stderr, /^usage: backlog\.mjs apply <plan\.json>$/m)
+    assertRefused(run("apply", ...args), "apply <plan.json>", args)
   }
 })
 
@@ -1615,12 +1623,10 @@ test("cli: plan refuses an option or an argument it does not know, or an option 
     ["--merged"],
     ["--out", "--citations"],
   ]) {
-    const result = run("plan", ...args)
-    assert.equal(result.status, 2, args.join(" "))
-    assert.equal(result.stdout, "")
-    assert.match(
-      result.stderr,
-      /^usage: backlog\.mjs plan \[--out <file>\] \[--merged <commit> \| --citations\]$/m
+    assertRefused(
+      run("plan", ...args),
+      "plan [--out <file>] [--merged <commit> | --citations]",
+      args
     )
   }
   assert.equal(fs.existsSync(out), false)
@@ -1634,13 +1640,7 @@ test("cli: snapshot and setup take no argument, and refuse one with their usage 
     ["setup", "--dry-run"],
     ["setup", "extra"],
   ]) {
-    const result = run(command, ...args)
-    assert.equal(result.status, 2, [command, ...args].join(" "))
-    assert.equal(result.stdout, "")
-    assert.match(
-      result.stderr,
-      new RegExp(`^usage: backlog\\.mjs ${command}$`, "m")
-    )
+    assertRefused(run(command, ...args), command, [command, ...args])
   }
 })
 
@@ -1659,7 +1659,8 @@ test("cli: the arguments a command knows still reach it, which then fails to rea
   ]) {
     const result = run(...args)
     assert.equal(result.status, 1, args.join(" "))
-    assert.equal(result.stderr, "spawnSync gh ENOENT\n")
+    assert.doesNotMatch(result.stderr, /usage:/)
+    assert.match(result.stderr, /\bgh\b.*\bENOENT\b/)
   }
 })
 

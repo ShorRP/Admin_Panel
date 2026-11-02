@@ -468,7 +468,7 @@ const commands = {
   },
   apply: {
     usage: 'apply <plan.json>',
-    positionals: ['<plan.json>'],
+    operands: ['<plan.json>'],
     run({ positionals: [planFile] }) {
       const { ops } = JSON.parse(fs.readFileSync(planFile, 'utf8'))
       const snapshot = takeSnapshot()
@@ -502,12 +502,12 @@ const commands = {
   },
 }
 
-function parse({ options = {}, positionals: names = [] }, args) {
-  const parsed = parseArgs({ args, options, allowPositionals: names.length > 0, strict: true })
-  const [extra] = parsed.positionals.slice(names.length)
+function parseArguments({ options = {}, operands = [] }, args) {
+  const { values, positionals } = parseArgs({ args, options, allowPositionals: true, strict: true })
+  const [extra] = positionals.slice(operands.length)
   if (extra !== undefined) throw new Error(`Unexpected argument '${extra}'`)
-  if (parsed.positionals.length < names.length) throw new Error(`Missing ${names[parsed.positionals.length]}`)
-  return parsed
+  if (positionals.length < operands.length) throw new Error(`Missing ${operands[positionals.length]}`)
+  return { values, positionals }
 }
 
 function main([name, ...args]) {
@@ -519,7 +519,7 @@ function main([name, ...args]) {
   const command = commands[name]
   let parsed
   try {
-    parsed = parse(command, args)
+    parsed = parseArguments(command, args)
   } catch (error) {
     console.error(error.message)
     console.error(`usage: backlog.mjs ${command.usage}`)
