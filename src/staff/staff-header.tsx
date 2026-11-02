@@ -25,6 +25,7 @@ import {
 } from "@/ui/sheet"
 import { Skeleton } from "@/ui/skeleton"
 import { LogOutForm } from "./log-out-form"
+import { PrivacyPolicyLink } from "./privacy-policy-link"
 import { ShorLogo } from "./shor-logo"
 import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
@@ -44,9 +45,6 @@ type MemberRecord = { href: string; name: string }
 
 const MEMBER_LINK_CLASSES =
   "block min-w-0 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-
-const PRIVACY_POLICY_LINK_CLASSES =
-  "self-start rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground"
 
 const BLOCKED_WORDS = {
   href: "/blocked-words",
@@ -115,13 +113,7 @@ export function StaffHeader({
             </div>
             <LogOutForm iconOnly />
           </div>
-          <Link
-            href="/privacy"
-            prefetch={false}
-            className={cn(PRIVACY_POLICY_LINK_CLASSES, "ml-1.5")}
-          >
-            Confidentialité
-          </Link>
+          <PrivacyPolicyLink className="ml-1.5 self-start" />
         </div>
       </aside>
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
@@ -162,11 +154,8 @@ export function StaffHeader({
                 <SheetClose
                   nativeButton={false}
                   role={undefined}
-                  render={<Link href="/privacy" prefetch={false} />}
-                  className={PRIVACY_POLICY_LINK_CLASSES}
-                >
-                  Confidentialité
-                </SheetClose>
+                  render={<PrivacyPolicyLink className="self-start" />}
+                />
               </SheetFooter>
             </SheetContent>
           </Sheet>

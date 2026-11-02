@@ -50,9 +50,9 @@ test("the privacy policy opens on the public pages' overline, its heading, what 
       "Panel du staff · Skyrim Roleplay",
       "Politique de confidentialité",
       "Ce que le panel du staff de Shor lit, garde et écrit sur les comptes Discord, pourquoi, combien de temps, qui le voit, et comment demander à le corriger ou à l’effacer.",
-      "Mise à jour le 2 novembre 2026.",
+      "Mise à jour le 2 nov. 2026.",
     ],
-    updated: ["2026-11-02", "2 novembre 2026"],
+    updated: ["2026-11-02", "2 nov. 2026"],
     rule: true,
   })
 })
@@ -140,19 +140,23 @@ test("the privacy policy names no one responsible yet, and sends a request to Sh
   )
 })
 
-test("the privacy policy's footer marks its own link current", () => {
+test("the privacy policy's footer names the panel, which is for anyone to read here, and marks its own link current", () => {
   const footer = /<footer[^>]*>(.*?)<\/footer>/.exec(policy())?.[1] ?? ""
 
-  expect(
-    Array.from(
+  expect({
+    note: /<p[^>]*>([^<]*)<\/p>/.exec(footer)?.[1],
+    links: Array.from(
       footer.matchAll(/<a([^>]*)>([^<]*)/g),
       ([, attributes = "", text]) => ({
         text,
         current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
       })
-    )
-  ).toEqual([
-    { text: "Confidentialité", current: "page" },
-    { text: "shor-rp.fr", current: undefined },
-  ])
+    ),
+  }).toEqual({
+    note: "Panel du staff de Shor",
+    links: [
+      { text: "Confidentialité", current: "page" },
+      { text: "shor-rp.fr", current: undefined },
+    ],
+  })
 })

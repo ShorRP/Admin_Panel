@@ -20,7 +20,7 @@ export function LoginNotice({
   actions: ReactNode
 }) {
   return (
-    <PublicPageFrame>
+    <PublicPageFrame note="Réservé au staff de Shor">
       <main className="flex flex-1 items-center py-12">
         <div className="flex max-w-100 flex-col gap-5.5">
           <ShorLogo className="h-12 w-11" />

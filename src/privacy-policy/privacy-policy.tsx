@@ -4,9 +4,16 @@ import { PublicPageFrame } from "@/staff/public-page-frame"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { PageHeader } from "@/ui/page-header"
 
+const LAST_UPDATED = "2026-11-02"
+
+const lastUpdatedDay = new Intl.DateTimeFormat("fr-FR", {
+  dateStyle: "medium",
+  timeZone: "Europe/Paris",
+})
+
 export function PrivacyPolicy() {
   return (
-    <PublicPageFrame privacyPolicyCurrent>
+    <PublicPageFrame note="Panel du staff de Shor" privacyPolicyCurrent>
       <main className="flex flex-1 flex-col gap-8 py-12">
         <div className="flex flex-col gap-5.5">
           <PageHeader
@@ -18,7 +25,11 @@ export function PrivacyPolicy() {
             demander à le corriger ou à l’effacer.
           </PageHeader>
           <p className="text-sm text-muted-foreground">
-            Mise à jour le <time dateTime="2026-11-02">2 novembre 2026</time>.
+            Mise à jour le{" "}
+            <time dateTime={LAST_UPDATED}>
+              {lastUpdatedDay.format(new Date(LAST_UPDATED))}
+            </time>
+            .
           </p>
           <OrnamentRule leadingLine />
         </div>
@@ -28,8 +39,8 @@ export function PrivacyPolicy() {
             serveur Discord de Shor : ses mots interdits, son journal d’audit et
             les sanctions des comptes. Il agit sur Discord par son application
             Discord, « Shor Panel ». Cette politique couvre aussi « Shor Panel
-            Dev », la seconde application avec laquelle le staff teste le panel,
-            sur un serveur Discord de test.
+            Dev », la seconde application sur laquelle le panel est développé et
+            essayé, sur un serveur Discord de test.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel garde">
@@ -60,7 +71,10 @@ export function PrivacyPolicy() {
               pour le staff qui modère, la liste des comptes : chaque membre du
               serveur Discord et chaque compte banni, avec son nom, son avatar,
               sa situation sur le serveur, la fin de son exclusion temporaire,
-              et le nom et la couleur du rôle le plus haut d’un membre ;
+              et le nom et la couleur du rôle le plus haut d’un membre, ainsi
+              que les rôles du serveur Discord, la date d’arrivée de chaque
+              membre sur le serveur et l’âge de chaque compte Discord, par
+              lesquels le staff qui modère trie et filtre cette liste ;
             </li>
             <li>
               pour le staff qui modère, la fiche d’un compte : ses noms, son
@@ -107,7 +121,7 @@ export function PrivacyPolicy() {
               une sanction peut envoyer au membre un message privé qui la
               reprend avec son motif : il reste dans la conversation entre
               l’application du panel et le membre, tant que l’application ne
-              l’efface pas, et le membre ne peut pas l’effacer.
+              l’efface pas.
             </li>
           </PolicyList>
         </PolicySection>
@@ -132,7 +146,9 @@ export function PrivacyPolicy() {
             Discord, où vivent les données que le panel lit et écrit, et Vercel,
             qui héberge le panel. Le panel n’écrit dans ses journaux et ses
             alertes ni l’ID, ni le nom, ni l’adresse IP d’un membre, et Vercel
-            garde ces journaux une heure.
+            garde ces journaux une heure. Comme tout hébergeur, Vercel reçoit
+            l’adresse IP de chaque visiteur, et son pare-feu compte les requêtes
+            de chaque adresse pour en limiter le nombre.
           </p>
         </PolicySection>
         <PolicySection title="Tes droits">

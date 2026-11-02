@@ -40,6 +40,7 @@ test("a visitor without a session opens the privacy policy, in French", async ({
 
 test("a visitor reaches the privacy policy from a login page's footer, which marks its link current there", async ({
   page,
+  checkAccessibility,
 }) => {
   const privacyLink = page
     .getByRole("contentinfo")
@@ -47,16 +48,19 @@ test("a visitor reaches the privacy policy from a login page's footer, which mar
 
   await page.goto("/login/logged-out")
   await expect(privacyLink).not.toHaveAttribute("aria-current")
+  await checkAccessibility()
   await privacyLink.click()
 
   await expect(page).toHaveURL("/privacy")
   await expect(policyHeading(page)).toBeVisible()
   await expect(privacyLink).toHaveAttribute("aria-current", "page")
+  await checkAccessibility()
 })
 
 test("a staff member reaches the privacy policy from the sidebar", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -68,6 +72,7 @@ test("a staff member reaches the privacy policy from the sidebar", async ({
 
   await expect(page).toHaveURL("/privacy")
   await expect(policyHeading(page)).toBeVisible()
+  await checkAccessibility()
 })
 
 test.describe("on a 360 px screen", () => {
@@ -76,6 +81,7 @@ test.describe("on a 360 px screen", () => {
   test("a staff member reaches the privacy policy from the menu, which closes", async ({
     page,
     logIn,
+    checkAccessibility,
   }) => {
     const menu = page.getByRole("dialog", { name: "Menu" })
 
@@ -92,5 +98,6 @@ test.describe("on a 360 px screen", () => {
     await expect(page).toHaveURL("/privacy")
     await expect(menu).toHaveCount(0)
     await expect(policyHeading(page)).toBeVisible()
+    await checkAccessibility()
   })
 })

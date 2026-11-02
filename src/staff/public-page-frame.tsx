@@ -1,17 +1,16 @@
 import type { ReactNode } from "react"
-import Link from "next/link"
 import { ExternalLink } from "lucide-react"
 
+import { PrivacyPolicyLink } from "./privacy-policy-link"
 import { ShorLogo } from "./shor-logo"
 import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
-const FOOTER_LINK_CLASSES =
-  "inline-flex items-center gap-1.25 transition-colors hover:text-foreground"
-
 export function PublicPageFrame({
+  note,
   privacyPolicyCurrent = false,
   children,
 }: {
+  note: string
   privacyPolicyCurrent?: boolean
   children: ReactNode
 }) {
@@ -28,21 +27,14 @@ export function PublicPageFrame({
       </div>
       {children}
       <footer className="flex flex-wrap justify-between gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        <p>Réservé au staff de Shor</p>
+        <p>{note}</p>
         <div className="flex gap-4">
-          <Link
-            href="/privacy"
-            prefetch={false}
-            aria-current={privacyPolicyCurrent ? "page" : undefined}
-            className={FOOTER_LINK_CLASSES}
-          >
-            Confidentialité
-          </Link>
+          <PrivacyPolicyLink current={privacyPolicyCurrent} />
           <a
             href="https://shor-rp.fr"
             target="_blank"
             rel="noopener noreferrer"
-            className={FOOTER_LINK_CLASSES}
+            className="inline-flex items-center gap-1.25 transition-colors hover:text-foreground"
           >
             shor-rp.fr
             <ExternalLink aria-hidden className="size-3" />
