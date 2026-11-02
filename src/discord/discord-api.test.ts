@@ -300,21 +300,6 @@ test("getAuditLog reads the entries the query asks for", async () => {
   )
 })
 
-test("searchMembers sends its query and its limit", async () => {
-  const { fetch, requests } = answering(Response.json([MEMBER]))
-
-  const found = await restDiscordApi(ENV, fetch).searchMembers({
-    query: "gil é",
-    limit: 26,
-  })
-
-  expect(found).toEqual([MEMBER])
-  expect(requests[0]?.method).toBe("GET")
-  expect(requests[0]?.url).toBe(
-    `https://discord.com/api/v10/guilds/${GUILD_ID}/members/search?query=gil+%C3%A9&limit=26`
-  )
-})
-
 test("getUser reads a user by ID", async () => {
   const { fetch, requests } = answering(Response.json(MEMBER.user))
 

@@ -9,11 +9,11 @@ import { ParisHoursNote } from "./paris-hours-note"
 const COUNT_ID = "found-accounts-count"
 
 export function AccountList({ list }: { list: AccountListPage }) {
-  const { accounts, page, pages } = list
+  const { accounts, filters, page, pages } = list
   if (accounts.length === 0) {
     return (
       <EmptyListFrame>
-        <p>Aucun compte à afficher.</p>
+        <p>Aucun compte ne correspond à ta recherche.</p>
       </EmptyListFrame>
     )
   }
@@ -22,7 +22,7 @@ export function AccountList({ list }: { list: AccountListPage }) {
       <Overline id={COUNT_ID}>{ranksOf(list)}</Overline>
       <AccountRows accounts={accounts} labelledBy={COUNT_ID} />
       <ParisHoursNote accounts={accounts} />
-      <AccountPagination page={page} pages={pages} />
+      <AccountPagination filters={filters} page={page} pages={pages} />
     </div>
   )
 }

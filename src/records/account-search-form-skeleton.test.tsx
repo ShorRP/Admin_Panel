@@ -11,6 +11,14 @@ function status(html: string) {
   }
 }
 
+test("the skeleton of the search form draws the label and the field of the search, then a label and a select for each of the six choices, then the button", () => {
+  const bars = renderToStaticMarkup(<AccountSearchFormSkeleton />).match(
+    /data-slot="skeleton"/g
+  )
+
+  expect(bars).toHaveLength(2 + 6 * 2 + 1)
+})
+
 test("the skeleton of the search form is a status that says, to assistive technologies alone, that it is loading", () => {
   expect(status(renderToStaticMarkup(<AccountSearchFormSkeleton />))).toEqual({
     isStatus: true,

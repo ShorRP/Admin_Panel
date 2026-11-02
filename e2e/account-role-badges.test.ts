@@ -69,7 +69,7 @@ test.use({
   },
 })
 
-const RANKS = "1–9 sur 9"
+const RANKS = "1–8 sur 8"
 
 function rowOf(page: Page, username: string) {
   return page

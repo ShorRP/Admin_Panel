@@ -113,3 +113,24 @@ for (const { limit, within, beyond } of LIMITS) {
     expect(await discord.listAutoModerationRules()).toEqual([created])
   })
 }
+
+test("the fake reads a member's arrival as given, a member given none as arrived at a default date, and a member given a null one as having none", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      { user: MEMBER, joined_at: "2026-03-14T09:26:53.589000+00:00" },
+      { user: OWNER },
+      { user: OUTSIDER, joined_at: null },
+    ],
+  })
+
+  const members = await discord.listMembers({ limit: 10 })
+
+  expect(
+    members.map(({ user, joined_at }) => [user.username, joined_at])
+  ).toEqual([
+    ["outsider", null],
+    ["owner", "2026-01-01T00:00:00.000000+00:00"],
+    ["member", "2026-03-14T09:26:53.589000+00:00"],
+    ["Shor Panel", "2026-01-01T00:00:00.000000+00:00"],
+  ])
+})

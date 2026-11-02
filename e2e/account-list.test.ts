@@ -7,7 +7,7 @@ import { minifiedReactError } from "./minified-react-error"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
-const TOTAL = 202
+const TOTAL = 201
 
 function numbered(prefix: string, count: number, firstId: string) {
   return Array.from({ length: count }, (_, index) => ({
@@ -41,8 +41,12 @@ test.use({
   },
 })
 
-function ranks(first: number, last: number) {
-  return `${first}–${last} sur ${TOTAL}`
+const SENT_EMPTY = "&role=&standing=&joined=&created=&bots=&sort="
+
+function ranks(first: number, last: number, total = TOTAL) {
+  return first === last
+    ? `${first} sur ${total}`
+    : `${first}–${last} sur ${total}`
 }
 
 test("a staff member who moderates reads every account, 25 a page, without searching, then goes to the next page, to a page number, to the previous page and to the last, the URL following the page", async ({
@@ -108,12 +112,9 @@ test("a staff member who moderates reads every account, 25 a page, without searc
 
   await pagination.getByRole("link", { name: "Page 9", exact: true }).click()
   await expect(page).toHaveURL("/records?page=9")
-  await expect(rows(ranks(201, 202))).toHaveCount(2)
-  await expect(rows(ranks(201, 202)).nth(0)).toHaveAccessibleName(
+  await expect(rows(ranks(201, 201))).toHaveCount(1)
+  await expect(rows(ranks(201, 201)).nth(0)).toHaveAccessibleName(
     /^exile-039\s*@exile-039\s*Compte banni$/
-  )
-  await expect(rows(ranks(201, 202)).nth(1)).toHaveAccessibleName(
-    /^Shor Panel\s*@Shor Panel\s*Membre du serveur$/
   )
   await expect(current).toHaveText("Page 9")
   await expect(
@@ -154,7 +155,7 @@ test("past 7 pages, the navigation keeps the first and the last page, the curren
   await checkAccessibility()
 })
 
-test("a page that is no page of the list shows the first, whatever it is, and a search by name still shows its results, an ID or a mention its record", async ({
+test("a page that is no page of the list shows the first, whatever it is, and a search by name shows its results counted and paged like the list, an ID or a mention its record", async ({
   page,
   logIn,
   checkAccessibility,
@@ -176,10 +177,8 @@ test("a page that is no page of the list shows the first, whatever it is, and a 
   await expect(main.getByRole("list", { name: ranks(26, 50) })).toBeVisible()
   await field.fill("compte-00")
   await page.getByRole("button", { name: "Chercher" }).click()
-  await expect(page).toHaveURL("/records?query=compte-00")
-  await expect(
-    main.getByRole("list", { name: "10 comptes commencent par « compte-00 »" })
-  ).toBeVisible()
+  await expect(page).toHaveURL(`/records?query=compte-00${SENT_EMPTY}`)
+  await expect(main.getByRole("list", { name: ranks(1, 10, 10) })).toBeVisible()
   await expect(
     main.getByRole("navigation", { name: "Pages des comptes" })
   ).toHaveCount(0)

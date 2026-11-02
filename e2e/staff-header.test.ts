@@ -508,7 +508,7 @@ test.describe("for a staff member who moderates", () => {
 
     await page.goto("/records")
     await page.waitForLoadState()
-    await expect(page.getByLabel("Compte")).toBeVisible()
+    await expect(page.getByLabel("Compte", { exact: true })).toBeVisible()
     await expect(blockedWords).toHaveAccessibleName("Mots interdits")
     expect(await discord.listAutoModerationRules()).toEqual([])
     await checkAccessibility()

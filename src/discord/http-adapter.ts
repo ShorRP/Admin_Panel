@@ -43,18 +43,6 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     },
     {
       method: "GET",
-      route: ROUTES.guildMembersSearch,
-      answer: (request) => {
-        const search = new URL(request.url).searchParams
-        const limit = search.get("limit")
-        return api.searchMembers({
-          query: search.get("query") ?? "",
-          ...(limit === null ? {} : { limit: Number(limit) }),
-        })
-      },
-    },
-    {
-      method: "GET",
       route: ROUTES.guildMembers,
       answer: (request) =>
         api.listMembers(pageQuery(new URL(request.url).searchParams)),

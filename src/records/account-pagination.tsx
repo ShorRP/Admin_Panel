@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { buttonVariants } from "@/ui/button"
 import { TextLink } from "@/ui/text-link"
+import type { AccountListFilters } from "./account-list-filters"
 import { accountListHref } from "./account-list-href"
 import { GAP, pageNumbersOf } from "./page-numbers"
 
@@ -11,9 +12,11 @@ const NUMBER_CLASSES =
   "inline-flex min-h-6 min-w-6 items-center justify-center px-1 text-sm"
 
 export function AccountPagination({
+  filters,
   page,
   pages,
 }: {
+  filters: AccountListFilters
   page: number
   pages: number
 }) {
@@ -27,7 +30,7 @@ export function AccountPagination({
     >
       {page > 1 && (
         <Link
-          href={accountListHref(page - 1)}
+          href={accountListHref(filters, page - 1)}
           prefetch={false}
           className={buttonVariants({ variant: "outline" })}
         >
@@ -57,7 +60,7 @@ export function AccountPagination({
                 </span>
               ) : (
                 <TextLink
-                  href={accountListHref(entry)}
+                  href={accountListHref(filters, entry)}
                   className={NUMBER_CLASSES}
                 >
                   <span className="sr-only">Page </span>
@@ -70,7 +73,7 @@ export function AccountPagination({
       </ol>
       {page < pages && (
         <Link
-          href={accountListHref(page + 1)}
+          href={accountListHref(filters, page + 1)}
           prefetch={false}
           className={buttonVariants({
             variant: "outline",

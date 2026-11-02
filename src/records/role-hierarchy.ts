@@ -16,11 +16,20 @@ export function rolesByHierarchy<T extends { id: Snowflake; position: number }>(
   )
 }
 
+export function highestRoleRankOf(
+  memberRoleIds: readonly Snowflake[],
+  hierarchy: readonly Pick<APIRole, "id">[]
+): number | null {
+  const rank = hierarchy.findIndex(({ id }) => memberRoleIds.includes(id))
+  return rank === -1 ? null : rank
+}
+
 export function highestRoleOf(
   memberRoleIds: readonly Snowflake[],
   hierarchy: readonly Pick<APIRole, "id" | "name" | "colors">[]
 ): HighestRole | null {
-  const role = hierarchy.find(({ id }) => memberRoleIds.includes(id))
+  const rank = highestRoleRankOf(memberRoleIds, hierarchy)
+  const role = rank === null ? undefined : hierarchy[rank]
   if (role === undefined) {
     return null
   }

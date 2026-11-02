@@ -79,9 +79,7 @@ test("a staff member who moderates finds accounts by name through « Modération
     .getByRole("list", { name: "Modération" })
     .getByRole("link", { name: "Modération" })
   const main = page.getByRole("main")
-  const found = main
-    .getByRole("list", { name: "3 comptes commencent par « ly »" })
-    .getByRole("link")
+  const found = main.getByRole("list", { name: "1–3 sur 3" }).getByRole("link")
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -92,12 +90,14 @@ test("a staff member who moderates finds accounts by name through « Modération
   await expect(
     main.getByRole("heading", { level: 1, name: "Modération" })
   ).toBeVisible()
-  await page.getByLabel("Compte").fill("ly")
+  await page.getByLabel("Compte", { exact: true }).fill("ly")
   await page.getByRole("button", { name: "Chercher" }).click()
-  await expect(page).toHaveURL("/records?query=ly")
+  await expect(page).toHaveURL(
+    "/records?query=ly&role=&standing=&joined=&created=&bots=&sort="
+  )
   await expect(found).toHaveCount(3)
   await expect(found.nth(0)).toHaveAccessibleName(
-    /^Lyra des Brumes\s*@lyra_gates\s*Membre du serveur$/
+    /^Lyra des Brumes\s*@lyra_gates\s*Garde$/
   )
   await expect(found.nth(1)).toHaveAccessibleName(
     /^Lyrandil\s*@lyrandil\s*Exclu jusqu’au 2 nov\. 2099, 19:30$/
@@ -209,9 +209,9 @@ test("a mention or an ID opens its account's record directly, banned, absent or 
 
   await logIn(ALDIS)
   await page.goto("/records")
-  await expect(page.getByLabel("Compte")).toHaveValue("")
+  await expect(page.getByLabel("Compte", { exact: true })).toHaveValue("")
   await checkAccessibility()
-  await page.getByLabel("Compte").fill(`<@${CORVUS.id}>`)
+  await page.getByLabel("Compte", { exact: true }).fill(`<@${CORVUS.id}>`)
   await page.getByRole("button", { name: "Chercher" }).click()
   await expect(page).toHaveURL(`/records/${CORVUS.id}`)
   await expect(name).toHaveText("corvus")
@@ -223,7 +223,7 @@ test("a mention or an ID opens its account's record directly, banned, absent or 
 
   await page.goto("/records")
   await page.waitForLoadState()
-  await page.getByLabel("Compte").fill(HALDOR.id)
+  await page.getByLabel("Compte", { exact: true }).fill(HALDOR.id)
   await page.getByRole("button", { name: "Chercher" }).click()
   await expect(page).toHaveURL(`/records/${HALDOR.id}`)
   await expect(name).toHaveText("haldor")

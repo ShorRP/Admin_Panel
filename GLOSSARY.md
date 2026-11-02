@@ -28,6 +28,10 @@ _Avoid_: user (alone), profile
 A Discord account on the Discord server. A banned account is no longer one.
 _Avoid_: user (alone), player
 
+**Bot account**:
+An account that Discord flags as a bot, whoever runs it: the Bot, the Admin Panel's own Discord application, or the bot of a service. The Bot is one of them, not the only one.
+_Avoid_: bot (alone, which names Shor's Bot), application account
+
 **Staff**:
 The members of Shor's team who moderate and administer the community.
 _Avoid_: admins, mods (each names a level within the staff, not the staff as a whole)

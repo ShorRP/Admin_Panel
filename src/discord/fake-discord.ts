@@ -16,7 +16,6 @@ import {
   type APIRole,
   type APIUser,
   type RESTGetAPIAuditLogQuery,
-  type RESTGetAPIGuildMembersSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPatchAPIGuildMemberJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
@@ -47,7 +46,7 @@ export type FakeMember = {
   roles?: Snowflake[]
   nick?: string | null
   avatar?: string | null
-  joined_at?: string
+  joined_at?: string | null
   communication_disabled_until?: string | null
   allowsDirectMessages?: boolean
 }
@@ -99,8 +98,6 @@ const DEFAULT_OWNER_ID = "1000000000000000000"
 
 const DEFAULT_AUDIT_LOG_LIMIT = 50
 
-const DEFAULT_SEARCH_LIMIT = 1
-
 const DEFAULT_MEMBERS_LIMIT = 1
 
 const DEFAULT_BANS_LIMIT = 1000
@@ -129,7 +126,10 @@ function apiMember(member: FakeMember): APIGuildMember {
     nick: member.nick ?? null,
     avatar: member.avatar ?? null,
     roles: [...(member.roles ?? [])],
-    joined_at: member.joined_at ?? "2026-01-01T00:00:00.000000+00:00",
+    joined_at:
+      member.joined_at === undefined
+        ? "2026-01-01T00:00:00.000000+00:00"
+        : member.joined_at,
     communication_disabled_until: member.communication_disabled_until ?? null,
     deaf: false,
     mute: false,
@@ -149,13 +149,6 @@ function apiRole(role: FakeRole): APIRole {
     flags: NO_ROLE_FLAGS,
     ...role,
   }
-}
-
-function startsWithIgnoringCase(text: string | null, start: string) {
-  return (
-    text !== null &&
-    text.toLocaleLowerCase().startsWith(start.toLocaleLowerCase())
-  )
 }
 
 function refusedGrant(discordMessage: string) {
@@ -674,18 +667,6 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         webhooks: [],
       }
     })
-  }
-
-  searchMembers({ query, limit }: RESTGetAPIGuildMembersSearchQuery) {
-    return this.answer("searchMembers", () =>
-      [...this.members.values()]
-        .filter(
-          ({ user, nick }) =>
-            startsWithIgnoringCase(user.username, query) ||
-            startsWithIgnoringCase(nick ?? null, query)
-        )
-        .slice(0, limit ?? DEFAULT_SEARCH_LIMIT)
-    )
   }
 
   listMembers({ after, limit }: MembersQuery) {
