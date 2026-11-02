@@ -221,9 +221,10 @@ test("the filters combine, « Aucun rôle » and the arrival of the last 30 da
   await checkAccessibility()
 })
 
-test("bots are left out until the staff ask for them, the application's own account among them", async ({
+test("bot accounts are left out until the staff ask for them, the application's own account among them", async ({
   page,
   logIn,
+  checkAccessibility,
 }) => {
   const main = page.getByRole("main")
 
@@ -234,6 +235,7 @@ test("bots are left out until the staff ask for them, the application's own acco
     main.getByText("Aucun compte ne correspond à ta recherche.")
   ).toBeVisible()
   await expect(page.getByLabel("Comptes de bot")).toHaveValue("")
+  await checkAccessibility()
 
   await page.getByLabel("Comptes de bot").selectOption({ label: "Affichés" })
   await page.getByRole("button", { name: "Chercher" }).click()
@@ -241,11 +243,13 @@ test("bots are left out until the staff ask for them, the application's own acco
   await expect(
     main.getByRole("list", { name: "1 sur 1" }).getByRole("link")
   ).toHaveAccessibleName(/^helper-bot\s*@helper-bot\s*Membre du serveur$/)
+  await checkAccessibility()
 
   await page.goto("/records?query=shor&bots=shown")
   await expect(
     main.getByRole("list", { name: "1 sur 1" }).getByRole("link")
   ).toHaveAccessibleName(/^Shor Panel\s*@Shor Panel\s*Membre du serveur$/)
+  await checkAccessibility()
 })
 
 test("the arrival, the account age, the state and the sort are read from the URL, and the choices open on them", async ({
@@ -277,15 +281,18 @@ test("the arrival, the account age, the state and the sort are read from the URL
   await page.goto("/records?standing=timed-out")
   expect(await names("1 sur 1")).toEqual(["garde-05"])
   await expect(page.getByLabel("État")).toHaveValue("timed-out")
+  await checkAccessibility()
 
   await page.goto("/records?standing=banned&sort=role")
   expect(await names("1–2 sur 2")).toEqual(["exile-00", "exile-01"])
+  await checkAccessibility()
 
   await page.goto("/records?created=7d")
   await expect(
     main.getByText("Aucun compte ne correspond à ta recherche.")
   ).toBeVisible()
   await expect(page.getByLabel("Âge du compte Discord")).toHaveValue("7d")
+  await checkAccessibility()
 
   await page.goto("/records?sort=role&joined=6m")
   expect((await names("1–25 sur 32"))[0]).toBe("garde-00")
@@ -321,7 +328,7 @@ test("a value that is not one of the choices, a role the Discord server does not
   await checkAccessibility()
 })
 
-test("on a 360 px screen, the form wraps, each choice under its label and within the screen, and on a wide one the choices share a row", async ({
+test("on a 360 px screen, the form wraps, each choice under its label and within the screen, and on a 1,280 px one four choices share a row, the last two sharing the next with the button", async ({
   page,
   logIn,
   checkAccessibility,
@@ -353,8 +360,16 @@ test("on a 360 px screen, the form wraps, each choice under its label and within
   await page.goto("/records")
   await expect(page.getByLabel("Trier par")).toBeVisible()
   const wide = await boxes()
-  expect(wide[1]?.y).toBe(wide[2]?.y)
+  const button = await page
+    .getByRole("button", { name: "Chercher" })
+    .boundingBox()
+  const lastRow = wide[5]
+  expect(new Set(wide.slice(1, 5).map(({ y }) => y)).size).toBe(1)
   expect(wide[1]?.y).toBeGreaterThan(wide[0]?.y ?? Infinity)
+  expect(lastRow?.y).toBeGreaterThan(wide[1]?.y ?? Infinity)
+  expect(wide[6]?.y).toBe(lastRow?.y)
+  expect(button?.y).toBeGreaterThanOrEqual(lastRow?.y ?? Infinity)
+  expect(button?.y).toBeLessThan((lastRow?.y ?? 0) + (lastRow?.height ?? 0))
   await checkAccessibility()
 
   await page.setViewportSize({ width: 360, height: 900 })

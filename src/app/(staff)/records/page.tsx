@@ -36,8 +36,8 @@ export default function RecordsPage({ searchParams }: PageProps<"/records">) {
         >
           Parcours les comptes du serveur Discord, membres et bannis. Cherche
           par le début du nom d’utilisateur, du nom global ou du pseudo, filtre
-          par rôle, état, arrivée ou âge du compte, trie la liste, ou ouvre une
-          fiche avec son ID ou sa mention.
+          par rôle, état, arrivée ou âge du compte, affiche les comptes de bot,
+          trie la liste, ou ouvre une fiche avec son ID ou sa mention.
         </PageHeader>
         <OrnamentRule leadingLine />
         <div className="flex max-w-190 flex-col gap-7">

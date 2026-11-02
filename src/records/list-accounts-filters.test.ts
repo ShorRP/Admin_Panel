@@ -255,7 +255,7 @@ test("the year back from February 29 is February 28", async () => {
   ])
 })
 
-test("the account age filters read the creation date in the ID, for a member and for a banned account, the bound itself included", async () => {
+test("the account age filters read the creation date in the ID, for a member and for a banned account, and keep the accounts created less than 7 or 30 days ago, the bound itself left out", async () => {
   freezeTime()
   const created = (moment: string, index: number, username: string) => ({
     id: snowflakeAt(moment, index),
@@ -263,30 +263,31 @@ test("the account age filters read the creation date in the ID, for a member and
   })
   const discord = new FakeDiscord({
     members: [
-      { user: created("2026-10-26T12:00:00.000Z", 1, "member-7d") },
-      { user: created("2026-10-26T11:59:59.999Z", 2, "member-past-7d") },
-      { user: created("2026-10-03T12:00:00.000Z", 3, "member-30d") },
-      { user: created("2026-10-03T11:59:59.999Z", 4, "member-past-30d") },
+      { user: created("2026-10-26T12:00:00.000Z", 1, "on-7d") },
+      { user: created("2026-10-26T12:00:00.001Z", 2, "within-7d") },
+      { user: created("2026-10-03T12:00:00.000Z", 3, "on-30d") },
+      { user: created("2026-10-03T12:00:00.001Z", 4, "within-30d") },
+      { user: created("2026-10-03T11:59:59.999Z", 5, "past-30d") },
     ],
     bans: [
-      { user: created("2026-11-01T00:00:00.000Z", 5, "banned-new") },
-      { user: created("2020-01-01T00:00:00.000Z", 6, "banned-old") },
+      { user: created("2026-11-01T00:00:00.000Z", 6, "banned-new") },
+      { user: created("2020-01-01T00:00:00.000Z", 7, "banned-old") },
     ],
   })
 
   expect(await usernames(discord, { created: "7d" })).toEqual([
     "banned-new",
-    "member-7d",
+    "within-7d",
   ])
   expect(await usernames(discord, { created: "30d" })).toEqual([
     "banned-new",
-    "member-30d",
-    "member-7d",
-    "member-past-7d",
+    "on-7d",
+    "within-30d",
+    "within-7d",
   ])
 })
 
-test("bots are left out unless the staff ask for them, the application's own account and a banned bot among them", async () => {
+test("bot accounts are left out unless the staff ask for them, the application's own account and a banned bot account among them", async () => {
   const discord = new FakeDiscord({
     members: [
       member(1, "aldis"),

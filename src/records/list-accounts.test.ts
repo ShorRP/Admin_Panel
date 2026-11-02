@@ -96,7 +96,7 @@ const NO_FILTERS = {
   sort: null,
 }
 
-test("with nothing searched, the first page holds 25 accounts, members and banned accounts mixed by name, with the exact total, bots left out", async () => {
+test("with nothing searched, the first page holds 25 accounts, members and banned accounts mixed by name, with the exact total, bot accounts left out", async () => {
   const first = await listPage(sixtyAccounts())
 
   expect(summary(first)).toEqual({

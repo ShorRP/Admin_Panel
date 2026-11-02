@@ -95,7 +95,7 @@ function createdMatch(
     return () => true
   }
   const since = new Date(now.getTime() - (created === "7d" ? 7 : 30) * DAY_MS)
-  return ({ createdAt }) => createdAt >= since
+  return ({ createdAt }) => createdAt > since
 }
 
 function botMatch(bots: AccountListFilters["bots"]): Match {
