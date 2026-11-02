@@ -2,8 +2,19 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
 import { AccountList } from "./account-list"
+import type { AccountListFilters } from "./account-list-filters"
 import type { FoundAccount } from "./found-account"
 import type { AccountListPage } from "./list-accounts"
+
+const NO_FILTERS: AccountListFilters = {
+  query: null,
+  role: null,
+  standing: null,
+  joined: null,
+  created: null,
+  bots: null,
+  sort: null,
+}
 
 const ALDIS: FoundAccount = {
   id: "1400000000000000001",
@@ -39,6 +50,7 @@ function listPage(overrides: Partial<AccountListPage> = {}): AccountListPage {
   return {
     kind: "page",
     accounts: [ALDIS, ALDA],
+    filters: NO_FILTERS,
     page: 1,
     pages: 1,
     first: 1,
@@ -229,12 +241,34 @@ test("a single page of accounts has no navigation between pages", () => {
   expect(render(listPage())).not.toContain("<nav")
 })
 
+test("the links between the pages keep the search, the filters and the sort the list was read with", () => {
+  const html = render(
+    listPage({
+      page: 1,
+      pages: 2,
+      first: 1,
+      last: 25,
+      total: 40,
+      filters: {
+        ...NO_FILTERS,
+        query: "ald",
+        standing: "banned",
+        sort: "role",
+      },
+    })
+  )
+
+  expect(html).toContain(
+    'href="/records?query=ald&amp;standing=banned&amp;sort=role&amp;page=2"'
+  )
+})
+
 test("a list with no account says so in the frame of an empty list, with no overline and no navigation", () => {
   const html = render(
     listPage({ accounts: [], first: 0, last: 0, total: 0, pages: 1 })
   )
 
-  expect(text(html)).toBe("Aucun compte à afficher.")
+  expect(text(html)).toBe("Aucun compte ne correspond à ta recherche.")
   expect(html).not.toContain("<ul")
   expect(html).not.toContain("<nav")
 })

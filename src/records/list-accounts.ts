@@ -1,19 +1,29 @@
 import "server-only"
 
+import type { APIRole, Snowflake } from "discord-api-types/v10"
 import { z } from "zod"
 
 import type { DiscordApi } from "@/discord/discord-api"
-import { compareIds } from "./compare-ids"
-import { foundBan, foundMember, type FoundAccount } from "./found-account"
+import { banCandidate, memberCandidate } from "./account-candidate"
+import { accountIdOf } from "./account-id"
+import {
+  accountListFormOf,
+  queryOf,
+  type AccountListFilters,
+  type AccountListSearchParams,
+} from "./account-list-filters"
+import { filterAccounts } from "./filter-accounts"
+import type { FoundAccount } from "./found-account"
 import { readAllBans, readAllMembers } from "./read-all-accounts"
-import { highestRoleOf, rolesByHierarchy } from "./role-hierarchy"
-import { searchAccounts, type AccountSearch } from "./search-accounts"
+import { rolesByHierarchy } from "./role-hierarchy"
+import { sortAccounts } from "./sort-accounts"
 
 const ACCOUNTS_PER_PAGE = 25
 
 export type AccountListPage = {
   kind: "page"
   accounts: FoundAccount[]
+  filters: AccountListFilters
   page: number
   pages: number
   first: number
@@ -22,7 +32,7 @@ export type AccountListPage = {
 }
 
 export type AccountListing =
-  Exclude<AccountSearch, { kind: "none" }> | AccountListPage
+  { kind: "record"; userId: Snowflake } | AccountListPage
 
 const PAGE = z
   .string()
@@ -32,33 +42,37 @@ const PAGE = z
   .optional()
   .catch(undefined)
 
-const nameCollator = new Intl.Collator("fr-FR", { sensitivity: "accent" })
-
 export async function listAccounts(
   discord: DiscordApi,
-  { query, page }: { query: unknown; page: unknown }
+  searchParams: AccountListSearchParams,
+  roles: Promise<readonly APIRole[]>
 ): Promise<AccountListing> {
-  const search = await searchAccounts(discord, query)
-  if (search.kind !== "none") {
-    return search
+  const query = queryOf(searchParams.query)
+  const userId = query === null ? null : accountIdOf(query)
+  if (userId !== null) {
+    return { kind: "record", userId }
   }
-  const [members, bans, roles] = await Promise.all([
+  const [members, bans, roleList] = await Promise.all([
     readAllMembers(discord),
     readAllBans(discord),
-    discord.listRoles(),
+    roles,
   ])
-  const hierarchy = rolesByHierarchy(roles)
-  const accounts = [
-    ...members.map((member) =>
-      foundMember(discord, member, highestRoleOf(member.roles, hierarchy))
-    ),
-    ...bans.map(foundBan),
-  ].toSorted(byNameThenId)
-  return pageOf(accounts, PAGE.parse(page))
+  const hierarchy = rolesByHierarchy(roleList)
+  const { filters } = accountListFormOf(searchParams, roleList, discord.guildId)
+  const candidates = [
+    ...members.map((member) => memberCandidate(discord, member, hierarchy)),
+    ...bans.map(banCandidate),
+  ]
+  const accounts = sortAccounts(
+    filterAccounts(candidates, filters, new Date()),
+    filters.sort
+  ).map(({ account }) => account)
+  return pageOf(accounts, filters, PAGE.parse(searchParams.page))
 }
 
 function pageOf(
   accounts: FoundAccount[],
+  filters: AccountListFilters,
   requested: number | undefined
 ): AccountListPage {
   const total = accounts.length
@@ -69,16 +83,11 @@ function pageOf(
   return {
     kind: "page",
     accounts: shown,
+    filters,
     page,
     pages,
     first: shown.length === 0 ? 0 : start + 1,
     last: start + shown.length,
     total,
   }
-}
-
-function byNameThenId(left: FoundAccount, right: FoundAccount) {
-  return (
-    nameCollator.compare(left.name, right.name) || compareIds(left.id, right.id)
-  )
 }

@@ -8,6 +8,7 @@ import {
 } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { isPanelError } from "@/monitoring/panel-error"
+import type { AccountListSearchParams } from "./account-list-filters"
 import { listAccounts, type AccountListPage } from "./list-accounts"
 
 const MISSING_ACCESS = new DiscordError({
@@ -17,8 +18,6 @@ const MISSING_ACCESS = new DiscordError({
   code: 50001,
   discordMessage: "Missing Access",
 })
-
-const APPLICATION_NAME = "Shor Panel"
 
 function role(
   index: number,
@@ -61,31 +60,53 @@ function sixtyAccounts() {
   })
 }
 
-async function listPage(discord: FakeDiscord, pageParam?: unknown) {
-  const list = await listAccounts(discord, {
-    query: undefined,
-    page: pageParam,
-  })
+async function listResult(
+  discord: FakeDiscord,
+  searchParams: AccountListSearchParams = {}
+) {
+  return await listAccounts(discord, searchParams, discord.listRoles())
+}
+
+async function listPage(
+  discord: FakeDiscord,
+  searchParams: AccountListSearchParams = {}
+) {
+  const list = await listResult(discord, searchParams)
   if (list.kind !== "page") {
     throw new Error(`Expected a page of accounts, not ${list.kind}.`)
   }
   return list
 }
 
+function usernamesOf({ accounts }: AccountListPage) {
+  return accounts.map(({ username }) => username)
+}
+
 function summary({ accounts, ...rest }: AccountListPage) {
   return { ...rest, usernames: accounts.map(({ username }) => username) }
 }
 
-test("with nothing searched, the first page holds 25 accounts, members and banned accounts mixed by name, with the exact total", async () => {
+const NO_FILTERS = {
+  query: null,
+  role: null,
+  standing: null,
+  joined: null,
+  created: null,
+  bots: null,
+  sort: null,
+}
+
+test("with nothing searched, the first page holds 25 accounts, members and banned accounts mixed by name, with the exact total, bots left out", async () => {
   const first = await listPage(sixtyAccounts())
 
   expect(summary(first)).toEqual({
     kind: "page",
+    filters: NO_FILTERS,
     page: 1,
     pages: 3,
     first: 1,
     last: 25,
-    total: 61,
+    total: 60,
     usernames: numbered(25, "all").map(({ username }) => username),
   })
   expect(first.accounts.map(({ standing }) => standing.kind)).toEqual(
@@ -94,7 +115,7 @@ test("with nothing searched, the first page holds 25 accounts, members and banne
 })
 
 test("a page of the middle holds the next 25 accounts, ranked from 26 to 50", async () => {
-  const second = await listPage(sixtyAccounts(), "2")
+  const second = await listPage(sixtyAccounts(), { page: "2" })
 
   expect(second).toMatchObject({ page: 2, pages: 3, first: 26, last: 50 })
   expect(second.accounts.map(({ username }) => username)).toEqual(
@@ -104,18 +125,21 @@ test("a page of the middle holds the next 25 accounts, ranked from 26 to 50", as
   )
 })
 
-test("the last page holds what is left, the application's own member among it, ranked to the total", async () => {
-  const last = await listPage(sixtyAccounts(), "3")
+test("the last page holds what is left, ranked to the total", async () => {
+  const last = await listPage(sixtyAccounts(), { page: "3" })
 
   expect(summary(last)).toMatchObject({
     page: 3,
     pages: 3,
     first: 51,
-    last: 61,
-    total: 61,
+    last: 60,
+    total: 60,
   })
-  expect(last.accounts).toHaveLength(11)
-  expect(last.accounts.at(-1)?.name).toBe(APPLICATION_NAME)
+  expect(usernamesOf(last)).toEqual(
+    numbered(60, "all")
+      .slice(50)
+      .map(({ username }) => username)
+  )
 })
 
 test("a page that is not an integer from 1 to the last page counts as absent, and gives the first", async () => {
@@ -137,7 +161,7 @@ test("a page that is not an integer from 1 to the last page counts as absent, an
     2,
   ]) {
     expect(
-      await listPage(discord, invalid),
+      await listPage(discord, { page: invalid }),
       JSON.stringify(invalid)
     ).toMatchObject({
       page: 1,
@@ -145,8 +169,8 @@ test("a page that is not an integer from 1 to the last page counts as absent, an
       last: 25,
     })
   }
-  expect(await listPage(discord, "1")).toMatchObject({ page: 1 })
-  expect(await listPage(discord, "03")).toMatchObject({ page: 3 })
+  expect(await listPage(discord, { page: "1" })).toMatchObject({ page: 1 })
+  expect(await listPage(discord, { page: "03" })).toMatchObject({ page: 3 })
 })
 
 test("more than 1,000 members are read in several pages, and every one is counted", async () => {
@@ -154,16 +178,16 @@ test("more than 1,000 members are read in several pages, and every one is counte
     members: numbered(2300, "all").map((member) => ({ user: member })),
   })
 
-  const last = await listPage(discord, "93")
+  const last = await listPage(discord, { page: "92" })
 
   expect(summary(last)).toMatchObject({
-    page: 93,
-    pages: 93,
-    first: 2301,
-    last: 2301,
-    total: 2301,
+    page: 92,
+    pages: 92,
+    first: 2276,
+    last: 2300,
+    total: 2300,
   })
-  expect(last.accounts.map(({ name }) => name)).toEqual([APPLICATION_NAME])
+  expect(usernamesOf(last).at(-1)).toBe("compte-2299")
 })
 
 test("1,000 members exactly are read to the end, and so are 1,000 bans past them", async () => {
@@ -174,8 +198,11 @@ test("1,000 members exactly are read to the end, and so are 1,000 bans past them
     bans: numbered(1000, "all").map((ban) => ({ user: ban })),
   })
 
-  expect(await listPage(members)).toMatchObject({ total: 1000, pages: 40 })
-  expect(await listPage(bans)).toMatchObject({ total: 1001, pages: 41 })
+  expect(await listPage(members, { bots: "shown" })).toMatchObject({
+    total: 1000,
+    pages: 40,
+  })
+  expect(await listPage(bans)).toMatchObject({ total: 1000, pages: 40 })
 })
 
 test("accounts sort by the name they show, whatever its case, a member by nickname, then global name, then username, a banned account by global name, then username, then by ID", async () => {
@@ -210,7 +237,6 @@ test("accounts sort by the name they show, whatever its case, a member by nickna
     ["dagny", "3"],
     ["Éclair", "4"],
     ["HALDOR", "7"],
-    [APPLICATION_NAME, "0"],
   ])
 })
 
@@ -417,7 +443,7 @@ test("an ID or a mention gives the record whatever the page, though the members'
     "<@1400000000000000002>",
     "<@!1400000000000000002>",
   ]) {
-    expect(await listAccounts(discord, { query, page: "2" })).toEqual({
+    expect(await listResult(discord, { query, page: "2" })).toEqual({
       kind: "record",
       userId: "1400000000000000002",
     })
@@ -425,40 +451,128 @@ test("an ID or a mention gives the record whatever the page, though the members'
   await expect(listPage(discord)).rejects.toBe(MISSING_ACCESS)
 })
 
-test("a text keeps the search by name, with its cap of 25 accounts, which needs no members' list", async () => {
+test("an ID or a mention gives the record whatever the filters, though the roles' list cannot be read, the roles' promise never awaited", async () => {
   const discord = sixtyAccounts()
-  discord.failNext("listMembers", MISSING_ACCESS)
+  discord.failNext("listRoles", MISSING_ACCESS)
+  const roles = discord.listRoles()
+  roles.catch(() => undefined)
 
-  const list = await listAccounts(discord, { query: "compte", page: "2" })
-
-  expect(list).toMatchObject({
-    kind: "accounts",
-    query: "compte",
-    truncated: true,
-  })
-  expect(list.kind === "accounts" ? list.accounts : []).toHaveLength(25)
+  expect(
+    await listAccounts(
+      discord,
+      { query: "<@1400000000000000002>", role: "none", standing: "banned" },
+      roles
+    )
+  ).toEqual({ kind: "record", userId: "1400000000000000002" })
 })
 
 test("a blank or repeated search lists the accounts as if nothing was searched", async () => {
   const discord = sixtyAccounts()
 
-  expect(
-    await listAccounts(discord, { query: "  ", page: undefined })
-  ).toMatchObject({ kind: "page", total: 61 })
-  expect(
-    await listAccounts(discord, { query: ["a", "b"], page: undefined })
-  ).toMatchObject({ kind: "page", total: 61 })
+  expect(await listPage(discord, { query: "  " })).toMatchObject({
+    total: 60,
+    filters: { query: null },
+  })
+  expect(await listPage(discord, { query: ["a", "b"] })).toMatchObject({
+    total: 60,
+    filters: { query: null },
+  })
 })
 
 test("a members' list Discord refuses for want of the Server Members Intent is thrown as a panel error", async () => {
   const discord = sixtyAccounts()
   discord.failNext("listMembers", MISSING_ACCESS)
 
-  const failure = await listAccounts(discord, {
-    query: undefined,
-    page: undefined,
-  }).catch((error: unknown) => error)
+  const failure = await listResult(discord).catch((error: unknown) => error)
 
   expect(failure).toBe(MISSING_ACCESS)
   expect(isPanelError(failure)).toBe(true)
+})
+
+function searched(discord: FakeDiscord, query: string) {
+  return listPage(discord, { query }).then(usernamesOf)
+}
+
+test("a search keeps the accounts whose username, global name or nickname starts with the text, whatever the case of either", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      { user: user(1, "ALDIS") },
+      { user: { ...user(2, "x"), global_name: "Aldora" } },
+      { user: user(3, "corvus"), nick: "Alduin le Sage" },
+      { user: user(4, "haldor") },
+      { user: user(5, "brynja"), nick: "Garde" },
+    ],
+  })
+
+  expect(await searched(discord, "ald")).toEqual(["ALDIS", "x", "corvus"])
+  expect(await searched(discord, "ALD")).toEqual(["ALDIS", "x", "corvus"])
+  expect(await searched(discord, "alduin")).toEqual(["corvus"])
+  expect(await searched(discord, "aldor")).toEqual(["x"])
+  expect(await searched(discord, "dor")).toEqual([])
+})
+
+test("a search also finds a banned account, by its username or its global name, though it has no nickname", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: user(1, "aldis") }],
+    bans: [
+      { user: user(2, "ALDRIC") },
+      { user: { ...user(3, "y"), global_name: "Aldora" } },
+      { user: user(4, "corvus") },
+    ],
+  })
+
+  const found = await listPage(discord, { query: "ald" })
+
+  expect(
+    found.accounts.map(({ username, standing }) => [username, standing.kind])
+  ).toEqual([
+    ["aldis", "member"],
+    ["y", "banned"],
+    ["ALDRIC", "banned"],
+  ])
+})
+
+test("a search matches the start of a name, not a part of it, after the spaces around the text are left out, and a name with spaces by its start", async () => {
+  const discord = new FakeDiscord({
+    members: [
+      { user: user(1, "x"), nick: "Alda la Noire" },
+      { user: user(2, "y"), nick: "La Alda" },
+    ],
+  })
+
+  expect(await searched(discord, "  alda l  ")).toEqual(["x"])
+  expect(await searched(discord, "noire")).toEqual([])
+})
+
+test("the results of a search are counted and paged like the list, with no cap of 25", async () => {
+  const discord = sixtyAccounts()
+
+  const first = await listPage(discord, { query: "compte-00" })
+  const second = await listPage(discord, { query: "compte-00", page: "2" })
+
+  expect(summary(first)).toMatchObject({
+    first: 1,
+    last: 25,
+    total: 60,
+    pages: 3,
+    filters: { query: "compte-00" },
+  })
+  expect(second).toMatchObject({ page: 2, first: 26, last: 50, total: 60 })
+  expect(usernamesOf(second)[0]).toBe("compte-0025")
+})
+
+test("a search that matches nothing gives an empty page, whatever the page asked for", async () => {
+  const empty = await listPage(sixtyAccounts(), {
+    query: "zzz",
+    page: "3",
+  })
+
+  expect(summary(empty)).toMatchObject({
+    page: 1,
+    pages: 1,
+    first: 0,
+    last: 0,
+    total: 0,
+    usernames: [],
+  })
 })

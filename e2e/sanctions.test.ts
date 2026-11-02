@@ -101,7 +101,7 @@ test("a moderator finds a member, opens their record, times them out for the hou
   await expect(page).toHaveURL("/blocked-words")
   await page.goto("/records")
   await page.waitForLoadState()
-  await page.getByLabel("Compte").fill("lyr")
+  await page.getByLabel("Compte", { exact: true }).fill("lyr")
   await page.getByRole("button", { name: "Chercher" }).click()
   await main.getByRole("link", { name: /^Lyra/ }).click()
   await expect(page).toHaveURL(`/records/${LYRA.id}`)

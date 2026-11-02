@@ -1,10 +1,27 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import type { AccountListFilters } from "./account-list-filters"
 import { AccountPagination } from "./account-pagination"
 
-function navigation(page: number, pages: number) {
-  return renderToStaticMarkup(<AccountPagination page={page} pages={pages} />)
+const NO_FILTERS: AccountListFilters = {
+  query: null,
+  role: null,
+  standing: null,
+  joined: null,
+  created: null,
+  bots: null,
+  sort: null,
+}
+
+function navigation(
+  page: number,
+  pages: number,
+  filters: AccountListFilters = NO_FILTERS
+) {
+  return renderToStaticMarkup(
+    <AccountPagination page={page} pages={pages} filters={filters} />
+  )
 }
 
 function entries(html: string) {
@@ -71,6 +88,34 @@ test("past 7 pages, the navigation shows the first and the last page, the curren
     { link: "Page 11", href: "/records?page=11" },
     { hidden: "…" },
     { link: "Page 20", href: "/records?page=20" },
+  ])
+})
+
+test("every link keeps the search, the filters and the sort, and adds its page, the first page having none", () => {
+  const filters: AccountListFilters = {
+    query: "ald",
+    role: "1300000000000000001",
+    standing: "members",
+    joined: "6m",
+    created: "7d",
+    bots: "shown",
+    sort: "joined-old",
+  }
+  const kept =
+    "query=ald&role=1300000000000000001&standing=members&joined=6m&created=7d&bots=shown&sort=joined-old"
+
+  const hrefs = entries(navigation(2, 3, filters)).items.map((item) =>
+    "href" in item && item.href !== undefined
+      ? item.href.replaceAll("&amp;", "&")
+      : null
+  )
+
+  expect(hrefs).toEqual([
+    `/records?${kept}`,
+    `/records?${kept}`,
+    null,
+    `/records?${kept}&page=3`,
+    `/records?${kept}&page=3`,
   ])
 })
 
