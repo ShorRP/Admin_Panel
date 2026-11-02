@@ -161,6 +161,7 @@ test("a timeout given through the panel shows among the changes to the blocked w
       id: expect.any(String),
       date: NOW,
       memberName: "aldis",
+      memberId: ALDIS.id,
       avatarUrl:
         "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
       sanctionChange: {
@@ -764,6 +765,52 @@ test("a change made in Discord by an account the audit log does not name shows u
       memberName: "Membre inconnu",
       description: "Règle modifiée dans Discord",
     },
+  ])
+})
+
+test("each change carries the ID of its author: the staff member its reason names for a change made through the panel, the member of its entry for one made in Discord, and none for an entry that has no member", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: ALDIS }, { user: BRYN }, { user: LYRA }],
+    autoModerationRules: [PANEL_RULE],
+    auditLogEntries: [
+      panelAddition("1563530499194880000", "foo"),
+      {
+        id: "1563530499194880001",
+        action_type: AuditLogEvent.AutoModerationRuleUpdate,
+        target_id: PANEL_RULE.id,
+        user_id: BRYN.id,
+      },
+      {
+        id: "1563530499194880002",
+        action_type: AuditLogEvent.AutoModerationRuleUpdate,
+        target_id: PANEL_RULE.id,
+        user_id: "1400000000000000009",
+      },
+      {
+        id: "1563530499194880003",
+        action_type: AuditLogEvent.AutoModerationRuleUpdate,
+        target_id: PANEL_RULE.id,
+        user_id: null,
+      },
+    ],
+  })
+  discord.modifyMemberAs(
+    BRYN.id,
+    LYRA.id,
+    { communication_disabled_until: "2026-10-29T14:00:00.000Z" },
+    "Insultes"
+  )
+
+  const changes = changesOf(await readAuditLog(discord, {}))
+
+  expect(
+    changes.map(({ memberName, memberId }) => ({ memberName, memberId }))
+  ).toEqual([
+    { memberName: "Bryn la Rouge", memberId: BRYN.id },
+    { memberName: "Membre inconnu", memberId: null },
+    { memberName: "Membre inconnu", memberId: "1400000000000000009" },
+    { memberName: "Bryn la Rouge", memberId: BRYN.id },
+    { memberName: "aldis", memberId: ALDIS.id },
   ])
 })
 

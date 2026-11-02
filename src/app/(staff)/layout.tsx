@@ -5,7 +5,11 @@ import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { readBlockedWordCount } from "@/blocked-words/read-blocked-word-count"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
-import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
+import {
+  opensModerationOnceRead,
+  ownRecordOnceRead,
+  type StaffMember,
+} from "@/staff/staff-member"
 import { StaffMemberIdentity } from "@/staff/staff-member-identity"
 import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
@@ -23,6 +27,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
             </Suspense>
           }
           opensModeration={opensModerationOnceRead(staffMember)}
+          ownRecord={ownRecordOnceRead(staffMember)}
           blockedWordCount={
             <Suspense fallback={null}>
               <CurrentBlockedWordCount staffMember={staffMember} />

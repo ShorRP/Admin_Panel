@@ -1,7 +1,7 @@
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test } from "./fixtures"
+import { expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -39,6 +39,7 @@ test("a staff member moves between sections through the sidebar, which marks the
   await expect(auditLog).toHaveAttribute("aria-current", "page")
   await expect(blockedWords).not.toHaveAttribute("aria-current")
   await expect(sidebar).toContainText("aldis")
+  await expect(sidebar.getByRole("link", { name: /aldis/ })).toHaveCount(0)
   await checkAccessibility()
 
   await sidebar.getByRole("link", { name: "Shor Panel du staff" }).click()
@@ -389,6 +390,94 @@ test.describe("for a staff member who moderates", () => {
     discordState: {
       members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
     },
+  })
+
+  async function expectNoSessionCookie(page: Page) {
+    expect(
+      (await page.context().cookies()).filter(
+        ({ name }) => name === "__Host-session"
+      )
+    ).toEqual([])
+  }
+
+  test("the sidebar's identity is a link to their own record, which is the current page there, and they log out from it with that identity in view, and no page is prefetched", async ({
+    page,
+    logIn,
+    prefetchedPaths,
+    checkAccessibility,
+  }) => {
+    const sidebar = page.getByRole("complementary")
+    const identity = sidebar.getByRole("link", { name: /^aldis/ })
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await expect(identity).toHaveAttribute("href", `/records/${ALDIS.id}`)
+    await expect(identity).not.toHaveAttribute("aria-current")
+    await expect(identity).toBeInViewport()
+    await checkAccessibility()
+
+    await identity.click()
+    await expect(page).toHaveURL(`/records/${ALDIS.id}`)
+    await expect(identity).toHaveAttribute("aria-current", "page")
+    await page.waitForLoadState()
+    await expect(identity).toBeInViewport()
+    await checkAccessibility()
+
+    await sidebar.getByRole("button", { name: "Se déconnecter" }).click()
+    await expect(page).toHaveURL("/login/logged-out")
+    await expectNoSessionCookie(page)
+    expect(prefetchedPaths).toEqual([])
+  })
+
+  test.describe("on a 360 px screen", () => {
+    test.use({ viewport: { width: 360, height: 760 } })
+
+    test("the bar's avatar is a link to their own record that carries their name, and so is the menu's identity, which closes the menu, and they log out from the menu with both in view, and no page is prefetched", async ({
+      page,
+      logIn,
+      prefetchedPaths,
+      checkAccessibility,
+    }) => {
+      const header = page.getByRole("banner")
+      const barLink = header.getByRole("link", { name: "aldis", exact: true })
+      const openMenu = header.getByRole("button", { name: "Ouvrir le menu" })
+      const menu = page.getByRole("dialog", { name: "Menu" })
+      const menuLink = menu.getByRole("link", { name: /^aldis/ })
+
+      await logIn(ALDIS)
+      await expect(page).toHaveURL("/blocked-words")
+      await expect(barLink).toHaveAttribute("href", `/records/${ALDIS.id}`)
+      await expect(barLink).toHaveAccessibleName("aldis")
+      await expect(barLink.locator('[data-slot="avatar"]')).toBeVisible()
+      await expect(barLink).toBeInViewport()
+      await checkAccessibility()
+
+      await barLink.click()
+      await expect(page).toHaveURL(`/records/${ALDIS.id}`)
+      await expect(barLink).toHaveAttribute("aria-current", "page")
+      await checkAccessibility()
+
+      await page.goto("/audit-log")
+      await page.waitForLoadState()
+      await openMenu.click()
+      await expect(menu).toBeVisible()
+      await expect(menuLink).toHaveAttribute("href", `/records/${ALDIS.id}`)
+      await expect(menuLink).not.toHaveAttribute("aria-current")
+      await checkAccessibility()
+
+      await menuLink.click()
+      await expect(page).toHaveURL(`/records/${ALDIS.id}`)
+      await expect(menu).toBeHidden()
+
+      await expect(barLink).toBeInViewport()
+      await openMenu.click()
+      await expect(menuLink).toHaveAttribute("aria-current", "page")
+      await expect(menuLink).toBeInViewport()
+      await menu.getByRole("button", { name: "Se déconnecter" }).click()
+      await expect(page).toHaveURL("/login/logged-out")
+      await expectNoSessionCookie(page)
+      expect(prefetchedPaths).toEqual([])
+    })
   })
 
   test("a DiscordError while reading the count of blocked words leaves the page shown, with no badge beside « Mots interdits », until a later load reads it", async ({

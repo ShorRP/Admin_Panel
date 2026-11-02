@@ -24,6 +24,7 @@ import {
 } from "@/ui/sheet"
 import { LogOutForm } from "./log-out-form"
 import { ShorLogo } from "./shor-logo"
+import type { OwnRecord } from "./staff-member"
 import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
 type Section = {
@@ -35,6 +36,11 @@ type Section = {
 }
 
 type SectionLinkComponent = ComponentType<{ section: Section }>
+
+type MemberPlace = "sidebar" | "bar" | "menu"
+
+const MEMBER_LINK_CLASSES =
+  "block min-w-0 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground"
 
 const BLOCKED_WORDS = {
   href: "/blocked-words",
@@ -64,13 +70,16 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  ownRecord,
   blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  ownRecord: Promise<OwnRecord | null>
   blockedWordCount: ReactNode
 }) {
+  const linkTo = { currentPath, ownRecord }
   const sections = [
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
     withCurrent(AUDIT_LOG, currentPath),
@@ -92,7 +101,11 @@ export function StaffHeader({
         <div className="flex flex-col gap-3 border-t px-3 py-3.5">
           <StatefulThemeToggle />
           <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 py-0.5 pl-1.5">{member}</div>
+            <div className="min-w-0 flex-1 py-0.5 pl-1.5">
+              <MemberLink place="sidebar" {...linkTo}>
+                {member}
+              </MemberLink>
+            </div>
             <LogOutForm iconOnly />
           </div>
         </div>
@@ -100,7 +113,9 @@ export function StaffHeader({
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
         <PanelLink nameShown={false} />
         <div className="ml-auto flex min-w-0 items-center gap-2 **:data-[slot=staff-member-name]:hidden">
-          {member}
+          <MemberLink place="bar" {...linkTo}>
+            {member}
+          </MemberLink>
           <Sheet>
             <SheetTrigger render={<Button variant="ghost" size="icon" />}>
               <Menu aria-hidden />
@@ -123,7 +138,9 @@ export function StaffHeader({
               />
               <SheetFooter className="border-t">
                 <StatefulThemeToggle />
-                {member}
+                <MemberLink place="menu" {...linkTo}>
+                  {member}
+                </MemberLink>
                 <LogOutForm />
               </SheetFooter>
             </SheetContent>
@@ -155,6 +172,85 @@ function ShownWhen({
   children: ReactNode
 }) {
   return use(shown) ? children : null
+}
+
+function MemberLink({
+  place,
+  currentPath,
+  ownRecord,
+  children,
+}: {
+  place: MemberPlace
+  currentPath: string
+  ownRecord: Promise<OwnRecord | null>
+  children: ReactNode
+}) {
+  return (
+    <Suspense fallback={children}>
+      <LinkedToOwnRecord
+        place={place}
+        currentPath={currentPath}
+        ownRecord={ownRecord}
+      >
+        {children}
+      </LinkedToOwnRecord>
+    </Suspense>
+  )
+}
+
+function LinkedToOwnRecord({
+  place,
+  currentPath,
+  ownRecord,
+  children,
+}: {
+  place: MemberPlace
+  currentPath: string
+  ownRecord: Promise<OwnRecord | null>
+  children: ReactNode
+}) {
+  const record = use(ownRecord)
+  if (record === null) {
+    return children
+  }
+  const current = currentPath === record.href ? "page" : undefined
+  if (place === "sidebar") {
+    return (
+      <Link
+        href={record.href}
+        prefetch={false}
+        aria-current={current}
+        className={MEMBER_LINK_CLASSES}
+      >
+        {children}
+      </Link>
+    )
+  }
+  if (place === "bar") {
+    return (
+      <Link
+        href={record.href}
+        prefetch={false}
+        aria-current={current}
+        className={MEMBER_LINK_CLASSES}
+      >
+        <span className="sr-only">{record.name}</span>
+        {children}
+      </Link>
+    )
+  }
+  return (
+    <SheetClose
+      nativeButton={false}
+      role={undefined}
+      render={
+        <Link href={record.href} prefetch={false} aria-current={current} />
+      }
+      className={MEMBER_LINK_CLASSES}
+    >
+      {children}
+    </SheetClose>
+  )
 }
 
 function PanelLink({

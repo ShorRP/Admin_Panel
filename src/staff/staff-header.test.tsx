@@ -15,6 +15,7 @@ import { expect, test } from "vitest"
 
 import { ShorLogo } from "./shor-logo"
 import { StaffHeader } from "./staff-header"
+import type { OwnRecord } from "./staff-member"
 
 function image(attributes: string | undefined, drawing: string | undefined) {
   return attributes === undefined
@@ -81,10 +82,12 @@ async function render(
   {
     member = "aldis",
     opensModeration = false,
+    ownRecord = null,
     blockedWordCount = null,
   }: {
     member?: string
     opensModeration?: boolean
+    ownRecord?: OwnRecord | null
     blockedWordCount?: ReactNode
   } = {}
 ) {
@@ -93,6 +96,7 @@ async function render(
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      ownRecord={Promise.resolve(ownRecord)}
       blockedWordCount={blockedWordCount}
     />,
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
@@ -312,4 +316,76 @@ test("the bar names the staff member, then shows a menu button with a hidden men
       image: { drawing: drawing(<Menu />), hidden: true },
     },
   ])
+})
+
+const OWN_RECORD = {
+  href: "/records/1400000000000000002",
+  name: "Brynja la Rouge",
+}
+
+function ownRecordLinks(html: string) {
+  return links(html).filter(({ href }) => href === OWN_RECORD.href)
+}
+
+test("a staff member who moderates sees their name in the sidebar as a link to their own record, with no second name for assistive technologies", async () => {
+  const { sidebar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    opensModeration: true,
+    ownRecord: OWN_RECORD,
+  })
+
+  expect(
+    ownRecordLinks(sidebar).map(({ text, current, content }) => ({
+      text,
+      current,
+      srOnly: content.includes("sr-only"),
+    }))
+  ).toEqual([{ text: "Brynja la Rouge", current: undefined, srOnly: false }])
+})
+
+test("the bar's link to their own record keeps their name for assistive technologies in a text of its own, before what the bar shows", async () => {
+  const { bar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    opensModeration: true,
+    ownRecord: OWN_RECORD,
+  })
+
+  expect(
+    ownRecordLinks(bar).map(({ content }) => ({
+      nameForAssistiveTechnologiesFirst: content.startsWith(
+        '<span class="sr-only">Brynja la Rouge</span>'
+      ),
+    }))
+  ).toEqual([{ nameForAssistiveTechnologiesFirst: true }])
+})
+
+test("the link to their own record is the current page on that record alone", async () => {
+  const currentOn = async (currentPath: string) =>
+    ownRecordLinks(
+      (
+        await render(currentPath, {
+          opensModeration: true,
+          ownRecord: OWN_RECORD,
+        })
+      ).sidebar
+    ).map(({ current }) => current)
+
+  expect(await currentOn(OWN_RECORD.href)).toEqual(["page"])
+  expect(await currentOn("/records")).toEqual([undefined])
+  expect(await currentOn("/records/1400000000000000003")).toEqual([undefined])
+})
+
+test("a staff member who opens no record of their own sees their name in the sidebar and in the bar as text, with no link", async () => {
+  const { sidebar, bar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    ownRecord: null,
+  })
+
+  expect(ownRecordLinks(sidebar)).toEqual([])
+  expect(ownRecordLinks(bar)).toEqual([])
+  expect(
+    links(sidebar).filter(({ text }) => text.includes("Brynja la Rouge"))
+  ).toEqual([])
+  expect(textOf(sidebar)).toContain("Brynja la Rouge")
+  expect(textOf(bar)).toContain("Brynja la Rouge")
 })

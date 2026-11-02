@@ -12,7 +12,9 @@ import {
   UserX,
 } from "lucide-react"
 
+import { recordHrefOf } from "@/records/record-href"
 import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
+import { AccountLink } from "@/ui/account-link"
 import { buttonVariants } from "@/ui/button"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
@@ -206,7 +208,10 @@ function ChangeRow({
           />
         )}
       </div>
-      <div className={CHANGE_STAFF_MEMBER_CLASSES}>
+      <AccountLink
+        href={recordHrefOf(change.memberId, opensModeration)}
+        className={CHANGE_STAFF_MEMBER_CLASSES}
+      >
         <MemberAvatar
           name={change.memberName}
           avatarUrl={change.avatarUrl}
@@ -214,11 +219,11 @@ function ChangeRow({
         />
         <p
           title={change.memberName}
-          className="min-w-0 truncate text-[0.8125rem] text-muted-foreground"
+          className="min-w-0 truncate text-[0.8125rem] text-muted-foreground group-hover/account-link:text-foreground group-hover/account-link:underline group-focus-visible/account-link:underline"
         >
           {change.memberName}
         </p>
-      </div>
+      </AccountLink>
     </li>
   )
 }
@@ -246,6 +251,7 @@ function SanctionChangeDescription({
   change: Extract<AuditLogChange, { kind: "sanction-change" }>
   opensModeration: boolean
 }) {
+  const accountHref = recordHrefOf(account.id, opensModeration)
   return (
     <>
       <p className="font-medium text-pretty wrap-anywhere">
@@ -253,10 +259,10 @@ function SanctionChangeDescription({
       </p>
       <p className="text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground">
         Compte :{" "}
-        {opensModeration ? (
-          <TextLink href={`/records/${account.id}`}>{account.name}</TextLink>
-        ) : (
+        {accountHref === null ? (
           account.name
+        ) : (
+          <TextLink href={accountHref}>{account.name}</TextLink>
         )}
         {reason === null ? " · Aucun motif" : ` · Motif : ${reason}`}
       </p>
