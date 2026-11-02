@@ -1,16 +1,16 @@
 import { expect, test } from "vitest"
 
 import {
-  allowedActions,
+  allowedActionIds,
   BLOCKED_WORD_ACTIONS,
   blockedWordAction,
   mayUse,
   strongestOf,
 } from "./blocked-word-action"
 
-const STAFF_ONLY = { opensModeration: false, opensBans: false }
+const STAFF_ONLY = { opensModeration: false }
 
-const MODERATOR = { opensModeration: true, opensBans: false }
+const MODERATOR = { opensModeration: true }
 
 test("the actions run from the weakest to the strongest, under the labels the staff read", () => {
   expect(BLOCKED_WORD_ACTIONS.map(({ label }) => label)).toEqual([
@@ -59,8 +59,8 @@ test("the actions that time out say so in a message of at most 150 characters, w
 })
 
 test("anyone on the staff may use the action that only blocks, and only a moderator the ones that time out", () => {
-  expect(allowedActions(STAFF_ONLY).map(({ id }) => id)).toEqual(["block"])
-  expect(allowedActions(MODERATOR).map(({ id }) => id)).toEqual([
+  expect(allowedActionIds(STAFF_ONLY)).toEqual(["block"])
+  expect(allowedActionIds(MODERATOR)).toEqual([
     "block",
     "timeout-1h",
     "timeout-1d",

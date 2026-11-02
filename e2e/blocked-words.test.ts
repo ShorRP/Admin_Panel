@@ -469,7 +469,7 @@ test.describe("for a staff member who moderates", () => {
     },
   })
 
-  test("a moderator adds a word with « Exclusion 1 heure », which its tile names and its toast announces, which the Discord server holds in that action's rule, sparing the staff role, then removes it", async ({
+  test("a moderator adds a word with « Exclusion 1 heure », which its tile names and its toast announces, which the Discord server holds in that action's rule, sparing the staff role, then removes it", async ({
     page,
     logIn,
     discord,
@@ -497,7 +497,7 @@ test.describe("for a staff member who moderates", () => {
     await page.getByRole("button", { name: "Ajouter" }).click()
 
     await readToast(
-      "« foo » est maintenant un mot interdit, action « Exclusion 1 heure »."
+      "« foo » est maintenant un mot interdit, action « Exclusion 1 heure »."
     )
     await expect(tile).toContainText("Exclusion 1 heure")
     await expect(action).toHaveValue("block")
@@ -518,10 +518,10 @@ test.describe("for a staff member who moderates", () => {
     ])
     await checkAccessibility()
 
-    await tile.getByRole("button", { name: "Retirer « foo »" }).click()
+    await tile.getByRole("button", { name: "Retirer « foo »" }).click()
 
     await readToast(
-      "« foo » n’est plus un mot interdit, action « Exclusion 1 heure »."
+      "« foo » n’est plus un mot interdit, action « Exclusion 1 heure »."
     )
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
@@ -550,7 +550,7 @@ test.describe("for a staff member who moderates", () => {
     await field.fill("foo")
     await add.click()
     await readToast(
-      "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+      "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
     )
 
     await field.fill("FOO")
@@ -558,7 +558,7 @@ test.describe("for a staff member who moderates", () => {
     await add.click()
 
     await expect(field).toHaveAccessibleDescription(
-      "« foo » est déjà un mot interdit, action « Bloquer seulement »."
+      "« foo » est déjà un mot interdit, action « Bloquer seulement »."
     )
     await expect(field).toHaveValue("FOO")
     await expect(action).toHaveValue("timeout-1d")
@@ -591,7 +591,7 @@ test.describe("for a staff member who does not moderate, with a word that times 
     },
   })
 
-  test("the staff member is offered « Bloquer seulement » alone, and sees every word with its action, a cross on the word that only blocks and none on the word that times out", async ({
+  test("the staff member is offered « Bloquer seulement » alone, and sees every word with its action, a cross on the word that only blocks and none on the word that times out", async ({
     page,
     logIn,
     checkAccessibility,
@@ -612,7 +612,7 @@ test.describe("for a staff member who does not moderate, with a word that times 
     ])
     await expect(
       tiles.filter({ hasText: "abricot" }).getByRole("button")
-    ).toHaveAccessibleName("Retirer « abricot »")
+    ).toHaveAccessibleName("Retirer « abricot »")
     await expect(
       tiles.filter({ hasText: "cerise" }).getByRole("button")
     ).toHaveCount(0)

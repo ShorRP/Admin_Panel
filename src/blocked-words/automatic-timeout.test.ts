@@ -33,7 +33,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-test("a member who writes a word tied to « Exclusion 1 heure » is timed out by AutoMod for an hour, and the account's history shows the timeout as AutoMod's, under the name of the word's rule", async () => {
+test("a member who writes a word tied to « Exclusion 1 heure » is timed out by AutoMod for an hour, and the account's history shows the timeout as AutoMod's, under the name of the word's rule", async () => {
   const discord = new FakeDiscord({
     roles: [STAFF, MODERATION, PANEL, GUARD],
     applicationRoles: [PANEL.id],

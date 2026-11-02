@@ -5,18 +5,16 @@ import type { APIAutoModerationRule } from "discord-api-types/v10"
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import {
-  requireRightTo,
-  strongestOf,
-  type BlockedWordAction,
-} from "./blocked-word-action"
+import { requireRightTo, type BlockedWordAction } from "./blocked-word-action"
 import { frenchNumber, quoted } from "./french-text"
 import { MAX_KEYWORD_RULES, MAX_WORDS_PER_RULE } from "./limits"
 import {
+  heldWordsOf,
   isKeywordRule,
   keywordsOf,
   newPanelRule,
   panelRulesOf,
+  strongestHeld,
   withKeywords,
   type PanelRule,
 } from "./panel-rule"
@@ -76,17 +74,15 @@ export async function addBlockedWord(
 }
 
 function duplicateRefusal(panelRules: PanelRule[], word: string) {
-  const same = panelRules.flatMap(({ rule, action }) =>
-    keywordsOf(rule)
-      .filter((keyword) => keyword.toLowerCase() === word.toLowerCase())
-      .map((keyword) => ({ keyword, action }))
+  const strongest = strongestHeld(
+    heldWordsOf(panelRules).filter(
+      (held) => held.word.toLowerCase() === word.toLowerCase()
+    )
   )
-  const strongest = strongestOf(same.map(({ action }) => action.id))
   if (strongest === null) {
     return null
   }
-  const keyword = same.find(({ action }) => action.id === strongest.id)?.keyword
-  return `${quoted(keyword ?? word)} est déjà un mot interdit, action ${quoted(strongest.label)}.`
+  return `${quoted(strongest.word)} est déjà un mot interdit, action ${quoted(strongest.action.label)}.`
 }
 
 function noRoomRefusal(

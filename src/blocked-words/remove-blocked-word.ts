@@ -3,9 +3,14 @@ import "server-only"
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { requireRightTo, strongestOf } from "./blocked-word-action"
+import { requireRightTo } from "./blocked-word-action"
 import { quoted } from "./french-text"
-import { keywordsOf, panelRulesOf, withKeywords } from "./panel-rule"
+import {
+  keywordsOf,
+  panelRulesOf,
+  strongestHeld,
+  withKeywords,
+} from "./panel-rule"
 import { submittedWord } from "./submitted-word"
 import {
   failure,
@@ -28,14 +33,14 @@ export async function removeBlockedWord(
     const holding = panelRulesOf(
       await discord.listAutoModerationRules()
     ).filter(({ rule }) => keywordsOf(rule).includes(typed))
-    const strongest = strongestOf(holding.map(({ action }) => action.id))
+    const strongest = strongestHeld(holding)
     if (strongest === null) {
       return {
         ok: true,
         message: `${quoted(typed)} n’est plus un mot interdit.`,
       }
     }
-    requireRightTo(staffMember, strongest)
+    requireRightTo(staffMember, strongest.action)
     for (const { rule, action } of holding) {
       await discord.modifyAutoModerationRule(
         rule.id,
@@ -51,7 +56,7 @@ export async function removeBlockedWord(
     }
     return {
       ok: true,
-      message: `${quoted(typed)} n’est plus un mot interdit, action ${quoted(strongest.label)}.`,
+      message: `${quoted(typed)} n’est plus un mot interdit, action ${quoted(strongest.action.label)}.`,
     }
   })
 }

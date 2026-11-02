@@ -294,7 +294,7 @@ test("a page holds the 50 newest changes, to the blocked words and to sanctions 
   )
 })
 
-test("the blocked words added to each of the panel's rules, and removed from them, show under « Tout » and « Mots interdits », with their action, and the changes to a hand-made rule do not", async () => {
+test("the blocked words added to each of the panel's rules, and removed from them, show under « Tout » and « Mots interdits », with their action, and the changes to a hand-made rule do not", async () => {
   const discord = discordWithModerator()
   const moderator = await staffMemberOn(discord)
   discord.createAutoModerationRuleAs(BRYN.id, {

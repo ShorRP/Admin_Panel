@@ -8,9 +8,9 @@ import type { FilteredBlockedWords } from "./filter-blocked-words"
 import type { BlockedWord } from "./read-blocked-words"
 import type { WriteResult } from "./write-result"
 
-const MODERATOR = { opensModeration: true, opensBans: false }
+const MODERATOR = { opensModeration: true }
 
-const STAFF_ONLY = { opensModeration: false, opensBans: false }
+const STAFF_ONLY = { opensModeration: false }
 
 function blocking(...words: string[]): BlockedWord[] {
   return words.map((word) => ({ word, action: "block" }))

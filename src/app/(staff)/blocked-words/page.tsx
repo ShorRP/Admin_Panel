@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { connection } from "next/server"
 
 import { AddBlockedWordFormSkeleton } from "@/blocked-words/add-blocked-word-form-skeleton"
-import { allowedActions, rightsOf } from "@/blocked-words/blocked-word-action"
+import { allowedActionIds, rightsOf } from "@/blocked-words/blocked-word-action"
 import { BlockedWordCapacity } from "@/blocked-words/blocked-word-capacity"
 import { BlockedWordCapacitySkeleton } from "@/blocked-words/blocked-word-capacity-skeleton"
 import { BlockedWordListSkeleton } from "@/blocked-words/blocked-word-list-skeleton"
@@ -81,11 +81,8 @@ type FromDiscordProps = { blockedWords: Promise<BlockedWords> }
 type StaffMemberProps = { staffMember: Promise<StaffMember> }
 
 async function FormForStaffMember({ staffMember }: StaffMemberProps) {
-  const rights = rightsOf(await staffMember)
   return (
-    <StatefulAddBlockedWordForm
-      actions={allowedActions(rights).map(({ id }) => id)}
-    />
+    <StatefulAddBlockedWordForm actions={allowedActionIds(await staffMember)} />
   )
 }
 

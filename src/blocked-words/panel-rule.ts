@@ -11,6 +11,7 @@ import {
 
 import {
   BLOCKED_WORD_ACTIONS,
+  strongestOf,
   type BlockedWordAction,
 } from "./blocked-word-action"
 
@@ -34,6 +35,21 @@ export function panelRulesOf(rules: APIAutoModerationRule[]): PanelRule[] {
 
 export function keywordsOf(rule: APIAutoModerationRule) {
   return rule.trigger_metadata.keyword_filter ?? []
+}
+
+export type HeldWord = PanelRule & { word: string }
+
+export function heldWordsOf(panelRules: PanelRule[]): HeldWord[] {
+  return panelRules.flatMap(({ rule, action }) =>
+    keywordsOf(rule).map((word) => ({ rule, action, word }))
+  )
+}
+
+export function strongestHeld<Held extends { action: BlockedWordAction }>(
+  held: Held[]
+) {
+  const strongest = strongestOf(held.map(({ action }) => action.id))
+  return held.find(({ action }) => action.id === strongest?.id) ?? null
 }
 
 function actionsOf(action: BlockedWordAction): APIAutoModerationAction[] {
