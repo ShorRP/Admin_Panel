@@ -22,6 +22,17 @@ export const STAFF_SANCTION_EVENTS: SanctionEvent[] = [
   },
 ]
 
+export const AUTO_MODERATION_NAME = "AutoMod"
+
+export const AUTOMATIC_TIMEOUT_EVENT: SanctionEvent = {
+  actionType: AuditLogEvent.AutoModerationUserCommunicationDisabled,
+  changeOf: () => ({ kind: "timeout", end: null }),
+}
+
+export function automaticTimeoutRuleNameOf(entry: APIAuditLogEntry) {
+  return entry.options?.auto_moderation_rule_name ?? null
+}
+
 function timeoutChangeOf(entry: APIAuditLogEntry): SanctionChange | null {
   const timeout = entry.changes?.find(
     ({ key }) => key === "communication_disabled_until"

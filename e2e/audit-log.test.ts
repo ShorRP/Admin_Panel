@@ -1,3 +1,9 @@
+import {
+  AutoModerationActionType,
+  AutoModerationRuleEventType,
+  AutoModerationRuleTriggerType,
+} from "discord-api-types/v10"
+
 import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
@@ -430,6 +436,98 @@ test.describe("for a staff member who moderates", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Lyra" })
     ).toBeVisible()
+    await checkAccessibility()
+  })
+
+  test("an automatic timeout shows under « Tout » and « Exclusions » with its account and its rule, under « AutoMod » with no avatar and no link to an author, and the author filter finds it by « AutoMod » and never by the member it timed out", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    const insults = discord.createAutoModerationRuleAs(BRYN.id, {
+      name: "Insultes",
+      event_type: AutoModerationRuleEventType.MessageSend,
+      trigger_type: AutoModerationRuleTriggerType.Keyword,
+      trigger_metadata: { keyword_filter: ["crétin"] },
+      actions: [
+        {
+          type: AutoModerationActionType.Timeout,
+          metadata: { duration_seconds: 600 },
+        },
+      ],
+    })
+    discord.modifyMemberAs(
+      BRYN.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    discord.timeOutByAutoModeration(insults.id, LYRA.id)
+    const changes = page.locator("ol").getByRole("listitem")
+    const automatic = changes.filter({
+      hasText: "Exclusion temporaire automatique",
+    })
+    const byStaff = changes.filter({ hasText: "Exclusion temporaire jusqu’au" })
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+    const author = page.getByLabel("Auteur")
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(automatic).toHaveCount(1)
+    await expect(automatic).toContainText(
+      "Compte : Lyra · Règle : « Insultes »"
+    )
+    await expect(automatic).not.toContainText("Aucun motif")
+    await expect(automatic).not.toContainText("Message contained keyword")
+    await expect(automatic.getByText("AutoMod", { exact: true })).toBeVisible()
+    await expect(automatic.locator('[data-slot="avatar"]')).toHaveCount(0)
+    await expect(automatic.getByRole("link")).toHaveCount(1)
+    await expect(automatic.getByRole("link", { name: "Lyra" })).toHaveAttribute(
+      "href",
+      `/records/${LYRA.id}`
+    )
+    await expect(byStaff).toHaveCount(1)
+    await expect(
+      byStaff.getByRole("link", { name: "bryn", exact: true })
+    ).toHaveAttribute("href", `/records/${BRYN.id}`)
+    await checkAccessibility()
+
+    await typeFilter.getByRole("link", { name: "Exclusions" }).click()
+    await expect(page).toHaveURL("/audit-log?type=timeouts")
+    await expect(changes).toHaveCount(2)
+    await expect(automatic).toContainText("Règle : « Insultes »")
+    await checkAccessibility()
+
+    await author.fill("AutoMod")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toMatchObject({ type: "timeouts", author: "AutoMod" })
+    await expect(changes).toHaveCount(1)
+    await expect(automatic).toHaveCount(1)
+    await expect(byStaff).toHaveCount(0)
+    await checkAccessibility()
+
+    await page.setViewportSize({ width: 360, height: 760 })
+    await expect(automatic.getByText("AutoMod", { exact: true })).toBeVisible()
+    await expect(automatic.getByRole("link")).toHaveCount(1)
+    await checkAccessibility()
+    await page.setViewportSize({ width: 1280, height: 800 })
+
+    await author.fill(`<@${LYRA.id}>`)
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toMatchObject({ type: "timeouts", author: `<@${LYRA.id}>` })
+    await expect(
+      page.getByText(
+        "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
+      )
+    ).toBeVisible()
+    await expect(changes).toHaveCount(0)
     await checkAccessibility()
   })
 

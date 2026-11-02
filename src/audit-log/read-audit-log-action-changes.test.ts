@@ -310,6 +310,45 @@ test("changes of action, whose two entries count as one change, leave no gap in 
   ])
 })
 
+async function ruleIdEndingWith(discord: FakeDiscord, end: string) {
+  const rule = (await discord.listAutoModerationRules()).find(({ name }) =>
+    name.endsWith(end)
+  )
+  if (rule === undefined) {
+    throw new Error(`No panel rule ends with « ${end} »`)
+  }
+  return rule.id
+}
+
+test("an automatic timeout never joins with the two entries of a change of action, nor with another automatic timeout, even when two of one account fall within a minute", async () => {
+  const discord = new FakeDiscordFailingLaterModify({
+    members: [
+      { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+      { user: LYRA, roles: [] },
+    ],
+  })
+  const moderator = await moderatorOn(discord)
+  await addBlockedWord(discord, moderator, form("foo", "timeout-1h"))
+  const hourRule = await ruleIdEndingWith(discord, "exclusion 1 heure")
+  discord.timeOutByAutoModeration(hourRule, LYRA.id)
+  await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    changing("foo", "timeout-1d")
+  )
+  const dayRule = await ruleIdEndingWith(discord, "exclusion 1 jour")
+  discord.timeOutByAutoModeration(dayRule, LYRA.id)
+  discord.timeOutByAutoModeration(dayRule, LYRA.id)
+
+  expect(descriptions(await readAuditLog(discord, {}))).toEqual([
+    "automatic-timeout",
+    "automatic-timeout",
+    "« foo » passe de « Exclusion 1 heure » à « Exclusion 1 jour »",
+    "automatic-timeout",
+    added("foo", "Exclusion 1 heure"),
+  ])
+})
+
 test("a change shows once, joined, on the pages that follow, whatever the number of entries that came after it, the read of a kind stopping between its two entries or not", async () => {
   const discord = discordWithModerator()
   const moderator = await moderatorOn(discord)
