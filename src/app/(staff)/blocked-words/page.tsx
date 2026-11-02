@@ -1,7 +1,9 @@
-import { ViewTransition } from "react"
+import { Suspense, ViewTransition } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
 
+import { AddBlockedWordFormSkeleton } from "@/blocked-words/add-blocked-word-form-skeleton"
+import { allowedActionIds, rightsOf } from "@/blocked-words/blocked-word-action"
 import { BlockedWordCapacity } from "@/blocked-words/blocked-word-capacity"
 import { BlockedWordCapacitySkeleton } from "@/blocked-words/blocked-word-capacity-skeleton"
 import { BlockedWordListSkeleton } from "@/blocked-words/blocked-word-list-skeleton"
@@ -16,6 +18,7 @@ import { StatefulAddBlockedWordForm } from "@/blocked-words/stateful-add-blocked
 import { StatefulBlockedWordList } from "@/blocked-words/stateful-blocked-word-list"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
+import type { StaffMember } from "@/staff/staff-member"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Mots interdits" }
@@ -23,7 +26,8 @@ export const metadata: Metadata = { title: "Mots interdits" }
 export default function BlockedWordsPage({
   searchParams,
 }: PageProps<"/blocked-words">) {
-  const blockedWords = blockedWordsFromDiscord()
+  const staffMember = staffMemberFromDiscord()
+  const blockedWords = blockedWordsFromDiscord(staffMember)
   return (
     <ViewTransition
       enter="section-crossfade"
@@ -37,11 +41,16 @@ export default function BlockedWordsPage({
               <CapacityFromDiscord blockedWords={blockedWords} />
             </SuspenseWithSkeleton>
           }
-          form={<StatefulAddBlockedWordForm />}
+          form={
+            <Suspense fallback={<AddBlockedWordFormSkeleton />}>
+              <FormForStaffMember staffMember={staffMember} />
+            </Suspense>
+          }
           list={
             <SuspenseWithSkeleton skeleton={<BlockedWordListSkeleton />}>
               <ListFromDiscord
                 blockedWords={blockedWords}
+                staffMember={staffMember}
                 searchParams={searchParams}
               />
             </SuspenseWithSkeleton>
@@ -57,14 +66,25 @@ export default function BlockedWordsPage({
   )
 }
 
-async function blockedWordsFromDiscord() {
+async function staffMemberFromDiscord() {
   await connection()
-  const discord = createDiscordApi()
-  await requireStaffMember(discord)
-  return await readBlockedWords(discord)
+  return await requireStaffMember(createDiscordApi())
+}
+
+async function blockedWordsFromDiscord(staffMember: Promise<StaffMember>) {
+  await staffMember
+  return await readBlockedWords(createDiscordApi())
 }
 
 type FromDiscordProps = { blockedWords: Promise<BlockedWords> }
+
+type StaffMemberProps = { staffMember: Promise<StaffMember> }
+
+async function FormForStaffMember({ staffMember }: StaffMemberProps) {
+  return (
+    <StatefulAddBlockedWordForm actions={allowedActionIds(await staffMember)} />
+  )
+}
 
 async function CapacityFromDiscord({ blockedWords }: FromDiscordProps) {
   const { words } = await blockedWords
@@ -73,11 +93,21 @@ async function CapacityFromDiscord({ blockedWords }: FromDiscordProps) {
 
 async function ListFromDiscord({
   blockedWords,
+  staffMember,
   searchParams,
-}: FromDiscordProps & Pick<PageProps<"/blocked-words">, "searchParams">) {
-  const [{ words }, { query }] = await Promise.all([blockedWords, searchParams])
+}: FromDiscordProps &
+  StaffMemberProps &
+  Pick<PageProps<"/blocked-words">, "searchParams">) {
+  const [{ words }, member, { query }] = await Promise.all([
+    blockedWords,
+    staffMember,
+    searchParams,
+  ])
   return (
-    <StatefulBlockedWordList blockedWords={filterBlockedWords(words, query)} />
+    <StatefulBlockedWordList
+      blockedWords={filterBlockedWords(words, query)}
+      rights={rightsOf(member)}
+    />
   )
 }
 

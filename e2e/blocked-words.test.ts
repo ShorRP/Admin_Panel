@@ -4,7 +4,7 @@ import {
   AutoModerationRuleTriggerType,
 } from "discord-api-types/v10"
 
-import { STAFF_ROLE_ID } from "../playwright.config"
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -143,7 +143,7 @@ test.describe("with motion, which this flow keeps", () => {
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité0/ 3 000 mots")
     await checkAccessibility()
     await page.waitForFunction(() => document.activeViewTransition === null)
 
@@ -161,12 +161,14 @@ test.describe("with motion, which this flow keeps", () => {
       ],
     })
 
-    await readToast("« foo » est maintenant un mot interdit.")
+    await readToast(
+      "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+    )
     await expect(field).toHaveValue("")
     await expect(
       page.getByText("1 mot interdit", { exact: true })
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("Capacité1/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité1/ 3 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: ["foo"] } },
     ])
@@ -185,11 +187,13 @@ test.describe("with motion, which this flow keeps", () => {
       "the word removed": ["::view-transition-old opacity 150 ms ease-out"],
     })
 
-    await readToast("« foo » n’est plus un mot interdit.")
+    await readToast(
+      "« foo » n’est plus un mot interdit, action « Bloquer seulement »."
+    )
     await expect(
       page.getByText("Aucun mot interdit pour l’instant.")
     ).toBeVisible()
-    await expect(capacity(page)).toHaveText("Capacité0/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité0/ 3 000 mots")
     expect(await discord.listAutoModerationRules()).toMatchObject([
       { trigger_metadata: { keyword_filter: [] } },
     ])
@@ -219,7 +223,8 @@ for (const { title, prefersReducedMotion } of [
       toast,
       readToast,
     }) => {
-      const message = "« banane » est maintenant un mot interdit."
+      const message =
+        "« banane » est maintenant un mot interdit, action « Bloquer seulement »."
       const moves = prefersReducedMotion ? ["opacity"] : ["transform"]
 
       await logIn(ALDIS)
@@ -295,7 +300,9 @@ for (const { title, prefersReducedMotion } of [
           ],
           ...(!prefersReducedMotion && { cerise: slides }),
         })
-        await readToast("« banane » est maintenant un mot interdit.")
+        await readToast(
+          "« banane » est maintenant un mot interdit, action « Bloquer seulement »."
+        )
         await expect(words).toHaveText([/^abricot/, /^banane/, /^cerise/])
         await checkAccessibility()
 
@@ -311,7 +318,9 @@ for (const { title, prefersReducedMotion } of [
           "the word removed": ["::view-transition-old opacity 150 ms ease-out"],
           ...(!prefersReducedMotion && { cerise: slides }),
         })
-        await readToast("« banane » n’est plus un mot interdit.")
+        await readToast(
+          "« banane » n’est plus un mot interdit, action « Bloquer seulement »."
+        )
         await expect(words).toHaveText([/^abricot/, /^cerise/])
         await checkAccessibility()
       })
@@ -326,7 +335,8 @@ test("a write's toast stays while the staff member moves to another section, and
   toast,
   readToast,
 }) => {
-  const added = "« foo » est maintenant un mot interdit."
+  const added =
+    "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
   const sections = page
     .getByRole("complementary")
     .getByRole("navigation", { name: "Sections du panel" })
@@ -354,7 +364,9 @@ test("a write's toast stays while the staff member moves to another section, and
   ).toBeVisible()
   await page.getByLabel("Ajouter un mot ou une expression").fill("bar")
   await page.getByRole("button", { name: "Ajouter" }).click()
-  await readToast("« bar » est maintenant un mot interdit.")
+  await readToast(
+    "« bar » est maintenant un mot interdit, action « Bloquer seulement »."
+  )
   await expect(toast()).toHaveCount(1)
 })
 
@@ -382,13 +394,17 @@ test("the count beside « Mots interdits » follows each blocked word added an
 
   await field.fill("foo")
   await page.getByRole("button", { name: "Ajouter" }).click()
-  await readToast("« foo » est maintenant un mot interdit.")
+  await readToast(
+    "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+  )
   await expect(sidebarLink).toHaveAccessibleName("Mots interdits 1 mot")
   await expect(sidebarLink).toHaveText("Mots interdits11 mot")
   await checkAccessibility()
 
   await remove.click()
-  await readToast("« foo » n’est plus un mot interdit.")
+  await readToast(
+    "« foo » n’est plus un mot interdit, action « Bloquer seulement »."
+  )
   await expect(sidebarLink).toHaveAccessibleName("Mots interdits 0 mot")
 
   await page.setViewportSize({ width: 360, height: 760 })
@@ -399,7 +415,9 @@ test("the count beside « Mots interdits » follows each blocked word added an
 
   await field.fill("foo")
   await page.getByRole("button", { name: "Ajouter" }).click()
-  await readToast("« foo » est maintenant un mot interdit.")
+  await readToast(
+    "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+  )
   await openMenu.click()
   await expect(menuLink).toHaveAccessibleName("Mots interdits 1 mot")
   await checkAccessibility()
@@ -407,7 +425,9 @@ test("the count beside « Mots interdits » follows each blocked word added an
   await expect(menu).toBeHidden()
 
   await remove.click()
-  await readToast("« foo » n’est plus un mot interdit.")
+  await readToast(
+    "« foo » n’est plus un mot interdit, action « Bloquer seulement »."
+  )
   await openMenu.click()
   await expect(menuLink).toHaveAccessibleName("Mots interdits 0 mot")
 })
@@ -435,9 +455,171 @@ test("a refused blocked word stays in the field, which its message describes, an
 
   await field.fill("foo")
   await page.getByRole("button", { name: "Ajouter" }).click()
-  await readToast("« foo » est maintenant un mot interdit.")
+  await readToast(
+    "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+  )
   await expect(toast()).toHaveCount(1)
   await checkAccessibility()
+})
+
+test.describe("for a staff member who moderates", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
+    },
+  })
+
+  test("a moderator adds a word with « Exclusion 1 heure », which its tile names and its toast announces, which the Discord server holds in that action's rule, sparing the staff role, then removes it", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+    readToast,
+  }) => {
+    const action = page.getByLabel("Action", { exact: true })
+    const tile = page
+      .getByRole("region", { name: "La liste" })
+      .getByRole("listitem")
+      .filter({ hasText: "foo" })
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await expect(action.locator("option")).toHaveText([
+      "Bloquer seulement",
+      "Exclusion 1 heure",
+      "Exclusion 1 jour",
+    ])
+    await expect(action).toHaveValue("block")
+    await page.waitForLoadState()
+
+    await page.getByLabel("Ajouter un mot ou une expression").fill("foo")
+    await action.selectOption({ label: "Exclusion 1 heure" })
+    await page.getByRole("button", { name: "Ajouter" }).click()
+
+    await readToast(
+      "« foo » est maintenant un mot interdit, action « Exclusion 1 heure »."
+    )
+    await expect(tile).toContainText("Exclusion 1 heure")
+    await expect(action).toHaveValue("block")
+    await expect(capacity(page)).toHaveText("Capacité1/ 3 000 mots")
+    expect(await discord.listAutoModerationRules()).toMatchObject([
+      {
+        name: "Mots interdits du panel · exclusion 1 heure",
+        trigger_metadata: { keyword_filter: ["foo"] },
+        exempt_roles: [STAFF_ROLE_ID],
+        actions: [
+          { type: AutoModerationActionType.BlockMessage },
+          {
+            type: AutoModerationActionType.Timeout,
+            metadata: { duration_seconds: 3600 },
+          },
+        ],
+      },
+    ])
+    await checkAccessibility()
+
+    await tile.getByRole("button", { name: "Retirer « foo »" }).click()
+
+    await readToast(
+      "« foo » n’est plus un mot interdit, action « Exclusion 1 heure »."
+    )
+    await expect(
+      page.getByText("Aucun mot interdit pour l’instant.")
+    ).toBeVisible()
+    await expect(capacity(page)).toHaveText("Capacité0/ 3 000 mots")
+    expect(await discord.listAutoModerationRules()).toMatchObject([
+      { trigger_metadata: { keyword_filter: [] } },
+    ])
+    await checkAccessibility()
+  })
+
+  test("a refused word stays in the field with its action, whose rule's name the message gives, and makes no toast", async ({
+    page,
+    logIn,
+    checkAccessibility,
+    toast,
+    readToast,
+  }) => {
+    const field = page.getByLabel("Ajouter un mot ou une expression")
+    const action = page.getByLabel("Action", { exact: true })
+    const add = page.getByRole("button", { name: "Ajouter" })
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await page.waitForLoadState()
+    await field.fill("foo")
+    await add.click()
+    await readToast(
+      "« foo » est maintenant un mot interdit, action « Bloquer seulement »."
+    )
+
+    await field.fill("FOO")
+    await action.selectOption({ label: "Exclusion 1 jour" })
+    await add.click()
+
+    await expect(field).toHaveAccessibleDescription(
+      "« foo » est déjà un mot interdit, action « Bloquer seulement »."
+    )
+    await expect(field).toHaveValue("FOO")
+    await expect(action).toHaveValue("timeout-1d")
+    await expect(toast()).toHaveCount(1)
+    await checkAccessibility()
+  })
+})
+
+test.describe("for a staff member who does not moderate, with a word that times out already", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
+      autoModerationRules: [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", ["abricot"]),
+        {
+          ...keywordRule(
+            "1500000000000000002",
+            "Mots interdits du panel · exclusion 1 heure",
+            ["cerise"]
+          ),
+          actions: [
+            { type: AutoModerationActionType.BlockMessage },
+            {
+              type: AutoModerationActionType.Timeout,
+              metadata: { duration_seconds: 3600 },
+            },
+          ],
+        },
+      ],
+    },
+  })
+
+  test("the staff member is offered « Bloquer seulement » alone, and sees every word with its action, a cross on the word that only blocks and none on the word that times out", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const tiles = page
+      .getByRole("region", { name: "La liste" })
+      .getByRole("listitem")
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+
+    await expect(
+      page.getByLabel("Action", { exact: true }).locator("option")
+    ).toHaveText(["Bloquer seulement"])
+    await expect(tiles).toHaveText([
+      /^abricotBloquer seulement/,
+      /^ceriseExclusion 1 heure/,
+    ])
+    await expect(
+      tiles.filter({ hasText: "abricot" }).getByRole("button")
+    ).toHaveAccessibleName("Retirer « abricot »")
+    await expect(
+      tiles.filter({ hasText: "cerise" }).getByRole("button")
+    ).toHaveCount(0)
+    await expect(capacity(page)).toHaveText("Capacité2/ 3 000 mots")
+    await page.waitForLoadState()
+    await checkAccessibility()
+  })
 })
 
 test("the page says whom the blocked words spare", async ({
@@ -493,7 +675,7 @@ test.describe("with sixty blocked words, one of sixty characters, and another Au
     await logIn(ALDIS)
     await page.goto("/blocked-words")
     await expect(list.getByRole("listitem")).toHaveCount(60)
-    await expect(capacity(page)).toHaveText("Capacité60/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité60/ 3 000 mots")
     await page.waitForLoadState()
 
     const listBox = await list.boundingBox()
@@ -581,7 +763,7 @@ test.describe("with four blocked words", () => {
     await expect(words).toHaveText([/^free nitro/, /^Nitro gratuit/])
     await expect(list.getByText("2 sur 4", { exact: true })).toBeVisible()
     await expect(field).toHaveValue("NITRO")
-    await expect(capacity(page)).toHaveText("Capacité4/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité4/ 3 000 mots")
     await checkAccessibility()
 
     await words
@@ -589,7 +771,9 @@ test.describe("with four blocked words", () => {
       .getByRole("button", { name: "Retirer « free nitro »" })
       .click()
 
-    await readToast("« free nitro » n’est plus un mot interdit.")
+    await readToast(
+      "« free nitro » n’est plus un mot interdit, action « Bloquer seulement »."
+    )
     await expect(page).toHaveURL("/blocked-words?query=NITRO")
     await expect(words).toHaveText([/^Nitro gratuit/])
     await expect(list.getByText("1 sur 3", { exact: true })).toBeVisible()
@@ -606,16 +790,20 @@ test.describe("with four blocked words", () => {
     await addField.fill("zèbre")
     await add.click()
 
-    await readToast("« zèbre » est maintenant un mot interdit.")
+    await readToast(
+      "« zèbre » est maintenant un mot interdit, action « Bloquer seulement »."
+    )
     await expect(page).toHaveURL("/blocked-words?query=NITRO")
     await expect(words).toHaveText([/^Nitro gratuit/])
     await expect(list.getByText("1 sur 4", { exact: true })).toBeVisible()
-    await expect(capacity(page)).toHaveText("Capacité4/ 1 000 mots")
+    await expect(capacity(page)).toHaveText("Capacité4/ 3 000 mots")
 
     await addField.fill("nitro boost")
     await add.click()
 
-    await readToast("« nitro boost » est maintenant un mot interdit.")
+    await readToast(
+      "« nitro boost » est maintenant un mot interdit, action « Bloquer seulement »."
+    )
     await expect(page).toHaveURL("/blocked-words?query=NITRO")
     await expect(words).toHaveText([/^nitro boost/, /^Nitro gratuit/])
     await expect(list.getByText("2 sur 5", { exact: true })).toBeVisible()

@@ -20,7 +20,7 @@ function texts(html: string) {
 
 test("the page opens with its overline, its h1 and its sentence beside the capacity gauge, then gives the form and the list before the side column, the exceptions' card over the other AutoMod rules", () => {
   expect(texts(render())).toEqual([
-    "AutoMod · règle du panel",
+    "AutoMod · règles du panel",
     "Mots interdits",
     "Les messages qui contiennent l’un de ces mots ou expressions sont bloqués par Discord avant d’être publiés.",
     "the capacity gauge",

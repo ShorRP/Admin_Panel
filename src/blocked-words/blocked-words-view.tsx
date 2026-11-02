@@ -19,7 +19,7 @@ export function BlockedWordsView({
     <div className="mx-auto flex max-w-270 flex-col gap-7">
       <div className="flex flex-wrap items-end justify-between gap-8">
         <PageHeader
-          overline="AutoMod · règle du panel"
+          overline="AutoMod · règles du panel"
           title="Mots interdits"
           className="max-w-155"
         >

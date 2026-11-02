@@ -9,6 +9,7 @@ import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { findStaffMember } from "@/staff/staff-member"
+import { blockedWordAction } from "./blocked-word-action"
 import { newPanelRule } from "./panel-rule"
 import { readBlockedWordCount } from "./read-blocked-word-count"
 
@@ -34,7 +35,11 @@ async function staffMemberOn(discord: FakeDiscord) {
   return staffMember
 }
 
-test("the count is the number of keywords of the panel's rule, whatever another AutoMod rule holds", async () => {
+function panelRuleOf(action: "block" | "timeout-1h", keywords: string[]) {
+  return newPanelRule(blockedWordAction(action), STAFF_ROLE_ID, keywords)
+}
+
+test("the count is the number of blocked words, whatever their action, a word that two rules hold counted once, whatever another AutoMod rule holds", async () => {
   const discord = discordWithStaff()
   discord.createAutoModerationRuleAs(ALDIS.id, {
     name: "Liens",
@@ -44,11 +49,15 @@ test("the count is the number of keywords of the panel's rule, whatever another 
     actions: [{ type: AutoModerationActionType.BlockMessage }],
   })
   await discord.createAutoModerationRule(
-    newPanelRule(["foo", "bar", "baz"]),
+    panelRuleOf("block", ["foo", "bar", "baz"]),
+    "Created by the panel"
+  )
+  await discord.createAutoModerationRule(
+    panelRuleOf("timeout-1h", ["qux", "foo"]),
     "Created by the panel"
   )
 
-  expect(await readBlockedWordCount(discord, staffMemberOn(discord))).toBe(3)
+  expect(await readBlockedWordCount(discord, staffMemberOn(discord))).toBe(4)
 })
 
 test("before the panel's rule exists the count is 0, and reading creates no rule", async () => {
@@ -61,7 +70,7 @@ test("before the panel's rule exists the count is 0, and reading creates no rule
 test("a DiscordError while reading the rules gives no count", async () => {
   const discord = discordWithStaff()
   await discord.createAutoModerationRule(
-    newPanelRule(["foo"]),
+    panelRuleOf("block", ["foo"]),
     "Created by the panel"
   )
   const staffMember = staffMemberOn(discord)

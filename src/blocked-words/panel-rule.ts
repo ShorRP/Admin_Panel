@@ -2,34 +2,88 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  type APIAutoModerationAction,
   type APIAutoModerationRule,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
+  type Snowflake,
 } from "discord-api-types/v10"
 
-const PANEL_RULE_NAME = "Mots interdits du panel"
+import {
+  BLOCKED_WORD_ACTIONS,
+  strongestOf,
+  type BlockedWordAction,
+} from "./blocked-word-action"
+
+export type PanelRule = {
+  rule: APIAutoModerationRule
+  action: BlockedWordAction
+}
 
 export function isKeywordRule(rule: APIAutoModerationRule) {
   return rule.trigger_type === AutoModerationRuleTriggerType.Keyword
 }
 
-export function isPanelRule(rule: APIAutoModerationRule) {
-  return isKeywordRule(rule) && rule.name === PANEL_RULE_NAME
+export function panelRulesOf(rules: APIAutoModerationRule[]): PanelRule[] {
+  return rules.flatMap((rule) => {
+    const action = isKeywordRule(rule)
+      ? BLOCKED_WORD_ACTIONS.find(({ ruleName }) => ruleName === rule.name)
+      : undefined
+    return action === undefined ? [] : [{ rule, action }]
+  })
 }
 
 export function keywordsOf(rule: APIAutoModerationRule) {
   return rule.trigger_metadata.keyword_filter ?? []
 }
 
+export type HeldWord = PanelRule & { word: string }
+
+export function heldWordsOf(panelRules: PanelRule[]): HeldWord[] {
+  return panelRules.flatMap(({ rule, action }) =>
+    keywordsOf(rule).map((word) => ({ rule, action, word }))
+  )
+}
+
+export function strongestHeld<Held extends { action: BlockedWordAction }>(
+  held: Held[]
+) {
+  const strongest = strongestOf(held.map(({ action }) => action.id))
+  return held.find(({ action }) => action.id === strongest?.id) ?? null
+}
+
+function actionsOf(action: BlockedWordAction): APIAutoModerationAction[] {
+  if (action.customMessage === null) {
+    return [{ type: AutoModerationActionType.BlockMessage }]
+  }
+  return [
+    {
+      type: AutoModerationActionType.BlockMessage,
+      metadata: { custom_message: action.customMessage },
+    },
+    ...(action.timeoutSeconds === null
+      ? []
+      : [
+          {
+            type: AutoModerationActionType.Timeout,
+            metadata: { duration_seconds: action.timeoutSeconds },
+          },
+        ]),
+  ]
+}
+
 export function newPanelRule(
+  action: BlockedWordAction,
+  staffRoleId: Snowflake,
   keywords: string[]
 ): RESTPostAPIAutoModerationRuleJSONBody {
   return {
-    name: PANEL_RULE_NAME,
+    name: action.ruleName,
     event_type: AutoModerationRuleEventType.MessageSend,
     trigger_type: AutoModerationRuleTriggerType.Keyword,
     trigger_metadata: { keyword_filter: keywords },
-    actions: [{ type: AutoModerationActionType.BlockMessage }],
+    actions: actionsOf(action),
+    ...(action.sanctions && { exempt_roles: [staffRoleId] }),
     enabled: true,
   }
 }

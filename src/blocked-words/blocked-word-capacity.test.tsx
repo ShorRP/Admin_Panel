@@ -13,21 +13,21 @@ function gauge(html: string) {
   }
 }
 
-test("the capacity gauge shows the count of blocked words in large, out of the 1 000 the rule holds, under its overline, over a bar hidden from assistive technologies that fills in proportion", () => {
+test("the capacity gauge shows the count of blocked words in large, out of the 3 000 that the three actions' rules hold, under its overline, over a bar hidden from assistive technologies that fills in proportion", () => {
   expect(
     gauge(renderToStaticMarkup(<BlockedWordCapacity count={18} />))
   ).toEqual({
-    texts: ["Capacité", "18", "/ 1 000 mots"],
+    texts: ["Capacité", "18", "/ 3 000 mots"],
     barHidden: true,
-    barWidth: "1.8%",
+    barWidth: "0.6%",
   })
 })
 
-test("the gauge's count reads as French numbers do, and a full rule fills the bar", () => {
+test("the gauge's count reads as French numbers do, and every rule full fills the bar", () => {
   expect(
-    gauge(renderToStaticMarkup(<BlockedWordCapacity count={1000} />))
+    gauge(renderToStaticMarkup(<BlockedWordCapacity count={3000} />))
   ).toEqual({
-    texts: ["Capacité", "1 000", "/ 1 000 mots"],
+    texts: ["Capacité", "3 000", "/ 3 000 mots"],
     barHidden: true,
     barWidth: "100%",
   })
@@ -42,7 +42,7 @@ test("the gauge is a group that its overline names", () => {
   )
 })
 
-test("an empty rule leaves the bar empty", () => {
+test("no blocked word leaves the bar empty", () => {
   expect(
     gauge(renderToStaticMarkup(<BlockedWordCapacity count={0} />)).barWidth
   ).toBe("0%")

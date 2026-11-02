@@ -1,8 +1,11 @@
 import { Overline } from "@/ui/overline"
+import { BLOCKED_WORD_ACTIONS } from "./blocked-word-action"
 import { frenchNumber } from "./french-text"
-import { MAX_BLOCKED_WORDS } from "./limits"
+import { MAX_WORDS_PER_RULE } from "./limits"
 
 const LABEL_ID = "blocked-word-capacity"
+
+const CAPACITY = MAX_WORDS_PER_RULE * BLOCKED_WORD_ACTIONS.length
 
 export function BlockedWordCapacity({ count }: { count: number }) {
   return (
@@ -17,13 +20,13 @@ export function BlockedWordCapacity({ count }: { count: number }) {
           {frenchNumber(count)}
         </span>
         <span className="text-[0.8125rem] text-muted-foreground">
-          {`/ ${frenchNumber(MAX_BLOCKED_WORDS)} mots`}
+          {`/ ${frenchNumber(CAPACITY)} mots`}
         </span>
       </p>
       <div aria-hidden className="h-0.75 overflow-hidden rounded-xs bg-muted">
         <div
           className="h-full bg-primary"
-          style={{ width: `${(count * 100) / MAX_BLOCKED_WORDS}%` }}
+          style={{ width: `${(count * 100) / CAPACITY}%` }}
         />
       </div>
     </div>

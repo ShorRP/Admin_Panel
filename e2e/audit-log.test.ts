@@ -1,3 +1,4 @@
+import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
@@ -47,7 +48,7 @@ function addition(word: string) {
 
 async function seedBlockedWordChanges(discord: FakeDiscord, count: number) {
   const rule = await discord.createAutoModerationRule(
-    newPanelRule(["mot0"]),
+    newPanelRule(blockedWordAction("block"), STAFF_ROLE_ID, ["mot0"]),
     addition("mot0")
   )
   for (let index = 1; index < count; index++) {
@@ -185,7 +186,7 @@ test("the time, the icon and the author's avatar of a row share one axis, the ro
   checkAccessibility,
 }) => {
   await discord.createAutoModerationRule(
-    newPanelRule(["mot0"]),
+    newPanelRule(blockedWordAction("block"), STAFF_ROLE_ID, ["mot0"]),
     addition("mot0")
   )
   discord.modifyMemberAs(
@@ -426,7 +427,7 @@ test.describe("with changes of several types", () => {
       })
     }
     await discord.createAutoModerationRule(
-      newPanelRule(["mot0"]),
+      newPanelRule(blockedWordAction("block"), STAFF_ROLE_ID, ["mot0"]),
       addition("mot0")
     )
     discord.removeMemberAs(ALDIS.id, BRYN.id, "Provocations")
