@@ -15,6 +15,7 @@ import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
 import { snowflakeDate } from "@/discord/snowflake-date"
 import { ACCOUNT_ID } from "./account-id"
+import { rolesByHierarchy } from "./role-hierarchy"
 import { timeoutEndOf } from "./timeout-end"
 
 const RECORD_AVATAR_SIZE = 128
@@ -109,10 +110,9 @@ async function memberStanding(
   return {
     kind: "member",
     joinedAt: member.joined_at === null ? null : new Date(member.joined_at),
-    roles: roles
-      .filter(({ id }) => member.roles.includes(id))
-      .toSorted((left, right) => right.position - left.position)
-      .map(({ id, name }) => ({ id, name })),
+    roles: rolesByHierarchy(
+      roles.filter(({ id }) => member.roles.includes(id))
+    ).map(({ id, name }) => ({ id, name })),
     timedOutUntil: timeoutEndOf(member.communication_disabled_until),
   }
 }
