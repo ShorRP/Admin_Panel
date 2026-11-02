@@ -25,6 +25,7 @@ import {
 } from "@/ui/sheet"
 import { Skeleton } from "@/ui/skeleton"
 import { LogOutForm } from "./log-out-form"
+import { PrivacyPolicyLink } from "./privacy-policy-link"
 import { ShorLogo } from "./shor-logo"
 import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
@@ -112,6 +113,7 @@ export function StaffHeader({
             </div>
             <LogOutForm iconOnly />
           </div>
+          <PrivacyPolicyLink className="ml-1.5 self-start" />
         </div>
       </aside>
       <header className="flex h-14 items-center gap-x-4 border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
@@ -149,6 +151,11 @@ export function StaffHeader({
                   <MemberRole opensModeration={opensModeration} />
                 </div>
                 <LogOutForm />
+                <SheetClose
+                  nativeButton={false}
+                  role={undefined}
+                  render={<PrivacyPolicyLink className="self-start" />}
+                />
               </SheetFooter>
             </SheetContent>
           </Sheet>

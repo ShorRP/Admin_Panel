@@ -90,29 +90,43 @@ test("a login page's top bar shows Shor's logo, hidden, and « Shor », then the
   ])
 })
 
-test("a login page's footer says the panel is for Shor's staff, and links to shor-rp.fr in a new tab, with neither opener nor referrer, before a hidden external-link icon", () => {
+test("a login page's footer says the panel is for Shor's staff, links to the privacy policy, then to shor-rp.fr in a new tab, with neither opener nor referrer, before a hidden external-link icon", () => {
   const footer = /<footer[^>]*>(.*?)<\/footer>/.exec(loginNotice())?.[1] ?? ""
 
   expect({
     texts: Array.from(footer.matchAll(/>([^<]+)</g), ([, text]) => text),
     links: Array.from(
-      footer.matchAll(/<a(\s[^>]*)>([^<]*)<svg([^>]*)>(.*?)<\/svg><\/a>/g),
-      ([, attributes = "", text, iconAttributes = "", icon]) => ({
+      footer.matchAll(/<a(\s[^>]*)>([^<]*)(?:<svg([^>]*)>(.*?)<\/svg>)?<\/a>/g),
+      ([, attributes = "", text, iconAttributes, icon]) => ({
         href: /\shref="([^"]*)"/.exec(attributes)?.[1],
         target: /\starget="([^"]*)"/.exec(attributes)?.[1],
         rel: /\srel="([^"]*)"/.exec(attributes)?.[1],
+        current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
         text,
         icon,
-        iconHidden: /\saria-hidden="true"/.test(iconAttributes),
+        iconHidden:
+          iconAttributes === undefined
+            ? undefined
+            : /\saria-hidden="true"/.test(iconAttributes),
       })
     ),
   }).toEqual({
-    texts: ["Réservé au staff de Shor", "shor-rp.fr"],
+    texts: ["Réservé au staff de Shor", "Confidentialité", "shor-rp.fr"],
     links: [
+      {
+        href: "/privacy",
+        target: undefined,
+        rel: undefined,
+        current: undefined,
+        text: "Confidentialité",
+        icon: undefined,
+        iconHidden: undefined,
+      },
       {
         href: "https://shor-rp.fr",
         target: "_blank",
         rel: "noopener noreferrer",
+        current: undefined,
         text: "shor-rp.fr",
         icon: drawing(ExternalLink),
         iconHidden: true,

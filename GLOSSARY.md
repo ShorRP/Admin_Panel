@@ -54,6 +54,10 @@ _Avoid_: ShorBot (the repository's name), client, panel bot
 The Admin Panel's record of which staff member changed what, and when, beside the automatic sanctions. Not the panel's logs, which say only why the panel failed.
 _Avoid_: logs, moderation log
 
+**Privacy policy**:
+The public statement of what Shor's Discord applications read, keep and write about people, why, for how long, who sees it, and how to ask for it to be corrected or deleted. Anyone can read it, with or without a Discord account.
+_Avoid_: privacy notice, GDPR page, legal notice (French « mentions légales », which name the publisher, not the data)
+
 ### Moderation
 
 **Whitelist**:
