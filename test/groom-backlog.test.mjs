@@ -1563,6 +1563,120 @@ test('setup: a missing "Waiting on" field is reported instead of written', () =>
   )
 })
 
+const backlogScript = fileURLToPath(
+  new URL(
+    "../.claude/skills/groom-backlog/scripts/backlog.mjs",
+    import.meta.url
+  )
+)
+
+function backlogWithoutGh(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "groom-cli-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  const env = {
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([name]) => name.toUpperCase() !== "PATH"
+      )
+    ),
+    PATH: dir,
+  }
+  const run = (...args) =>
+    spawnSync(process.execPath, [backlogScript, ...args], {
+      encoding: "utf8",
+      env,
+    })
+  return { dir, run }
+}
+
+function assertRefused(result, usage, args) {
+  const label = args.join(" ")
+  assert.equal(result.status, 2, label)
+  assert.equal(result.stdout, "", label)
+  assert.ok(
+    result.stderr.split("\n").includes(`usage: backlog.mjs ${usage}`),
+    `${label}: ${result.stderr}`
+  )
+}
+
+test("cli: apply refuses an argument it does not know, or no plan, with its usage and code 2, before it reads the plan or the tracker", (t) => {
+  const { dir, run } = backlogWithoutGh(t)
+  const planFile = path.join(dir, "plan.json")
+  fs.writeFileSync(planFile, JSON.stringify({ ops: [] }))
+  for (const args of [
+    [planFile, "--dry-run"],
+    ["--dry-run", planFile],
+    [planFile, "other-plan.json"],
+    [],
+  ]) {
+    assertRefused(run("apply", ...args), "apply <plan.json>", args)
+  }
+})
+
+test("cli: plan refuses an option or an argument it does not know, or an option without its value, with its usage and code 2, before it reads the tracker", (t) => {
+  const { dir, run } = backlogWithoutGh(t)
+  const out = path.join(dir, "plan.json")
+  for (const args of [
+    ["--dry-run"],
+    ["--out", out, "--dry-run"],
+    ["--out", out, "extra"],
+    ["--merged"],
+    ["--out", "--citations"],
+  ]) {
+    assertRefused(
+      run("plan", ...args),
+      "plan [--out <file>] [--merged <commit> | --citations]",
+      args
+    )
+  }
+  assert.equal(fs.existsSync(out), false)
+})
+
+test("cli: snapshot and setup take no argument, and refuse one with their usage and code 2, before they read the tracker", (t) => {
+  const { run } = backlogWithoutGh(t)
+  for (const [command, ...args] of [
+    ["snapshot", "--out", "snapshot.json"],
+    ["snapshot", "extra"],
+    ["setup", "--dry-run"],
+    ["setup", "extra"],
+  ]) {
+    assertRefused(run(command, ...args), command, [command, ...args])
+  }
+})
+
+test("cli: the arguments a command knows still reach it, which then fails to read the tracker without gh", (t) => {
+  const { dir, run } = backlogWithoutGh(t)
+  const planFile = path.join(dir, "plan.json")
+  fs.writeFileSync(planFile, JSON.stringify({ ops: [] }))
+  for (const args of [
+    ["apply", planFile],
+    ["plan"],
+    ["plan", "--out", path.join(dir, "new-plan.json")],
+    ["plan", `--out=${path.join(dir, "new-plan.json")}`, "--merged", "main"],
+    ["plan", "--citations"],
+    ["snapshot"],
+    ["setup"],
+  ]) {
+    const result = run(...args)
+    assert.equal(result.status, 1, args.join(" "))
+    assert.doesNotMatch(result.stderr, /usage:/)
+    assert.match(result.stderr, /\bgh\b.*\bENOENT\b/)
+  }
+})
+
+test("cli: a command the script does not know is refused with the usage of every command and code 2", (t) => {
+  const { run } = backlogWithoutGh(t)
+  for (const args of [[], ["--dry-run"], ["constructor"], ["apply-plan"]]) {
+    const result = run(...args)
+    assert.equal(result.status, 2, args.join(" "))
+    assert.equal(result.stdout, "")
+    assert.equal(
+      result.stderr,
+      "usage: backlog.mjs snapshot | plan [--out <file>] [--merged <commit> | --citations] | apply <plan.json> | setup\n"
+    )
+  }
+})
+
 test("hook: tracker writes are recognized, reads and the skill itself are not", () => {
   const writes = [
     'gh issue create --title "x" --body "y"',
