@@ -5,6 +5,7 @@ import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { Overline } from "@/ui/overline"
 import { isTimedOut } from "./account-standing"
+import { recordHref } from "./record-href"
 import type { AccountSearch } from "./search-accounts"
 import { StandingBadge } from "./standing-badge"
 
@@ -36,7 +37,7 @@ export function FoundAccounts({ search }: { search: AccountSearch }) {
         {accounts.map(({ id, name, username, avatarUrl, standing }) => (
           <li key={id}>
             <Link
-              href={`/records/${id}`}
+              href={recordHref(id)}
               prefetch={false}
               className="flex items-center gap-3.5 px-4 py-3 text-sm transition-colors hover:bg-accent"
             >

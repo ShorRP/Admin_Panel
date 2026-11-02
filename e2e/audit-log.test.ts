@@ -6,6 +6,8 @@ import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
+const BRYN = { id: "1400000000000000002", username: "bryn" }
+
 const LYRA = {
   id: "1400000000000000003",
   username: "lyra_gates",
@@ -307,14 +309,97 @@ function inAnHour() {
   return new Date(Date.now() + 3_600_000).toISOString()
 }
 
+test("a staff member who does not moderate sees each change's author and their own identity as text, in the sidebar, the bar and the menu, with no link to a record", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  discord.modifyMemberAs(
+    ALDIS.id,
+    LYRA.id,
+    { communication_disabled_until: inAnHour() },
+    "Insultes répétées"
+  )
+  const row = page
+    .getByRole("listitem")
+    .filter({ hasText: "Exclusion temporaire jusqu’au" })
+  const sidebar = page.getByRole("complementary")
+  const header = page.getByRole("banner")
+  const menu = page.getByRole("dialog", { name: "Menu" })
+
+  await logIn(ALDIS)
+  await page.goto("/audit-log")
+  await expect(row).toContainText("aldis")
+  await expect(row.getByRole("link")).toHaveCount(0)
+  await expect(sidebar.getByText("aldis", { exact: true })).toBeVisible()
+  await expect(sidebar.getByRole("link", { name: /aldis/ })).toHaveCount(0)
+  await checkAccessibility()
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  await expect(row.getByText("aldis", { exact: true })).toBeVisible()
+  await expect(header.getByRole("link")).toHaveCount(1)
+  await header.getByRole("button", { name: "Ouvrir le menu" }).click()
+  await expect(menu.getByText("aldis", { exact: true })).toBeVisible()
+  await expect(menu.getByRole("link", { name: /aldis/ })).toHaveCount(0)
+})
+
 test.describe("for a staff member who moderates", () => {
   test.use({
     discordState: {
       members: [
         { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+        { user: BRYN },
         { user: LYRA },
       ],
     },
+  })
+
+  test("the avatar and the name of the author of a change open their record, a sanction's account opens its own, and the staff member's own identity in the sidebar opens theirs", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      BRYN.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    const row = page
+      .getByRole("listitem")
+      .filter({ hasText: "Exclusion temporaire jusqu’au" })
+    const author = row.getByRole("link", { name: "bryn", exact: true })
+    const account = row.getByRole("link", { name: "Lyra" })
+    const identity = page
+      .getByRole("complementary")
+      .getByRole("link", { name: "aldis", exact: true })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(author.locator('[data-slot="avatar"]')).toBeVisible()
+    await expect(author).toHaveAttribute("href", `/records/${BRYN.id}`)
+    await expect(account).toHaveAttribute("href", `/records/${LYRA.id}`)
+    await expect(identity).toHaveAttribute("href", `/records/${ALDIS.id}`)
+    await expect(identity).not.toHaveAttribute("aria-current")
+    await checkAccessibility()
+
+    await author.click()
+    await expect(page).toHaveURL(`/records/${BRYN.id}`)
+    await expect(
+      page.getByRole("heading", { level: 1, name: "bryn" })
+    ).toBeVisible()
+    await expect(identity).not.toHaveAttribute("aria-current")
+    await checkAccessibility()
+
+    await identity.click()
+    await expect(page).toHaveURL(`/records/${ALDIS.id}`)
+    await expect(
+      page.getByRole("heading", { level: 1, name: "aldis" })
+    ).toBeVisible()
+    await expect(identity).toHaveAttribute("aria-current", "page")
+    await checkAccessibility()
   })
 
   test("a sanction shows in the audit log with its staff member, its account and its reason, and opens the account's record", async ({
@@ -348,7 +433,7 @@ test.describe("for a staff member who moderates", () => {
     await checkAccessibility()
   })
 
-  test("a staff member who moderates logs out from the audit log, with its type filter, its form, « Réinitialiser » and a sanction's link in view while the next page's script loads, and no page is prefetched", async ({
+  test("a staff member who moderates logs out from the audit log, with its type filter, its form, « Réinitialiser », and a sanction's account and author in view while the next page's script loads, and no page is prefetched", async ({
     page,
     logIn,
     discord,
@@ -366,10 +451,11 @@ test.describe("for a staff member who moderates", () => {
     })
     const timeouts = typeFilter.getByRole("link", { name: "Exclusions" })
     const reset = page.getByRole("link", { name: "Réinitialiser" })
-    const account = page
+    const row = page
       .getByRole("listitem")
       .filter({ hasText: "Exclusion temporaire jusqu’au" })
-      .getByRole("link", { name: "Lyra" })
+    const account = row.getByRole("link", { name: "Lyra" })
+    const author = row.getByRole("link", { name: "aldis", exact: true })
 
     await logIn(ALDIS)
     await page.goto("/audit-log")
@@ -379,6 +465,7 @@ test.describe("for a staff member who moderates", () => {
     await expect(page).toHaveURL("/audit-log?type=timeouts")
     await expect(timeouts).toHaveAttribute("aria-current", "true")
     await expect(account).toBeVisible()
+    await expect(author).toBeVisible()
     await expect(typeFilter.getByRole("link")).toHaveCount(5)
     const links = [
       ...(await typeFilter.getByRole("link").all()),
@@ -387,6 +474,7 @@ test.describe("for a staff member who moderates", () => {
       page.getByLabel("Compte", { exact: true }),
       page.getByRole("button", { name: "Filtrer" }),
       account,
+      author,
     ]
     await checkAccessibility()
 
@@ -398,8 +486,6 @@ test.describe("for a staff member who moderates", () => {
     await checkAccessibility()
   })
 })
-
-const BRYN = { id: "1400000000000000002", username: "bryn" }
 
 test.describe("with changes of several types", () => {
   test.use({

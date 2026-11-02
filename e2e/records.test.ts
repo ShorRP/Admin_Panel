@@ -290,20 +290,20 @@ test("on a 360 px screen, a staff member who moderates reaches « Modération »
 }) => {
   const header = page.getByRole("banner")
   const menu = page.getByRole("dialog", { name: "Menu" })
+  const moderation = menu
+    .getByRole("navigation", { name: "Sections du panel" })
+    .getByRole("link", { name: "Modération" })
 
   await page.setViewportSize({ width: 360, height: 760 })
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
   await page.waitForLoadState()
   await header.getByRole("button", { name: "Ouvrir le menu" }).click()
-  await menu.getByRole("link", { name: "Modération" }).click()
+  await moderation.click()
   await expect(page).toHaveURL("/records")
   await expect(menu).toBeHidden()
   await checkAccessibility()
 
   await header.getByRole("button", { name: "Ouvrir le menu" }).click()
-  await expect(menu.getByRole("link", { name: "Modération" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(moderation).toHaveAttribute("aria-current", "page")
 })

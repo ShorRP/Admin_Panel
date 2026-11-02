@@ -81,10 +81,12 @@ async function render(
   {
     member = "aldis",
     opensModeration = false,
+    ownRecord = null,
     blockedWordCount = null,
   }: {
     member?: string
     opensModeration?: boolean
+    ownRecord?: { href: string; name: string } | null
     blockedWordCount?: ReactNode
   } = {}
 ) {
@@ -93,6 +95,7 @@ async function render(
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      ownRecord={Promise.resolve(ownRecord)}
       blockedWordCount={blockedWordCount}
     />,
     { progressiveChunkSize: Number.POSITIVE_INFINITY }
@@ -266,13 +269,13 @@ test("the moderation section is current on its search and on every record", asyn
   expect(await currentLinks("/recordsx")).toEqual([])
 })
 
-test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
+test("the sidebar's foot offers the theme toggle, on Auto until the browser reads the chosen theme, then names the staff member, then says what they are, then offers to log out through a hidden log-out icon, named « Se déconnecter » to assistive technologies alone", async () => {
   const { sidebar } = await render("/blocked-words", {
     member: "Brynja la Rouge",
   })
   const foot = sidebar.slice(sidebar.indexOf("</nav>"))
 
-  expect(textOf(foot)).toBe("AutoClairSombreBrynja la RougeSe déconnecter")
+  expect(textOf(foot)).toBe("AutoClairSombreBrynja la RougeStaffSe déconnecter")
   expect(/<div role="group" aria-label="Thème"/.test(foot)).toBe(true)
   expect(
     Array.from(
@@ -312,4 +315,80 @@ test("the bar names the staff member, then shows a menu button with a hidden men
       image: { drawing: drawing(<Menu />), hidden: true },
     },
   ])
+})
+
+const OWN_RECORD = {
+  href: "/records/1400000000000000002",
+  name: "Brynja la Rouge",
+}
+
+function ownRecordLinks(html: string) {
+  return links(html).filter(({ href }) => href === OWN_RECORD.href)
+}
+
+test("a staff member who moderates sees their name in the sidebar as a link to their own record, named by the name alone, and the line « Staff · Modération » under it, outside the link", async () => {
+  const { sidebar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    opensModeration: true,
+    ownRecord: OWN_RECORD,
+  })
+  const foot = sidebar.slice(sidebar.indexOf("</nav>"))
+
+  expect(
+    ownRecordLinks(sidebar).map(({ text, current, content }) => ({
+      text,
+      current,
+      srOnly: content.includes("sr-only"),
+    }))
+  ).toEqual([{ text: "Brynja la Rouge", current: undefined, srOnly: false }])
+  expect(textOf(foot)).toContain("Brynja la RougeStaff · Modération")
+})
+
+test("the bar's link to their own record keeps their name for assistive technologies in a text of its own, before what the bar shows, and the bar shows no line under the name", async () => {
+  const { bar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    opensModeration: true,
+    ownRecord: OWN_RECORD,
+  })
+
+  expect(
+    ownRecordLinks(bar).map(({ content }) => ({
+      nameForAssistiveTechnologiesFirst: content.startsWith(
+        '<span class="sr-only">Brynja la Rouge</span>'
+      ),
+    }))
+  ).toEqual([{ nameForAssistiveTechnologiesFirst: true }])
+  expect(textOf(bar)).not.toContain("Staff")
+})
+
+test("the link to their own record is the current page on that record alone", async () => {
+  const currentOn = async (currentPath: string) =>
+    ownRecordLinks(
+      (
+        await render(currentPath, {
+          opensModeration: true,
+          ownRecord: OWN_RECORD,
+        })
+      ).sidebar
+    ).map(({ current }) => current)
+
+  expect(await currentOn(OWN_RECORD.href)).toEqual(["page"])
+  expect(await currentOn("/records")).toEqual([undefined])
+  expect(await currentOn("/records/1400000000000000003")).toEqual([undefined])
+})
+
+test("a staff member who opens no record of their own sees their name in the sidebar and in the bar as text, with no link, and « Staff » under it in the sidebar", async () => {
+  const { sidebar, bar } = await render("/blocked-words", {
+    member: "Brynja la Rouge",
+    ownRecord: null,
+  })
+
+  expect(ownRecordLinks(sidebar)).toEqual([])
+  expect(ownRecordLinks(bar)).toEqual([])
+  expect(
+    links(sidebar).filter(({ text }) => text.includes("Brynja la Rouge"))
+  ).toEqual([])
+  expect(textOf(sidebar)).toContain("Brynja la RougeStaff")
+  expect(textOf(sidebar)).not.toContain("Staff · Modération")
+  expect(textOf(bar)).toContain("Brynja la Rouge")
 })

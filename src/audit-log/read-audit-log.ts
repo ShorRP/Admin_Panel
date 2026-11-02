@@ -44,6 +44,7 @@ export type AuditLogChange = {
   id: Snowflake
   date: Date
   memberName: string
+  memberId: Snowflake | null
   avatarUrl: string | null
 } & (
   | { kind: "rule"; description: string; madeInDiscord: boolean }
@@ -55,14 +56,14 @@ export type AuditLogChange = {
     }
 )
 
-type WithoutAvatar<Change> = Change extends unknown
-  ? Omit<Change, "avatarUrl">
+type WithoutAuthorLookup<Change> = Change extends unknown
+  ? Omit<Change, "memberId" | "avatarUrl">
   : never
 
 type FoundChange = {
   author: AccountIdentity
   account: AccountIdentity | null
-  change: WithoutAvatar<AuditLogChange>
+  change: WithoutAuthorLookup<AuditLogChange>
   actionChange?: ActionChangeEntry
 }
 
@@ -133,6 +134,7 @@ export async function readAuditLog(
     days: byParisDay(
       pageChanges.map(({ author, change }) => ({
         ...change,
+        memberId: author.id,
         avatarUrl:
           author.id === null ? null : (avatarUrls.get(author.id) ?? null),
       }))

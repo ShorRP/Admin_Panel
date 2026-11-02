@@ -19,11 +19,16 @@ import { AuditLogFilterForm } from "./audit-log-filter-form"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
 
+const ALDIS_ID = "1400000000000000001"
+
+const BRYN_ID = "1400000000000000002"
+
 const ADDITION: AuditLogChange = {
   kind: "rule",
   id: "1563530499194880000",
   date: new Date("2026-10-24T12:32:00.000Z"),
   memberName: "aldis",
+  memberId: ALDIS_ID,
   avatarUrl:
     "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
   description: "Ajout de « foo »",
@@ -35,6 +40,7 @@ const DISCORD_CHANGE: AuditLogChange = {
   id: "1563530499194880001",
   date: new Date("2026-12-01T09:05:00.000Z"),
   memberName: "Bryn la Rouge",
+  memberId: BRYN_ID,
   avatarUrl: null,
   description: "Règle modifiée dans Discord",
   madeInDiscord: true,
@@ -45,6 +51,7 @@ const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
   id: "1563530499194880002",
   date: new Date("2026-12-02T10:00:00.000Z"),
   memberName: "aldis",
+  memberId: ALDIS_ID,
   avatarUrl: null,
   sanctionChange: {
     kind: "timeout",
@@ -183,15 +190,53 @@ function links(html: string) {
   )
 }
 
-test("for a staff member who moderates, a sanction's account links to its record", () => {
-  expect(links(render(onOneDay(TIMEOUT), true))).toEqual([
-    {
-      icon: undefined,
-      iconHidden: false,
-      text: "Lyra",
-      href: "/records/1400000000000000003",
-    },
+function recordLinks(html: string) {
+  return Array.from(
+    html.matchAll(/<a[^>]* href="([^"]*)"[^>]*>(.*?)<\/a>/g),
+    ([, href, content = ""]) => ({
+      href,
+      names: lines(content),
+      initials: text(
+        /<span data-slot="avatar".*?<\/span><\/span>/.exec(content)?.[0] ?? ""
+      ),
+    })
+  )
+}
+
+test("for a staff member who moderates, a sanction's account links to its record, and so do its author's avatar and name, together", () => {
+  expect(recordLinks(render(onOneDay(TIMEOUT), true))).toEqual([
+    { href: "/records/1400000000000000003", names: [], initials: "" },
+    { href: `/records/${ALDIS_ID}`, names: ["aldis"], initials: "A" },
   ])
+})
+
+test("for a staff member who moderates, the author of a change to the blocked words links to their record, and the change has no other link", () => {
+  expect(recordLinks(render(onOneDay(DISCORD_CHANGE, ADDITION), true))).toEqual(
+    [
+      {
+        href: `/records/${BRYN_ID}`,
+        names: ["Bryn la Rouge"],
+        initials: "BL",
+      },
+      { href: `/records/${ALDIS_ID}`, names: ["aldis"], initials: "A" },
+    ]
+  )
+})
+
+test("for a staff member who moderates, a change with no author's ID links its account but keeps its author as text", () => {
+  const html = render(onOneDay({ ...TIMEOUT, memberId: null }), true)
+
+  expect(recordLinks(html)).toEqual([
+    { href: "/records/1400000000000000003", names: [], initials: "" },
+  ])
+  expect(rows(html).map((row) => row.at(-1))).toEqual(["aldis"])
+})
+
+test("for a staff member who does not moderate, a change's author links nowhere", () => {
+  const html = render(onOneDay(TIMEOUT, ADDITION), false)
+
+  expect(links(html)).toEqual([])
+  expect(rows(html).map((row) => row.at(-1))).toEqual(["aldis", "aldis"])
 })
 
 test("for a staff member who does not moderate, a sanction's account links nowhere", () => {
