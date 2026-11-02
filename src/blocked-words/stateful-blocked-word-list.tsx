@@ -3,7 +3,7 @@
 import { useActionState } from "react"
 
 import { useSuccessToast } from "@/ui/use-success-toast"
-import { removeBlockedWordAction } from "./actions"
+import { changeBlockedWordAction } from "./actions"
 import type { BlockedWordRights } from "./blocked-word-action"
 import { BlockedWordList } from "./blocked-word-list"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
@@ -17,7 +17,7 @@ export function StatefulBlockedWordList({
   rights: BlockedWordRights
 }) {
   const [state, action, pending] = useActionState<WriteResult | null, FormData>(
-    removeBlockedWordAction,
+    changeBlockedWordAction,
     null
   )
   useSuccessToast(state)

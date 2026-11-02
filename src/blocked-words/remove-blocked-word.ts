@@ -4,6 +4,7 @@ import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
 import { requireRightTo } from "./blocked-word-action"
+import { removalReason } from "./blocked-word-reason"
 import { quoted } from "./french-text"
 import {
   keywordsOf,
@@ -48,10 +49,7 @@ export async function removeBlockedWord(
           rule,
           keywordsOf(rule).filter((keyword) => keyword !== typed)
         ),
-        auditLogReason(
-          staffMember,
-          `retrait de ${quoted(typed)}, action ${quoted(action.label)}`
-        )
+        auditLogReason(staffMember, removalReason(typed, action))
       )
     }
     return {

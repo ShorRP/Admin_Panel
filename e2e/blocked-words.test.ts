@@ -5,6 +5,7 @@ import {
 } from "discord-api-types/v10"
 
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import { startOfDialogOpening } from "./dialog-opening"
 import { expect, test, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -567,6 +568,267 @@ test.describe("for a staff member who moderates", () => {
   })
 })
 
+function tilesOf(page: Page) {
+  return page.getByRole("region", { name: "La liste" }).getByRole("listitem")
+}
+
+function pencilOf(page: Page, word: string) {
+  return tilesOf(page)
+    .filter({ hasText: word })
+    .getByRole("button", { name: `Changer l’action de « ${word} »` })
+}
+
+function changeDialogOf(page: Page, word: string) {
+  return page.getByRole("dialog", { name: `Changer l’action de « ${word} »` })
+}
+
+test.describe("for a staff member who moderates, with two words that only block", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
+      autoModerationRules: [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", ["foo", "bar"]),
+      ],
+    },
+  })
+
+  test("a moderator changes a word's action through the pencil and its dialog, which a toast announces, which the tile names, and which the Discord server holds in the new action's rule alone, while « Annuler » and Escape write nothing", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+    readToast,
+  }) => {
+    const dialog = changeDialogOf(page, "foo")
+    const action = dialog.getByLabel("Action", { exact: true })
+    const rules = await discord.listAutoModerationRules()
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await page.waitForLoadState()
+    await expect(
+      tilesOf(page).filter({ hasText: "foo" }).getByRole("button")
+    ).toHaveText(["Changer l’action de « foo »", "Retirer « foo »"])
+
+    await pencilOf(page, "foo").click()
+
+    await expect(dialog).toBeVisible()
+    await expect(action).toHaveValue("block")
+    await expect(action.locator("option")).toHaveText([
+      "Bloquer seulement",
+      "Exclusion 1 heure",
+      "Exclusion 1 jour",
+    ])
+    await expect(dialog.getByRole("button")).toHaveText(["Annuler", "Changer"])
+    await checkAccessibility()
+
+    await action.selectOption({ label: "Exclusion 1 jour" })
+    await dialog.getByRole("button", { name: "Annuler" }).click()
+
+    await expect(dialog).toHaveCount(0)
+    await expect(pencilOf(page, "foo")).toBeFocused()
+    await pencilOf(page, "foo").click()
+    await expect(dialog).toBeVisible()
+    await expect(action).toHaveValue("block")
+    await page.keyboard.press("Escape")
+    await expect(dialog).toHaveCount(0)
+    expect(await discord.listAutoModerationRules()).toEqual(rules)
+    expect((await discord.getAuditLog({})).audit_log_entries).toEqual([])
+
+    await pencilOf(page, "foo").click()
+    await action.selectOption({ label: "Exclusion 1 jour" })
+    await dialog.getByRole("button", { name: "Changer" }).click()
+
+    await expect(dialog).toHaveCount(0)
+    await readToast("« foo » passe à « Exclusion 1 jour ».")
+    await expect(tilesOf(page)).toHaveText([
+      /^barBloquer seulement/,
+      /^fooExclusion 1 jour/,
+    ])
+    expect(await discord.listAutoModerationRules()).toMatchObject([
+      {
+        name: "Mots interdits du panel",
+        trigger_metadata: { keyword_filter: ["bar"] },
+      },
+      {
+        name: "Mots interdits du panel · exclusion 1 jour",
+        trigger_metadata: { keyword_filter: ["foo"] },
+        exempt_roles: [STAFF_ROLE_ID],
+        actions: [
+          { type: AutoModerationActionType.BlockMessage },
+          {
+            type: AutoModerationActionType.Timeout,
+            metadata: { duration_seconds: 86400 },
+          },
+        ],
+      },
+    ])
+    const { audit_log_entries } = await discord.getAuditLog({})
+    expect(
+      audit_log_entries.map(({ reason }) => reason?.split(": ")[1])
+    ).toEqual([
+      "« foo » passe de « Bloquer seulement » à « Exclusion 1 jour »",
+      "« foo » passe de « Bloquer seulement » à « Exclusion 1 jour »",
+    ])
+    await checkAccessibility()
+
+    await pencilOf(page, "foo").click()
+    await expect(action).toHaveValue("timeout-1d")
+    await dialog.getByRole("button", { name: "Annuler" }).click()
+    await expect(dialog).toHaveCount(0)
+
+    await page.goto("/audit-log")
+    await expect(
+      page
+        .getByRole("main")
+        .getByText(
+          "« foo » passe de « Bloquer seulement » à « Exclusion 1 jour »"
+        )
+    ).toHaveCount(1)
+    await checkAccessibility()
+  })
+
+  test("the tile of a word whose action changes keeps its place among the others", async ({
+    page,
+    logIn,
+    readToast,
+  }) => {
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await page.waitForLoadState()
+
+    await pencilOf(page, "bar").click()
+    await changeDialogOf(page, "bar")
+      .getByLabel("Action", { exact: true })
+      .selectOption({ label: "Exclusion 1 heure" })
+    await changeDialogOf(page, "bar")
+      .getByRole("button", { name: "Changer" })
+      .click()
+
+    await readToast("« bar » passe à « Exclusion 1 heure ».")
+    await expect(tilesOf(page)).toHaveText([
+      /^barExclusion 1 heure/,
+      /^fooBloquer seulement/,
+    ])
+  })
+
+  for (const { title, prefersReducedMotion } of [
+    {
+      title: "under reduced motion, every test's default",
+      prefersReducedMotion: true,
+    },
+    {
+      title: "with motion, which a test can ask for",
+      prefersReducedMotion: false,
+    },
+  ]) {
+    test.describe(title, () => {
+      if (!prefersReducedMotion) {
+        test.use({ reducedMotion: "no-preference" })
+      }
+
+      test("the dialog that changes an action fades in, and zooms in only with motion", async ({
+        page,
+        logIn,
+        checkAccessibility,
+      }) => {
+        await logIn(ALDIS)
+        await page.goto("/blocked-words")
+        await page.waitForLoadState()
+
+        const opening = startOfDialogOpening(page)
+        await pencilOf(page, "foo").click()
+
+        expect(await (await opening).jsonValue()).toEqual({
+          opacity: "0",
+          scale: prefersReducedMotion ? 1 : 0.95,
+        })
+        await expect(changeDialogOf(page, "foo")).toBeVisible()
+        await checkAccessibility()
+      })
+    })
+  }
+
+  test.describe("on a 360 px screen", () => {
+    test.use({ viewport: { width: 360, height: 760 } })
+
+    test("the dialog fits the screen, and offers « Annuler », then « Changer » beside it", async ({
+      page,
+      logIn,
+      checkAccessibility,
+    }) => {
+      const dialog = changeDialogOf(page, "foo")
+
+      await logIn(ALDIS)
+      await page.goto("/blocked-words")
+      await page.waitForLoadState()
+      await pencilOf(page, "foo").click()
+
+      await expect(dialog).toBeVisible()
+      await checkAccessibility()
+      const box = await dialog.boundingBox()
+      const cancel = await dialog
+        .getByRole("button", { name: "Annuler" })
+        .boundingBox()
+      const change = await dialog
+        .getByRole("button", { name: "Changer" })
+        .boundingBox()
+      expect(box?.x).toBeGreaterThanOrEqual(0)
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(360)
+      expect(change?.y).toBe(cancel?.y)
+      expect(change?.x).toBeGreaterThanOrEqual(
+        (cancel?.x ?? 0) + (cancel?.width ?? 0)
+      )
+    })
+  })
+})
+
+test.describe("for a staff member who moderates, with no room on the Discord server for the rule of another action", () => {
+  test.use({
+    discordState: {
+      members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
+      autoModerationRules: [
+        keywordRule(PANEL_RULE_ID, "Mots interdits du panel", ["foo"]),
+        ...[1, 2, 3, 4, 5].map((index) =>
+          keywordRule(`150000000000000010${index}`, `Règle ${index}`, ["mot"])
+        ),
+      ],
+    },
+  })
+
+  test("a refused change closes the dialog, leaves the tile as it was, and says why in the list's alert region, with no toast", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+    toast,
+  }) => {
+    const rules = await discord.listAutoModerationRules()
+
+    await logIn(ALDIS)
+    await page.goto("/blocked-words")
+    await page.waitForLoadState()
+    await pencilOf(page, "foo").click()
+    await changeDialogOf(page, "foo")
+      .getByLabel("Action", { exact: true })
+      .selectOption({ label: "Exclusion 1 jour" })
+    await changeDialogOf(page, "foo")
+      .getByRole("button", { name: "Changer" })
+      .click()
+
+    await expect(
+      page.getByRole("region", { name: "La liste" }).getByRole("alert")
+    ).toHaveText(
+      "Le serveur Discord a déjà 6 règles AutoMod de mots-clés : le panel ne peut pas y créer la règle « Exclusion 1 jour ». Supprimes-en une dans Discord, ou choisis une autre action."
+    )
+    await expect(changeDialogOf(page, "foo")).toHaveCount(0)
+    await expect(tilesOf(page)).toHaveText([/^fooBloquer seulement/])
+    await expect(toast()).toHaveCount(0)
+    expect(await discord.listAutoModerationRules()).toEqual(rules)
+    await checkAccessibility()
+  })
+})
+
 test.describe("for a staff member who does not moderate, with a word that times out already", () => {
   test.use({
     discordState: {
@@ -591,7 +853,7 @@ test.describe("for a staff member who does not moderate, with a word that times 
     },
   })
 
-  test("the staff member is offered « Bloquer seulement » alone, and sees every word with its action, a cross on the word that only blocks and none on the word that times out", async ({
+  test("the staff member is offered « Bloquer seulement » alone, and sees every word with its action, a cross and no pencil on the word that only blocks and no button on the word that times out", async ({
     page,
     logIn,
     checkAccessibility,
@@ -617,6 +879,9 @@ test.describe("for a staff member who does not moderate, with a word that times 
       tiles.filter({ hasText: "cerise" }).getByRole("button")
     ).toHaveCount(0)
     await expect(capacity(page)).toHaveText("Capacité2/ 3 000 mots")
+    await expect(
+      page.getByRole("button", { name: /^Changer l’action de/ })
+    ).toHaveCount(0)
     await page.waitForLoadState()
     await checkAccessibility()
   })

@@ -8,6 +8,7 @@ import {
 } from "discord-api-types/v10"
 import { z } from "zod"
 
+import type { BlockedWordAction } from "@/blocked-words/blocked-word-action"
 import { panelRulesOf } from "@/blocked-words/panel-rule"
 import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
@@ -18,6 +19,12 @@ import {
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
+import {
+  actionChangeEntryOf,
+  capitalized,
+  joinActionChanges,
+  type ActionChangeEntry,
+} from "./action-change-entries"
 import {
   auditLogFiltersOf,
   identityMatcher,
@@ -56,6 +63,7 @@ type FoundChange = {
   author: AccountIdentity
   account: AccountIdentity | null
   change: WithoutAvatar<AuditLogChange>
+  actionChange?: ActionChangeEntry
 }
 
 type Users = Map<Snowflake, APIUser>
@@ -63,6 +71,7 @@ type Users = Map<Snowflake, APIUser>
 type EventReader = {
   actionType: AuditLogEvent
   changeOf: (entry: APIAuditLogEntry, users: Users) => FoundChange | null
+  retainedLimit: number
 }
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
@@ -86,6 +95,8 @@ const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
 }
 
 const CHANGES_PER_PAGE = 50
+
+const ENTRIES_PER_RULE_CHANGE = 2
 
 const LARGEST_SNOWFLAKE = BigInt("18446744073709551615")
 
@@ -111,7 +122,8 @@ export async function readAuditLog(
   for (const reader of await eventReadersOf(discord, filters)) {
     found.push(...(await changesOfEvent(discord, reader, cursor, retains)))
   }
-  const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
+  const joined = joinActionChanges(found, withDescription)
+  const pageChanges = joined.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
     discord,
     pageChanges.map(({ author }) => author.id)
@@ -127,7 +139,7 @@ export async function readAuditLog(
     ),
     before: cursor,
     older:
-      found.length > CHANGES_PER_PAGE
+      joined.length > CHANGES_PER_PAGE
         ? (pageChanges.at(-1)?.change.id ?? null)
         : null,
   }
@@ -156,43 +168,48 @@ async function eventReadersOf(
   if (events.length === 0) {
     return []
   }
-  const [ruleIds, application] = await Promise.all([
+  const [ruleActions, application] = await Promise.all([
     events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
-      ? panelRuleIds(discord)
+      ? panelRuleActions(discord)
       : null,
     discord.getApplicationUser(),
   ])
-  return eventReaders(ruleIds, application.id).filter(({ actionType }) =>
+  return eventReaders(ruleActions, application.id).filter(({ actionType }) =>
     events.includes(actionType)
   )
 }
 
-async function panelRuleIds(discord: DiscordApi) {
-  return new Set(
+async function panelRuleActions(discord: DiscordApi) {
+  return new Map(
     panelRulesOf(await discord.listAutoModerationRules()).map(
-      ({ rule }) => rule.id
+      ({ rule, action }) => [rule.id, action] as const
     )
   )
 }
 
 function eventReaders(
-  ruleIds: ReadonlySet<Snowflake> | null,
+  ruleActions: ReadonlyMap<Snowflake, BlockedWordAction> | null,
   applicationId: Snowflake
 ): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
     actionType: event.actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
       sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
+    retainedLimit: CHANGES_PER_PAGE,
   }))
-  if (ruleIds === null || ruleIds.size === 0) {
+  if (ruleActions === null || ruleActions.size === 0) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
-    changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      entry.target_id !== null && ruleIds.has(entry.target_id)
-        ? ruleChangeOf(entry, users, applicationId)
-        : null,
+    changeOf: (entry: APIAuditLogEntry, users: Users) => {
+      const ruleAction =
+        entry.target_id === null ? undefined : ruleActions.get(entry.target_id)
+      return ruleAction === undefined
+        ? null
+        : ruleChangeOf(entry, users, applicationId, ruleAction)
+    },
+    retainedLimit: CHANGES_PER_PAGE * ENTRIES_PER_RULE_CHANGE,
   }))
   return [...ruleReaders, ...sanctionReaders]
 }
@@ -226,7 +243,7 @@ async function avatarUrlOf(discord: DiscordApi, memberId: Snowflake) {
 
 async function changesOfEvent(
   discord: DiscordApi,
-  { actionType, changeOf }: EventReader,
+  { actionType, changeOf, retainedLimit }: EventReader,
   olderThan: Snowflake | null,
   retains: (found: FoundChange) => boolean
 ) {
@@ -239,7 +256,7 @@ async function changesOfEvent(
         changes.push(change)
       }
     }
-    if (changes.length > CHANGES_PER_PAGE) {
+    if (changes.length > retainedLimit) {
       break
     }
   }
@@ -249,9 +266,14 @@ async function changesOfEvent(
 function ruleChangeOf(
   entry: APIAuditLogEntry,
   users: Users,
-  applicationId: Snowflake
+  applicationId: Snowflake,
+  ruleAction: BlockedWordAction
 ): FoundChange {
   const attribution = attributionOf(entry, users, applicationId)
+  const actionChange =
+    attribution.kind === "panel"
+      ? actionChangeEntryOf(attribution.reason, ruleAction)
+      : null
   return {
     author: authorOf(attribution),
     account: null,
@@ -259,12 +281,28 @@ function ruleChangeOf(
       kind: "rule",
       ...momentOf(entry, attribution),
       madeInDiscord: attribution.kind === "discord",
-      description:
-        attribution.kind === "panel"
-          ? capitalized(attribution.reason)
-          : "Règle modifiée dans Discord",
+      description: describedRuleChange(attribution, actionChange),
     },
+    ...(actionChange !== null && { actionChange }),
   }
+}
+
+function withDescription(found: FoundChange, description: string) {
+  return found.change.kind === "rule"
+    ? { ...found, change: { ...found.change, description } }
+    : found
+}
+
+function describedRuleChange(
+  attribution: EntryAttribution,
+  actionChange: ActionChangeEntry | null
+) {
+  if (attribution.kind === "discord") {
+    return "Règle modifiée dans Discord"
+  }
+  return actionChange === null
+    ? capitalized(attribution.reason)
+    : actionChange.alone
 }
 
 function sanctionChangeOf(
@@ -314,8 +352,4 @@ function byParisDay(changes: AuditLogChange[]) {
 
 function newestFirst(left: FoundChange, right: FoundChange) {
   return BigInt(left.change.id) > BigInt(right.change.id) ? -1 : 1
-}
-
-function capitalized(text: string) {
-  return text.charAt(0).toLocaleUpperCase("fr") + text.slice(1)
 }

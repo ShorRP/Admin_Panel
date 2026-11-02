@@ -4,6 +4,7 @@ import {
   allowedActionIds,
   BLOCKED_WORD_ACTIONS,
   blockedWordAction,
+  mayChange,
   mayUse,
   strongestOf,
 } from "./blocked-word-action"
@@ -68,6 +69,13 @@ test("anyone on the staff may use the action that only blocks, and only a modera
   expect(mayUse(STAFF_ONLY, blockedWordAction("timeout-1h"))).toBe(false)
   expect(mayUse(MODERATOR, blockedWordAction("timeout-1h"))).toBe(true)
   expect(mayUse(STAFF_ONLY, blockedWordAction("block"))).toBe(true)
+})
+
+test("a word's action may change for a staff member who may use it and at least one other action, which today is a moderator, whatever the word's action", () => {
+  for (const { id } of BLOCKED_WORD_ACTIONS) {
+    expect(mayChange(MODERATOR, blockedWordAction(id))).toBe(true)
+    expect(mayChange(STAFF_ONLY, blockedWordAction(id))).toBe(false)
+  }
 })
 
 test("of several actions, the strongest is the one the member would suffer, and none gives none", () => {

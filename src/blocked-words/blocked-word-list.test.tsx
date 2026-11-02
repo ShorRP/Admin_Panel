@@ -1,4 +1,4 @@
-import { CircleAlert, X, type LucideIcon } from "lucide-react"
+import { CircleAlert, Pencil, X, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -118,13 +118,32 @@ function tiles(html: string) {
   )
 }
 
-function tile(word: string, disabled = false, action = "Bloquer seulement") {
+function changeName(word: string) {
+  return `Changer l’action de « ${word} »`
+}
+
+function tile(
+  word: string,
+  disabled = false,
+  action = "Bloquer seulement",
+  changeable = true
+) {
   return {
     title: word,
     text: word,
     action,
     word,
     buttons: [
+      ...(changeable
+        ? [
+            {
+              icon: drawing(Pencil),
+              iconHidden: true,
+              srOnlyName: changeName(word),
+              disabled,
+            },
+          ]
+        : []),
       {
         icon: drawing(X),
         iconHidden: true,
@@ -159,7 +178,7 @@ test("each tile names its action, the one that only blocks included", () => {
   ])
 })
 
-test("a staff member who does not moderate sees every tile and its action, a cross on the words that only block, and none on a word that times out", () => {
+test("a staff member who does not moderate sees every tile and its action, a cross on the words that only block and no pencil, and no button on a word that times out", () => {
   const html = render(
     [
       { word: "abricot", action: "block" },
@@ -171,7 +190,7 @@ test("a staff member who does not moderate sees every tile and its action, a cro
   )
 
   expect(tiles(html)).toEqual([
-    tile("abricot"),
+    tile("abricot", false, "Bloquer seulement", false),
     {
       title: "cerise",
       text: "cerise",
@@ -182,13 +201,52 @@ test("a staff member who does not moderate sees every tile and its action, a cro
   ])
 })
 
-test("a staff member who moderates sees a cross on every tile", () => {
+test("a staff member who moderates sees, on every tile, a pencil named for the word, then a cross", () => {
   const html = render([
     { word: "abricot", action: "block" },
     { word: "cerise", action: "timeout-1d" },
   ])
 
-  expect(tiles(html).map(({ buttons }) => buttons.length)).toEqual([1, 1])
+  expect(
+    tiles(html).map(({ buttons }) =>
+      buttons.map(({ srOnlyName }) => srOnlyName)
+    )
+  ).toEqual([
+    [changeName("abricot"), "Retirer « abricot »"],
+    [changeName("cerise"), "Retirer « cerise »"],
+  ])
+})
+
+test("the pencil and the cross each send their own form to the same action, the pencil's naming the word and the change of action, the cross's the word and its removal", () => {
+  const html = render(blocking("abricot"))
+
+  const forms = Array.from(
+    html.matchAll(/<form([^>]*)>(.*?)<\/form>/g),
+    ([, attributes = "", content = ""]) => ({
+      id: /\sid="([^"]*)"/.exec(attributes)?.[1],
+      fields: Array.from(
+        content.matchAll(/<input[^>]*name="([^"]*)"[^>]*value="([^"]*)"/g),
+        ([, name, value]) => [name, value]
+      ),
+    })
+  ).filter(({ fields }) => fields.length > 0 && fields[0]?.[0] === "change")
+
+  expect(forms).toEqual([
+    {
+      id: "change-action-form-0",
+      fields: [
+        ["change", "action"],
+        ["word", "abricot"],
+      ],
+    },
+    {
+      id: undefined,
+      fields: [
+        ["change", "remove"],
+        ["word", "abricot"],
+      ],
+    },
+  ])
 })
 
 test("a single blocked word is counted in the singular", () => {
@@ -205,13 +263,13 @@ test("an empty list says so in one sentence in place of the count, and keeps bot
   expect(region(html, "alert")).toEqual(EMPTY)
 })
 
-test("while a removal is pending, every cross is disabled and the status reads « Retrait en cours… », with no icon", () => {
+test("while a write is pending, every pencil and every cross is disabled and the status reads « Envoi en cours… », with no icon", () => {
   const html = render(blocking("abricot", "zèbre"), null, true)
 
   expect(tiles(html)).toEqual([tile("abricot", true), tile("zèbre", true)])
   expect(region(html, "status")).toEqual({
     ...EMPTY,
-    text: "Retrait en cours…",
+    text: "Envoi en cours…",
   })
 })
 

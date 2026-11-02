@@ -3,6 +3,7 @@ import {
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
 } from "../playwright.config"
+import { startOfDialogOpening } from "./dialog-opening"
 import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -576,39 +577,7 @@ for (const { title, prefersReducedMotion } of [
       await page.waitForLoadState()
       await sanctions.getByRole("tab", { name: "Expulsion" }).click()
 
-      const opening = page.waitForFunction(
-        () => {
-          const animation = document
-            .getAnimations()
-            .find(
-              ({ effect }) =>
-                effect instanceof KeyframeEffect &&
-                effect.target instanceof HTMLElement &&
-                effect.target.dataset.slot === "dialog-content"
-            )
-          const dialog =
-            animation?.effect instanceof KeyframeEffect
-              ? animation.effect.target
-              : null
-          if (animation === undefined || !(dialog instanceof HTMLElement)) {
-            return false
-          }
-          animation.pause()
-          animation.currentTime = 0
-          const start = {
-            opacity: getComputedStyle(dialog).opacity,
-            scale:
-              Math.round(
-                (dialog.getBoundingClientRect().width / dialog.offsetWidth) *
-                  100
-              ) / 100,
-          }
-          animation.play()
-          return start
-        },
-        undefined,
-        { polling: "raf" }
-      )
+      const opening = startOfDialogOpening(page)
       await sanctions
         .getByRole("tabpanel", { name: "Expulsion" })
         .getByRole("button", { name: "Expulser" })
