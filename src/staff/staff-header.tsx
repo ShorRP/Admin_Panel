@@ -10,6 +10,7 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
 
+import { AccountLink } from "@/ui/account-link"
 import { Button } from "@/ui/button"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { Overline } from "@/ui/overline"
@@ -22,9 +23,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/ui/sheet"
+import { Skeleton } from "@/ui/skeleton"
 import { LogOutForm } from "./log-out-form"
 import { ShorLogo } from "./shor-logo"
-import type { OwnRecord } from "./staff-member"
 import { StatefulThemeToggle } from "./stateful-theme-toggle"
 
 type Section = {
@@ -38,6 +39,8 @@ type Section = {
 type SectionLinkComponent = ComponentType<{ section: Section }>
 
 type MemberPlace = "sidebar" | "bar" | "menu"
+
+type MemberRecord = { href: string; name: string }
 
 const MEMBER_LINK_CLASSES =
   "block min-w-0 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -76,7 +79,7 @@ export function StaffHeader({
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
-  ownRecord: Promise<OwnRecord | null>
+  ownRecord: Promise<MemberRecord | null>
   blockedWordCount: ReactNode
 }) {
   const linkTo = { currentPath, ownRecord }
@@ -105,6 +108,7 @@ export function StaffHeader({
               <MemberLink place="sidebar" {...linkTo}>
                 {member}
               </MemberLink>
+              <MemberRole opensModeration={opensModeration} />
             </div>
             <LogOutForm iconOnly />
           </div>
@@ -138,9 +142,12 @@ export function StaffHeader({
               />
               <SheetFooter className="border-t">
                 <StatefulThemeToggle />
-                <MemberLink place="menu" {...linkTo}>
-                  {member}
-                </MemberLink>
+                <div className="min-w-0">
+                  <MemberLink place="menu" {...linkTo}>
+                    {member}
+                  </MemberLink>
+                  <MemberRole opensModeration={opensModeration} />
+                </div>
                 <LogOutForm />
               </SheetFooter>
             </SheetContent>
@@ -182,7 +189,7 @@ function MemberLink({
 }: {
   place: MemberPlace
   currentPath: string
-  ownRecord: Promise<OwnRecord | null>
+  ownRecord: Promise<MemberRecord | null>
   children: ReactNode
 }) {
   return (
@@ -206,7 +213,7 @@ function LinkedToOwnRecord({
 }: {
   place: MemberPlace
   currentPath: string
-  ownRecord: Promise<OwnRecord | null>
+  ownRecord: Promise<MemberRecord | null>
   children: ReactNode
 }) {
   const record = use(ownRecord)
@@ -214,43 +221,52 @@ function LinkedToOwnRecord({
     return children
   }
   const current = currentPath === record.href ? "page" : undefined
-  if (place === "sidebar") {
+  if (place === "menu") {
     return (
-      <Link
-        href={record.href}
-        prefetch={false}
-        aria-current={current}
+      <SheetClose
+        nativeButton={false}
+        role={undefined}
+        render={
+          <Link href={record.href} prefetch={false} aria-current={current} />
+        }
         className={MEMBER_LINK_CLASSES}
       >
         {children}
-      </Link>
-    )
-  }
-  if (place === "bar") {
-    return (
-      <Link
-        href={record.href}
-        prefetch={false}
-        aria-current={current}
-        className={MEMBER_LINK_CLASSES}
-      >
-        <span className="sr-only">{record.name}</span>
-        {children}
-      </Link>
+      </SheetClose>
     )
   }
   return (
-    <SheetClose
-      nativeButton={false}
-      role={undefined}
-      render={
-        <Link href={record.href} prefetch={false} aria-current={current} />
-      }
+    <AccountLink
+      href={record.href}
+      current={current}
       className={MEMBER_LINK_CLASSES}
     >
+      {place === "bar" && <span className="sr-only">{record.name}</span>}
       {children}
-    </SheetClose>
+    </AccountLink>
   )
+}
+
+function MemberRole({
+  opensModeration,
+}: {
+  opensModeration: Promise<boolean>
+}) {
+  return (
+    <div className="pl-10.5 text-xs text-muted-foreground">
+      <Suspense
+        fallback={
+          <Skeleton className="my-0.5 h-3 w-16 motion-reduce:animate-none" />
+        }
+      >
+        <RoleName opensModeration={opensModeration} />
+      </Suspense>
+    </div>
+  )
+}
+
+function RoleName({ opensModeration }: { opensModeration: Promise<boolean> }) {
+  return use(opensModeration) ? "Staff · Modération" : "Staff"
 }
 
 function PanelLink({

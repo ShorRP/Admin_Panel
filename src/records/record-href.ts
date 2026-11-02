@@ -2,7 +2,7 @@ export function recordHref(accountId: string) {
   return `/records/${accountId}`
 }
 
-export function recordHrefOf(
+export function recordHrefForModerator(
   accountId: string | null,
   opensModeration: boolean
 ) {

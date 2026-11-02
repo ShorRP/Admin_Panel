@@ -12,7 +12,7 @@ import {
   UserX,
 } from "lucide-react"
 
-import { recordHrefOf } from "@/records/record-href"
+import { recordHrefForModerator } from "@/records/record-href"
 import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
 import { AccountLink } from "@/ui/account-link"
 import { buttonVariants } from "@/ui/button"
@@ -209,7 +209,7 @@ function ChangeRow({
         )}
       </div>
       <AccountLink
-        href={recordHrefOf(change.memberId, opensModeration)}
+        href={recordHrefForModerator(change.memberId, opensModeration)}
         className={CHANGE_STAFF_MEMBER_CLASSES}
       >
         <MemberAvatar
@@ -251,7 +251,7 @@ function SanctionChangeDescription({
   change: Extract<AuditLogChange, { kind: "sanction-change" }>
   opensModeration: boolean
 }) {
-  const accountHref = recordHrefOf(account.id, opensModeration)
+  const accountHref = recordHrefForModerator(account.id, opensModeration)
   return (
     <>
       <p className="font-medium text-pretty wrap-anywhere">

@@ -10,30 +10,12 @@ function texts(html: string) {
   ).filter((text) => text.trim() !== "")
 }
 
-test("a staff member who does not moderate shows as « Staff » under their name, after their initials", () => {
+test("a staff member shows as their name, after their initials", () => {
   expect(
     texts(
       renderToStaticMarkup(
-        <StaffMemberIdentity
-          name="Brynja la Rouge"
-          avatarUrl={null}
-          opensModeration={false}
-        />
+        <StaffMemberIdentity name="Brynja la Rouge" avatarUrl={null} />
       )
     )
-  ).toEqual(["BL", "Brynja la Rouge", "Staff"])
-})
-
-test("a staff member who moderates shows as « Staff · Modération » under their name", () => {
-  expect(
-    texts(
-      renderToStaticMarkup(
-        <StaffMemberIdentity
-          name="Aldis"
-          avatarUrl={null}
-          opensModeration={true}
-        />
-      )
-    )
-  ).toEqual(["A", "Aldis", "Staff · Modération"])
+  ).toEqual(["BL", "Brynja la Rouge"])
 })

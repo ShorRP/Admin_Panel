@@ -1,11 +1,7 @@
 import { expect, test } from "vitest"
 
 import { FakeDiscord } from "@/discord/fake-discord"
-import {
-  findStaffMember,
-  opensModerationOnceRead,
-  ownRecordOnceRead,
-} from "./staff-member"
+import { findStaffMember, opensModerationOnceRead } from "./staff-member"
 
 const STAFF_ROLE_ID = "1300000000000000000"
 
@@ -217,32 +213,4 @@ test("a staff member opens the moderation section once read, and none when the r
       Promise.reject(new Error("Discord unavailable"))
     )
   ).toBe(false)
-})
-
-function staffMemberOn(discord: FakeDiscord) {
-  return findStaffMember(discord, ROLES, ALDIS.id).then(
-    (found) => found ?? Promise.reject(new Error("Aldis is no staff member"))
-  )
-}
-
-test("a staff member who moderates opens their own record once read, under their name, and none when the read fails", async () => {
-  const discord = new FakeDiscord({
-    members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
-  })
-
-  expect(await ownRecordOnceRead(staffMemberOn(discord))).toEqual({
-    href: `/records/${ALDIS.id}`,
-    name: "aldis",
-  })
-  expect(
-    await ownRecordOnceRead(Promise.reject(new Error("Discord unavailable")))
-  ).toBeNull()
-})
-
-test("a staff member who does not moderate opens no record of their own", async () => {
-  const discord = new FakeDiscord({
-    members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
-  })
-
-  expect(await ownRecordOnceRead(staffMemberOn(discord))).toBeNull()
 })

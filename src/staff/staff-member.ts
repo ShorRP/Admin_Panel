@@ -3,7 +3,6 @@ import "server-only"
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { memberName } from "@/discord/member-name"
-import { recordHrefOf } from "@/records/record-href"
 import type { StaffEnv } from "./env"
 
 declare const brand: unique symbol
@@ -54,19 +53,5 @@ export async function opensModerationOnceRead(
     return (await staffMember).opensModeration
   } catch {
     return false
-  }
-}
-
-export type OwnRecord = { href: string; name: string }
-
-export async function ownRecordOnceRead(
-  staffMember: Promise<StaffMember>
-): Promise<OwnRecord | null> {
-  try {
-    const { id, name, opensModeration } = await staffMember
-    const href = recordHrefOf(id, opensModeration)
-    return href === null ? null : { href, name }
-  } catch {
-    return null
   }
 }

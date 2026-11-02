@@ -407,13 +407,17 @@ test.describe("for a staff member who moderates", () => {
     checkAccessibility,
   }) => {
     const sidebar = page.getByRole("complementary")
-    const identity = sidebar.getByRole("link", { name: /^aldis/ })
+    const identity = sidebar.getByRole("link", { name: "aldis", exact: true })
 
     await logIn(ALDIS)
     await expect(page).toHaveURL("/blocked-words")
     await expect(identity).toHaveAttribute("href", `/records/${ALDIS.id}`)
     await expect(identity).not.toHaveAttribute("aria-current")
     await expect(identity).toBeInViewport()
+    await expect(
+      sidebar.getByText("Staff · Modération", { exact: true })
+    ).toBeVisible()
+    await expect(identity).not.toContainText("Staff")
     await checkAccessibility()
 
     await identity.click()
@@ -442,7 +446,7 @@ test.describe("for a staff member who moderates", () => {
       const barLink = header.getByRole("link", { name: "aldis", exact: true })
       const openMenu = header.getByRole("button", { name: "Ouvrir le menu" })
       const menu = page.getByRole("dialog", { name: "Menu" })
-      const menuLink = menu.getByRole("link", { name: /^aldis/ })
+      const menuLink = menu.getByRole("link", { name: "aldis", exact: true })
 
       await logIn(ALDIS)
       await expect(page).toHaveURL("/blocked-words")

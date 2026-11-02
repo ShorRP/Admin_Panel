@@ -374,7 +374,7 @@ test.describe("for a staff member who moderates", () => {
     const account = row.getByRole("link", { name: "Lyra" })
     const identity = page
       .getByRole("complementary")
-      .getByRole("link", { name: /^aldis/ })
+      .getByRole("link", { name: "aldis", exact: true })
 
     await logIn(ALDIS)
     await page.goto("/audit-log")

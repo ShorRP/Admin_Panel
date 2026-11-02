@@ -4,12 +4,9 @@ import { connection } from "next/server"
 import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { readBlockedWordCount } from "@/blocked-words/read-blocked-word-count"
 import { createDiscordApi } from "@/discord/discord-api"
+import { ownRecordOnceRead } from "@/records/own-record"
 import { requireStaffMember } from "@/staff/require-staff-member"
-import {
-  opensModerationOnceRead,
-  ownRecordOnceRead,
-  type StaffMember,
-} from "@/staff/staff-member"
+import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
 import { StaffMemberIdentity } from "@/staff/staff-member-identity"
 import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
@@ -66,12 +63,6 @@ async function CurrentStaffMemberIdentity({
 }: {
   staffMember: Promise<StaffMember>
 }) {
-  const { name, avatarUrl, opensModeration } = await staffMember
-  return (
-    <StaffMemberIdentity
-      name={name}
-      avatarUrl={avatarUrl}
-      opensModeration={opensModeration}
-    />
-  )
+  const { name, avatarUrl } = await staffMember
+  return <StaffMemberIdentity name={name} avatarUrl={avatarUrl} />
 }

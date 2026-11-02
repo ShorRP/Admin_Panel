@@ -7,7 +7,6 @@ export function StaffMemberIdentitySkeleton() {
       <Skeleton className="size-8 shrink-0 rounded-full motion-reduce:animate-none" />
       <div data-slot="staff-member-name">
         <Skeleton className="my-0.5 h-4 w-24 motion-reduce:animate-none" />
-        <Skeleton className="my-0.5 h-3 w-16 motion-reduce:animate-none" />
       </div>
     </div>
   )

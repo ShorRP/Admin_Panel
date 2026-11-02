@@ -32,6 +32,16 @@ test("what an account's avatar and name sit in is a link to the href it is given
   ])
 })
 
+test("a link marked as the current page says so", () => {
+  const html = renderToStaticMarkup(
+    <AccountLink href="/records/1400000000000000001" current="page">
+      Aldis
+    </AccountLink>
+  )
+
+  expect(/\saria-current="page"/.test(html)).toBe(true)
+})
+
 test("given no href, it is no link and keeps its content", () => {
   expect(
     tags(
