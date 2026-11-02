@@ -32,6 +32,20 @@ test("Discord refusing a call is a panel error, as is any other error", () => {
   expect(isPanelError("a thrown string")).toBe(true)
 })
 
+test("Discord refusing the members' list for want of the Server Members Intent is a panel error", () => {
+  expect(
+    isPanelError(
+      new DiscordError({
+        method: "GET",
+        route: ROUTES.guildMembers,
+        status: 403,
+        code: 50001,
+        discordMessage: "Missing Access",
+      })
+    )
+  ).toBe(true)
+})
+
 test("a DiscordError from another copy of its class, as instrumentation.ts receives the pages' errors, is still Discord unavailable", async () => {
   vi.resetModules()
   const { DiscordError: OtherCopy } = await import("@/discord/discord-error")

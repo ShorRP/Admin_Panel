@@ -163,6 +163,7 @@ function patient(discord: DiscordApi): DiscordApi {
       ),
     getAuditLog: (query) => patiently(() => discord.getAuditLog(query)),
     searchMembers: (query) => patiently(() => discord.searchMembers(query)),
+    listMembers: (query) => patiently(() => discord.listMembers(query)),
     getUser: (userId) => patiently(() => discord.getUser(userId)),
     getBan: (userId) => patiently(() => discord.getBan(userId)),
     listBans: (query) => patiently(() => discord.listBans(query)),
@@ -563,6 +564,33 @@ export function describeDiscordApiContract(
       expect(
         await discord.searchMembers({ query: crypto.randomUUID(), limit: 1000 })
       ).toEqual([])
+    })
+
+    test("the members list holds the application, by ascending ID", async () => {
+      const { discord } = connected()
+      const application = await discord.getApplicationUser()
+
+      const members = await discord.listMembers({ limit: 1000 })
+
+      expect(members.map(({ user }) => user.id)).toContain(application.id)
+      const ids = members.map(({ user }) => BigInt(user.id))
+      expect(ids).toEqual(
+        ids.toSorted((left, right) => (left < right ? -1 : 1))
+      )
+    })
+
+    test("a page of one member is followed by the page after its ID, which holds a member with a greater ID", async () => {
+      const { discord } = connected()
+
+      const [first] = await discord.listMembers({ limit: 1 })
+      const [next] = await discord.listMembers({
+        after: defined(first).user.id,
+        limit: 1,
+      })
+
+      expect(BigInt(defined(next).user.id)).toBeGreaterThan(
+        BigInt(defined(first).user.id)
+      )
     })
 
     test("a user who is not banned has no ban, and the bans read as a list", async () => {

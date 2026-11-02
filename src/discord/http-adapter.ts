@@ -11,6 +11,7 @@ import type {
   BansQuery,
   DiscordApi,
   MemberChanges,
+  MembersQuery,
   MessageBody,
 } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
@@ -54,6 +55,12 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     },
     {
       method: "GET",
+      route: ROUTES.guildMembers,
+      answer: (request) =>
+        api.listMembers(pageQuery(new URL(request.url).searchParams)),
+    },
+    {
+      method: "GET",
       route: ROUTES.guildMember,
       answer: async (_, param) =>
         found(
@@ -83,7 +90,7 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
       method: "GET",
       route: ROUTES.guildBans,
       answer: (request) =>
-        api.listBans(bansQuery(new URL(request.url).searchParams)),
+        api.listBans(pageQuery(new URL(request.url).searchParams)),
     },
     {
       method: "GET",
@@ -303,8 +310,8 @@ function auditLogQuery(search: URLSearchParams) {
   return query
 }
 
-function bansQuery(search: URLSearchParams) {
-  const query: BansQuery = {}
+function pageQuery(search: URLSearchParams) {
+  const query: BansQuery & MembersQuery = {}
   const after = search.get("after")
   const limit = search.get("limit")
   if (after !== null) {
