@@ -114,62 +114,68 @@ test("a staff member reads the audit log, newest changes first, each beside its 
 
 const SAME_AXIS_TOLERANCE = 1
 
-async function boxOf(element: Locator) {
-  await expect(element).toBeVisible()
-  const box = await element.boundingBox()
-  if (box === null) {
-    throw new Error("The element has no box to measure.")
-  }
-  return box
+type Span = { top: number; bottom: number }
+
+type RowMeasure = Record<
+  "insideBorders" | "time" | "tile" | "changed" | "avatar" | "author",
+  Span
+>
+
+async function measureRow(row: Locator): Promise<RowMeasure> {
+  await expect(row).toBeVisible()
+  return await row.evaluate((element) => {
+    function spanOf(target: Element | null | undefined, name: string) {
+      if (target === null || target === undefined) {
+        throw new Error(`The row has no ${name} to measure.`)
+      }
+      const { top, bottom } = target.getBoundingClientRect()
+      return { top, bottom }
+    }
+    const { borderTopWidth, borderBottomWidth } = getComputedStyle(element)
+    const { top, bottom } = element.getBoundingClientRect()
+    const tile = Array.from(element.querySelectorAll("span[aria-hidden]")).find(
+      (span) => span.querySelector("svg") !== null
+    )
+    return {
+      insideBorders: {
+        top: top + parseFloat(borderTopWidth),
+        bottom: bottom - parseFloat(borderBottomWidth),
+      },
+      time: spanOf(element.querySelector("time"), "time"),
+      tile: spanOf(tile, "tile"),
+      changed: spanOf(
+        element.querySelector("p")?.parentElement,
+        "what changed"
+      ),
+      avatar: spanOf(element.querySelector('[data-slot="avatar"]'), "avatar"),
+      author: spanOf(element.querySelector("p[title]"), "author's name"),
+    }
+  })
 }
 
-async function verticalCentre(element: Locator) {
-  const { y, height } = await boxOf(element)
-  return y + height / 2
+function centerOf({ top, bottom }: Span) {
+  return (top + bottom) / 2
 }
 
-async function topOf(element: Locator) {
-  return (await boxOf(element)).y
-}
-
-async function bottomOf(element: Locator) {
-  const { y, height } = await boxOf(element)
-  return y + height
-}
-
-async function middleOf(row: Locator) {
-  const box = await boxOf(row)
-  const { top, bottom } = await row.evaluate((element) => ({
-    top: parseFloat(getComputedStyle(element).borderTopWidth),
-    bottom: parseFloat(getComputedStyle(element).borderBottomWidth),
-  }))
-  return box.y + top + (box.height - top - bottom) / 2
-}
-
-function cellsOf(row: Locator) {
-  const changed = row.locator("p").first().locator("xpath=..")
-  return {
-    time: row.locator("time").first(),
-    tile: row
-      .locator("span[aria-hidden]")
-      .filter({ has: row.page().locator("svg") }),
-    changed,
-    avatar: row.locator('[data-slot="avatar"]'),
-    author: row.getByText("aldis", { exact: true }),
-  }
-}
-
-async function expectOnOneAxis(
+function expectCentersAt(
   kind: string,
-  cells: Record<string, Locator>,
+  cells: Record<string, Span>,
   axis: number
 ) {
   for (const [name, cell] of Object.entries(cells)) {
     expect(
-      Math.abs((await verticalCentre(cell)) - axis),
+      Math.abs(centerOf(cell) - axis),
       `the ${name} of the ${kind}'s row, against the axis at ${axis}`
     ).toBeLessThanOrEqual(SAME_AXIS_TOLERANCE)
   }
+}
+
+function expectCentersTogether(kind: string, cells: Record<string, Span>) {
+  const centers = Object.values(cells).map(centerOf)
+  expect(
+    Math.max(...centers) - Math.min(...centers),
+    `the centers of the ${Object.keys(cells).join(", ")} of the ${kind}'s row`
+  ).toBeLessThanOrEqual(SAME_AXIS_TOLERANCE)
 }
 
 test("the time, the icon and the author's avatar of a row share one axis, the row's middle, on one line of text as on two, and on a phone they share a first line above what changed", async ({
@@ -208,30 +214,28 @@ test("the time, the icon and the author's avatar of a row share one axis, the ro
   await checkAccessibility()
 
   for (const [kind, row] of Object.entries(rows)) {
-    const { time, tile, changed, avatar, author } = cellsOf(row)
-    await expectOnOneAxis(
+    const { insideBorders, time, tile, changed, avatar, author } =
+      await measureRow(row)
+    expectCentersAt(
       kind,
       { time, tile, changed, avatar, author },
-      await middleOf(row)
+      centerOf(insideBorders)
     )
+    expectCentersTogether(kind, { time, tile, avatar })
   }
 
   await page.setViewportSize({ width: 360, height: 760 })
   for (const [kind, row] of Object.entries(rows)) {
-    const { time, tile, changed, avatar, author } = cellsOf(row)
-    await expectOnOneAxis(
-      kind,
-      { time, avatar, author },
-      await verticalCentre(tile)
-    )
-    const firstLine = [time, tile, avatar, author]
-    const firstLineBottom = Math.max(
-      ...(await Promise.all(firstLine.map(bottomOf)))
-    )
+    await expect(row.getByText("aldis", { exact: true })).toBeVisible()
+    const { time, tile, changed, avatar, author } = await measureRow(row)
+    expectCentersAt(kind, { time, avatar, author }, centerOf(tile))
+    expectCentersTogether(kind, { time, tile, avatar })
     expect(
-      await topOf(changed),
+      changed.top,
       `what changed in the ${kind}'s row, against the bottom of its first line`
-    ).toBeGreaterThanOrEqual(firstLineBottom)
+    ).toBeGreaterThanOrEqual(
+      Math.max(...[time, tile, avatar, author].map(({ bottom }) => bottom))
+    )
   }
 })
 
