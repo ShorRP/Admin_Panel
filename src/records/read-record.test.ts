@@ -287,7 +287,7 @@ test("an account that is neither a member nor banned is absent from the Discord 
     globalName: "Lyra",
     username: "lyra_gates",
     avatarUrl:
-      "https://cdn.discordapp.com/avatars/175928847299117063/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
+      "https://cdn.discordapp.com/avatars/175928847299117063/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=128",
     createdAt: LYRA_CREATED_AT,
     standing: { kind: "absent" },
   })
@@ -312,7 +312,7 @@ test("a parameter that is no ID has no record, and asks Discord nothing", async 
   expect(await readRecord(discord, undefined)).toBeNull()
 })
 
-test("a member's record shows their avatar on the Discord server, else their Discord avatar", async () => {
+test("a record asks for its avatar at 128 px, the size of its 68 px header at double density", async () => {
   const discord = new FakeDiscord({
     members: [
       {
@@ -330,9 +330,24 @@ test("a member's record shows their avatar on the Discord server, else their Dis
   })
 
   expect((await readRecord(discord, LYRA.id))?.avatarUrl).toBe(
-    "https://cdn.discordapp.com/guilds/1100000000000000000/users/175928847299117063/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64"
+    "https://cdn.discordapp.com/guilds/1100000000000000000/users/175928847299117063/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=128"
   )
   expect((await readRecord(discord, "1400000000000000002"))?.avatarUrl).toBe(
-    "https://cdn.discordapp.com/avatars/1400000000000000002/6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c.webp?size=64"
+    "https://cdn.discordapp.com/avatars/1400000000000000002/6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c.webp?size=128"
+  )
+})
+
+test("a banned account's record asks for its Discord avatar at 128 px too", async () => {
+  const discord = new FakeDiscord({
+    bans: [
+      {
+        user: { ...LYRA, avatar: "0a1b2c3d4e5f60718293a4b5c6d7e8f9" },
+        reason: "spam",
+      },
+    ],
+  })
+
+  expect((await readRecord(discord, LYRA.id))?.avatarUrl).toBe(
+    "https://cdn.discordapp.com/avatars/175928847299117063/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=128"
   )
 })

@@ -53,6 +53,8 @@ function keywordChanges(keywordFilter: string[]) {
 
 const DAY_S = 86_400
 
+const CLOCK_SKEW_S = 60
+
 function secondsFromNow(seconds: number) {
   return new Date((Math.floor(Date.now() / 1000) + seconds) * 1000)
 }
@@ -606,11 +608,11 @@ export function describeDiscordApiContract(
           "Contract: a timeout of 28 days and a minute"
         )
       ).rejects.toMatchObject(REFUSED)
-      const end = secondsFromNow(28 * DAY_S)
+      const end = secondsFromNow(28 * DAY_S - CLOCK_SKEW_S)
       const timedOut = await discord.modifyMember(
         member,
         timeoutUntil(end),
-        "Contract: a timeout of 28 days"
+        "Contract: a timeout of 28 days less a minute"
       )
       expect(timeoutEndOf(timedOut.communication_disabled_until)).toBe(
         end.toISOString()

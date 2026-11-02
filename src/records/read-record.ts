@@ -17,6 +17,8 @@ import { snowflakeDate } from "@/discord/snowflake-date"
 import { ACCOUNT_ID } from "./account-id"
 import { timeoutEndOf } from "./timeout-end"
 
+const RECORD_AVATAR_SIZE = 128
+
 export type Standing =
   | {
       kind: "member"
@@ -57,7 +59,7 @@ export async function readRecord(
       ...identityOf(
         member.user,
         member.nick ?? null,
-        memberAvatarUrl(discord.guildId, member)
+        memberAvatarUrl(discord.guildId, member, RECORD_AVATAR_SIZE)
       ),
       standing: await memberStanding(discord, member),
     }
@@ -65,14 +67,18 @@ export async function readRecord(
   const ban = await discord.getBan(userId)
   if (ban !== null) {
     return {
-      ...identityOf(ban.user, null, userAvatarUrl(ban.user)),
+      ...identityOf(
+        ban.user,
+        null,
+        userAvatarUrl(ban.user, RECORD_AVATAR_SIZE)
+      ),
       standing: await bannedStanding(discord, ban),
     }
   }
   const user = await discord.getUser(userId)
   if (user !== null) {
     return {
-      ...identityOf(user, null, userAvatarUrl(user)),
+      ...identityOf(user, null, userAvatarUrl(user, RECORD_AVATAR_SIZE)),
       standing: { kind: "absent" },
     }
   }
