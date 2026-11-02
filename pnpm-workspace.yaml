@@ -6,8 +6,12 @@ auditConfig:
   ignoreGhsas:
     - GHSA-mrhx-c7xc-m3w5
 
+minimumReleaseAge: 10080
+
 peerDependencyRules:
   allowedVersions:
     eslint-plugin-import>eslint: "10"
     eslint-plugin-jsx-a11y>eslint: "10"
     eslint-plugin-react>eslint: "10"
+
+savePrefix: ""
