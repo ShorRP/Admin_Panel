@@ -28,9 +28,12 @@ export function BlockedWordListSkeleton() {
       <div className={WORD_GRID_CLASSES}>
         {WORD_WIDTHS.map((width) => (
           <div key={width} className={cn("pr-2.5", WORD_TILE_CLASSES)}>
-            <Skeleton
-              className={cn("h-3.5 motion-reduce:animate-none", width)}
-            />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton
+                className={cn("h-3.5 motion-reduce:animate-none", width)}
+              />
+              <Skeleton className="h-2.5 w-20 motion-reduce:animate-none" />
+            </div>
             <Skeleton className="ml-auto size-4 shrink-0 motion-reduce:animate-none" />
           </div>
         ))}

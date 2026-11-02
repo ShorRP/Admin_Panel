@@ -429,6 +429,64 @@ export function describeDiscordApiContract(
       ).rejects.toMatchObject(REFUSED)
     })
 
+    test("a rule that blocks the message with a custom message and times the member out, with an exempt role, is read back as created, and AutoMod refuses a longer timeout, or a custom message of more than 300 characters, which its documentation limits to 150", async () => {
+      const { discord } = connected()
+      const exemptRole = defined((await applicationMember(discord)).roles[0])
+      const blocking = (customMessage: string) => ({
+        type: AutoModerationActionType.BlockMessage,
+        metadata: { custom_message: customMessage },
+      })
+      const timingOut = (seconds: number) => ({
+        type: AutoModerationActionType.Timeout,
+        metadata: { duration_seconds: seconds },
+      })
+      const longestMessage = "é".repeat(300)
+
+      const created = await discord.createAutoModerationRule(
+        {
+          ...keywordRule(["contract-timeout-rule"]),
+          actions: [blocking(longestMessage), timingOut(2_419_200)],
+          exempt_roles: [exemptRole],
+        },
+        "Contract: a rule that times out"
+      )
+
+      const readBack = async () =>
+        (await discord.listAutoModerationRules()).find(
+          ({ id }) => id === created.id
+        )
+      const asCreated = {
+        actions: [blocking(longestMessage), timingOut(2_419_200)],
+        exempt_roles: [exemptRole],
+        enabled: false,
+      }
+      expect(await readBack()).toMatchObject(asCreated)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          { actions: [blocking(longestMessage), timingOut(2_419_201)] },
+          "Contract: a timeout of 2,419,201 seconds"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          { actions: [blocking(`${longestMessage}é`), timingOut(3600)] },
+          "Contract: a custom message of 301 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.createAutoModerationRule(
+          {
+            ...keywordRule(["contract-timeout-rule"]),
+            actions: [blocking(`${longestMessage}é`)],
+          },
+          "Contract: a custom message of 301 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      expect(await readBack()).toMatchObject(asCreated)
+    })
+
     test("a Discord server holds up to 6 keyword rules", async () => {
       const { discord } = connected()
       const rules = await discord.listAutoModerationRules()

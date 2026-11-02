@@ -5,16 +5,22 @@ import type { APIAutoModerationRule } from "discord-api-types/v10"
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
+import {
+  requireRightTo,
+  strongestOf,
+  type BlockedWordAction,
+} from "./blocked-word-action"
 import { frenchNumber, quoted } from "./french-text"
-import { MAX_BLOCKED_WORDS, MAX_KEYWORD_RULES } from "./limits"
+import { MAX_KEYWORD_RULES, MAX_WORDS_PER_RULE } from "./limits"
 import {
   isKeywordRule,
-  isPanelRule,
   keywordsOf,
   newPanelRule,
+  panelRulesOf,
   withKeywords,
+  type PanelRule,
 } from "./panel-rule"
-import { submittedWord } from "./submitted-word"
+import { submittedBlockedWord } from "./submitted-word"
 import {
   failure,
   unlessDiscordUnavailable,
@@ -26,24 +32,35 @@ export async function addBlockedWord(
   staffMember: StaffMember,
   formData: FormData
 ): Promise<WriteResult> {
-  const submitted = submittedWord(formData)
+  const submitted = submittedBlockedWord(formData)
   if (!submitted.ok) {
-    return failure(submitted.message, submitted.typed)
+    return failure(submitted.message, submitted.fields)
   }
-  const { typed, word } = submitted
-  return await unlessDiscordUnavailable(typed, async () => {
+  const { fields, word, action } = submitted
+  requireRightTo(staffMember, action)
+  return await unlessDiscordUnavailable(fields, async () => {
     const rules = await discord.listAutoModerationRules()
-    const rule = rules.find(isPanelRule)
+    const panelRules = panelRulesOf(rules)
+    const rule = panelRules.find(
+      (panelRule) => panelRule.action.id === action.id
+    )?.rule
     const refusal =
-      rule === undefined
-        ? creationRefusal(rules)
-        : additionRefusal(keywordsOf(rule), word)
+      duplicateRefusal(panelRules, word) ??
+      (rule === undefined
+        ? noRoomRefusal(rules, action)
+        : fullRuleRefusal(rule, action))
     if (refusal !== null) {
-      return failure(refusal, typed)
+      return failure(refusal, fields)
     }
-    const reason = auditLogReason(staffMember, `ajout de ${quoted(word)}`)
+    const reason = auditLogReason(
+      staffMember,
+      `ajout de ${quoted(word)}, action ${quoted(action.label)}`
+    )
     if (rule === undefined) {
-      await discord.createAutoModerationRule(newPanelRule([word]), reason)
+      await discord.createAutoModerationRule(
+        newPanelRule(action, staffMember.staffRoleId, [word]),
+        reason
+      )
     } else {
       await discord.modifyAutoModerationRule(
         rule.id,
@@ -53,27 +70,41 @@ export async function addBlockedWord(
     }
     return {
       ok: true,
-      message: `${quoted(word)} est maintenant un mot interdit.`,
+      message: `${quoted(word)} est maintenant un mot interdit, action ${quoted(action.label)}.`,
     }
   })
 }
 
-function creationRefusal(rules: APIAutoModerationRule[]) {
+function duplicateRefusal(panelRules: PanelRule[], word: string) {
+  const same = panelRules.flatMap(({ rule, action }) =>
+    keywordsOf(rule)
+      .filter((keyword) => keyword.toLowerCase() === word.toLowerCase())
+      .map((keyword) => ({ keyword, action }))
+  )
+  const strongest = strongestOf(same.map(({ action }) => action.id))
+  if (strongest === null) {
+    return null
+  }
+  const keyword = same.find(({ action }) => action.id === strongest.id)?.keyword
+  return `${quoted(keyword ?? word)} est déjà un mot interdit, action ${quoted(strongest.label)}.`
+}
+
+function noRoomRefusal(
+  rules: APIAutoModerationRule[],
+  action: BlockedWordAction
+) {
   if (rules.filter(isKeywordRule).length < MAX_KEYWORD_RULES) {
     return null
   }
-  return `Le serveur a déjà ${MAX_KEYWORD_RULES} règles AutoMod de mots-clés. Supprimes-en une dans Discord pour que le panel crée la sienne.`
+  return `Le serveur Discord a déjà ${MAX_KEYWORD_RULES} règles AutoMod de mots-clés : le panel ne peut pas y créer la règle ${quoted(action.label)}. Supprimes-en une dans Discord, ou choisis une autre action.`
 }
 
-function additionRefusal(keywords: string[], word: string) {
-  const same = keywords.find(
-    (keyword) => keyword.toLowerCase() === word.toLowerCase()
-  )
-  if (same !== undefined) {
-    return `${quoted(same)} est déjà un mot interdit.`
+function fullRuleRefusal(
+  rule: APIAutoModerationRule,
+  action: BlockedWordAction
+) {
+  if (keywordsOf(rule).length < MAX_WORDS_PER_RULE) {
+    return null
   }
-  if (keywords.length >= MAX_BLOCKED_WORDS) {
-    return `La règle du panel compte déjà ${frenchNumber(MAX_BLOCKED_WORDS)} mots interdits, le maximum d’AutoMod. Retires-en un pour en ajouter un autre.`
-  }
-  return null
+  return `La règle ${quoted(action.label)} compte déjà ${frenchNumber(MAX_WORDS_PER_RULE)} mots interdits, le maximum d’AutoMod. Retires-en un, ou choisis une autre action.`
 }

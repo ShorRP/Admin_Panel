@@ -1,13 +1,15 @@
 import { z } from "zod"
 
+import type { BlockedWord } from "./read-blocked-words"
+
 export type FilteredBlockedWords =
-  | { query: null; words: string[] }
-  | { query: string; words: string[]; total: number }
+  | { query: null; words: BlockedWord[] }
+  | { query: string; words: BlockedWord[]; total: number }
 
 const QUERY = z.string().trim().min(1).nullable().catch(null)
 
 export function filterBlockedWords(
-  words: string[],
+  words: BlockedWord[],
   queryParam: unknown
 ): FilteredBlockedWords {
   const query = QUERY.parse(queryParam)
@@ -17,7 +19,9 @@ export function filterBlockedWords(
   const lowerCaseQuery = query.toLowerCase()
   return {
     query,
-    words: words.filter((word) => word.toLowerCase().includes(lowerCaseQuery)),
+    words: words.filter(({ word }) =>
+      word.toLowerCase().includes(lowerCaseQuery)
+    ),
     total: words.length,
   }
 }

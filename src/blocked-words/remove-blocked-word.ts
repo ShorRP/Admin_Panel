@@ -3,8 +3,9 @@ import "server-only"
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
+import { requireRightTo, strongestOf } from "./blocked-word-action"
 import { quoted } from "./french-text"
-import { isPanelRule, keywordsOf, withKeywords } from "./panel-rule"
+import { keywordsOf, panelRulesOf, withKeywords } from "./panel-rule"
 import { submittedWord } from "./submitted-word"
 import {
   failure,
@@ -18,26 +19,39 @@ export async function removeBlockedWord(
   formData: FormData
 ): Promise<WriteResult> {
   const submitted = submittedWord(formData)
+  const fields = { word: submitted.typed, action: "" }
   if (!submitted.ok) {
-    return failure(submitted.message, submitted.typed)
+    return failure(submitted.message, fields)
   }
   const { typed } = submitted
-  return await unlessDiscordUnavailable(typed, async () => {
-    const rule = (await discord.listAutoModerationRules()).find(isPanelRule)
-    const keywords = rule === undefined ? [] : keywordsOf(rule)
-    if (rule !== undefined && keywords.includes(typed)) {
+  return await unlessDiscordUnavailable(fields, async () => {
+    const holding = panelRulesOf(
+      await discord.listAutoModerationRules()
+    ).filter(({ rule }) => keywordsOf(rule).includes(typed))
+    const strongest = strongestOf(holding.map(({ action }) => action.id))
+    if (strongest === null) {
+      return {
+        ok: true,
+        message: `${quoted(typed)} n’est plus un mot interdit.`,
+      }
+    }
+    requireRightTo(staffMember, strongest)
+    for (const { rule, action } of holding) {
       await discord.modifyAutoModerationRule(
         rule.id,
         withKeywords(
           rule,
-          keywords.filter((keyword) => keyword !== typed)
+          keywordsOf(rule).filter((keyword) => keyword !== typed)
         ),
-        auditLogReason(staffMember, `retrait de ${quoted(typed)}`)
+        auditLogReason(
+          staffMember,
+          `retrait de ${quoted(typed)}, action ${quoted(action.label)}`
+        )
       )
     }
     return {
       ok: true,
-      message: `${quoted(typed)} n’est plus un mot interdit.`,
+      message: `${quoted(typed)} n’est plus un mot interdit, action ${quoted(strongest.label)}.`,
     }
   })
 }

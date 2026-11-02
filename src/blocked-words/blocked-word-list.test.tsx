@@ -2,30 +2,43 @@ import { CircleAlert, X, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import type { BlockedWordRights } from "./blocked-word-action"
 import { BlockedWordList } from "./blocked-word-list"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
+import type { BlockedWord } from "./read-blocked-words"
 import type { WriteResult } from "./write-result"
 
-function render(
-  words: string[],
-  state: WriteResult | null = null,
-  pending = false
-) {
-  return renderList({ query: null, words }, state, pending)
+const MODERATOR = { opensModeration: true, opensBans: false }
+
+const STAFF_ONLY = { opensModeration: false, opensBans: false }
+
+function blocking(...words: string[]): BlockedWord[] {
+  return words.map((word) => ({ word, action: "block" }))
 }
 
-function renderFiltered(query: string, words: string[], total: number) {
-  return renderList({ query, words, total }, null, false)
+function render(
+  words: BlockedWord[],
+  state: WriteResult | null = null,
+  pending = false,
+  rights: BlockedWordRights = MODERATOR
+) {
+  return renderList({ query: null, words }, state, pending, rights)
+}
+
+function renderFiltered(query: string, words: BlockedWord[], total: number) {
+  return renderList({ query, words, total }, null, false, MODERATOR)
 }
 
 function renderList(
   blockedWords: FilteredBlockedWords,
   state: WriteResult | null,
-  pending: boolean
+  pending: boolean,
+  rights: BlockedWordRights
 ) {
   return renderToStaticMarkup(
     <BlockedWordList
       blockedWords={blockedWords}
+      rights={rights}
       state={state}
       pending={pending}
       action={() => {}}
@@ -78,10 +91,13 @@ function heading(html: string) {
 
 function tiles(html: string) {
   return Array.from(
-    html.matchAll(/<li([^>]*)><span[^>]*>(.*?)<\/span>(.*?)<\/li>/g),
-    ([, attributes = "", text, rest = ""]) => ({
+    html.matchAll(
+      /<li([^>]*)><div[^>]*><span[^>]*>(.*?)<\/span><span[^>]*>(.*?)<\/span><\/div>(.*?)<\/li>/g
+    ),
+    ([, attributes = "", text, action, rest = ""]) => ({
       title: /\stitle="([^"]*)"/.exec(attributes)?.[1],
       text,
+      action,
       word: /<input[^>]*type="hidden"[^>]*name="word"[^>]*value="([^"]*)"/.exec(
         rest
       )?.[1],
@@ -102,10 +118,11 @@ function tiles(html: string) {
   )
 }
 
-function tile(word: string, disabled = false) {
+function tile(word: string, disabled = false, action = "Bloquer seulement") {
   return {
     title: word,
     text: word,
+    action,
     word,
     buttons: [
       {
@@ -119,7 +136,7 @@ function tile(word: string, disabled = false) {
 }
 
 test("each blocked word is a tile under « La liste » and its count, that holds it whole in its title and removes it through a hidden cross named for assistive technologies alone", () => {
-  const html = render(["abricot", "zèbre"])
+  const html = render(blocking("abricot", "zèbre"))
 
   expect(heading(html)).toEqual({
     title: "La liste",
@@ -128,8 +145,54 @@ test("each blocked word is a tile under « La liste » and its count, that hol
   expect(tiles(html)).toEqual([tile("abricot"), tile("zèbre")])
 })
 
+test("each tile names its action, the one that only blocks included", () => {
+  const html = render([
+    { word: "abricot", action: "block" },
+    { word: "cerise", action: "timeout-1h" },
+    { word: "datte", action: "timeout-1d" },
+  ])
+
+  expect(tiles(html).map(({ text, action }) => ({ text, action }))).toEqual([
+    { text: "abricot", action: "Bloquer seulement" },
+    { text: "cerise", action: "Exclusion 1 heure" },
+    { text: "datte", action: "Exclusion 1 jour" },
+  ])
+})
+
+test("a staff member who does not moderate sees every tile and its action, a cross on the words that only block, and none on a word that times out", () => {
+  const html = render(
+    [
+      { word: "abricot", action: "block" },
+      { word: "cerise", action: "timeout-1h" },
+    ],
+    null,
+    false,
+    STAFF_ONLY
+  )
+
+  expect(tiles(html)).toEqual([
+    tile("abricot"),
+    {
+      title: "cerise",
+      text: "cerise",
+      action: "Exclusion 1 heure",
+      word: undefined,
+      buttons: [],
+    },
+  ])
+})
+
+test("a staff member who moderates sees a cross on every tile", () => {
+  const html = render([
+    { word: "abricot", action: "block" },
+    { word: "cerise", action: "timeout-1d" },
+  ])
+
+  expect(tiles(html).map(({ buttons }) => buttons.length)).toEqual([1, 1])
+})
+
 test("a single blocked word is counted in the singular", () => {
-  expect(heading(render(["foo"])).count).toBe("1 mot interdit")
+  expect(heading(render(blocking("foo"))).count).toBe("1 mot interdit")
 })
 
 test("an empty list says so in one sentence in place of the count, and keeps both regions", () => {
@@ -143,7 +206,7 @@ test("an empty list says so in one sentence in place of the count, and keeps bot
 })
 
 test("while a removal is pending, every cross is disabled and the status reads « Retrait en cours… », with no icon", () => {
-  const html = render(["abricot", "zèbre"], null, true)
+  const html = render(blocking("abricot", "zèbre"), null, true)
 
   expect(tiles(html)).toEqual([tile("abricot", true), tile("zèbre", true)])
   expect(region(html, "status")).toEqual({
@@ -153,14 +216,15 @@ test("while a removal is pending, every cross is disabled and the status reads �
 })
 
 test("a removal that lands leaves both regions empty, since a toast says so, and a failed one's message shows in the alert region after a hidden alert icon", () => {
-  const removed = render(["zèbre"], {
+  const removed = render(blocking("zèbre"), {
     ok: true,
     message: "« abricot » n’est plus un mot interdit.",
   })
-  const failed = render(["abricot"], {
+  const failed = render(blocking("abricot"), {
     ok: false,
     message: "Discord n’a pas répondu.",
     word: "abricot",
+    action: "",
   })
 
   expect(region(removed, "status")).toEqual(EMPTY)
@@ -172,7 +236,11 @@ test("a removal that lands leaves both regions empty, since a toast says so, and
 })
 
 test("with a filter, the list shows the blocked words that pass it, counted « k sur N », its field holds the text searched, and « Tout afficher » leads back to the whole list", () => {
-  const html = renderFiltered("nitro", ["Free Nitro", "nitro gratuit"], 5)
+  const html = renderFiltered(
+    "nitro",
+    blocking("Free Nitro", "nitro gratuit"),
+    5
+  )
 
   expect(heading(html)).toEqual({ title: "La liste", count: "2 sur 5" })
   expect(tiles(html)).toEqual([tile("Free Nitro"), tile("nitro gratuit")])
@@ -183,7 +251,7 @@ test("with a filter, the list shows the blocked words that pass it, counted « 
 })
 
 test("without a filter, the list holds an empty filter field and no « Tout afficher »", () => {
-  const html = render(["abricot", "zèbre"])
+  const html = render(blocking("abricot", "zèbre"))
 
   expect(filterField(html)).toBe("")
   expect(showAll(html)).toEqual([])

@@ -14,6 +14,7 @@ export type StaffMember = {
   readonly opensModeration: boolean
   readonly opensBans: boolean
   readonly roleIds: string[]
+  readonly staffRoleId: string
   readonly [brand]: true
 }
 
@@ -41,6 +42,7 @@ export async function findStaffMember(
     opensModeration,
     opensBans: opensModeration && holdsAny(banRoleIds),
     roleIds: member.roles,
+    staffRoleId,
   } as StaffMember
 }
 

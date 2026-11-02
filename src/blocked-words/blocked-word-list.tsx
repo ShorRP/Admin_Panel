@@ -6,6 +6,11 @@ import { Button } from "@/ui/button"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { TextLink } from "@/ui/text-link"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
+import {
+  blockedWordAction,
+  mayUse,
+  type BlockedWordRights,
+} from "./blocked-word-action"
 import { BlockedWordFilterForm } from "./blocked-word-filter-form"
 import { LIST_HEADER_CLASSES } from "./blocked-word-list-layout"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
@@ -17,11 +22,13 @@ const HEADING_ID = "blocked-word-list"
 
 export function BlockedWordList({
   blockedWords,
+  rights,
   state,
   pending,
   action,
 }: {
   blockedWords: FilteredBlockedWords
+  rights: BlockedWordRights
   state: WriteResult | null
   pending: boolean
   action: (formData: FormData) => void
@@ -55,34 +62,48 @@ export function BlockedWordList({
         </EmptyListFrame>
       )}
       <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>
-        {words.map((word) => (
-          <ViewTransition
-            key={word}
-            enter="highlight-enter"
-            exit="fade-exit"
-            update="slide-into-place"
-            default="none"
-          >
-            <li title={word} className={cn("pr-1", WORD_TILE_CLASSES)}>
-              <span className="min-w-0 flex-1 truncate font-mono text-[0.78125rem]">
-                {word}
-              </span>
-              <form action={action} className="flex">
-                <input type="hidden" name="word" value={word} />
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={pending}
-                  className="text-muted-foreground"
-                >
-                  <X aria-hidden className="size-3.75" />
-                  <span className="sr-only">{`Retirer ${quoted(word)}`}</span>
-                </Button>
-              </form>
-            </li>
-          </ViewTransition>
-        ))}
+        {words.map(({ word, action: actionId }) => {
+          const held = blockedWordAction(actionId)
+          const removable = mayUse(rights, held)
+          return (
+            <ViewTransition
+              key={word}
+              enter="highlight-enter"
+              exit="fade-exit"
+              update="slide-into-place"
+              default="none"
+            >
+              <li
+                title={word}
+                className={cn(removable ? "pr-1" : "pr-3", WORD_TILE_CLASSES)}
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate font-mono text-[0.78125rem]">
+                    {word}
+                  </span>
+                  <span className="block truncate text-[0.6875rem] text-muted-foreground">
+                    {held.label}
+                  </span>
+                </div>
+                {removable && (
+                  <form action={action} className="flex">
+                    <input type="hidden" name="word" value={word} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={pending}
+                      className="text-muted-foreground"
+                    >
+                      <X aria-hidden className="size-3.75" />
+                      <span className="sr-only">{`Retirer ${quoted(word)}`}</span>
+                    </Button>
+                  </form>
+                )}
+              </li>
+            </ViewTransition>
+          )
+        })}
       </ul>
       <p role="status" className="text-sm not-empty:mt-3.5">
         {pending && "Retrait en cours…"}

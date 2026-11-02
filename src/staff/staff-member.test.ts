@@ -19,7 +19,7 @@ const ROLES = {
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
-test("a member holding the staff role is a staff member, under their Discord name, with their roles", async () => {
+test("a member holding the staff role is a staff member, under their Discord name, with their roles and the staff role's ID", async () => {
   const discord = new FakeDiscord({
     members: [{ user: ALDIS, roles: [OTHER_ROLE_ID, STAFF_ROLE_ID] }],
   })
@@ -31,6 +31,7 @@ test("a member holding the staff role is a staff member, under their Discord nam
     opensModeration: false,
     opensBans: false,
     roleIds: [OTHER_ROLE_ID, STAFF_ROLE_ID],
+    staffRoleId: STAFF_ROLE_ID,
   })
 })
 

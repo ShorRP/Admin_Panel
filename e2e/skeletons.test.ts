@@ -8,18 +8,18 @@ const LYRA = { id: "1400000000000000003", username: "lyra_gates" }
 const PAGES = [
   {
     path: "/blocked-words",
-    loading: "Chargement des mots interdits…",
+    loading: ["Chargement des mots interdits…", "Chargement du formulaire…"],
     content: "Aucun mot interdit pour l’instant.",
   },
   {
     path: "/audit-log",
-    loading: "Chargement du journal d’audit…",
+    loading: ["Chargement du journal d’audit…"],
     content:
       "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.",
   },
   {
     path: `/records/${LYRA.id}`,
-    loading: "Chargement de la fiche…",
+    loading: ["Chargement de la fiche…"],
     content: "Aucune sanction ni levée dans l’historique.",
   },
 ] as const
@@ -75,7 +75,9 @@ for (const { title, prefersReducedMotion } of [
         const skeletons = page
           .getByRole("status")
           .filter({ hasText: /^Chargement/ })
-        await expect(skeletons.filter({ hasText: loading })).toBeVisible()
+        for (const text of loading) {
+          await expect(skeletons.filter({ hasText: text })).toBeVisible()
+        }
         await expect(
           page
             .getByRole("complementary")

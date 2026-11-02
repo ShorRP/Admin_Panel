@@ -8,6 +8,7 @@ import {
   type APIAuditLog,
   type APIAuditLogChange,
   type APIAuditLogEntry,
+  type APIAutoModerationAction,
   type APIAutoModerationRule,
   type APIAutoModerationRuleTriggerMetadata,
   type APIBan,
@@ -78,6 +79,12 @@ const MAX_KEYWORD_RULES = 6
 const MAX_KEYWORDS = 1000
 
 const MAX_KEYWORD_LENGTH = 60
+
+const MAX_EXEMPT_ROLES = 20
+
+const MAX_AUTO_MODERATION_TIMEOUT_S = 2_419_200
+
+const MAX_CUSTOM_MESSAGE_LENGTH = 300
 
 const MAX_REASON_LENGTH = 512
 
@@ -247,6 +254,24 @@ function checkKeywords(
   if (
     keywords.length > MAX_KEYWORDS ||
     keywords.some((keyword) => lengthOf(keyword) > MAX_KEYWORD_LENGTH)
+  ) {
+    throw refused(method, route)
+  }
+}
+
+function checkActions(
+  actions: APIAutoModerationAction[] | undefined,
+  exemptRoles: Snowflake[] | undefined,
+  method: HttpMethod,
+  route: DiscordRoute
+) {
+  if (
+    (exemptRoles?.length ?? 0) > MAX_EXEMPT_ROLES ||
+    (actions ?? []).some(
+      ({ metadata }) =>
+        (metadata?.duration_seconds ?? 0) > MAX_AUTO_MODERATION_TIMEOUT_S ||
+        lengthOf(metadata?.custom_message ?? "") > MAX_CUSTOM_MESSAGE_LENGTH
+    )
   ) {
     throw refused(method, route)
   }
@@ -838,6 +863,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   ) {
     const route = ROUTES.autoModerationRules
     checkKeywords(rule.trigger_metadata, "POST", route)
+    checkActions(rule.actions, rule.exempt_roles, "POST", route)
     if (
       rule.trigger_type === AutoModerationRuleTriggerType.Keyword &&
       this.rules.filter(
@@ -877,6 +903,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       throw new DiscordError({ method: "PATCH", route, status: 404 })
     }
     checkKeywords(changes.trigger_metadata, "PATCH", route)
+    checkActions(changes.actions, changes.exempt_roles, "PATCH", route)
     const modified: APIAutoModerationRule = structuredClone({
       ...rule,
       name: changes.name ?? rule.name,

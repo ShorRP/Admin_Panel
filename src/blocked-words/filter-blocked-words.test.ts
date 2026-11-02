@@ -1,20 +1,31 @@
 import { expect, test } from "vitest"
 
 import { filterBlockedWords } from "./filter-blocked-words"
+import type { BlockedWord } from "./read-blocked-words"
 
-const WORDS = ["abricot", "Free Nitro", "nitro gratuit", "Éclair", "zèbre"]
+const WORDS: BlockedWord[] = [
+  { word: "abricot", action: "block" },
+  { word: "Free Nitro", action: "timeout-1h" },
+  { word: "nitro gratuit", action: "block" },
+  { word: "Éclair", action: "timeout-1d" },
+  { word: "zèbre", action: "block" },
+]
 
-test("a blocked word passes the filter when it contains the text searched, whatever its case", () => {
+function wordsOf(words: BlockedWord[]) {
+  return words.map(({ word }) => word)
+}
+
+test("a blocked word passes the filter when it contains the text searched, whatever its case and its action", () => {
   expect(filterBlockedWords(WORDS, "NITRO")).toEqual({
     query: "NITRO",
-    words: ["Free Nitro", "nitro gratuit"],
+    words: [WORDS[1], WORDS[2]],
     total: 5,
   })
-  expect(filterBlockedWords(WORDS, "itr").words).toEqual([
+  expect(wordsOf(filterBlockedWords(WORDS, "itr").words)).toEqual([
     "Free Nitro",
     "nitro gratuit",
   ])
-  expect(filterBlockedWords(WORDS, "éCL").words).toEqual(["Éclair"])
+  expect(wordsOf(filterBlockedWords(WORDS, "éCL").words)).toEqual(["Éclair"])
 })
 
 test("the filter tells an accented letter from a plain one, since it leaves out the case alone", () => {
@@ -25,7 +36,7 @@ test("the filter tells an accented letter from a plain one, since it leaves out 
 test("the text searched leaves out the spaces around it", () => {
   expect(filterBlockedWords(WORDS, "  nitro ")).toEqual({
     query: "nitro",
-    words: ["Free Nitro", "nitro gratuit"],
+    words: [WORDS[1], WORDS[2]],
     total: 5,
   })
 })

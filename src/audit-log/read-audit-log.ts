@@ -8,7 +8,7 @@ import {
 } from "discord-api-types/v10"
 import { z } from "zod"
 
-import { isPanelRule } from "@/blocked-words/panel-rule"
+import { panelRulesOf } from "@/blocked-words/panel-rule"
 import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
@@ -125,23 +125,27 @@ async function eventReadersOfType(
 ) {
   const events =
     type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
-  const [ruleId, application] = await Promise.all([
+  const [ruleIds, application] = await Promise.all([
     events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
-      ? panelRuleId(discord)
+      ? panelRuleIds(discord)
       : null,
     discord.getApplicationUser(),
   ])
-  return eventReaders(ruleId, application.id).filter(({ actionType }) =>
+  return eventReaders(ruleIds, application.id).filter(({ actionType }) =>
     events.includes(actionType)
   )
 }
 
-async function panelRuleId(discord: DiscordApi) {
-  return (await discord.listAutoModerationRules()).find(isPanelRule)?.id ?? null
+async function panelRuleIds(discord: DiscordApi) {
+  return new Set(
+    panelRulesOf(await discord.listAutoModerationRules()).map(
+      ({ rule }) => rule.id
+    )
+  )
 }
 
 function eventReaders(
-  ruleId: Snowflake | null,
+  ruleIds: ReadonlySet<Snowflake> | null,
   applicationId: Snowflake
 ): EventReader[] {
   const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
@@ -149,13 +153,13 @@ function eventReaders(
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
       sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
   }))
-  if (ruleId === null) {
+  if (ruleIds === null || ruleIds.size === 0) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      entry.target_id === ruleId
+      entry.target_id !== null && ruleIds.has(entry.target_id)
         ? ruleChangeOf(entry, users, applicationId)
         : null,
   }))

@@ -50,9 +50,10 @@ async function staffMemberOn(discord: FakeDiscord) {
   return staffMember
 }
 
-function form(word: string) {
+function form(word: string, action = "block") {
   const data = new FormData()
   data.set("word", word)
+  data.set("action", action)
   return data
 }
 
@@ -151,7 +152,10 @@ test("a timeout given through the panel shows among the changes to the blocked w
   const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(changes).toEqual([
-    expect.objectContaining({ kind: "rule", description: "Ajout de « bar »" }),
+    expect.objectContaining({
+      kind: "rule",
+      description: "Ajout de « bar », action « Bloquer seulement »",
+    }),
     {
       kind: "sanction-change",
       id: expect.any(String),
@@ -166,7 +170,10 @@ test("a timeout given through the panel shows among the changes to the blocked w
       account: { id: LYRA.id, name: "Lyra" },
       reason: "Insultes répétées",
     },
-    expect.objectContaining({ kind: "rule", description: "Ajout de « foo »" }),
+    expect.objectContaining({
+      kind: "rule",
+      description: "Ajout de « foo », action « Bloquer seulement »",
+    }),
   ])
 })
 
@@ -276,11 +283,54 @@ test("a page holds the 50 newest changes, to the blocked words and to sanctions 
 
   expect(changesOf(newest)).toHaveLength(50)
   expect(sanctionChanges(changesOf(newest))[0]?.reason).toBe("Motif 30")
-  expect(shown(changesOf(newest)).at(-1)?.description).toBe("Ajout de « mot6 »")
+  expect(shown(changesOf(newest)).at(-1)?.description).toBe(
+    "Ajout de « mot6 », action « Bloquer seulement »"
+  )
   expect(older.older).toBeNull()
   expect(changesOf(older)).toHaveLength(10)
   expect(sanctionChanges(changesOf(older))[0]?.reason).toBe("Motif 5")
-  expect(shown(changesOf(older)).at(-1)?.description).toBe("Ajout de « mot1 »")
+  expect(shown(changesOf(older)).at(-1)?.description).toBe(
+    "Ajout de « mot1 », action « Bloquer seulement »"
+  )
+})
+
+test("the blocked words added to each of the panel's rules, and removed from them, show under « Tout » and « Mots interdits », with their action, and the changes to a hand-made rule do not", async () => {
+  const discord = discordWithModerator()
+  const moderator = await staffMemberOn(discord)
+  discord.createAutoModerationRuleAs(BRYN.id, {
+    name: "Liens",
+    event_type: AutoModerationRuleEventType.MessageSend,
+    trigger_type: AutoModerationRuleTriggerType.Keyword,
+    trigger_metadata: { keyword_filter: ["http"] },
+    actions: [{ type: AutoModerationActionType.BlockMessage }],
+  })
+  await addBlockedWord(discord, moderator, form("foo"))
+  await addBlockedWord(discord, moderator, form("bar", "timeout-1h"))
+  await addBlockedWord(discord, moderator, form("baz", "timeout-1d"))
+  await removeBlockedWord(discord, moderator, form("bar"))
+
+  const expected = [
+    {
+      memberName: "aldis",
+      description: "Retrait de « bar », action « Exclusion 1 heure »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « baz », action « Exclusion 1 jour »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « bar », action « Exclusion 1 heure »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « foo », action « Bloquer seulement »",
+    },
+  ]
+  expect(shown(changesOf(await readAuditLog(discord, {})))).toEqual(expected)
+  expect(
+    shown(changesOf(await readAuditLog(discord, { type: "blocked-words" })))
+  ).toEqual(expected)
 })
 
 test("the blocked words added and removed through the panel show newest first, under the staff member's name", async () => {
@@ -293,9 +343,18 @@ test("the blocked words added and removed through the panel show newest first, u
   const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
-    { memberName: "aldis", description: "Retrait de « foo »" },
-    { memberName: "aldis", description: "Ajout de « bar »" },
-    { memberName: "aldis", description: "Ajout de « foo »" },
+    {
+      memberName: "aldis",
+      description: "Retrait de « foo », action « Bloquer seulement »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « bar », action « Bloquer seulement »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « foo », action « Bloquer seulement »",
+    },
   ])
 })
 
@@ -326,7 +385,10 @@ test("a change made in Discord to the panel's rule shows under its author's Disc
       memberName: "Bryn la Rouge",
       description: "Règle modifiée dans Discord",
     },
-    { memberName: "aldis", description: "Ajout de « foo »" },
+    {
+      memberName: "aldis",
+      description: "Ajout de « foo », action « Bloquer seulement »",
+    },
   ])
   expect(
     changes.map((change) => change.kind === "rule" && change.madeInDiscord)
@@ -391,8 +453,14 @@ test("changes to other AutoMod rules never show, however many there are", async 
   const changes = changesOf(await readAuditLog(discord, {}))
 
   expect(shown(changes)).toEqual([
-    { memberName: "aldis", description: "Ajout de « bar »" },
-    { memberName: "aldis", description: "Ajout de « foo »" },
+    {
+      memberName: "aldis",
+      description: "Ajout de « bar », action « Bloquer seulement »",
+    },
+    {
+      memberName: "aldis",
+      description: "Ajout de « foo », action « Bloquer seulement »",
+    },
   ])
 })
 
@@ -415,12 +483,19 @@ test("a page holds the 50 newest changes, and its cursor leads to the older ones
 
   expect(newest.before).toBeNull()
   expect(changesOf(newest)).toHaveLength(50)
-  expect(shown(changesOf(newest))[0]?.description).toBe("Ajout de « mot51 »")
-  expect(shown(changesOf(newest)).at(-1)?.description).toBe("Ajout de « mot2 »")
+  expect(shown(changesOf(newest))[0]?.description).toBe(
+    "Ajout de « mot51 », action « Bloquer seulement »"
+  )
+  expect(shown(changesOf(newest)).at(-1)?.description).toBe(
+    "Ajout de « mot2 », action « Bloquer seulement »"
+  )
   expect(older.before).toBe(newest.older)
   expect(older.older).toBeNull()
   expect(shown(changesOf(older))).toEqual([
-    { memberName: "aldis", description: "Ajout de « mot1 »" },
+    {
+      memberName: "aldis",
+      description: "Ajout de « mot1 », action « Bloquer seulement »",
+    },
   ])
 })
 
@@ -452,7 +527,10 @@ test("an invalid cursor counts as absent, and the newest changes show", async ()
     const page = await readAuditLog(discord, { before })
     expect(page.before).toBeNull()
     expect(shown(changesOf(page))).toEqual([
-      { memberName: "aldis", description: "Ajout de « foo »" },
+      {
+        memberName: "aldis",
+        description: "Ajout de « foo », action « Bloquer seulement »",
+      },
     ])
   }
 })
@@ -704,7 +782,10 @@ test("renamed in Discord, the panel's rule takes its history with it, which star
 
   expect(changesOf(renamed)).toEqual([])
   expect(shown(changesOf(created))).toEqual([
-    { memberName: "aldis", description: "Ajout de « bar »" },
+    {
+      memberName: "aldis",
+      description: "Ajout de « bar », action « Bloquer seulement »",
+    },
   ])
 })
 
@@ -736,9 +817,15 @@ test("a page's changes sit under the day of Paris they were made on, newest day 
   expect(onParisDays(await readAuditLog(discord, {}))).toEqual([
     {
       date: "2026-10-28",
-      descriptions: ["Ajout de « baz »", "Ajout de « bar »"],
+      descriptions: [
+        "Ajout de « baz », action « Bloquer seulement »",
+        "Ajout de « bar », action « Bloquer seulement »",
+      ],
     },
-    { date: "2026-10-27", descriptions: ["Ajout de « foo »"] },
+    {
+      date: "2026-10-27",
+      descriptions: ["Ajout de « foo », action « Bloquer seulement »"],
+    },
   ])
 })
 
@@ -771,8 +858,14 @@ test("a day cut between two pages heads both: the newest page ends on it, and th
     ["2026-10-27", 1],
   ])
   expect(onParisDays(older)).toEqual([
-    { date: "2026-10-27", descriptions: ["Ajout de « mot2 »"] },
-    { date: "2026-10-26", descriptions: ["Ajout de « mot1 »"] },
+    {
+      date: "2026-10-27",
+      descriptions: ["Ajout de « mot2 », action « Bloquer seulement »"],
+    },
+    {
+      date: "2026-10-26",
+      descriptions: ["Ajout de « mot1 », action « Bloquer seulement »"],
+    },
   ])
 })
 
