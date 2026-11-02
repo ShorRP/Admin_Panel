@@ -6,11 +6,14 @@ import {
 import { expect, onTestFinished, test, vi } from "vitest"
 
 import { addBlockedWord } from "@/blocked-words/add-blocked-word"
+import { blockedWordAction } from "@/blocked-words/blocked-word-action"
+import { actionChangeReason } from "@/blocked-words/blocked-word-reason"
 import { changeActionOfBlockedWord } from "@/blocked-words/change-action-of-blocked-word"
 import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { findStaffMember } from "@/staff/staff-member"
+import { auditLogReason } from "./audit-log-reason"
 import { readAuditLog, type AuditLogPage } from "./read-audit-log"
 
 const STAFF_ROLE_ID = "1300000000000000000"
@@ -22,6 +25,8 @@ const ALDIS = { id: "1400000000000000001", username: "aldis" }
 const BRYN = { id: "1400000000000000002", username: "bryn" }
 
 const LYRA = { id: "1400000000000000003", username: "lyra" }
+
+const CARO = { id: "1400000000000000004", username: "caro" }
 
 class FakeDiscordFailingLaterModify extends FakeDiscord {
   private modifiesBeforeFailure: number | null = null
@@ -59,7 +64,7 @@ function discordWithModerator() {
   })
 }
 
-async function moderatorOn(discord: FakeDiscord) {
+async function staffMemberOn(discord: FakeDiscord, user: typeof ALDIS) {
   const staffMember = await findStaffMember(
     discord,
     {
@@ -67,12 +72,27 @@ async function moderatorOn(discord: FakeDiscord) {
       moderationRoleIds: [MODERATION_ROLE_ID],
       banRoleIds: [],
     },
-    ALDIS.id
+    user.id
   )
   if (staffMember === null) {
-    throw new Error("Aldis is no staff member")
+    throw new Error(`${user.username} is no staff member`)
   }
   return staffMember
+}
+
+function moderatorOn(discord: FakeDiscord) {
+  return staffMemberOn(discord, ALDIS)
+}
+
+async function everyLine(discord: FakeDiscord) {
+  const lines: string[] = []
+  let before: string | null = null
+  do {
+    const page = await readAuditLog(discord, { before })
+    lines.push(...descriptions(page))
+    before = page.older
+  } while (before !== null)
+  return lines
 }
 
 function form(word: string, action = "block") {
@@ -288,6 +308,94 @@ test("changes of action, whose two entries count as one change, leave no gap in 
       .map((word) => added(word))
       .slice(0, 20),
   ])
+})
+
+test("a change shows once, joined, on the pages that follow, whatever the number of entries that came after it, the read of a kind stopping between its two entries or not", async () => {
+  const discord = discordWithModerator()
+  const moderator = await moderatorOn(discord)
+  await addBlockedWord(discord, moderator, form("cerise", "timeout-1d"))
+  await addBlockedWord(discord, moderator, form("foo"))
+  await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    changing("foo", "timeout-1d")
+  )
+
+  for (let later = 0; later <= 203; later++) {
+    if (later > 0) {
+      await addBlockedWord(discord, moderator, form(`mot${later}`))
+    }
+    const lines = await everyLine(discord)
+    expect(lines).toHaveLength(later + 3)
+    expect(lines.filter((line) => line.includes("foo"))).toEqual([
+      fromBlockToDay("foo"),
+      added("foo"),
+    ])
+  }
+})
+
+test("two changes whose writes interleave, the second one's line being the 50th, leave the older page reading the first one's entering entry alone, as an addition, and its leaving entry on no page: a known limit", async () => {
+  const discord = new FakeDiscordFailingLaterModify({
+    members: [
+      { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
+      { user: BRYN, roles: [STAFF_ROLE_ID] },
+      { user: CARO, roles: [STAFF_ROLE_ID] },
+    ],
+  })
+  const moderator = await moderatorOn(discord)
+  const bryn = await staffMemberOn(discord, BRYN)
+  const caro = await staffMemberOn(discord, CARO)
+  await addBlockedWord(discord, moderator, form("cerise", "timeout-1d"))
+  await addBlockedWord(discord, moderator, form("foo"))
+  await addBlockedWord(discord, moderator, form("baz"))
+  const [day, block] = await discord.listAutoModerationRules()
+  const blockToDay = (word: string) =>
+    actionChangeReason(
+      word,
+      blockedWordAction("block"),
+      blockedWordAction("timeout-1d")
+    )
+  const keywords = (...words: string[]) => ({
+    trigger_metadata: { keyword_filter: words },
+  })
+  await discord.modifyAutoModerationRule(
+    day?.id ?? "",
+    keywords("cerise", "foo"),
+    auditLogReason(bryn, blockToDay("foo"))
+  )
+  await discord.modifyAutoModerationRule(
+    day?.id ?? "",
+    keywords("cerise", "foo", "baz"),
+    auditLogReason(caro, blockToDay("baz"))
+  )
+  await discord.modifyAutoModerationRule(
+    block?.id ?? "",
+    keywords("baz"),
+    auditLogReason(bryn, blockToDay("foo"))
+  )
+  await discord.modifyAutoModerationRule(
+    block?.id ?? "",
+    keywords(),
+    auditLogReason(caro, blockToDay("baz"))
+  )
+  for (let index = 1; index <= 49; index++) {
+    await addBlockedWord(discord, moderator, form(`mot${index}`, "timeout-1d"))
+  }
+
+  const newest = await readAuditLog(discord, {})
+  const older = await readAuditLog(discord, { before: newest.older })
+
+  expect(descriptions(newest)).toHaveLength(50)
+  expect(descriptions(newest).at(-1)).toBe(fromBlockToDay("baz"))
+  expect(descriptions(older)).toEqual([
+    added("foo", "Exclusion 1 jour"),
+    added("baz"),
+    added("foo"),
+    added("cerise", "Exclusion 1 jour"),
+  ])
+  expect([...descriptions(newest), ...descriptions(older)]).not.toContain(
+    fromBlockToDay("foo")
+  )
 })
 
 test("a page of 50 changes that all are changes of action shows each once, its cursor leads to the older changes, which no page repeats or skips, and an author filter finds the same", async () => {

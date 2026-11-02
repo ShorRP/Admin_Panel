@@ -2,11 +2,9 @@ const frenchNumbers = new Intl.NumberFormat("fr-FR")
 
 const frenchPlurals = new Intl.PluralRules("fr-FR")
 
-const NO_BREAK_SPACE = String.fromCharCode(0xa0)
+const OPENING_QUOTE = "« "
 
-const OPENING_QUOTE = `«${NO_BREAK_SPACE}`
-
-const CLOSING_QUOTE = `${NO_BREAK_SPACE}»`
+const CLOSING_QUOTE = " »"
 
 export function quoted(text: string) {
   return `${OPENING_QUOTE}${text}${CLOSING_QUOTE}`

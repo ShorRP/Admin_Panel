@@ -263,7 +263,7 @@ test("an empty list says so in one sentence in place of the count, and keeps bot
   expect(region(html, "alert")).toEqual(EMPTY)
 })
 
-test("while a write is pending, every pencil and every cross is disabled and the status reads« Envoi en cours… », with no icon", () => {
+test("while a write is pending, every pencil and every cross is disabled and the status reads « Envoi en cours… », with no icon", () => {
   const html = render(blocking("abricot", "zèbre"), null, true)
 
   expect(tiles(html)).toEqual([tile("abricot", true), tile("zèbre", true)])

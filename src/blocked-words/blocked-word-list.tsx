@@ -98,7 +98,7 @@ export function BlockedWordList({
                         current={actionId}
                         actions={allowedActions}
                         pending={pending}
-                        action={action}
+                        formAction={action}
                       />
                     )}
                     <form action={action} className="flex">

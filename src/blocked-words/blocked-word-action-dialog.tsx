@@ -16,18 +16,18 @@ export function BlockedWordActionDialog({
   current,
   actions,
   pending,
-  action,
+  formAction,
 }: {
   index: number
   word: string
   current: BlockedWordActionId
   actions: BlockedWordActionId[]
   pending: boolean
-  action: (formData: FormData) => void
+  formAction: (formData: FormData) => void
 }) {
   const formId = `change-action-form-${index}`
   return (
-    <form id={formId} action={action} className="flex">
+    <form id={formId} action={formAction} className="flex">
       <input type="hidden" name="change" value="action" />
       <input type="hidden" name="word" value={word} />
       <Dialog>

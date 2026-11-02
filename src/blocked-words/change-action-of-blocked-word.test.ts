@@ -122,10 +122,8 @@ async function entryCount(discord: FakeDiscord) {
   return (await discord.getAuditLog({})).audit_log_entries.length
 }
 
-const NO_BREAK_SPACE = String.fromCharCode(0xa0)
-
 function reasonOf(change: string) {
-  return `bryn (${BRYN.id})${NO_BREAK_SPACE}: ${change}`
+  return `bryn (${BRYN.id}) : ${change}`
 }
 
 const BLOCK_TO_DAY =
@@ -567,6 +565,29 @@ test("a word is moved exactly as the list holds it, spaces included", async () =
   expect(await keywordsByRule(discord)).toEqual({
     [BLOCK_ONLY]: ["foo"],
     [ONE_DAY]: [" foo "],
+  })
+})
+
+test("a word moves beside a word that differs from it by its case only, since the comparison is exact, as for reading and removing", async () => {
+  const discord = discordWithStaff()
+  const moderator = await moderatorOn(discord)
+  await addBlockedWord(discord, moderator, addition("Foo"))
+  await addBlockedWord(discord, moderator, addition("autre", "timeout-1d"))
+  const [, day] = await discord.listAutoModerationRules()
+  discord.modifyAutoModerationRuleAs(ALDIS.id, day?.id ?? "", {
+    trigger_metadata: { keyword_filter: ["autre", "foo"] },
+  })
+
+  const result = await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    change("Foo", "timeout-1d")
+  )
+
+  expect(result.ok).toBe(true)
+  expect(await keywordsByRule(discord)).toEqual({
+    [BLOCK_ONLY]: [],
+    [ONE_DAY]: ["autre", "foo", "Foo"],
   })
 })
 

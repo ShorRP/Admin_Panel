@@ -14,7 +14,6 @@ export type ActionChangeEntry = {
   side: "entering" | "leaving"
   reason: string
   alone: string
-  joined: string
 }
 
 type Joinable = {
@@ -37,13 +36,11 @@ export function actionChangeEntryOf(
   if (change === null) {
     return null
   }
-  const joined = capitalized(reason)
   if (ruleAction.id === change.to.id) {
     return {
       side: "entering",
       reason,
       alone: capitalized(additionReason(change.word, change.to)),
-      joined,
     }
   }
   if (ruleAction.id === change.from.id) {
@@ -51,7 +48,6 @@ export function actionChangeEntryOf(
       side: "leaving",
       reason,
       alone: capitalized(removalReason(change.word, change.from)),
-      joined,
     }
   }
   return null
@@ -84,7 +80,7 @@ export function joinActionChanges<Found extends Joinable>(
     if (entering !== undefined) {
       open.splice(open.indexOf(entering), 1)
       absorbed.add(half.found)
-      descriptions.set(entering.found, entering.entry.joined)
+      descriptions.set(entering.found, capitalized(entering.entry.reason))
     }
   }
   return found

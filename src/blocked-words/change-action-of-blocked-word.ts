@@ -80,6 +80,10 @@ async function planOf(
   requireRightTo(staffMember, current.action)
   const target = panelRules.find(({ action }) => action.id === to.id)?.rule
   const leaving = holding.filter(({ rule }) => rule.id !== target?.id)
+  const previous = strongestHeld(leaving)
+  if (previous === null) {
+    return { ok: true, message: keptMessage(word, to) }
+  }
   const entering = leaving.length < holding.length ? null : { rule: target }
   const refusal =
     entering === null ? null : roomRefusal(rules, entering.rule, to)
@@ -89,7 +93,7 @@ async function planOf(
   return {
     word,
     current: current.action,
-    previous: strongestHeld(leaving)?.action ?? current.action,
+    previous: previous.action,
     to,
     entering,
     leaving,
@@ -133,9 +137,13 @@ async function write(
     ok: true,
     message:
       current.id === to.id
-        ? `${quoted(word)} garde l’action ${quoted(to.label)}.`
+        ? keptMessage(word, to)
         : `${quoted(word)} passe à ${quoted(to.label)}.`,
   }
+}
+
+function keptMessage(word: string, to: BlockedWordAction) {
+  return `${quoted(word)} garde l’action ${quoted(to.label)}.`
 }
 
 function notChangedMessage(word: string) {
