@@ -45,6 +45,7 @@ const CHANGE_ICONS = {
   word: { Icon: Ban, color: "text-muted-foreground" },
   rule: { Icon: ExternalLink, color: "text-muted-foreground" },
   timeout: { Icon: Timer, color: "text-warning" },
+  "automatic-timeout": { Icon: Timer, color: "text-warning" },
   "timeout-lift": { Icon: TimerOff, color: "text-success" },
   kick: { Icon: UserX, color: "text-destructive" },
   ban: { Icon: ShieldBan, color: "text-destructive" },
@@ -212,11 +213,13 @@ function ChangeRow({
         href={recordHrefForModerator(change.memberId, opensModeration)}
         className={CHANGE_STAFF_MEMBER_CLASSES}
       >
-        <MemberAvatar
-          name={change.memberName}
-          avatarUrl={change.avatarUrl}
-          size="sm"
-        />
+        {change.kind !== "automatic-timeout" && (
+          <MemberAvatar
+            name={change.memberName}
+            avatarUrl={change.avatarUrl}
+            size="sm"
+          />
+        )}
         <p
           title={change.memberName}
           className="min-w-0 truncate text-[0.8125rem] text-muted-foreground group-hover/account-link:text-foreground group-hover/account-link:underline group-focus-visible/account-link:underline"
@@ -229,10 +232,14 @@ function ChangeRow({
 }
 
 function iconKindOf(change: AuditLogChange): ChangeIconKind {
-  if (change.kind === "rule") {
-    return change.madeInDiscord ? "rule" : "word"
+  switch (change.kind) {
+    case "rule":
+      return change.madeInDiscord ? "rule" : "word"
+    case "automatic-timeout":
+      return change.kind
+    case "sanction-change":
+      return change.sanctionChange.kind
   }
-  return change.sanctionChange.kind
 }
 
 function ChangeIcon({ kind }: { kind: ChangeIconKind }) {
@@ -245,17 +252,22 @@ function ChangeIcon({ kind }: { kind: ChangeIconKind }) {
 }
 
 function SanctionChangeDescription({
-  change: { sanctionChange, account, reason },
+  change,
   opensModeration,
 }: {
-  change: Extract<AuditLogChange, { kind: "sanction-change" }>
+  change: Exclude<AuditLogChange, { kind: "rule" }>
   opensModeration: boolean
 }) {
+  const { account } = change
   const accountHref = recordHrefForModerator(account.id, opensModeration)
   return (
     <>
       <p className="font-medium text-pretty wrap-anywhere">
-        <SanctionChangeSummary change={sanctionChange} />
+        {change.kind === "automatic-timeout" ? (
+          "Exclusion temporaire automatique"
+        ) : (
+          <SanctionChangeSummary change={change.sanctionChange} />
+        )}
       </p>
       <p className="text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground">
         Compte :{" "}
@@ -264,8 +276,17 @@ function SanctionChangeDescription({
         ) : (
           <TextLink href={accountHref}>{account.name}</TextLink>
         )}
-        {reason === null ? " · Aucun motif" : ` · Motif : ${reason}`}
+        {detailOf(change)}
       </p>
     </>
   )
+}
+
+function detailOf(change: Exclude<AuditLogChange, { kind: "rule" }>) {
+  if (change.kind === "automatic-timeout") {
+    return change.ruleName === null ? "" : ` · Règle : « ${change.ruleName} »`
+  }
+  return change.reason === null
+    ? " · Aucun motif"
+    : ` · Motif : ${change.reason}`
 }

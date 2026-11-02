@@ -232,13 +232,56 @@ const INSULTS_RULE = {
   ],
 }
 
-test("AutoMod's timeouts never show, nor a change to a member but their timeout", async () => {
-  const discord = discordWithModerator()
+function discordWhereLyraHasAnAvatar() {
+  const { members = [], ...state } = moderatorState()
+  return new FakeDiscord({
+    ...state,
+    members: members.map((member) =>
+      member.user.id === LYRA.id
+        ? { ...member, avatar: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }
+        : member
+    ),
+  })
+}
+
+function automaticTimeouts(changes: AuditLogChange[]) {
+  return changes.flatMap((change) =>
+    change.kind === "automatic-timeout"
+      ? [
+          {
+            memberName: change.memberName,
+            memberId: change.memberId,
+            avatarUrl: change.avatarUrl,
+            account: change.account,
+            ruleName: change.ruleName,
+          },
+        ]
+      : []
+  )
+}
+
+const AUTOMOD_TIMES_OUT_LYRA = {
+  memberName: "AutoMod",
+  memberId: null,
+  avatarUrl: null,
+  account: { id: LYRA.id, name: "Lyra" },
+  ruleName: "Insultes",
+}
+
+test("AutoMod's timeout shows under « Tout » and « Exclusions » alone, under « AutoMod » with no ID and no avatar, with its account and its rule's name, and a change to a member but their timeout never shows", async () => {
+  const discord = discordWhereLyraHasAnAvatar()
   const insults = discord.createAutoModerationRuleAs(BRYN.id, INSULTS_RULE)
   discord.timeOutByAutoModeration(insults.id, LYRA.id)
   discord.modifyMemberAs(BRYN.id, LYRA.id, { nick: "Lyra des Brumes" })
 
-  expect(changesOf(await readAuditLog(discord, {}))).toEqual([])
+  for (const type of [undefined, "timeouts"]) {
+    const changes = changesOf(await readAuditLog(discord, { type }))
+    expect(changes).toHaveLength(1)
+    expect(automaticTimeouts(changes)).toEqual([AUTOMOD_TIMES_OUT_LYRA])
+  }
+  for (const type of ["blocked-words", "kicks", "bans"]) {
+    expect(changesOf(await readAuditLog(discord, { type }))).toEqual([])
+  }
 })
 
 test("a sanction against an account the audit log does not name shows it as « Compte inconnu »", async () => {
@@ -974,7 +1017,9 @@ function kindsOf(page: AuditLogPage) {
     if (change.kind === "rule") {
       return change.madeInDiscord ? "rule changed in Discord" : "blocked word"
     }
-    return change.sanctionChange.kind
+    return change.kind === "automatic-timeout"
+      ? change.kind
+      : change.sanctionChange.kind
   })
 }
 
@@ -1090,7 +1135,14 @@ test.each([
     ],
     rules: true,
   },
-  { type: "timeouts", events: [AuditLogEvent.MemberUpdate], rules: false },
+  {
+    type: "timeouts",
+    events: [
+      AuditLogEvent.MemberUpdate,
+      AuditLogEvent.AutoModerationUserCommunicationDisabled,
+    ],
+    rules: false,
+  },
   { type: "kicks", events: [AuditLogEvent.MemberKick], rules: false },
   {
     type: "bans",
@@ -1134,9 +1186,14 @@ async function discordWithAuthorsAndAccounts() {
 }
 
 function summary(change: AuditLogChange) {
-  return change.kind === "rule"
-    ? `${change.memberName}: ${change.description}`
-    : `${change.memberName}: ${change.sanctionChange.kind} of ${change.account.name}`
+  switch (change.kind) {
+    case "rule":
+      return `${change.memberName}: ${change.description}`
+    case "sanction-change":
+      return `${change.memberName}: ${change.sanctionChange.kind} of ${change.account.name}`
+    case "automatic-timeout":
+      return `${change.memberName}: automatic timeout of ${change.account.name}`
+  }
 }
 
 function summaries(page: AuditLogPage) {
@@ -1393,6 +1450,7 @@ test.each([
     filters: { account: LYRA.id },
     events: [
       AuditLogEvent.MemberUpdate,
+      AuditLogEvent.AutoModerationUserCommunicationDisabled,
       AuditLogEvent.MemberKick,
       AuditLogEvent.MemberBanAdd,
       AuditLogEvent.MemberBanRemove,
@@ -1412,3 +1470,164 @@ test.each([
     expect(changesOf(page).length > 0).toBe(events.length > 0)
   }
 )
+
+async function discordWithAnAutomaticTimeout() {
+  const discord = await discordWithAuthorsAndAccounts()
+  const insults = discord.createAutoModerationRuleAs(BRYN.id, INSULTS_RULE)
+  discord.timeOutByAutoModeration(insults.id, LYRA.id)
+  return discord
+}
+
+const AUTOMOD_TIMEOUT_OF_LYRA = "AutoMod: automatic timeout of Lyra"
+
+test.each([
+  ["auto", [AUTOMOD_TIMEOUT_OF_LYRA]],
+  ["AUTOMOD", [AUTOMOD_TIMEOUT_OF_LYRA]],
+  ["Au", [AUTOMOD_TIMEOUT_OF_LYRA]],
+  ["utomod", []],
+  ["lyra", [KICK_BY_LYRA]],
+  [LYRA.id, [KICK_BY_LYRA]],
+  [`<@${LYRA.id}>`, [KICK_BY_LYRA]],
+])(
+  "an author's text or ID %j keeps AutoMod's timeout for a text that « AutoMod » starts with, whatever its case, and never for the name, the ID or the mention of the member it timed out",
+  async (author, expected) => {
+    const discord = await discordWithAnAutomaticTimeout()
+
+    expect(summaries(await readAuditLog(discord, { author }))).toEqual(expected)
+  }
+)
+
+test.each([["lyra"], ["LY"], [LYRA.id], [`<@${LYRA.id}>`], [`<@!${LYRA.id}>`]])(
+  "an account's text or ID %j keeps AutoMod's timeout of that account, as it does any sanction",
+  async (account) => {
+    const discord = await discordWithAnAutomaticTimeout()
+
+    expect(summaries(await readAuditLog(discord, { account }))).toEqual([
+      AUTOMOD_TIMEOUT_OF_LYRA,
+      TIMEOUT_BY_BRYN,
+      TIMEOUT_BY_PANEL,
+    ])
+  }
+)
+
+test("AutoMod's timeout of an account is not among the changes of another account", async () => {
+  const discord = await discordWithAnAutomaticTimeout()
+
+  expect(summaries(await readAuditLog(discord, { account: "tor" }))).toEqual([
+    BAN_BY_BRYN,
+    KICK_BY_LYRA,
+  ])
+})
+
+test("an author, an account and a type keep AutoMod's timeout only when it meets all three", async () => {
+  const discord = await discordWithAnAutomaticTimeout()
+  const found = [AUTOMOD_TIMEOUT_OF_LYRA]
+
+  for (const [filters, expected] of [
+    [{ author: "auto", account: "lyra" }, found],
+    [{ author: "auto", account: LYRA.id, type: "timeouts" }, found],
+    [{ author: "auto", type: "timeouts" }, found],
+    [
+      { account: "lyra", type: "timeouts" },
+      [...found, TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL],
+    ],
+    [{ author: "auto", account: "tor" }, []],
+    [{ author: "auto", type: "kicks" }, []],
+    [{ author: "auto", type: "blocked-words" }, []],
+    [{ author: "bryn", account: "lyra", type: "timeouts" }, [TIMEOUT_BY_BRYN]],
+  ] as const) {
+    expect(summaries(await readAuditLog(discord, filters))).toEqual(expected)
+  }
+})
+
+test("a timeout from the rule of a blocked word tied to a timeout shows as AutoMod's under the panel rule's name, as one from a rule made in Discord does", async () => {
+  const discord = discordWhereLyraHasAnAvatar()
+  await addBlockedWord(
+    discord,
+    await staffMemberOn(discord),
+    form("foo", "timeout-1h")
+  )
+  const [panelRule] = await discord.listAutoModerationRules()
+  discord.timeOutByAutoModeration(panelRule?.id ?? "", LYRA.id)
+
+  const changes = changesOf(await readAuditLog(discord, {}))
+
+  expect(automaticTimeouts(changes)).toEqual([
+    {
+      ...AUTOMOD_TIMES_OUT_LYRA,
+      ruleName: "Mots interdits du panel · exclusion 1 heure",
+    },
+  ])
+})
+
+const AUTOMATIC_TIMEOUT_ENTRY = {
+  action_type: AuditLogEvent.AutoModerationUserCommunicationDisabled,
+  user_id: LYRA.id,
+}
+
+test("an AutoMod timeout whose entry names no rule shows its account alone, and one that names no account is left out", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: LYRA }],
+    auditLogEntries: [
+      {
+        ...AUTOMATIC_TIMEOUT_ENTRY,
+        id: "1563530499194880000",
+        target_id: LYRA.id,
+      },
+      {
+        ...AUTOMATIC_TIMEOUT_ENTRY,
+        id: "1563530499194880001",
+        target_id: null,
+      },
+    ],
+  })
+
+  expect(automaticTimeouts(changesOf(await readAuditLog(discord, {})))).toEqual(
+    [{ ...AUTOMOD_TIMES_OUT_LYRA, ruleName: null }]
+  )
+})
+
+test("an AutoMod timeout of an account the audit log does not name shows it as « Compte inconnu », found by its ID alone", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: BRYN }],
+    auditLogEntries: [
+      {
+        ...AUTOMATIC_TIMEOUT_ENTRY,
+        id: "1563530499194880000",
+        target_id: "1400000000000000099",
+        user_id: "1400000000000000099",
+      },
+    ],
+  })
+  const unknown = "AutoMod: automatic timeout of Compte inconnu"
+
+  expect(summaries(await readAuditLog(discord, {}))).toEqual([unknown])
+  expect(summaries(await readAuditLog(discord, { account: "compte" }))).toEqual(
+    []
+  )
+  expect(
+    summaries(await readAuditLog(discord, { account: "1400000000000000099" }))
+  ).toEqual([unknown])
+})
+
+test("a page of timeouts holds the 50 newest of the staff's and of AutoMod's together, and its cursor leads to the older ones", async () => {
+  const discord = discordWhereLyraHasAnAvatar()
+  const insults = discord.createAutoModerationRuleAs(BRYN.id, INSULTS_RULE)
+  for (let index = 1; index <= 30; index++) {
+    discord.modifyMemberAs(BRYN.id, LYRA.id, A_TIMEOUT, `Motif ${index}`)
+    discord.timeOutByAutoModeration(insults.id, LYRA.id)
+  }
+
+  const newest = await readAuditLog(discord, { type: "timeouts" })
+  const older = await readAuditLog(discord, {
+    type: "timeouts",
+    before: newest.older,
+  })
+
+  expect(kindsOf(newest)).toHaveLength(50)
+  expect(kindsOf(newest).filter((kind) => kind === "timeout")).toHaveLength(25)
+  expect(older.older).toBeNull()
+  expect(kindsOf(older)).toEqual(
+    Array.from({ length: 5 }, () => ["automatic-timeout", "timeout"]).flat()
+  )
+})

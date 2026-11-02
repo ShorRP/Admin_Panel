@@ -16,6 +16,8 @@ import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
 import { snowflakeDate } from "@/discord/snowflake-date"
 import {
+  AUTOMATIC_TIMEOUT_EVENT,
+  automaticTimeoutRuleNameOf,
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
@@ -54,6 +56,11 @@ export type AuditLogChange = {
       account: { id: Snowflake; name: string }
       reason: string | null
     }
+  | {
+      kind: "automatic-timeout"
+      account: { id: Snowflake; name: string }
+      ruleName: string | null
+    }
 )
 
 type WithoutAuthorLookup<Change> = Change extends unknown
@@ -90,9 +97,19 @@ const AUTO_MOD_RULE_EVENTS = [
 
 const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
   "blocked-words": AUTO_MOD_RULE_EVENTS,
-  timeouts: [AuditLogEvent.MemberUpdate],
+  timeouts: [
+    AuditLogEvent.MemberUpdate,
+    AuditLogEvent.AutoModerationUserCommunicationDisabled,
+  ],
   kicks: [AuditLogEvent.MemberKick],
   bans: [AuditLogEvent.MemberBanAdd, AuditLogEvent.MemberBanRemove],
+}
+
+const AUTO_MODERATION_NAME = "AutoMod"
+
+const AUTO_MODERATION_AUTHOR: AccountIdentity = {
+  id: null,
+  name: AUTO_MODERATION_NAME,
 }
 
 const CHANGES_PER_PAGE = 50
@@ -193,12 +210,19 @@ function eventReaders(
   ruleActions: ReadonlyMap<Snowflake, BlockedWordAction> | null,
   applicationId: Snowflake
 ): EventReader[] {
-  const sanctionReaders = STAFF_SANCTION_EVENTS.map((event) => ({
-    actionType: event.actionType,
-    changeOf: (entry: APIAuditLogEntry, users: Users) =>
-      sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
-    retainedLimit: CHANGES_PER_PAGE,
-  }))
+  const sanctionReaders: EventReader[] = [
+    ...STAFF_SANCTION_EVENTS.map((event) => ({
+      actionType: event.actionType,
+      changeOf: (entry: APIAuditLogEntry, users: Users) =>
+        sanctionChangeOf(entry, event.changeOf(entry), users, applicationId),
+      retainedLimit: CHANGES_PER_PAGE,
+    })),
+    {
+      actionType: AUTOMATIC_TIMEOUT_EVENT.actionType,
+      changeOf: automaticTimeoutOf,
+      retainedLimit: CHANGES_PER_PAGE,
+    },
+  ]
   if (ruleActions === null || ruleActions.size === 0) {
     return sanctionReaders
   }
@@ -317,11 +341,7 @@ function sanctionChangeOf(
     return null
   }
   const attribution = attributionOf(entry, users, applicationId)
-  const targeted = users.get(entry.target_id)
-  const account = {
-    id: entry.target_id,
-    name: targeted === undefined ? null : userName(targeted),
-  }
+  const account = targetedAccountOf(entry.target_id, users)
   return {
     author: authorOf(attribution),
     account,
@@ -329,13 +349,51 @@ function sanctionChangeOf(
       kind: "sanction-change",
       ...momentOf(entry, attribution),
       sanctionChange,
-      account: { id: account.id, name: account.name ?? "Compte inconnu" },
+      account: namedAccountOf(account),
       reason: attribution.reason,
     },
   }
 }
 
-function momentOf(entry: APIAuditLogEntry, { memberName }: EntryAttribution) {
+function automaticTimeoutOf(
+  entry: APIAuditLogEntry,
+  users: Users
+): FoundChange | null {
+  if (entry.target_id === null) {
+    return null
+  }
+  const account = targetedAccountOf(entry.target_id, users)
+  return {
+    author: AUTO_MODERATION_AUTHOR,
+    account,
+    change: {
+      kind: "automatic-timeout",
+      ...momentOf(entry, { memberName: AUTO_MODERATION_NAME }),
+      account: namedAccountOf(account),
+      ruleName: automaticTimeoutRuleNameOf(entry),
+    },
+  }
+}
+
+function targetedAccountOf(
+  targetId: Snowflake,
+  users: Users
+): { id: Snowflake; name: string | null } {
+  const targeted = users.get(targetId)
+  return {
+    id: targetId,
+    name: targeted === undefined ? null : userName(targeted),
+  }
+}
+
+function namedAccountOf({ id, name }: { id: Snowflake; name: string | null }) {
+  return { id, name: name ?? "Compte inconnu" }
+}
+
+function momentOf(
+  entry: APIAuditLogEntry,
+  { memberName }: Pick<EntryAttribution, "memberName">
+) {
   return { id: entry.id, date: snowflakeDate(entry.id), memberName }
 }
 

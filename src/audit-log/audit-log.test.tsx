@@ -61,6 +61,20 @@ const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
   reason: "Insultes répétées",
 }
 
+const AUTOMATIC_TIMEOUT: Extract<
+  AuditLogChange,
+  { kind: "automatic-timeout" }
+> = {
+  kind: "automatic-timeout",
+  id: "1563530499194880003",
+  date: new Date("2026-12-02T10:30:00.000Z"),
+  memberName: "AutoMod",
+  memberId: null,
+  avatarUrl: null,
+  account: { id: "1400000000000000003", name: "Lyra" },
+  ruleName: "Insultes",
+}
+
 function render(page: Partial<AuditLogPage>, opensModeration = false) {
   const { html, typeFilter, form } = renderWithFilters(page, opensModeration)
   return html.replace(typeFilter, "").replace(form, "")
@@ -165,6 +179,35 @@ test("a sanction without a reason says it has none", () => {
   ).toEqual([["Expulsion", "Compte : Lyra · Aucun motif", "aldis"]])
 })
 
+test("an automatic timeout says so, then, on one line, the account it targets and its rule in place of a reason, then AutoMod", () => {
+  expect(rows(render(onOneDay(AUTOMATIC_TIMEOUT)))).toEqual([
+    [
+      "Exclusion temporaire automatique",
+      "Compte : Lyra · Règle : « Insultes »",
+      "AutoMod",
+    ],
+  ])
+})
+
+test("an automatic timeout whose rule has no name shows its account alone, and never says it has no reason", () => {
+  const html = render(onOneDay({ ...AUTOMATIC_TIMEOUT, ruleName: null }))
+
+  expect(rows(html)).toEqual([
+    ["Exclusion temporaire automatique", "Compte : Lyra", "AutoMod"],
+  ])
+  expect(text(html)).not.toContain("Aucun motif")
+})
+
+test("an automatic timeout shows AutoMod's name with no avatar and no initials beside it", () => {
+  const html = render(onOneDay(AUTOMATIC_TIMEOUT, TIMEOUT))
+
+  expect(html.match(/data-slot="avatar"/g)).toHaveLength(1)
+  expect(staffMembers(html)).toEqual([
+    { name: "AutoMod", initials: "", hidden: false },
+    { name: "aldis", initials: "A", hidden: true },
+  ])
+})
+
 test("a change to the blocked words says what changed, then its staff member", () => {
   expect(rows(render(onOneDay(DISCORD_CHANGE, ADDITION)))).toEqual([
     ["Règle modifiée dans Discord", "Bryn la Rouge"],
@@ -232,6 +275,22 @@ test("for a staff member who moderates, a change with no author's ID links its a
   expect(rows(html).map((row) => row.at(-1))).toEqual(["aldis"])
 })
 
+test("for a staff member who moderates, an automatic timeout links its account and keeps AutoMod as text, which names no account", () => {
+  const html = render(onOneDay(AUTOMATIC_TIMEOUT), true)
+
+  expect(recordLinks(html)).toEqual([
+    { href: "/records/1400000000000000003", names: [], initials: "" },
+  ])
+  expect(rows(html).map((row) => row.at(-1))).toEqual(["AutoMod"])
+})
+
+test("for a staff member who does not moderate, an automatic timeout links nowhere", () => {
+  const html = render(onOneDay(AUTOMATIC_TIMEOUT), false)
+
+  expect(links(html)).toEqual([])
+  expect(text(html)).toContain("Compte : Lyra")
+})
+
 test("for a staff member who does not moderate, a change's author links nowhere", () => {
   const html = render(onOneDay(TIMEOUT, ADDITION), false)
 
@@ -270,12 +329,13 @@ test("each change shows the icon of its kind, hidden from assistive technologies
       sanction({ kind: "timeout-lift" }),
       sanction({ kind: "kick" }),
       sanction({ kind: "ban" }),
-      sanction({ kind: "ban-lift" })
+      sanction({ kind: "ban-lift" }),
+      AUTOMATIC_TIMEOUT
     )
   )
 
   expect(icons(html)).toEqual(
-    [Ban, ExternalLink, Timer, TimerOff, UserX, ShieldBan, Undo2].map(
+    [Ban, ExternalLink, Timer, TimerOff, UserX, ShieldBan, Undo2, Timer].map(
       (Icon) => ({ icon: drawing(Icon), hidden: true })
     )
   )

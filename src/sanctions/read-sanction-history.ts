@@ -1,10 +1,9 @@
 import "server-only"
 
-import {
-  AuditLogEvent,
-  type APIAuditLogEntry,
-  type APIUser,
-  type Snowflake,
+import type {
+  APIAuditLogEntry,
+  APIUser,
+  Snowflake,
 } from "discord-api-types/v10"
 
 import { auditLogPages } from "@/audit-log/audit-log-pages"
@@ -13,6 +12,8 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { snowflakeDate } from "@/discord/snowflake-date"
 import type { AccountRecord } from "@/records/read-record"
 import {
+  AUTOMATIC_TIMEOUT_EVENT,
+  automaticTimeoutRuleNameOf,
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
   type SanctionEvent,
@@ -33,10 +34,7 @@ export type SanctionHistoryEntry = {
 
 const SANCTION_EVENTS: SanctionEvent[] = [
   ...STAFF_SANCTION_EVENTS,
-  {
-    actionType: AuditLogEvent.AutoModerationUserCommunicationDisabled,
-    changeOf: () => ({ kind: "timeout", end: null }),
-  },
+  AUTOMATIC_TIMEOUT_EVENT,
 ]
 
 export async function readSanctionHistory(
@@ -82,14 +80,12 @@ function historyEntryOf(
   applicationId: Snowflake
 ): SanctionHistoryEntry {
   const moment = { id: entry.id, date: snowflakeDate(entry.id), change }
-  if (
-    entry.action_type === AuditLogEvent.AutoModerationUserCommunicationDisabled
-  ) {
+  if (entry.action_type === AUTOMATIC_TIMEOUT_EVENT.actionType) {
     return {
       ...moment,
       author: {
         kind: "auto-moderation",
-        ruleName: entry.options?.auto_moderation_rule_name ?? null,
+        ruleName: automaticTimeoutRuleNameOf(entry),
       },
       reason: null,
     }
