@@ -78,6 +78,16 @@ export function mayUse(rights: BlockedWordRights, action: BlockedWordAction) {
   }
 }
 
+export function mayChange(
+  rights: BlockedWordRights,
+  action: BlockedWordAction
+) {
+  return (
+    mayUse(rights, action) &&
+    allowedActionIds(rights).some((id) => id !== action.id)
+  )
+}
+
 export function requireRightTo(
   rights: BlockedWordRights,
   action: BlockedWordAction

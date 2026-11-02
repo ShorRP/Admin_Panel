@@ -2,6 +2,7 @@ import { cn } from "cn"
 
 import { Button } from "@/ui/button"
 import { Dialog, DialogContent, DialogTrigger } from "@/ui/dialog"
+import { DIALOG_ONLY_FADES_WHEN_REDUCED } from "@/ui/dialog-motion"
 import {
   SanctionConfirmation,
   type Confirmation,
@@ -27,7 +28,7 @@ export function SanctionConfirmationDialog({
       </DialogTrigger>
       <DialogContent
         showCloseButton={false}
-        className="gap-5 p-6 sm:max-w-110 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:zoom-out-100"
+        className={cn("gap-5 p-6 sm:max-w-110", DIALOG_ONLY_FADES_WHEN_REDUCED)}
       >
         <SanctionConfirmation {...confirmation} />
       </DialogContent>

@@ -7,10 +7,13 @@ import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { TextLink } from "@/ui/text-link"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import {
+  allowedActionIds,
   blockedWordAction,
+  mayChange,
   mayUse,
   type BlockedWordRights,
 } from "./blocked-word-action"
+import { BlockedWordActionDialog } from "./blocked-word-action-dialog"
 import { BlockedWordFilterForm } from "./blocked-word-filter-form"
 import { LIST_HEADER_CLASSES } from "./blocked-word-list-layout"
 import type { FilteredBlockedWords } from "./filter-blocked-words"
@@ -35,6 +38,7 @@ export function BlockedWordList({
 }) {
   const { words, query } = blockedWords
   const { count, nothingShown } = describedList(blockedWords)
+  const allowedActions = allowedActionIds(rights)
   return (
     <section aria-labelledby={HEADING_ID} className="flex flex-col">
       <div className={LIST_HEADER_CLASSES}>
@@ -62,7 +66,7 @@ export function BlockedWordList({
         </EmptyListFrame>
       )}
       <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>
-        {words.map(({ word, action: actionId }) => {
+        {words.map(({ word, action: actionId }, index) => {
           const held = blockedWordAction(actionId)
           const removable = mayUse(rights, held)
           return (
@@ -86,19 +90,32 @@ export function BlockedWordList({
                   </span>
                 </div>
                 {removable && (
-                  <form action={action} className="flex">
-                    <input type="hidden" name="word" value={word} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={pending}
-                      className="text-muted-foreground"
-                    >
-                      <X aria-hidden className="size-3.75" />
-                      <span className="sr-only">{`Retirer ${quoted(word)}`}</span>
-                    </Button>
-                  </form>
+                  <div className="flex">
+                    {mayChange(rights, held) && (
+                      <BlockedWordActionDialog
+                        index={index}
+                        word={word}
+                        current={actionId}
+                        actions={allowedActions}
+                        pending={pending}
+                        action={action}
+                      />
+                    )}
+                    <form action={action} className="flex">
+                      <input type="hidden" name="change" value="remove" />
+                      <input type="hidden" name="word" value={word} />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={pending}
+                        className="text-muted-foreground"
+                      >
+                        <X aria-hidden className="size-3.75" />
+                        <span className="sr-only">{`Retirer ${quoted(word)}`}</span>
+                      </Button>
+                    </form>
+                  </div>
                 )}
               </li>
             </ViewTransition>
@@ -106,7 +123,7 @@ export function BlockedWordList({
         })}
       </ul>
       <p role="status" className="text-sm not-empty:mt-3.5">
-        {pending && "Retrait en cours…"}
+        {pending && "Envoi en cours…"}
       </p>
       <p role="alert" className="text-sm not-empty:mt-3.5">
         {state?.ok === false && <WriteFailureMessage message={state.message} />}

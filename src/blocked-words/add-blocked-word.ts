@@ -1,16 +1,13 @@
 import "server-only"
 
-import type { APIAutoModerationRule } from "discord-api-types/v10"
-
 import { auditLogReason } from "@/audit-log/audit-log-reason"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { requireRightTo, type BlockedWordAction } from "./blocked-word-action"
-import { frenchNumber, quoted } from "./french-text"
-import { MAX_KEYWORD_RULES, MAX_WORDS_PER_RULE } from "./limits"
+import { requireRightTo } from "./blocked-word-action"
+import { additionReason } from "./blocked-word-reason"
+import { quoted } from "./french-text"
 import {
   heldWordsOf,
-  isKeywordRule,
   keywordsOf,
   newPanelRule,
   panelRulesOf,
@@ -18,6 +15,7 @@ import {
   withKeywords,
   type PanelRule,
 } from "./panel-rule"
+import { roomRefusal } from "./room-refusal"
 import { submittedBlockedWord } from "./submitted-word"
 import {
   failure,
@@ -43,17 +41,11 @@ export async function addBlockedWord(
       (panelRule) => panelRule.action.id === action.id
     )?.rule
     const refusal =
-      duplicateRefusal(panelRules, word) ??
-      (rule === undefined
-        ? noRoomRefusal(rules, action)
-        : fullRuleRefusal(rule, action))
+      duplicateRefusal(panelRules, word) ?? roomRefusal(rules, rule, action)
     if (refusal !== null) {
       return failure(refusal, fields)
     }
-    const reason = auditLogReason(
-      staffMember,
-      `ajout de ${quoted(word)}, action ${quoted(action.label)}`
-    )
+    const reason = auditLogReason(staffMember, additionReason(word, action))
     if (rule === undefined) {
       await discord.createAutoModerationRule(
         newPanelRule(action, staffMember.staffRoleId, [word]),
@@ -83,24 +75,4 @@ function duplicateRefusal(panelRules: PanelRule[], word: string) {
     return null
   }
   return `${quoted(strongest.word)} est déjà un mot interdit, action ${quoted(strongest.action.label)}.`
-}
-
-function noRoomRefusal(
-  rules: APIAutoModerationRule[],
-  action: BlockedWordAction
-) {
-  if (rules.filter(isKeywordRule).length < MAX_KEYWORD_RULES) {
-    return null
-  }
-  return `Le serveur Discord a déjà ${MAX_KEYWORD_RULES} règles AutoMod de mots-clés : le panel ne peut pas y créer la règle ${quoted(action.label)}. Supprimes-en une dans Discord, ou choisis une autre action.`
-}
-
-function fullRuleRefusal(
-  rule: APIAutoModerationRule,
-  action: BlockedWordAction
-) {
-  if (keywordsOf(rule).length < MAX_WORDS_PER_RULE) {
-    return null
-  }
-  return `La règle ${quoted(action.label)} compte déjà ${frenchNumber(MAX_WORDS_PER_RULE)} mots interdits, le maximum d’AutoMod. Retires-en un, ou choisis une autre action.`
 }

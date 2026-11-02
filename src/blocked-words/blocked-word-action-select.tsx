@@ -8,12 +8,14 @@ import {
 
 export function BlockedWordActionSelect({
   id,
+  form,
   actions,
   selected,
   describedBy,
   className,
 }: {
   id: string
+  form?: string
   actions: BlockedWordActionId[]
   selected: string
   describedBy?: string
@@ -23,6 +25,7 @@ export function BlockedWordActionSelect({
     <NativeSelect
       key={selected}
       id={id}
+      form={form}
       name="action"
       defaultValue={selected}
       aria-describedby={describedBy}

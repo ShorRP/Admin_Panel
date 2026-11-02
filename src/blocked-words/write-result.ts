@@ -12,15 +12,16 @@ export function failure(message: string, fields: WordFields): WriteResult {
   return { ok: false, message, ...fields }
 }
 
-export async function unlessDiscordUnavailable(
+export async function unlessDiscordUnavailable<Done>(
   fields: WordFields,
-  write: () => Promise<WriteResult>
-): Promise<WriteResult> {
+  write: () => Promise<Done>,
+  unavailable = DISCORD_UNAVAILABLE
+): Promise<Done | WriteResult> {
   try {
     return await write()
   } catch (error) {
     if (error instanceof DiscordError && error.unavailable) {
-      return failure(DISCORD_UNAVAILABLE, fields)
+      return failure(unavailable, fields)
     }
     throw error
   }
