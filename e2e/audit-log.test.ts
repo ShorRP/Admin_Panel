@@ -112,6 +112,133 @@ test("a staff member reads the audit log, newest changes first, each beside its 
   await expect(newest.getByText("aldis", { exact: true })).toBeVisible()
 })
 
+const SAME_AXIS_TOLERANCE = 1
+
+type Span = { top: number; bottom: number }
+
+type RowMeasure = Record<
+  "insideBorders" | "time" | "tile" | "changed" | "avatar" | "author",
+  Span
+>
+
+async function measureRow(row: Locator): Promise<RowMeasure> {
+  await expect(row).toBeVisible()
+  return await row.evaluate((element) => {
+    function spanOf(target: Element | null | undefined, name: string) {
+      if (target === null || target === undefined) {
+        throw new Error(`The row has no ${name} to measure.`)
+      }
+      const { top, bottom } = target.getBoundingClientRect()
+      return { top, bottom }
+    }
+    const { borderTopWidth, borderBottomWidth } = getComputedStyle(element)
+    const { top, bottom } = element.getBoundingClientRect()
+    const tile = Array.from(element.querySelectorAll("span[aria-hidden]")).find(
+      (span) => span.querySelector("svg") !== null
+    )
+    return {
+      insideBorders: {
+        top: top + parseFloat(borderTopWidth),
+        bottom: bottom - parseFloat(borderBottomWidth),
+      },
+      time: spanOf(element.querySelector("time"), "time"),
+      tile: spanOf(tile, "tile"),
+      changed: spanOf(
+        element.querySelector("p")?.parentElement,
+        "what changed"
+      ),
+      avatar: spanOf(element.querySelector('[data-slot="avatar"]'), "avatar"),
+      author: spanOf(element.querySelector("p[title]"), "author's name"),
+    }
+  })
+}
+
+function centerOf({ top, bottom }: Span) {
+  return (top + bottom) / 2
+}
+
+function expectCentersAt(
+  kind: string,
+  cells: Record<string, Span>,
+  axis: number
+) {
+  for (const [name, cell] of Object.entries(cells)) {
+    expect(
+      Math.abs(centerOf(cell) - axis),
+      `the ${name} of the ${kind}'s row, against the axis at ${axis}`
+    ).toBeLessThanOrEqual(SAME_AXIS_TOLERANCE)
+  }
+}
+
+function expectCentersTogether(kind: string, cells: Record<string, Span>) {
+  const centers = Object.values(cells).map(centerOf)
+  expect(
+    Math.max(...centers) - Math.min(...centers),
+    `the centers of the ${Object.keys(cells).join(", ")} of the ${kind}'s row`
+  ).toBeLessThanOrEqual(SAME_AXIS_TOLERANCE)
+}
+
+test("the time, the icon and the author's avatar of a row share one axis, the row's middle, on one line of text as on two, and on a phone they share a first line above what changed", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+}) => {
+  await discord.createAutoModerationRule(
+    newPanelRule(["mot0"]),
+    addition("mot0")
+  )
+  discord.modifyMemberAs(
+    ALDIS.id,
+    LYRA.id,
+    { communication_disabled_until: inAnHour() },
+    "Insultes répétées"
+  )
+  const rows = {
+    "blocked word": page
+      .getByRole("listitem")
+      .filter({ hasText: "Ajout de « mot0 »" }),
+    sanction: page
+      .getByRole("listitem")
+      .filter({ hasText: "Exclusion temporaire jusqu’au" }),
+  }
+
+  await logIn(ALDIS)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/audit-log")
+  await expect(rows.sanction).toContainText(
+    "Compte : Lyra · Motif : Insultes répétées"
+  )
+  await expect(rows["blocked word"]).not.toContainText("Compte :")
+  await expect(rows.sanction.locator("img")).toBeVisible()
+  await checkAccessibility()
+
+  for (const [kind, row] of Object.entries(rows)) {
+    const { insideBorders, time, tile, changed, avatar, author } =
+      await measureRow(row)
+    expectCentersAt(
+      kind,
+      { time, tile, changed, avatar, author },
+      centerOf(insideBorders)
+    )
+    expectCentersTogether(kind, { time, tile, avatar })
+  }
+
+  await page.setViewportSize({ width: 360, height: 760 })
+  for (const [kind, row] of Object.entries(rows)) {
+    await expect(row.getByText("aldis", { exact: true })).toBeVisible()
+    const { time, tile, changed, avatar, author } = await measureRow(row)
+    expectCentersAt(kind, { time, avatar, author }, centerOf(tile))
+    expectCentersTogether(kind, { time, tile, avatar })
+    expect(
+      changed.top,
+      `what changed in the ${kind}'s row, against the bottom of its first line`
+    ).toBeGreaterThanOrEqual(
+      Math.max(...[time, tile, avatar, author].map(({ bottom }) => bottom))
+    )
+  }
+})
+
 const HELD_SCRIPT_MS = 1_000
 
 const HELD_SCRIPTS = "**/_next/static/chunks/*.js"
