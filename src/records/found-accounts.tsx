@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 
+import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { Overline } from "@/ui/overline"
 import { isTimedOut } from "./account-standing"
@@ -16,9 +17,11 @@ export function FoundAccounts({ search }: { search: AccountSearch }) {
   const { query, accounts, truncated } = search
   if (accounts.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-input px-5 py-7 text-center wrap-anywhere text-muted-foreground">
-        {`Aucun membre ni banni dont le nom commence par « ${query} ».`}
-      </p>
+      <EmptyListFrame>
+        <p className="wrap-anywhere">
+          {`Aucun membre ni banni dont le nom commence par « ${query} ».`}
+        </p>
+      </EmptyListFrame>
     )
   }
   return (

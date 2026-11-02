@@ -14,8 +14,10 @@ import {
 
 import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
 import { buttonVariants } from "@/ui/button"
+import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { ParisTime } from "@/ui/paris-time"
+import { TextLink } from "@/ui/text-link"
 import { auditLogHref } from "./audit-log-href"
 import {
   CHANGE_BODY_CLASSES,
@@ -25,8 +27,6 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
-  NO_CHANGE_CLASSES,
-  TEXT_LINK_CLASSES,
 } from "./audit-log-layout"
 import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
 import { ParisDay } from "./paris-day"
@@ -113,10 +113,10 @@ export function AuditLog({
 
 function NoChange({ type, before }: Pick<AuditLogPage, "type" | "before">) {
   return (
-    <div className={cn("flex flex-col items-center gap-3", NO_CHANGE_CLASSES)}>
+    <EmptyListFrame className="flex flex-col items-center gap-3">
       <p>{noChangeMessage(type, before)}</p>
       {type !== null && <ResetLink />}
-    </div>
+    </EmptyListFrame>
   )
 }
 
@@ -238,13 +238,7 @@ function SanctionChangeDescription({
       <p className="text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground">
         Compte :{" "}
         {opensModeration ? (
-          <Link
-            href={`/records/${account.id}`}
-            prefetch={false}
-            className={TEXT_LINK_CLASSES}
-          >
-            {account.name}
-          </Link>
+          <TextLink href={`/records/${account.id}`}>{account.name}</TextLink>
         ) : (
           account.name
         )}
