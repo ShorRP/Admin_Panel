@@ -1,6 +1,8 @@
 import { expect, test } from "vitest"
 
+import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
+import { ROUTES } from "@/discord/routes"
 import { searchAccounts, searchedText } from "./search-accounts"
 
 const ALDIS = {
@@ -72,6 +74,7 @@ test("a search finds the members whose username or nickname starts with it, what
         username: "aldis",
         avatarUrl: null,
         standing: { kind: "member", timedOutUntil: null },
+        highestRole: null,
       },
       {
         id: CORVUS.id,
@@ -80,6 +83,7 @@ test("a search finds the members whose username or nickname starts with it, what
         avatarUrl:
           "https://cdn.discordapp.com/avatars/1400000000000000003/0a1b2c3d4e5f60718293a4b5c6d7e8f9.webp?size=64",
         standing: { kind: "member", timedOutUntil: null },
+        highestRole: null,
       },
       {
         id: ALDA.id,
@@ -88,9 +92,34 @@ test("a search finds the members whose username or nickname starts with it, what
         avatarUrl:
           "https://cdn.discordapp.com/avatars/1400000000000000004/6b1d8f0c2a7e4f3b9d5c1e8a0f2b4d6c.webp?size=64",
         standing: { kind: "banned" },
+        highestRole: null,
       },
     ],
     truncated: false,
+  })
+})
+
+test("a search reads no roles, so that the member it finds who holds one has no highest role until the search folds into the list", async () => {
+  const discord = new FakeDiscord({
+    roles: [{ id: "1300000000000000001", name: "Garde", position: 2 }],
+    members: [{ user: ALDIS, roles: ["1300000000000000001"] }],
+  })
+  discord.failNext(
+    "listRoles",
+    new DiscordError({
+      method: "GET",
+      route: ROUTES.guildRoles,
+      status: 403,
+      code: 50001,
+      discordMessage: "Missing Access",
+    })
+  )
+
+  const search = await searchAccounts(discord, "ald")
+
+  expect(search).toMatchObject({
+    kind: "accounts",
+    accounts: [{ id: ALDIS.id, highestRole: null }],
   })
 })
 

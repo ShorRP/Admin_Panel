@@ -39,7 +39,7 @@ export async function searchAccounts(
     readAllBans(discord),
   ])
   const found: FoundAccount[] = [
-    ...members.map((member) => foundMember(discord, member)),
+    ...members.map((member) => foundMember(discord, member, null)),
     ...bans
       .filter(({ user }) => startsWithIgnoringCase(user.username, query))
       .map(foundBan),

@@ -10,6 +10,7 @@ const ALDIS: FoundAccount = {
   username: "aldis",
   avatarUrl: null,
   standing: { kind: "member", timedOutUntil: null },
+  highestRole: null,
 }
 
 function overline(html: string) {

@@ -113,6 +113,25 @@ test("a member's record holds their names, ID, account creation, arrival on the 
   })
 })
 
+test("a member's roles of the same position are told apart by their ID, the lower one first, whatever the order they are listed in", async () => {
+  const older = { id: "1300000000000000030", name: "Ancien", position: 4 }
+  const newer = { id: "1300000000000000031", name: "Récent", position: 4 }
+  const discord = new FakeDiscord({
+    roles: [newer, older],
+    members: [{ user: LYRA, roles: [newer.id, older.id] }],
+  })
+
+  const record = await readRecord(discord, LYRA.id)
+
+  expect(record?.standing).toMatchObject({
+    kind: "member",
+    roles: [
+      { id: older.id, name: "Ancien" },
+      { id: newer.id, name: "Récent" },
+    ],
+  })
+})
+
 test("a member's timeout shows until it ends, and no longer once it has ended", async () => {
   const discord = new FakeDiscord({
     members: [
