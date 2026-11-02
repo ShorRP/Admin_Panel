@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { parseArgs } from 'node:util'
 import { plan, describe, withPartOf, checkConventions, WAITING_ON, SIZE } from './plan.mjs'
 import { relocations } from './citations.mjs'
 
@@ -408,13 +409,6 @@ function versionsOf({ id }) {
     .map(edit => ({ body: edit.diff, editedAt: edit.editedAt }))
 }
 
-function option(args, name) {
-  const index = args.indexOf(name)
-  if (index < 0) return null
-  if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error(`${name} needs a value`)
-  return args[index + 1]
-}
-
 function mainReader() {
   try {
     return gitReader(ROOT, 'origin/main')
@@ -423,9 +417,7 @@ function mainReader() {
   }
 }
 
-function citationPlan(snapshot, args) {
-  const merged = option(args, '--merged')
-  const sweep = args.includes('--citations')
+function citationPlan(snapshot, { merged, citations: sweep }) {
   if (!merged && !sweep) return null
   if (merged && sweep) throw new Error('--merged and --citations exclude each other')
   const git = mainReader()
@@ -448,64 +440,94 @@ function printPlan(result) {
 }
 
 const commands = {
-  snapshot() {
-    console.log(save('snapshot', takeSnapshot()))
+  snapshot: {
+    usage: 'snapshot',
+    run() {
+      console.log(save('snapshot', takeSnapshot()))
+    },
   },
-  plan(args) {
-    const config = loadConfig()
-    const snapshot = takeSnapshot(config)
-    const snapshotFile = save('snapshot', snapshot)
-    const result = { snapshotFile, ...plan(snapshot, { conventions: config }) }
-    const relocated = citationPlan(snapshot, args)
-    if (relocated) {
-      result.ops.push(...relocated.ops)
-      result.judgment.push(...relocated.judgment)
-    }
-    const out = option(args, '--out')
-    const planFile = out ?? save('plan', result)
-    if (out) fs.writeFileSync(planFile, JSON.stringify(result, null, 2))
-    console.log(`snapshot: ${snapshotFile}`)
-    console.log(`plan: ${planFile}`)
-    printPlan(result)
-  },
-  apply([planFile]) {
-    if (!planFile) throw new Error('usage: backlog.mjs apply <plan.json>')
-    const { ops } = JSON.parse(fs.readFileSync(planFile, 'utf8'))
-    const snapshot = takeSnapshot()
-    console.log(`backup: ${save('snapshot', snapshot)}`)
-    const run = applier(snapshot)
-    let failed = 0
-    for (const op of ops) {
-      try {
-        if (!run[op.op]) throw new Error(`unknown op "${op.op}"`)
-        run[op.op](op)
-        console.log(`ok   ${describe(op)}`)
-      } catch (error) {
-        failed++
-        console.log(`FAIL ${describe(op)}\n     ${error.message.split('\n')[0]}`)
+  plan: {
+    usage: 'plan [--out <file>] [--merged <commit> | --citations]',
+    options: { out: { type: 'string' }, merged: { type: 'string' }, citations: { type: 'boolean' } },
+    run({ values }) {
+      const config = loadConfig()
+      const snapshot = takeSnapshot(config)
+      const snapshotFile = save('snapshot', snapshot)
+      const result = { snapshotFile, ...plan(snapshot, { conventions: config }) }
+      const relocated = citationPlan(snapshot, values)
+      if (relocated) {
+        result.ops.push(...relocated.ops)
+        result.judgment.push(...relocated.judgment)
       }
-    }
-    console.log(`${ops.length - failed} applied, ${failed} failed`)
-    if (failed) process.exitCode = 1
+      const planFile = values.out ?? save('plan', result)
+      if (values.out) fs.writeFileSync(planFile, JSON.stringify(result, null, 2))
+      console.log(`snapshot: ${snapshotFile}`)
+      console.log(`plan: ${planFile}`)
+      printPlan(result)
+    },
   },
-  setup() {
-    const snapshot = takeSnapshot()
-    if (snapshot.project.fields[WAITING_ON]) return console.log(`"${WAITING_ON}" already exists`)
-    graphql(`mutation($project: ID!, $name: String!) {
-      createProjectV2Field(input: { projectId: $project, dataType: TEXT, name: $name }) { clientMutationId }
-    }`, { project: snapshot.ids.project, name: WAITING_ON })
-    console.log(`created the "${WAITING_ON}" field`)
+  apply: {
+    usage: 'apply <plan.json>',
+    positionals: ['<plan.json>'],
+    run({ positionals: [planFile] }) {
+      const { ops } = JSON.parse(fs.readFileSync(planFile, 'utf8'))
+      const snapshot = takeSnapshot()
+      console.log(`backup: ${save('snapshot', snapshot)}`)
+      const run = applier(snapshot)
+      let failed = 0
+      for (const op of ops) {
+        try {
+          if (!run[op.op]) throw new Error(`unknown op "${op.op}"`)
+          run[op.op](op)
+          console.log(`ok   ${describe(op)}`)
+        } catch (error) {
+          failed++
+          console.log(`FAIL ${describe(op)}\n     ${error.message.split('\n')[0]}`)
+        }
+      }
+      console.log(`${ops.length - failed} applied, ${failed} failed`)
+      if (failed) process.exitCode = 1
+    },
+  },
+  setup: {
+    usage: 'setup',
+    run() {
+      const snapshot = takeSnapshot()
+      if (snapshot.project.fields[WAITING_ON]) return console.log(`"${WAITING_ON}" already exists`)
+      graphql(`mutation($project: ID!, $name: String!) {
+        createProjectV2Field(input: { projectId: $project, dataType: TEXT, name: $name }) { clientMutationId }
+      }`, { project: snapshot.ids.project, name: WAITING_ON })
+      console.log(`created the "${WAITING_ON}" field`)
+    },
   },
 }
 
-function main([command, ...args]) {
-  if (!commands[command]) {
-    console.error('usage: backlog.mjs snapshot | plan [--out file] [--merged <commit> | --citations] | apply <plan.json> | setup')
+function parse({ options = {}, positionals: names = [] }, args) {
+  const parsed = parseArgs({ args, options, allowPositionals: names.length > 0, strict: true })
+  const [extra] = parsed.positionals.slice(names.length)
+  if (extra !== undefined) throw new Error(`Unexpected argument '${extra}'`)
+  if (parsed.positionals.length < names.length) throw new Error(`Missing ${names[parsed.positionals.length]}`)
+  return parsed
+}
+
+function main([name, ...args]) {
+  if (!Object.hasOwn(commands, name)) {
+    console.error(`usage: backlog.mjs ${Object.values(commands).map(command => command.usage).join(' | ')}`)
+    process.exitCode = 2
+    return
+  }
+  const command = commands[name]
+  let parsed
+  try {
+    parsed = parse(command, args)
+  } catch (error) {
+    console.error(error.message)
+    console.error(`usage: backlog.mjs ${command.usage}`)
     process.exitCode = 2
     return
   }
   try {
-    commands[command](args)
+    command.run(parsed)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

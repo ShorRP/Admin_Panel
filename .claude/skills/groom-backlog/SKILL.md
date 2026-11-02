@@ -7,7 +7,7 @@ description: Reconcile the GitHub backlog with the work: settle the tickets the 
 
 **Reconcile** the tracker with the work. First the backlog catches up with the session: the tickets it **touched** are closed, linked or commented, and its **loose ends** become tickets. Then the tracker follows `docs/agents/issue-tracker.md`, its single source of truth: plan, apply, plan again, until the plan is empty. The script derives every change that follows from a fact; you settle what takes judgment.
 
-The script is `node .claude/skills/groom-backlog/scripts/backlog.mjs`, run from the repo root: `plan`, `apply <plan.json>`, `setup`, `snapshot`. `plan --merged <commit>` also relocates the `file:line` citations that merge moves, and `plan --citations` every citation that moved since it was written (**Moved citations**).
+The script is `node .claude/skills/groom-backlog/scripts/backlog.mjs`, run from the repo root: `plan`, `apply <plan.json>`, `setup`, `snapshot`. `plan --merged <commit>` also relocates the `file:line` citations that merge moves, and `plan --citations` every citation that moved since it was written (**Moved citations**). A command refuses an argument or an option it does not know, or an option without its value, with its usage and exit code 2, and runs nothing: `apply` has no dry run.
 
 What the script applies that is specific to this repo sits in `config.json`, beside this file: the board's URL, the type labels, the milestones in order, the skill labels, the day closing comments became the rule, and the days before an assigned ticket goes stale. It mirrors `issue-tracker.md`: change both together.
 
