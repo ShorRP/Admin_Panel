@@ -7,11 +7,14 @@ import {
   type Snowflake,
 } from "discord-api-types/v10"
 
-const AVATAR_SIZE = 64
+export type AvatarSize = 64 | 128
+
+const DEFAULT_AVATAR_SIZE = 64
 
 export function memberAvatarUrl(
   guildId: Snowflake,
-  member: APIGuildMember
+  member: APIGuildMember,
+  size: AvatarSize = DEFAULT_AVATAR_SIZE
 ): string | null {
   return member.avatar
     ? sized(
@@ -20,17 +23,21 @@ export function memberAvatarUrl(
           member.user.id,
           member.avatar,
           ImageFormat.WebP
-        )
+        ),
+        size
       )
-    : userAvatarUrl(member.user)
+    : userAvatarUrl(member.user, size)
 }
 
-export function userAvatarUrl(user: APIUser): string | null {
+export function userAvatarUrl(
+  user: APIUser,
+  size: AvatarSize = DEFAULT_AVATAR_SIZE
+): string | null {
   return user.avatar
-    ? sized(CDNRoutes.userAvatar(user.id, user.avatar, ImageFormat.WebP))
+    ? sized(CDNRoutes.userAvatar(user.id, user.avatar, ImageFormat.WebP), size)
     : null
 }
 
-function sized(path: string) {
-  return `${RouteBases.cdn}${path}?size=${AVATAR_SIZE}`
+function sized(path: string, size: AvatarSize) {
+  return `${RouteBases.cdn}${path}?size=${size}`
 }
