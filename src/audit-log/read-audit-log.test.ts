@@ -268,7 +268,7 @@ const AUTOMOD_TIMES_OUT_LYRA = {
   ruleName: "Insultes",
 }
 
-test("AutoMod's timeout shows under « Tout » and « Exclusions » alone, under « AutoMod » with no ID and no avatar, with its account and its rule's name, and a change to a member but their timeout never shows", async () => {
+test("AutoMod's timeout shows under « Tout » and « Exclusions » alone, under « AutoMod » with no ID and no avatar, with its account and its rule's name, and a change to a member but their timeout never shows", async () => {
   const discord = discordWhereLyraHasAnAvatar()
   const insults = discord.createAutoModerationRuleAs(BRYN.id, INSULTS_RULE)
   discord.timeOutByAutoModeration(insults.id, LYRA.id)
@@ -1489,7 +1489,7 @@ test.each([
   [LYRA.id, [KICK_BY_LYRA]],
   [`<@${LYRA.id}>`, [KICK_BY_LYRA]],
 ])(
-  "an author's text or ID %j keeps AutoMod's timeout for a text that « AutoMod » starts with, whatever its case, and never for the name, the ID or the mention of the member it timed out",
+  "an author's text or ID %j keeps AutoMod's timeout for a text that « AutoMod » starts with, whatever its case, and never for the name, the ID or the mention of the member it timed out",
   async (author, expected) => {
     const discord = await discordWithAnAutomaticTimeout()
 
@@ -1587,7 +1587,7 @@ test("an AutoMod timeout whose entry names no rule shows its account alone, and 
   )
 })
 
-test("an AutoMod timeout of an account the audit log does not name shows it as « Compte inconnu », found by its ID alone", async () => {
+test("an AutoMod timeout of an account the audit log does not name shows it as « Compte inconnu », found by its ID alone", async () => {
   const discord = new FakeDiscord({
     members: [{ user: BRYN }],
     auditLogEntries: [

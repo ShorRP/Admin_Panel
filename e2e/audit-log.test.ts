@@ -439,7 +439,7 @@ test.describe("for a staff member who moderates", () => {
     await checkAccessibility()
   })
 
-  test("an automatic timeout shows under « Tout » and « Exclusions » with its account and its rule, under « AutoMod » with no avatar and no link to an author, and the author filter finds it by « AutoMod » and never by the member it timed out", async ({
+  test("an automatic timeout shows under « Tout » and « Exclusions » with its account and its rule, under « AutoMod » with no avatar and no link to an author, and the author filter finds it by « AutoMod » and never by the member it timed out", async ({
     page,
     logIn,
     discord,
@@ -478,7 +478,7 @@ test.describe("for a staff member who moderates", () => {
     await page.goto("/audit-log")
     await expect(automatic).toHaveCount(1)
     await expect(automatic).toContainText(
-      "Compte : Lyra · Règle : « Insultes »"
+      "Compte : Lyra · Règle : « Insultes »"
     )
     await expect(automatic).not.toContainText("Aucun motif")
     await expect(automatic).not.toContainText("Message contained keyword")
@@ -498,7 +498,7 @@ test.describe("for a staff member who moderates", () => {
     await typeFilter.getByRole("link", { name: "Exclusions" }).click()
     await expect(page).toHaveURL("/audit-log?type=timeouts")
     await expect(changes).toHaveCount(2)
-    await expect(automatic).toContainText("Règle : « Insultes »")
+    await expect(automatic).toContainText("Règle : « Insultes »")
     await checkAccessibility()
 
     await author.fill("AutoMod")

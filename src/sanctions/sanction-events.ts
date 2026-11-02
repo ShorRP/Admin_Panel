@@ -22,6 +22,8 @@ export const STAFF_SANCTION_EVENTS: SanctionEvent[] = [
   },
 ]
 
+export const AUTO_MODERATION_NAME = "AutoMod"
+
 export const AUTOMATIC_TIMEOUT_EVENT: SanctionEvent = {
   actionType: AuditLogEvent.AutoModerationUserCommunicationDisabled,
   changeOf: () => ({ kind: "timeout", end: null }),

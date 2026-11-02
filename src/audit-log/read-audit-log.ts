@@ -16,6 +16,7 @@ import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
 import { snowflakeDate } from "@/discord/snowflake-date"
 import {
+  AUTO_MODERATION_NAME,
   AUTOMATIC_TIMEOUT_EVENT,
   automaticTimeoutRuleNameOf,
   STAFF_SANCTION_EVENTS,
@@ -104,8 +105,6 @@ const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
   kicks: [AuditLogEvent.MemberKick],
   bans: [AuditLogEvent.MemberBanAdd, AuditLogEvent.MemberBanRemove],
 }
-
-const AUTO_MODERATION_NAME = "AutoMod"
 
 const AUTO_MODERATION_AUTHOR: AccountIdentity = {
   id: null,

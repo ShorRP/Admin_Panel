@@ -6,6 +6,7 @@ import type {
   SanctionHistoryEntry,
 } from "./read-sanction-history"
 import { SanctionChangeSummary } from "./sanction-change-summary"
+import { AUTO_MODERATION_NAME } from "./sanction-events"
 
 const HEADING_ID = "sanction-history"
 
@@ -99,7 +100,7 @@ function AuthorSummary({ author }: { author: SanctionAuthor }) {
       return `${author.memberName}, dans Discord`
     case "auto-moderation":
       return author.ruleName === null
-        ? "AutoMod"
-        : `AutoMod, règle « ${author.ruleName} »`
+        ? AUTO_MODERATION_NAME
+        : `${AUTO_MODERATION_NAME}, règle « ${author.ruleName} »`
   }
 }
