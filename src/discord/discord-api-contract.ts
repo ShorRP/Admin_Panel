@@ -162,7 +162,6 @@ function patient(discord: DiscordApi): DiscordApi {
         discord.modifyAutoModerationRule(ruleId, changes, reason)
       ),
     getAuditLog: (query) => patiently(() => discord.getAuditLog(query)),
-    searchMembers: (query) => patiently(() => discord.searchMembers(query)),
     listMembers: (query) => patiently(() => discord.listMembers(query)),
     getUser: (userId) => patiently(() => discord.getUser(userId)),
     getBan: (userId) => patiently(() => discord.getBan(userId)),
@@ -544,26 +543,6 @@ export function describeDiscordApiContract(
       const { discord } = connected()
 
       expect(await discord.getUser(NO_ACCOUNT_ID)).toBeNull()
-    })
-
-    test("a search by the start of a member's username finds them, whatever its case", async () => {
-      const { discord } = connected()
-      const member = await applicationMember(discord)
-
-      const found = await discord.searchMembers({
-        query: member.user.username.slice(0, 3).toUpperCase(),
-        limit: 1000,
-      })
-
-      expect(found.map(({ user }) => user.id)).toContain(member.user.id)
-    })
-
-    test("a search that matches no member finds none", async () => {
-      const { discord } = connected()
-
-      expect(
-        await discord.searchMembers({ query: crypto.randomUUID(), limit: 1000 })
-      ).toEqual([])
     })
 
     test("the members list holds the application, by ascending ID", async () => {

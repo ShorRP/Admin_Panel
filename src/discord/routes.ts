@@ -1,7 +1,6 @@
 export const ROUTES = {
   guild: "/guilds/{guild.id}",
   guildMembers: "/guilds/{guild.id}/members",
-  guildMembersSearch: "/guilds/{guild.id}/members/search",
   guildMember: "/guilds/{guild.id}/members/{user.id}",
   guildBans: "/guilds/{guild.id}/bans",
   guildBan: "/guilds/{guild.id}/bans/{user.id}",
