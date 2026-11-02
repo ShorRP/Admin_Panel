@@ -18,6 +18,8 @@ import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
+import { AuditLogFilterForm } from "./audit-log-filter-form"
+import { hasFilter, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import {
   CHANGE_BODY_CLASSES,
@@ -27,6 +29,7 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
+  FILTERS_CLASSES,
 } from "./audit-log-layout"
 import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
 import { ParisDay } from "./paris-day"
@@ -55,13 +58,17 @@ export function AuditLog({
   page: AuditLogPage
   opensModeration: boolean
 }) {
-  const { type, days, before, older } = page
+  const { type, author, account, days, before, older } = page
+  const filters = { type, author, account }
   const oldest = days.at(-1)?.changes.at(-1)
   return (
     <div className="flex flex-col gap-7">
-      <AuditLogTypeFilter type={type} />
+      <div className={FILTERS_CLASSES}>
+        <AuditLogTypeFilter filters={filters} />
+        <AuditLogFilterForm key={JSON.stringify(filters)} filters={filters} />
+      </div>
       {days.length === 0 ? (
-        <NoChange type={type} before={before} />
+        <NoChange filters={filters} before={before} />
       ) : (
         days.map((day) => (
           <ChangesOfDay
@@ -85,7 +92,7 @@ export function AuditLog({
             >
               {before !== null && (
                 <Link
-                  href={auditLogHref({ type })}
+                  href={auditLogHref(filters)}
                   prefetch={false}
                   className={buttonVariants({ variant: "outline" })}
                 >
@@ -95,7 +102,7 @@ export function AuditLog({
               )}
               {older !== null && (
                 <Link
-                  href={auditLogHref({ type, before: older })}
+                  href={auditLogHref({ ...filters, before: older })}
                   prefetch={false}
                   className={buttonVariants({ variant: "outline" })}
                 >
@@ -111,21 +118,30 @@ export function AuditLog({
   )
 }
 
-function NoChange({ type, before }: Pick<AuditLogPage, "type" | "before">) {
+function NoChange({
+  filters,
+  before,
+}: {
+  filters: AuditLogFilters
+  before: AuditLogPage["before"]
+}) {
   return (
     <EmptyListFrame className="flex flex-col items-center gap-3">
-      <p>{noChangeMessage(type, before)}</p>
-      {type !== null && <ResetLink />}
+      <p>{noChangeMessage(filters, before)}</p>
+      {hasFilter(filters) && <ResetLink />}
     </EmptyListFrame>
   )
 }
 
 function noChangeMessage(
-  type: AuditLogPage["type"],
+  { type, author, account }: AuditLogFilters,
   before: AuditLogPage["before"]
 ) {
   if (before !== null) {
     return "Aucun changement plus ancien."
+  }
+  if (author !== null || account !== null) {
+    return "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
   }
   return type === null
     ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."

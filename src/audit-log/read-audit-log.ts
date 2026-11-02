@@ -18,9 +18,19 @@ import {
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
+import {
+  auditLogFiltersOf,
+  identityMatcher,
+  type AccountIdentity,
+  type AuditLogFilters,
+} from "./audit-log-filters"
 import { auditLogPages } from "./audit-log-pages"
-import { CHANGE_TYPES, type ChangeType } from "./change-type"
-import { attributionOf, type EntryAttribution } from "./entry-attribution"
+import type { ChangeType } from "./change-type"
+import {
+  attributionOf,
+  authorOf,
+  type EntryAttribution,
+} from "./entry-attribution"
 import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
@@ -43,7 +53,8 @@ type WithoutAvatar<Change> = Change extends unknown
   : never
 
 type FoundChange = {
-  memberId: Snowflake | null
+  author: AccountIdentity
+  account: AccountIdentity | null
   change: WithoutAvatar<AuditLogChange>
 }
 
@@ -56,8 +67,7 @@ type EventReader = {
 
 export type AuditLogDay = { date: Date; changes: AuditLogChange[] }
 
-export type AuditLogPage = {
-  type: ChangeType | null
+export type AuditLogPage = AuditLogFilters & {
   days: AuditLogDay[]
   before: Snowflake | null
   older: Snowflake | null
@@ -85,30 +95,34 @@ const CURSOR = z
   .nullable()
   .catch(null)
 
-const CHANGE_TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)
-
 export async function readAuditLog(
   discord: DiscordApi,
-  searchParams: { before?: unknown; type?: unknown }
+  searchParams: {
+    before?: unknown
+    type?: unknown
+    author?: unknown
+    account?: unknown
+  }
 ): Promise<AuditLogPage> {
   const cursor = CURSOR.parse(searchParams.before)
-  const type = CHANGE_TYPE.parse(searchParams.type)
+  const filters = auditLogFiltersOf(searchParams)
+  const retains = retainerOf(filters)
   const found: FoundChange[] = []
-  for (const reader of await eventReadersOfType(discord, type)) {
-    found.push(...(await changesOfEvent(discord, reader, cursor)))
+  for (const reader of await eventReadersOf(discord, filters)) {
+    found.push(...(await changesOfEvent(discord, reader, cursor, retains)))
   }
   const pageChanges = found.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
     discord,
-    pageChanges.map(({ memberId }) => memberId)
+    pageChanges.map(({ author }) => author.id)
   )
   return {
-    type,
+    ...filters,
     days: byParisDay(
-      pageChanges.map(({ memberId, change }) => ({
+      pageChanges.map(({ author, change }) => ({
         ...change,
         avatarUrl:
-          memberId === null ? null : (avatarUrls.get(memberId) ?? null),
+          author.id === null ? null : (avatarUrls.get(author.id) ?? null),
       }))
     ),
     before: cursor,
@@ -119,12 +133,29 @@ export async function readAuditLog(
   }
 }
 
-async function eventReadersOfType(
-  discord: DiscordApi,
-  type: ChangeType | null
-) {
+function retainerOf({ author, account }: AuditLogFilters) {
+  const authorMatches = identityMatcher(author)
+  const accountMatches = identityMatcher(account)
+  return (found: FoundChange) =>
+    authorMatches(found.author) && accountMatches(found.account)
+}
+
+function eventsOf(type: ChangeType | null, account: string | null) {
   const events =
     type === null ? Object.values(EVENTS_OF_TYPE).flat() : EVENTS_OF_TYPE[type]
+  return account === null
+    ? events
+    : events.filter((event) => !AUTO_MOD_RULE_EVENTS.includes(event))
+}
+
+async function eventReadersOf(
+  discord: DiscordApi,
+  { type, account }: AuditLogFilters
+) {
+  const events = eventsOf(type, account)
+  if (events.length === 0) {
+    return []
+  }
   const [ruleIds, application] = await Promise.all([
     events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
       ? panelRuleIds(discord)
@@ -196,14 +227,15 @@ async function avatarUrlOf(discord: DiscordApi, memberId: Snowflake) {
 async function changesOfEvent(
   discord: DiscordApi,
   { actionType, changeOf }: EventReader,
-  olderThan: Snowflake | null
+  olderThan: Snowflake | null,
+  retains: (found: FoundChange) => boolean
 ) {
   const changes: FoundChange[] = []
   for await (const log of auditLogPages(discord, actionType, olderThan)) {
     const users = new Map(log.users.map((user) => [user.id, user]))
     for (const entry of log.audit_log_entries) {
       const change = changeOf(entry, users)
-      if (change !== null) {
+      if (change !== null && retains(change)) {
         changes.push(change)
       }
     }
@@ -219,16 +251,17 @@ function ruleChangeOf(
   users: Users,
   applicationId: Snowflake
 ): FoundChange {
-  const author = attributionOf(entry, users, applicationId)
+  const attribution = attributionOf(entry, users, applicationId)
   return {
-    memberId: author.memberId,
+    author: authorOf(attribution),
+    account: null,
     change: {
       kind: "rule",
-      ...momentOf(entry, author),
-      madeInDiscord: author.kind === "discord",
+      ...momentOf(entry, attribution),
+      madeInDiscord: attribution.kind === "discord",
       description:
-        author.kind === "panel"
-          ? capitalized(author.reason)
+        attribution.kind === "panel"
+          ? capitalized(attribution.reason)
           : "Règle modifiée dans Discord",
     },
   }
@@ -243,19 +276,21 @@ function sanctionChangeOf(
   if (sanctionChange === null || entry.target_id === null) {
     return null
   }
-  const author = attributionOf(entry, users, applicationId)
-  const account = users.get(entry.target_id)
+  const attribution = attributionOf(entry, users, applicationId)
+  const targeted = users.get(entry.target_id)
+  const account = {
+    id: entry.target_id,
+    name: targeted === undefined ? null : userName(targeted),
+  }
   return {
-    memberId: author.memberId,
+    author: authorOf(attribution),
+    account,
     change: {
       kind: "sanction-change",
-      ...momentOf(entry, author),
+      ...momentOf(entry, attribution),
       sanctionChange,
-      account: {
-        id: entry.target_id,
-        name: account === undefined ? "Compte inconnu" : userName(account),
-      },
-      reason: author.reason,
+      account: { id: account.id, name: account.name ?? "Compte inconnu" },
+      reason: attribution.reason,
     },
   }
 }

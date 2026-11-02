@@ -15,6 +15,7 @@ import { expect, test } from "vitest"
 
 import type { SanctionChange } from "@/sanctions/sanction-events"
 import { AuditLog } from "./audit-log"
+import { AuditLogFilterForm } from "./audit-log-filter-form"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
 
@@ -54,20 +55,31 @@ const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
 }
 
 function render(page: Partial<AuditLogPage>, opensModeration = false) {
-  const { html, filter } = renderWithFilter(page, opensModeration)
-  return html.replace(filter, "")
+  const { html, typeFilter, form } = renderWithFilters(page, opensModeration)
+  return html.replace(typeFilter, "").replace(form, "")
 }
 
-function renderWithFilter(
+function renderWithFilters(
   page: Partial<AuditLogPage>,
   opensModeration = false
 ) {
-  const wholePage = { type: null, days: [], before: null, older: null, ...page }
+  const wholePage: AuditLogPage = {
+    type: null,
+    author: null,
+    account: null,
+    days: [],
+    before: null,
+    older: null,
+    ...page,
+  }
+  const { type, author, account } = wholePage
+  const filters = { type, author, account }
   return {
     html: renderToStaticMarkup(
       <AuditLog page={wholePage} opensModeration={opensModeration} />
     ),
-    filter: renderToStaticMarkup(<AuditLogTypeFilter type={wholePage.type} />),
+    typeFilter: renderToStaticMarkup(<AuditLogTypeFilter filters={filters} />),
+    form: renderToStaticMarkup(<AuditLogFilterForm filters={filters} />),
   }
 }
 
@@ -319,15 +331,18 @@ test("an older page with no change says only that none is older, and links back 
   expect(links(html)).toEqual([NEWEST_LINK])
 })
 
-test("the audit log opens on the filter of its page's type, before its days", () => {
-  const { html, filter } = renderWithFilter({
+test("the audit log opens on the filter of its page's type, then the form of its author and its account, before its days", () => {
+  const { html, typeFilter, form } = renderWithFilters({
     ...onOneDay(TIMEOUT),
     type: "timeouts",
+    author: "bryn",
   })
 
-  expect(filter).toMatch(/<a[^>]* aria-current="true"[^>]*>Exclusions<\/a>/)
-  expect(html.indexOf(filter)).toBeGreaterThan(-1)
-  expect(html.indexOf(filter)).toBeLessThan(html.indexOf("<section"))
+  expect(typeFilter).toMatch(/<a[^>]* aria-current="true"[^>]*>Exclusions<\/a>/)
+  expect(form).toContain('value="bryn"')
+  expect(html.indexOf(typeFilter)).toBeGreaterThan(-1)
+  expect(html.indexOf(form)).toBeGreaterThan(html.indexOf(typeFilter))
+  expect(html.indexOf(form)).toBeLessThan(html.indexOf("<section"))
 })
 
 test("an empty page of a type says that no change of that type is as recent as 45 days, and offers « Réinitialiser », which leads to every type", () => {
@@ -378,5 +393,95 @@ test("an older page of a type with no change says only that none is older, then 
       href: "/audit-log",
     },
     { ...NEWEST_LINK, href: "/audit-log?type=bans" },
+  ])
+})
+
+const FILTERED = {
+  type: "timeouts",
+  author: "bryn",
+  account: "<@1400000000000000003>",
+} as const
+
+const FILTERS_QUERY =
+  "type=timeouts&author=bryn&account=%3C%401400000000000000003%3E"
+
+test("the pages of a filtered audit log link to the newest and the older changes under all three filters", () => {
+  const older = {
+    ...onOneDay(TIMEOUT),
+    ...FILTERED,
+    before: "1563530499194880001",
+    older: "1563530499194880000",
+  } as const
+
+  expect(links(render(older))).toEqual([
+    { ...NEWEST_LINK, href: `/audit-log?${FILTERS_QUERY}` },
+    {
+      ...olderLink("1563530499194880000"),
+      href: `/audit-log?${FILTERS_QUERY}&before=1563530499194880000`,
+    },
+  ])
+})
+
+test("the newest page of an author's changes links to the older ones under that author alone", () => {
+  expect(
+    links(
+      render({
+        ...onOneDay(TIMEOUT),
+        author: "bryn la rouge",
+        older: "1563530499194880000",
+      })
+    )
+  ).toEqual([
+    {
+      ...olderLink("1563530499194880000"),
+      href: "/audit-log?author=bryn+la+rouge&before=1563530499194880000",
+    },
+  ])
+})
+
+test.each([
+  [{ author: "bryn" }],
+  [{ account: "lyra" }],
+  [{ type: "kicks", author: "bryn", account: "lyra" }],
+] as const)(
+  "an empty page filtered by an author or an account, %j, says that no change matches these filters in the last 45 days, and offers « Réinitialiser », which leads to every change",
+  (filters) => {
+    const html = render(filters)
+
+    expect(text(html)).toBe(
+      "Aucun changement ne correspond à ces filtres ces 45 derniers jours.Réinitialiser"
+    )
+    expect(links(html)).toEqual([
+      {
+        icon: undefined,
+        iconHidden: false,
+        text: "Réinitialiser",
+        href: "/audit-log",
+      },
+    ])
+    expect(days(html)).toEqual([])
+  }
+)
+
+test("an empty page filtered by a type alone keeps saying that no change is of that type", () => {
+  expect(text(render({ type: "kicks" }))).toBe(
+    "Aucun changement de ce type ces 45 derniers jours.Réinitialiser"
+  )
+})
+
+test("an older page of an author's changes with none left says only that none is older, offers « Réinitialiser », and links back to that author's newest changes", () => {
+  const html = render({ author: "bryn", before: "1563530499194880001" })
+
+  expect(text(html)).toBe(
+    "Aucun changement plus ancien.RéinitialiserRevenir aux plus récents"
+  )
+  expect(links(html)).toEqual([
+    {
+      icon: undefined,
+      iconHidden: false,
+      text: "Réinitialiser",
+      href: "/audit-log",
+    },
+    { ...NEWEST_LINK, href: "/audit-log?author=bryn" },
   ])
 })

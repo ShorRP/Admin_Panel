@@ -11,6 +11,12 @@ function status(html: string) {
   }
 }
 
+test("the audit log's skeleton shows the filter's form as bars, with no field to type in, no button and no link", () => {
+  const html = renderToStaticMarkup(<AuditLogSkeleton />)
+
+  expect(html).not.toMatch(/<(form|input|button|label|a)[\s>]/)
+})
+
 test("the audit log's skeleton is a status that says, to assistive technologies alone, that it is loading", () => {
   expect(status(renderToStaticMarkup(<AuditLogSkeleton />))).toEqual({
     isStatus: true,

@@ -1,6 +1,7 @@
 import { cn } from "cn"
 
 import { Skeleton } from "@/ui/skeleton"
+import { AuditLogFilterFormSkeleton } from "./audit-log-filter-form-skeleton"
 import {
   CHANGE_BODY_CLASSES,
   CHANGE_ICON_TILE_CLASSES,
@@ -9,6 +10,7 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
+  FILTERS_CLASSES,
   TYPE_FILTER_CLASSES,
   TYPE_LINKS_CLASSES,
 } from "./audit-log-layout"
@@ -37,18 +39,21 @@ export function AuditLogSkeleton() {
   return (
     <div role="status" className="flex flex-col gap-7">
       <span className="sr-only">Chargement du journal d’audit…</span>
-      <div className={TYPE_FILTER_CLASSES}>
-        <div className={TYPE_LINKS_CLASSES}>
-          {TYPE_LINK_WIDTHS.map((width) => (
-            <Skeleton
-              key={width}
-              className={cn(
-                "h-7.5 rounded-full motion-reduce:animate-none",
-                width
-              )}
-            />
-          ))}
+      <div className={FILTERS_CLASSES}>
+        <div className={TYPE_FILTER_CLASSES}>
+          <div className={TYPE_LINKS_CLASSES}>
+            {TYPE_LINK_WIDTHS.map((width) => (
+              <Skeleton
+                key={width}
+                className={cn(
+                  "h-7.5 rounded-full motion-reduce:animate-none",
+                  width
+                )}
+              />
+            ))}
+          </div>
         </div>
+        <AuditLogFilterFormSkeleton />
       </div>
       {DAYS.map(({ headingWidth, changes }) => (
         <div key={headingWidth} className="flex flex-col gap-2.5">

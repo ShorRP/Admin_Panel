@@ -6,7 +6,7 @@ import { z } from "zod"
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberAvatarUrl, userAvatarUrl } from "@/discord/member-avatar-url"
 import { memberName, userName } from "@/discord/member-name"
-import { ACCOUNT_ID } from "./account-id"
+import { accountIdOf } from "./account-id"
 import type { AccountStanding } from "./account-standing"
 import { timeoutEndOf } from "./timeout-end"
 
@@ -30,8 +30,6 @@ export type AccountSearch =
 
 const QUERY = z.string().trim().min(1).optional().catch(undefined)
 
-const MENTION = /^<@!?(\d+)>$/
-
 const MAX_ACCOUNTS = 25
 
 const DISCORD_BANS_PAGE = 1000
@@ -44,9 +42,9 @@ export async function searchAccounts(
   if (query === undefined) {
     return { kind: "none" }
   }
-  const userId = ACCOUNT_ID.safeParse(MENTION.exec(query)?.[1] ?? query)
-  if (userId.success) {
-    return { kind: "record", userId: userId.data }
+  const userId = accountIdOf(query)
+  if (userId !== null) {
+    return { kind: "record", userId }
   }
   const [members, bans] = await Promise.all([
     discord.searchMembers({ query, limit: MAX_ACCOUNTS + 1 }),

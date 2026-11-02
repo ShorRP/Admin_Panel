@@ -5,6 +5,7 @@ import type {
 } from "discord-api-types/v10"
 
 import { userName } from "@/discord/member-name"
+import type { AccountIdentity } from "./audit-log-filters"
 import { panelReasonOf } from "./audit-log-reason"
 
 export type EntryAttribution =
@@ -12,12 +13,14 @@ export type EntryAttribution =
       kind: "panel"
       memberId: Snowflake
       memberName: string
+      memberNamed: true
       reason: string
     }
   | {
       kind: "discord"
       memberId: Snowflake | null
       memberName: string
+      memberNamed: boolean
       reason: string | null
     }
 
@@ -35,6 +38,7 @@ export function attributionOf(
       kind: "panel",
       memberId: panelReason.staffMemberId,
       memberName: panelReason.staffMemberName,
+      memberNamed: true,
       reason: panelReason.change,
     }
   }
@@ -43,6 +47,15 @@ export function attributionOf(
     kind: "discord",
     memberId: entry.user_id,
     memberName: author === undefined ? "Membre inconnu" : userName(author),
+    memberNamed: author !== undefined,
     reason: entry.reason ?? null,
   }
+}
+
+export function authorOf({
+  memberId,
+  memberName,
+  memberNamed,
+}: EntryAttribution): AccountIdentity {
+  return { id: memberId, name: memberNamed ? memberName : null }
 }
