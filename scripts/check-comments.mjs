@@ -38,7 +38,11 @@ const HASH_FILES = new Set([
   ".editorconfig",
   "Dockerfile",
 ])
+const SQL_DOLLAR_DELIMITER =
+  /\$(?:(?:[A-Za-z_]|[^\x00-\x7F])(?:\w|[^\x00-\x7F])*)?\$/y
 const SHELL_BREAKS = /[\s;&|()<>]/
+const SHELL_KEYWORD =
+  /(?:case(?=\s)|[!{](?=\s)|(?:esac|in|then|do|else|elif|if|while|until|time)(?=[\s;&|()<>]|$))/y
 const DOTENV_VALUE_OPENER =
   /[ \t]*(?:export[ \t]+)?[\w.-]+(?:[ \t]*=[ \t]*|:[ \t]+)(["'`])/y
 const DOTENV_VALUE_TAIL = /[ \t]*(?:#[^\r\n]*)?\r?(?:\n|$)/y
@@ -60,6 +64,8 @@ const COMMENTLESS_EXTENSIONS = new Set([
 ])
 const PYTHON_TRIPLE_QUOTES = ['"""', "'''"]
 const MARKDOWN_COMMENT_OPENING = /^ {0,3}<!--/
+const YAML_HEADER_FENCE = /^---[ \t]*\r?\n?$/
+const YAML_KEY_LINE = /^[^\s#][^:\r\n]*:(?:[ \t]|\r?\n?$)/
 const MARKDOWN_BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|(?:[-*+]|\d{1,9}[.)])(?=[ \t])))*[ \t]*`
 const MARKDOWN_LINK_LABEL = String.raw`\[(?![ \t]*\])[^\[\]\r\n]+\]:`
 const MARKDOWN_LINK_TITLE = String.raw`(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|\((?:[^()\\\r\n]|\\.)*\))`
@@ -150,15 +156,38 @@ function closingSqlQuote(text, start) {
   return end - 1
 }
 
-function delimitedComments(
-  text,
-  { line = [], block = [], quotes = [], closing = closingQuote }
-) {
+function dollarQuotedBodyAt(text, at) {
+  if (text[at] !== "$" || isSqlIdentifierCharacter(text[at - 1])) return null
+  SQL_DOLLAR_DELIMITER.lastIndex = at
+  const opening = SQL_DOLLAR_DELIMITER.exec(text)
+  if (!opening) return null
+  const delimiter = opening[0]
+  const start = at + delimiter.length
+  const end = text.indexOf(delimiter, start)
+  if (end === -1) throw neverClosed(text, at, `${delimiter} string`)
+  return { start, end, after: end + delimiter.length }
+}
+
+function delimitedComments(text, options, from = 0) {
+  const {
+    line = [],
+    block = [],
+    quotes = [],
+    closing = closingQuote,
+    bodyAt,
+  } = options
   const found = []
-  let i = 0
+  let i = from
   while (i < text.length) {
     if (quotes.includes(text[i])) {
       i = closing(text, i) + 1
+      continue
+    }
+    const body = bodyAt?.(text, i)
+    if (body) {
+      const bounded = `${text.slice(0, body.start - 1)} ${text.slice(body.start, body.end)}`
+      found.push(...delimitedComments(bounded, options, body.start))
+      i = body.after
       continue
     }
     const opener = block.find(([open]) => text.startsWith(open, i))
@@ -297,6 +326,31 @@ function heredocBodyEnd(text, from, { delimiter, strip, at }) {
   throw neverClosed(text, at, "here-document")
 }
 
+function shellKeywordAt(text, at) {
+  if (at > 0 && !SHELL_BREAKS.test(text[at - 1])) return null
+  SHELL_KEYWORD.lastIndex = at
+  return SHELL_KEYWORD.exec(text)?.[0] ?? null
+}
+
+function followShellKeyword(word, atStart, cases, depth) {
+  const current = cases.at(-1)
+  if (word === "in") {
+    if (!current || current.open) return false
+    current.open = true
+    return true
+  }
+  if (!atStart) return false
+  if (word === "case") {
+    cases.push({ depth, open: false })
+    return false
+  }
+  if (word === "esac") {
+    if (current?.open) cases.pop()
+    return false
+  }
+  return true
+}
+
 function shellComments(text) {
   const found = []
   let i = text.startsWith("#!") ? lineEnd(text, 0) : 0
@@ -314,6 +368,37 @@ function shellComments(text) {
     commands(")", start)
   }
 
+  function expansion(closer) {
+    const char = text[i]
+    const next = text[i + 1]
+    if (char === "`" && closer !== "`") {
+      i++
+      commands("`", i - 1)
+    } else if (char === "$" && next === "$") i += 2
+    else if (char === "$" && next === "{") parameter()
+    else if (char === "$" && next === "(") substitution()
+    else return false
+    return true
+  }
+
+  function parameter() {
+    const start = i
+    i += 2
+    while (i < text.length) {
+      const char = text[i]
+      if (char === "\\") i += 2
+      else if (char === "}") {
+        i++
+        return
+      } else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      else if (char === '"') doubleQuoted()
+      else if (char === "$" && text[i + 1] === "'")
+        i = quotedEnd(text, i + 1, { escapes: true })
+      else if (!expansion()) i++
+    }
+    throw neverClosed(text, start, "${")
+  }
+
   function doubleQuoted() {
     const start = i++
     while (i < text.length) {
@@ -322,38 +407,49 @@ function shellComments(text) {
       else if (char === '"') {
         i++
         return
-      } else if (char === "$" && text[i + 1] === "(") substitution()
-      else if (char === "`") {
-        i++
-        commands("`", i - 1)
-      } else i++
+      } else if (!expansion()) i++
     }
     throw neverClosed(text, start, '" quote')
   }
 
   function commands(closer, start) {
     const heredocs = []
+    const cases = []
     let depth = 0
     let closed = false
+    let commandStarts = true
     while (!closed && i < text.length) {
       const char = text[i]
-      if (char === "\\") i += 2
-      else if (char === "'") i = quotedEnd(text, i, { escapes: false })
+      const atStart = commandStarts
+      commandStarts = false
+      if (expansion(closer)) continue
+      if (char === "\\") {
+        commandStarts = atStart && text[i + 1] === "\n"
+        i += 2
+      } else if (char === " " || char === "\t") {
+        commandStarts = atStart
+        i++
+      } else if (char === "'") i = quotedEnd(text, i, { escapes: false })
       else if (char === '"') doubleQuoted()
       else if (char === "$" && text[i + 1] === "'")
         i = quotedEnd(text, i + 1, { escapes: true })
-      else if (char === "$" && text[i + 1] === "(") substitution()
       else if (char === "`") {
         i++
-        if (closer === "`") closed = true
-        else commands("`", i - 1)
+        closed = true
       } else if (char === "(") {
         const end = text[i + 1] === "(" ? arithmeticEnd(text, i) : null
         if (end === null) depth++
+        commandStarts = end === null
         i = end ?? i + 1
       } else if (char === ")") {
-        if (closer === ")" && depth === 0) closed = true
-        else depth = Math.max(0, depth - 1)
+        const current = cases.at(-1)
+        const endsPattern = current?.open && depth === current.depth
+        if (!endsPattern && closer === ")" && depth === 0) closed = true
+        else if (!endsPattern) depth = Math.max(0, depth - 1)
+        commandStarts = true
+        i++
+      } else if (char === ";" || char === "&" || char === "|") {
+        commandStarts = true
         i++
       } else if (char === "<" && text[i + 1] === "<") {
         if (text[i + 2] === "<") i += 3
@@ -366,11 +462,19 @@ function shellComments(text) {
         i++
         for (const heredoc of heredocs.splice(0))
           i = heredocBodyEnd(text, i, heredoc)
+        commandStarts = true
       } else if (char === "#" && (i === 0 || SHELL_BREAKS.test(text[i - 1]))) {
         const end = lineEnd(text, i)
         found.push({ start: i, end })
         i = end
-      } else i++
+      } else {
+        const word = shellKeywordAt(text, i)
+        if (word === null) i++
+        else {
+          i += word.length
+          commandStarts = followShellKeyword(word, atStart, cases, depth)
+        }
+      }
     }
     if (closer && !closed)
       throw neverClosed(text, start, closer === ")" ? "$(" : closer)
@@ -533,6 +637,35 @@ function maskMarkdownCode(text) {
   return masked + maskCodeSpans(paragraph)
 }
 
+function yamlHeaderOf(text) {
+  const lines = text.match(/[^\n]*\n|[^\n]+/g) ?? []
+  if (!lines.length || !YAML_HEADER_FENCE.test(lines[0].replace(/^\uFEFF/, "")))
+    return null
+  const bodyStart = lines[0].length
+  let offset = bodyStart
+  let hasKey = false
+  for (const line of lines.slice(1)) {
+    if (YAML_HEADER_FENCE.test(line)) {
+      if (!hasKey) return null
+      return { bodyStart, bodyEnd: offset, end: offset + line.length }
+    }
+    hasKey ||= YAML_KEY_LINE.test(line)
+    offset += line.length
+  }
+  if (hasKey) throw new Error("unterminated YAML header")
+  return null
+}
+
+function yamlHeaderComments(body) {
+  let source
+  try {
+    source = maskFlowYamlScalars(body)
+  } catch {
+    source = body.replace(/["']/g, "x")
+  }
+  return hashComments(source)
+}
+
 function markdownLinkComments(masked) {
   return [...masked.matchAll(MARKDOWN_LINK_COMMENT)].map((match) => {
     const start = match.index + match[1].length
@@ -540,7 +673,7 @@ function markdownLinkComments(masked) {
   })
 }
 
-function markdownComments(text) {
+function markdownBodyComments(text) {
   const masked = maskMarkdownCode(text)
   const htmlComments = delimitedComments(masked, { block: [["<!--", "-->"]] })
   const linkComments = markdownLinkComments(masked).filter(
@@ -550,6 +683,23 @@ function markdownComments(text) {
       )
   )
   return [...htmlComments, ...linkComments].sort((a, b) => a.start - b.start)
+}
+
+function markdownComments(text) {
+  const header = yamlHeaderOf(text)
+  if (!header) return markdownBodyComments(text)
+  const fromHeader = yamlHeaderComments(
+    text.slice(header.bodyStart, header.bodyEnd)
+  ).map((range) => ({
+    start: range.start + header.bodyStart,
+    end: range.end + header.bodyStart,
+  }))
+  return [
+    ...fromHeader,
+    ...markdownBodyComments(
+      blankedOut(text.slice(0, header.end)) + text.slice(header.end)
+    ),
+  ]
 }
 
 function pythonComments(text) {
@@ -653,6 +803,7 @@ export function findComments(text, file) {
         block: [["/*", "*/"]],
         quotes: ["'", '"'],
         closing: closingSqlQuote,
+        bodyAt: dollarQuotedBodyAt,
       })
     case "yaml":
       return hashComments(maskFlowYamlScalars(text))

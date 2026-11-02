@@ -490,6 +490,176 @@ test("sql files: a string that never closes makes the file unreadable, rather th
   }
 })
 
+const unreadableSql = (text, cause) => {
+  const [line, ...others] = checkFile(text, "q.sql")
+  assert.equal(
+    line,
+    `q.sql: cannot be parsed, so its comments cannot be checked (${cause})`,
+    text
+  )
+  assert.deepEqual(others, [], text)
+}
+
+test("sql files: a quote left open in a $$ body makes the file unreadable, rather than closing on a quote past the body", () => {
+  unreadableSql(
+    "select $$a'b$$; -- why\nselect $$c'd$$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    'select $$a"b$$; -- why\nselect $$c"d$$;\n',
+    'the " quote opened on line 1 is never closed'
+  )
+  unreadableSql(
+    "select $$don't$$;\n-- why\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $f$don't$f$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select 1;\nselect $$ E'a\\' $$; -- why\nselect 'x';\n",
+    "the ' quote opened on line 2 is never closed"
+  )
+})
+
+test("sql files: a $$ or $tag$ delimiter that is never closed makes the file unreadable, tag case included", () => {
+  unreadableSql(
+    "select 1;\nselect $$ x;\n-- why\n",
+    "the $$ string opened on line 2 is never closed"
+  )
+  unreadableSql(
+    "select $f$ x $g$; -- why\n",
+    "the $f$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $A$ x $a$; -- why\n",
+    "the $A$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $é$ x $e$; -- why\n",
+    "the $é$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $$ x $f$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: nested bodies with other tags are each read to their own delimiter", () => {
+  const nested =
+    "do $outer$\nbegin\n  execute $inner$ select 'a' -- inner\n$inner$; -- outer\nend\n$outer$;\n"
+  assert.deepEqual(checkFile(nested, "q.sql"), [
+    "q.sql:3:30 -- inner",
+    "q.sql:4:10 -- outer",
+  ])
+  assert.deepEqual(
+    texts("select $a$ $b$ x /* y */ $b$ /* z */ $a$; -- w", "q.sql"),
+    ["/* y */", "/* z */", "-- w"]
+  )
+  assert.deepEqual(texts("select $a$ select '$b$' $a$ -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(
+    texts("select $a$$b$ x -- why\n$b$$a$; -- after\n", "q.sql"),
+    ["-- why", "-- after"]
+  )
+  unreadableSql(
+    "select $a$ x $b$ it's $b$ y $a$;\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $a$ $b$ $a$ $b$; -- why\n",
+    "the $b$ string opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $a$ x $b$ y $$ z $b$ $a$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: a body ends at the first closing delimiter, even one inside a string of the body", () => {
+  unreadableSql(
+    "select $$ 'x$$'; -- why\n",
+    "the ' quote opened on line 1 is never closed"
+  )
+  unreadableSql(
+    "select $$ a $$ b $$; -- why\n",
+    "the $$ string opened on line 1 is never closed"
+  )
+})
+
+test("sql files: a $$ or $tag$ body is SQL up to its delimiter, so its comments are found and its strings read as elsewhere", () => {
+  assert.deepEqual(
+    checkFile(
+      "create function f() returns int as $$\n  select 'a' -- why\n$$ language sql;\n",
+      "q.sql"
+    ),
+    ["q.sql:2:14 -- why"]
+  )
+  assert.deepEqual(
+    checkFile(
+      "create function f() returns int as $body$\n  select 'a' /* why */\n$body$ language sql;\n",
+      "q.sql"
+    ),
+    ["q.sql:2:14 /* why */"]
+  )
+  assert.deepEqual(texts("select $$ a -- why $$; -- after\n", "q.sql"), [
+    "-- why ",
+    "-- after",
+  ])
+  assert.deepEqual(texts("select $é$ a /* why */ $é$ -- after\n", "q.sql"), [
+    "/* why */",
+    "-- after",
+  ])
+  assert.deepEqual(texts("select $$ 'a\n-- b' $$;\n", "q.sql"), [])
+  assert.deepEqual(texts("select $$ 'it''s -- b' $$; -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts('select $$ "a\n-- b" $$; -- why\n', "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(texts("select $$ E'it\\'s -- b' $$; -- why\n", "q.sql"), [
+    "-- why",
+  ])
+  assert.deepEqual(checkFile("select $$ E'it\\'s' -- why\n$$;\n", "q.sql"), [
+    "q.sql:1:20 -- why",
+  ])
+  assert.deepEqual(checkFile("select $$E'it\\'s' -- why\n$$;\n", "q.sql"), [
+    "q.sql:1:19 -- why",
+  ])
+  assert.deepEqual(checkFile("select $f$E'it\\'s' -- why\n$f$;\n", "q.sql"), [
+    "q.sql:1:20 -- why",
+  ])
+  assert.deepEqual(texts("select $$ a /* b $$; -- why\n", "q.sql"), [
+    "/* b ",
+    "-- why",
+  ])
+  assert.deepEqual(texts("select $$$$; -- why\n", "q.sql"), ["-- why"])
+})
+
+test("sql files: a $ that opens no delimiter opens none", () => {
+  for (const [text, comments] of [
+    ["select * from t where a = $1 and b = $2; -- why\n", ["-- why"]],
+    ["select $1$2; -- why\n", ["-- why"]],
+    ["select $1$; -- why\n", ["-- why"]],
+    ["select $a b; -- why\n", ["-- why"]],
+    ["select $ 5; -- why\n", ["-- why"]],
+    ["select a$b, c$d; -- why\n", ["-- why"]],
+    ["select a$$b; -- why\n", ["-- why"]],
+    ["select a$b$ from t; -- why\n", ["-- why"]],
+    ["select select$$x; -- why\n", ["-- why"]],
+    ["select x1$$y; -- why\n", ["-- why"]],
+    ["select é$$y; -- why\n", ["-- why"]],
+    ["select '$$'; -- why\n", ["-- why"]],
+    ['select "$$"; -- why\n', ["-- why"]],
+    ["select 1; -- a $$\nselect 2;\n", ["-- a $$"]],
+    ["select 1; /* a $$ */ select 2; -- why\n", ["/* a $$ */", "-- why"]],
+  ]) {
+    assert.deepEqual(texts(text, "q.sql"), comments, text)
+  }
+})
+
 test("css files: a string ends with its line", () => {
   assert.deepEqual(texts("a { content: 'x\n}\n/* why */", "app.css"), [
     "/* why */",
@@ -641,6 +811,162 @@ test("shell files: a command substitution inside double quotes is shell, with it
   assert.deepEqual(texts("x=$(cat <<EOF\ndon't\nEOF\n) # why\n", "run.sh"), [
     "# why",
   ])
+})
+
+test("shell files: the ) that ends a case pattern does not end the command substitution around it", () => {
+  assert.deepEqual(
+    texts('x="$(case a in\n a) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n a|b) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts("x=$(case a in\n a) echo ;; # shown\n esac)\n", "run.sh"),
+    ["# shown"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n (a) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in\n @(a|b)) echo ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in\n a) echo ;& # one\n b) echo ;;& # two\n esac)"\n',
+      "run.sh"
+    ),
+    ["# one", "# two"]
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in\n a) case b in\n b) echo ;; # inner\n esac ;; # outer\n esac)"\n',
+      "run.sh"
+    ),
+    ["# inner", "# outer"]
+  )
+})
+
+test("shell files: a case is found after every word that starts a command", () => {
+  for (const [start, end] of [
+    ["if true; then", "; fi"],
+    ["if", "; then :; fi"],
+    ["if false; then :; elif", "; then :; fi"],
+    ["if true; then :; else", "; fi"],
+    ["while true; do", "; done"],
+    ["while", "; do :; done"],
+    ["until", "; do :; done"],
+    ["true &&", ""],
+    ["true ||", ""],
+    ["echo a |", ""],
+    ["echo a;", ""],
+    ["{", "; }"],
+    ["true; (", " )"],
+    ["f()", ""],
+    ["f() {", "; }"],
+    ["!", ""],
+    ["time", ""],
+    ["true && \\\n", ""],
+  ])
+    assert.deepEqual(
+      texts(
+        `x="$(${start} case a in\n a) echo ;; # hidden\n esac${end})"\n`,
+        "run.sh"
+      ),
+      ["# hidden"],
+      start
+    )
+})
+
+test("shell files: case and esac are keywords only where a command starts", () => {
+  assert.deepEqual(texts('x="$(echo case a in b)" # after\n', "run.sh"), [
+    "# after",
+  ])
+  assert.deepEqual(texts('x="$(echo a esac)" # after\n', "run.sh"), ["# after"])
+  assert.deepEqual(texts('x="$(y=case echo)" # after\n', "run.sh"), ["# after"])
+  assert.deepEqual(texts('x="$(case a in esac)" # after\n', "run.sh"), [
+    "# after",
+  ])
+  assert.deepEqual(
+    texts('x="$(case case in\n case) echo p ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(
+    texts('x="$(case in in in) echo p ;; # hidden\n esac)"\n', "run.sh"),
+    ["# hidden"]
+  )
+})
+
+test("shell files: a case in a command substitution leaves the end of that substitution where it is", () => {
+  assert.deepEqual(
+    texts("x=\"$(case a in a) echo '\"' ;; esac)\" # it's\n", "run.sh"),
+    ["# it's"]
+  )
+  assert.deepEqual(
+    texts('x="$(case a in a) echo ;; esac) # text"\n', "run.sh"),
+    []
+  )
+  assert.deepEqual(
+    texts(
+      'x="$(case a in a) echo ;; esac)" # after\ny="$(echo b)" # also\n',
+      "run.sh"
+    ),
+    ["# after", "# also"]
+  )
+})
+
+test("shell files: a ) inside ${…} does not end the command substitution around it", () => {
+  assert.deepEqual(texts('x="$(echo ${y#a)} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts('x="$(echo "${y:-")"}" # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts("x=\"$(echo ${y:-')'} # hidden\n)\"\n", "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(texts('x="$(echo ${y:-${z#a)}} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+  assert.deepEqual(
+    texts('x="$(echo ${y:-$(echo ")")} # hidden\n)"\n', "run.sh"),
+    ["# hidden"]
+  )
+  assert.deepEqual(texts('x="$(echo ${y//\\}/)} # hidden\n)"\n', "run.sh"), [
+    "# hidden",
+  ])
+})
+
+test("shell files: a # inside ${…} is no comment", () => {
+  assert.deepEqual(texts("echo ${y:-a # b} # why\n", "run.sh"), ["# why"])
+  assert.deepEqual(texts('echo "${y:-a # b}" ${#y} ${y#a} # why\n', "run.sh"), [
+    "# why",
+  ])
+})
+
+test("shell files: $$ is one token, so the { after it opens no parameter", () => {
+  assert.deepEqual(texts("echo $${x # c}\n", "run.sh"), ["# c}"])
+  assert.deepEqual(texts('x="$(echo $${y # c\n)"\n', "run.sh"), ["# c"])
+  assert.deepEqual(texts("echo $$${x # y}\n", "run.sh"), [])
+})
+
+test("shell files: a ${ that is never closed is reported as unparsable", () => {
+  for (const source of [
+    "echo ${y\n# why\n",
+    'echo "${y"\n# why\n',
+    "echo ${y:-${z}\n# why\n",
+  ]) {
+    const [line, ...rest] = checkFile(source, "run.sh")
+    assert.match(line, /^run\.sh: cannot be parsed.*opened on line 1 is never/)
+    assert.deepEqual(rest, [])
+  }
+  assert.match(
+    checkFile('echo "${y:-\'}"\n# why\n', "run.sh")[0],
+    /^run\.sh: cannot be parsed.*' quote opened on line 1/
+  )
 })
 
 test("shell files: a # starts a comment after a metacharacter, not inside a word", () => {
@@ -808,6 +1134,134 @@ test("markdown files: a line that opens an HTML comment ends an inline code span
   assert.deepEqual(texts("a <!-- why --> and `b`\n<!-- also -->\n", "a.md"), [
     "<!-- why -->",
     "<!-- also -->",
+  ])
+})
+
+test("markdown files: a # comment of the YAML header is found", () => {
+  assert.deepEqual(texts("---\n# why\nname: x\n---\n\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\nname: x # why\n---\n\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    texts("---\r\n# why\r\nname: x\r\n---\r\n\r\ntext\r\n", "SKILL.md"),
+    ["# why"]
+  )
+  assert.deepEqual(texts("---  \n# why\nname: x\n---\t\ntext\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\n# why\nname: x\n---", "SKILL.md"), ["# why"])
+  assert.deepEqual(texts("---\ntags:\n  - a\n  # why\n---\n", "SKILL.md"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    checkFile("---\nname: x\n  # why\nother: y\n---\n\ntext\n", "SKILL.md"),
+    ["SKILL.md:3:3 # why"]
+  )
+})
+
+test("markdown files: a YAML header holds a comment only where YAML does", () => {
+  assert.deepEqual(texts("---\n---\n\n# Title\n", "a.md"), [])
+  assert.deepEqual(texts("---\nname: x\ndescription: a#b\n---\n", "a.md"), [])
+  assert.deepEqual(texts('---\ndescription: "Deliver #12"\n---\n', "a.md"), [])
+  assert.deepEqual(texts('---\nkey: "a\n  # b"\n---\n', "a.md"), [])
+  assert.deepEqual(texts("---\nkey: 'a\n  # b' # why\n---\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\nnote: rock 'n roll # why\n---\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(texts("---\ndescription: a <!-- b -->\n---\n", "a.md"), [])
+})
+
+test("markdown files: only --- closes a YAML header, not ...", () => {
+  const [line, ...others] = checkFile("---\nname: x\n...\ntext\n", "a.md")
+  assert.match(line, /^a\.md: cannot be parsed/)
+  assert.deepEqual(others, [])
+})
+
+test("markdown files: what follows the YAML header is Markdown, so a # title is a heading", () => {
+  assert.deepEqual(texts("---\nname: x\n---\n\n# Title\n\ntext\n", "a.md"), [])
+  assert.deepEqual(texts("---\nname: x\n---\n# Title\n", "a.md"), [])
+  assert.deepEqual(
+    checkFile("---\nname: x\n---\n\ntext\n\n<!-- why -->\n", "a.md"),
+    ["a.md:7:1 <!-- why -->"]
+  )
+  assert.deepEqual(
+    checkFile("---\nname: x\n---\n\n[//]: # (why)\n<!-- also -->\n", "a.md"),
+    ["a.md:5:1 [//]: # (why)", "a.md:6:1 <!-- also -->"]
+  )
+  assert.deepEqual(
+    texts(
+      "---\nname: x\n---\n```\n<!-- sample -->\n```\n<!-- why -->\n",
+      "a.md"
+    ),
+    ["<!-- why -->"]
+  )
+  assert.deepEqual(
+    texts("---\ndescription: |\n  ```\n---\n<!-- why -->\n", "a.md"),
+    ["<!-- why -->"]
+  )
+})
+
+test("markdown files: a --- that is not on the first line is a separator, not a YAML header", () => {
+  assert.deepEqual(
+    texts("# Title\n\n---\nkey: x\n# not a comment\n---\n\ntext\n", "a.md"),
+    []
+  )
+  assert.deepEqual(texts("\n---\n# not a comment\n---\n", "a.md"), [])
+  assert.deepEqual(texts("----\n# not a comment\n----\n", "a.md"), [])
+  assert.deepEqual(texts("text\n---\n\n<!-- why -->\n", "a.md"), [
+    "<!-- why -->",
+  ])
+})
+
+test("markdown files: a first-line --- with no key: line before the next is a rule, not a YAML header", () => {
+  assert.deepEqual(texts("---\n\n<!-- why -->\n\ntext\n\n---\n", "a.md"), [
+    "<!-- why -->",
+  ])
+  assert.deepEqual(texts("---\n\n# Title\n\n---\n", "a.md"), [])
+  assert.deepEqual(texts("---\n# Title\n---\n", "a.md"), [])
+  assert.deepEqual(
+    texts("---\n\nSee http://example.com\n\n---\n# Title\n", "a.md"),
+    []
+  )
+  assert.deepEqual(checkFile("---\n\ntext\n\n<!-- why -->\n", "a.md"), [
+    "a.md:5:1 <!-- why -->",
+  ])
+  assert.deepEqual(checkFile("---\n\n# Title\n", "a.md"), [])
+})
+
+test("markdown files: a byte order mark before the opening --- is part of the YAML header", () => {
+  assert.deepEqual(texts("\uFEFF---\n# why\nname: x\n---\n\ntext\n", "a.md"), [
+    "# why",
+  ])
+  assert.deepEqual(
+    checkFile("\uFEFF---\nname: x\n---\n\n<!-- why -->\n", "a.md"),
+    ["a.md:5:1 <!-- why -->"]
+  )
+  assert.deepEqual(texts("\uFEFF# Title\n\n---\nname: x\n---\n", "a.md"), [])
+})
+
+test("markdown files: a YAML header that is not valid YAML is read line by line, quotes ignored", () => {
+  const description =
+    "description: Reconcile the backlog with the work: settle the tickets"
+  assert.deepEqual(
+    texts(`---\nname: x\n${description}\n---\n\ntext\n`, "a.md"),
+    []
+  )
+  assert.deepEqual(
+    texts(`---\nname: x\n${description}\n# why\n---\n\ntext\n`, "a.md"),
+    ["# why"]
+  )
+  assert.deepEqual(
+    texts(`---\n${description}\nnote: rock 'n roll # why\n---\n`, "a.md"),
+    ["# why"]
+  )
+  assert.deepEqual(texts('---\nk: "unclosed\n# why\n---\n', "a.md"), ["# why"])
+  assert.deepEqual(texts(`---\n${description}\nq: "see # 12"\n---\n`, "a.md"), [
+    '# 12"',
   ])
 })
 
@@ -985,6 +1439,11 @@ for (const [construct, file, source] of [
   ['a python """ string', "a.py", 'x = """abc\n# no\n'],
   ["a markdown ``` code fence", "a.md", "```\nx\n\n<!-- hidden -->\n"],
   ["a markdown ~~~ code fence", "a.md", "~~~\nx\n\n<!-- hidden -->\n"],
+  [
+    "a markdown --- YAML header",
+    "a.md",
+    "---\n# hidden\nname: x\n\n<!-- hidden -->\n",
+  ],
   ["a powershell <# block comment", "a.ps1", "<# abc\nGet-Item\n"],
   ["a powershell ' string", "a.ps1", "$x = 'abc\n# no\n"],
   ['a powershell " string', "a.ps1", '$x = "abc\n# no\n'],
@@ -1068,13 +1527,18 @@ test("the repository check reads markdown, reports an unknown type and leaves co
     fs.writeFileSync(path.join(dir, "clean.md"), "# Title\n\n`<!-- code -->`\n")
     fs.writeFileSync(path.join(dir, "dirty.md"), "# Title\n\n<!-- why -->\n")
     fs.writeFileSync(
+      path.join(dir, "SKILL.md"),
+      "---\n# why\nname: x\n---\n\n# Title\n"
+    )
+    fs.writeFileSync(
       path.join(dir, "logo.png"),
       Buffer.from([0x89, 0x50, 0x4e])
     )
     fs.writeFileSync(path.join(dir, "notes.xyz"), "hello\n")
     const problems = checkRepository(dir)
-    assert.equal(problems.length, 2)
+    assert.equal(problems.length, 3)
     assert.ok(problems.includes("dirty.md:3:1 <!-- why -->"))
+    assert.ok(problems.includes("SKILL.md:2:1 # why"))
     assert.ok(
       problems.some((line) => line.startsWith("notes.xyz: unknown file type"))
     )

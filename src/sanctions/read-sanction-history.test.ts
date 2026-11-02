@@ -292,7 +292,7 @@ test("an account still banned shows its ban", async () => {
   ])
 })
 
-test("a timeout from AutoMod shows as AutoMod's, with its rule's name and no reason", async () => {
+test("a timeout from AutoMod shows as AutoMod's, its rule's name in place of the reason Discord writes", async () => {
   const discord = discordWithLyra()
   discord.timeOutByAutoModeration(INSULTS_RULE.id, LYRA.id)
 
