@@ -2,6 +2,7 @@ import Link from "next/link"
 import { cva } from "class-variance-authority"
 
 import { TextLink } from "@/ui/text-link"
+import { hasFilter, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import { TYPE_FILTER_CLASSES, TYPE_LINKS_CLASSES } from "./audit-log-layout"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
@@ -31,17 +32,17 @@ const typeLinkVariants = cva(
   }
 )
 
-export function AuditLogTypeFilter({ type }: { type: ChangeType | null }) {
+export function AuditLogTypeFilter({ filters }: { filters: AuditLogFilters }) {
   return (
     <div className={TYPE_FILTER_CLASSES}>
       <nav aria-label="Filtrer par type">
         <ul className={TYPE_LINKS_CLASSES}>
           {TYPE_LINKS.map((link) => {
-            const current = link.type === type
+            const current = link.type === filters.type
             return (
               <li key={link.label}>
                 <Link
-                  href={auditLogHref({ type: link.type })}
+                  href={auditLogHref({ ...filters, type: link.type })}
                   prefetch={false}
                   aria-current={current ? "true" : undefined}
                   className={typeLinkVariants({ current })}
@@ -53,14 +54,17 @@ export function AuditLogTypeFilter({ type }: { type: ChangeType | null }) {
           })}
         </ul>
       </nav>
-      {type !== null && <ResetLink />}
+      {hasFilter(filters) && <ResetLink />}
     </div>
   )
 }
 
 export function ResetLink() {
   return (
-    <TextLink href={auditLogHref({ type: null })} className="text-[0.8125rem]">
+    <TextLink
+      href={auditLogHref({ type: null, author: null, account: null })}
+      className="text-[0.8125rem]"
+    >
       Réinitialiser
     </TextLink>
   )

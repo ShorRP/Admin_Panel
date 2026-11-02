@@ -1062,3 +1062,306 @@ test.each([
     expect(changesOf(page)).not.toEqual([])
   }
 )
+
+const TORVALD = {
+  id: "1400000000000000004",
+  username: "torvald_gates",
+  global_name: "Torvald",
+}
+
+const A_TIMEOUT = { communication_disabled_until: "2026-10-29T14:00:00.000Z" }
+
+async function discordWithAuthorsAndAccounts() {
+  const { members = [], ...state } = moderatorState()
+  const discord = new FakeDiscord({
+    ...state,
+    members: [...members, { user: TORVALD }],
+  })
+  const moderator = await staffMemberOn(discord)
+  await addBlockedWord(discord, moderator, form("foo"))
+  await changeTimeout(discord, moderator, timeOutForm("Insultes répétées"))
+  discord.modifyMemberAs(BRYN.id, LYRA.id, A_TIMEOUT, "Spam")
+  discord.removeMemberAs(LYRA.id, TORVALD.id, "Provocations")
+  discord.createBanAs(BRYN.id, TORVALD.id, "Retour sous un autre nom")
+  return discord
+}
+
+function summary(change: AuditLogChange) {
+  return change.kind === "rule"
+    ? `${change.memberName}: ${change.description}`
+    : `${change.memberName}: ${change.sanctionChange.kind} of ${change.account.name}`
+}
+
+function summaries(page: AuditLogPage) {
+  return changesOf(page).map(summary)
+}
+
+const BAN_BY_BRYN = "Bryn la Rouge: ban of Torvald"
+const KICK_BY_LYRA = "Lyra: kick of Torvald"
+const TIMEOUT_BY_BRYN = "Bryn la Rouge: timeout of Lyra"
+const TIMEOUT_BY_PANEL = "aldis: timeout of Lyra"
+const WORD_BY_PANEL = "aldis: Ajout de « foo », action « Bloquer seulement »"
+
+test("with no author and no account, every change shows", async () => {
+  const discord = await discordWithAuthorsAndAccounts()
+
+  const page = await readAuditLog(discord, {})
+
+  expect(page.author).toBeNull()
+  expect(page.account).toBeNull()
+  expect(summaries(page)).toEqual([
+    BAN_BY_BRYN,
+    KICK_BY_LYRA,
+    TIMEOUT_BY_BRYN,
+    TIMEOUT_BY_PANEL,
+    WORD_BY_PANEL,
+  ])
+})
+
+test.each([
+  ["bryn", [BAN_BY_BRYN, TIMEOUT_BY_BRYN]],
+  ["BRYN LA R", [BAN_BY_BRYN, TIMEOUT_BY_BRYN]],
+  ["ALD", [TIMEOUT_BY_PANEL, WORD_BY_PANEL]],
+  ["lyra", [KICK_BY_LYRA]],
+  ["la rouge", []],
+  ["torvald", []],
+])(
+  "an author's text %j keeps the changes whose author's name starts with it, whatever its case, the name the panel's reason gives for a change made through the panel and Discord's for the others",
+  async (author, expected) => {
+    const discord = await discordWithAuthorsAndAccounts()
+
+    const page = await readAuditLog(discord, { author })
+
+    expect(page.author).toBe(author)
+    expect(summaries(page)).toEqual(expected)
+  }
+)
+
+test.each([
+  [BRYN.id, [BAN_BY_BRYN, TIMEOUT_BY_BRYN]],
+  [`<@${BRYN.id}>`, [BAN_BY_BRYN, TIMEOUT_BY_BRYN]],
+  [`<@!${BRYN.id}>`, [BAN_BY_BRYN, TIMEOUT_BY_BRYN]],
+  [ALDIS.id, [TIMEOUT_BY_PANEL, WORD_BY_PANEL]],
+  [`<@${LYRA.id}>`, [KICK_BY_LYRA]],
+  [TORVALD.id, []],
+  ["1400000000000000099", []],
+])(
+  "an author's ID or mention %j keeps the changes made by exactly that account, the ID the panel's reason gives for a change made through the panel and Discord's for the others",
+  async (author, expected) => {
+    const discord = await discordWithAuthorsAndAccounts()
+
+    expect(summaries(await readAuditLog(discord, { author }))).toEqual(expected)
+  }
+)
+
+test("an author who no longer holds the staff role, or no longer is on the Discord server, is filtered like any other", async () => {
+  const discord = await discordWithAuthorsAndAccounts()
+  discord.removeMemberRole(BRYN.id, STAFF_ROLE_ID)
+  discord.removeMemberAs(BRYN.id, ALDIS.id, "Départ")
+
+  const bryn = await readAuditLog(discord, { author: "bryn" })
+  const aldisByName = await readAuditLog(discord, { author: "ald" })
+  const aldisById = await readAuditLog(discord, { author: ALDIS.id })
+
+  expect(summaries(bryn)).toEqual([
+    "Bryn la Rouge: kick of aldis",
+    BAN_BY_BRYN,
+    TIMEOUT_BY_BRYN,
+  ])
+  expect(summaries(aldisByName)).toEqual([TIMEOUT_BY_PANEL, WORD_BY_PANEL])
+  expect(summaries(aldisById)).toEqual([TIMEOUT_BY_PANEL, WORD_BY_PANEL])
+})
+
+test("a change whose author or account the audit log does not name is found by ID, and never by the « Membre inconnu » or « Compte inconnu » that stands in for the name", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: BRYN }],
+    auditLogEntries: [
+      {
+        id: "1563530499194880000",
+        action_type: AuditLogEvent.MemberKick,
+        target_id: "1400000000000000099",
+        user_id: BRYN.id,
+      },
+      {
+        id: "1563530499194880001",
+        action_type: AuditLogEvent.MemberKick,
+        target_id: BRYN.id,
+        user_id: "1400000000000000098",
+      },
+    ],
+  })
+  const kickOfUnknown = "Bryn la Rouge: kick of Compte inconnu"
+  const kickByUnknown = "Membre inconnu: kick of Bryn la Rouge"
+
+  expect(summaries(await readAuditLog(discord, {}))).toEqual([
+    kickByUnknown,
+    kickOfUnknown,
+  ])
+  expect(summaries(await readAuditLog(discord, { author: "membre" }))).toEqual(
+    []
+  )
+  expect(
+    summaries(await readAuditLog(discord, { author: "1400000000000000098" }))
+  ).toEqual([kickByUnknown])
+  expect(summaries(await readAuditLog(discord, { account: "compte" }))).toEqual(
+    []
+  )
+  expect(
+    summaries(await readAuditLog(discord, { account: "1400000000000000099" }))
+  ).toEqual([kickOfUnknown])
+})
+
+test.each([
+  ["lyra", [TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL]],
+  ["LY", [TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL]],
+  [LYRA.id, [TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL]],
+  [`<@${LYRA.id}>`, [TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL]],
+  [`<@!${LYRA.id}>`, [TIMEOUT_BY_BRYN, TIMEOUT_BY_PANEL]],
+  ["tor", [BAN_BY_BRYN, KICK_BY_LYRA]],
+  [TORVALD.id, [BAN_BY_BRYN, KICK_BY_LYRA]],
+  ["torvald_g", []],
+  ["ald", []],
+  [ALDIS.id, []],
+])(
+  "an account's text or ID %j keeps the changes that target an account whose name, as the row shows it, starts with it, or that has exactly that ID, and none of the changes to the blocked words, which target no account",
+  async (account, expected) => {
+    const discord = await discordWithAuthorsAndAccounts()
+
+    const page = await readAuditLog(discord, { account })
+
+    expect(page.account).toBe(account)
+    expect(summaries(page)).toEqual(expected)
+  }
+)
+
+test("an author, an account and a type combine, and keep only the changes that meet all three", async () => {
+  const discord = await discordWithAuthorsAndAccounts()
+
+  expect(
+    summaries(await readAuditLog(discord, { author: "bryn", account: "lyra" }))
+  ).toEqual([TIMEOUT_BY_BRYN])
+  expect(
+    summaries(
+      await readAuditLog(discord, { author: "bryn", account: TORVALD.id })
+    )
+  ).toEqual([BAN_BY_BRYN])
+  expect(
+    summaries(
+      await readAuditLog(discord, {
+        author: "bryn",
+        account: "tor",
+        type: "timeouts",
+      })
+    )
+  ).toEqual([])
+  expect(
+    summaries(
+      await readAuditLog(discord, {
+        author: ALDIS.id,
+        account: "lyra",
+        type: "timeouts",
+      })
+    )
+  ).toEqual([TIMEOUT_BY_PANEL])
+  expect(
+    summaries(
+      await readAuditLog(discord, { author: "ald", type: "blocked-words" })
+    )
+  ).toEqual([WORD_BY_PANEL])
+  expect(
+    summaries(
+      await readAuditLog(discord, { account: "lyra", type: "blocked-words" })
+    )
+  ).toEqual([])
+})
+
+test("a filter finds a change far beyond the first 100 entries Discord gives of its type", async () => {
+  const discord = await discordWithAuthorsAndAccounts()
+  discord.modifyMemberAs(ALDIS.id, BRYN.id, A_TIMEOUT, "Premier")
+  for (let index = 1; index <= 105; index++) {
+    discord.modifyMemberAs(LYRA.id, ALDIS.id, A_TIMEOUT, `Motif ${index}`)
+  }
+
+  const byAccount = await readAuditLog(discord, {
+    account: BRYN.id,
+    type: "timeouts",
+  })
+  const byAuthor = await readAuditLog(discord, {
+    author: "ald",
+    type: "timeouts",
+  })
+
+  expect(summaries(byAccount)).toEqual(["aldis: timeout of Bryn la Rouge"])
+  expect(summaries(byAuthor)).toEqual([
+    "aldis: timeout of Bryn la Rouge",
+    TIMEOUT_BY_PANEL,
+  ])
+})
+
+test("a filter's page holds its 50 newest changes, and its cursor leads to the older ones, still under that filter", async () => {
+  const discord = discordWithModerator()
+  for (let index = 1; index <= 60; index++) {
+    discord.modifyMemberAs(BRYN.id, LYRA.id, A_TIMEOUT, `Motif ${index}`)
+    discord.modifyMemberAs(ALDIS.id, LYRA.id, A_TIMEOUT, `Autre ${index}`)
+  }
+
+  const newest = await readAuditLog(discord, { author: "bryn" })
+  const older = await readAuditLog(discord, {
+    author: "bryn",
+    before: newest.older,
+  })
+
+  expect(newest.author).toBe("bryn")
+  expect(changesOf(newest)).toHaveLength(50)
+  expect(sanctionChanges(changesOf(newest))[0]?.reason).toBe("Motif 60")
+  expect(sanctionChanges(changesOf(newest)).at(-1)?.reason).toBe("Motif 11")
+  expect(older.author).toBe("bryn")
+  expect(older.before).toBe(newest.older)
+  expect(changesOf(older)).toHaveLength(10)
+  expect(sanctionChanges(changesOf(older))[0]?.reason).toBe("Motif 10")
+  expect(sanctionChanges(changesOf(older)).at(-1)?.reason).toBe("Motif 1")
+  expect(older.older).toBeNull()
+})
+
+test("an author or an account that is empty, blank, repeated or not a text counts as absent, and the others lose the spaces around them", async () => {
+  const discord = await discordWithAuthorsAndAccounts()
+
+  for (const value of [undefined, "", "   ", ["bryn", "ald"], 42, null]) {
+    const page = await readAuditLog(discord, { author: value, account: value })
+    expect(page.author).toBeNull()
+    expect(page.account).toBeNull()
+    expect(changesOf(page)).toHaveLength(5)
+  }
+  const page = await readAuditLog(discord, {
+    author: "  bryn ",
+    account: ` <@${LYRA.id}> `,
+  })
+  expect(page.author).toBe("bryn")
+  expect(page.account).toBe(`<@${LYRA.id}>`)
+  expect(summaries(page)).toEqual([TIMEOUT_BY_BRYN])
+})
+
+test.each([
+  {
+    filters: { account: LYRA.id },
+    events: [
+      AuditLogEvent.MemberUpdate,
+      AuditLogEvent.MemberKick,
+      AuditLogEvent.MemberBanAdd,
+      AuditLogEvent.MemberBanRemove,
+    ],
+  },
+  { filters: { account: LYRA.id, type: "blocked-words" }, events: [] },
+])(
+  "a page filtered by an account asks Discord for no entry of the panel's rules, nor for the AutoMod rules, since no such change targets an account: $filters",
+  async ({ filters, events }) => {
+    const discord = new FakeDiscordAnsweringOnly(moderatorState())
+    await addEveryKindOfChange(discord)
+    discord.answered = { events, rules: false }
+
+    const page = await readAuditLog(discord, filters)
+
+    expect(page.account).toBe(LYRA.id)
+    expect(changesOf(page).length > 0).toBe(events.length > 0)
+  }
+)

@@ -348,7 +348,7 @@ test.describe("for a staff member who moderates", () => {
     await checkAccessibility()
   })
 
-  test("a staff member who moderates logs out from the audit log, with its type filter, « Réinitialiser » and a sanction's link in view while the next page's script loads, and no page is prefetched", async ({
+  test("a staff member who moderates logs out from the audit log, with its type filter, its form, « Réinitialiser » and a sanction's link in view while the next page's script loads, and no page is prefetched", async ({
     page,
     logIn,
     discord,
@@ -383,6 +383,9 @@ test.describe("for a staff member who moderates", () => {
     const links = [
       ...(await typeFilter.getByRole("link").all()),
       reset,
+      page.getByLabel("Auteur"),
+      page.getByLabel("Compte", { exact: true }),
+      page.getByRole("button", { name: "Filtrer" }),
       account,
     ]
     await checkAccessibility()
@@ -481,6 +484,170 @@ test.describe("with changes of several types", () => {
     await expect(changes.filter({ hasText: "Ajout de « mot0 »" })).toBeVisible()
     await expect(changes).toHaveCount(50)
     await expect(reset).toHaveCount(0)
+    await checkAccessibility()
+  })
+})
+
+const TORVALD = { id: "1400000000000000004", username: "torvald" }
+
+function searchParamsOf(page: Page) {
+  return Object.fromEntries(new URL(page.url()).searchParams)
+}
+
+test.describe("filtered by an author and an account", () => {
+  test.use({
+    discordState: {
+      members: [
+        { user: ALDIS, roles: [STAFF_ROLE_ID] },
+        { user: BRYN },
+        { user: LYRA },
+        { user: TORVALD },
+      ],
+    },
+  })
+
+  test("a staff member combines an author, an account and a type, keeps them from page to page and from type to type, reopens the copied link, reads an empty page, then clears them all through « Réinitialiser », which empties the fields too", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    for (let index = 1; index <= 26; index++) {
+      discord.modifyMemberAs(
+        BRYN.id,
+        LYRA.id,
+        { communication_disabled_until: inAnHour() },
+        `Motif ${index}`
+      )
+      discord.modifyMemberAs(BRYN.id, LYRA.id, {
+        communication_disabled_until: null,
+      })
+    }
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Par aldis"
+    )
+    discord.modifyMemberAs(
+      BRYN.id,
+      TORVALD.id,
+      { communication_disabled_until: inAnHour() },
+      "Pour Torvald"
+    )
+    discord.removeMemberAs(BRYN.id, LYRA.id, "Provocations")
+    const mention = `<@${LYRA.id}>`
+    const changes = page.locator("ol").getByRole("listitem")
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+    const author = page.getByLabel("Auteur")
+    const account = page.getByLabel("Compte", { exact: true })
+    const reset = page.getByRole("link", { name: "Réinitialiser" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(changes).toHaveCount(50)
+    await expect(author).toHaveValue("")
+    await expect(account).toHaveValue("")
+    await expect(reset).toHaveCount(0)
+    await checkAccessibility()
+
+    await typeFilter.getByRole("link", { name: "Exclusions" }).click()
+    await expect(page).toHaveURL("/audit-log?type=timeouts")
+    await author.fill("BRYN")
+    await account.fill(mention)
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({ type: "timeouts", author: "BRYN", account: mention })
+    await expect(changes).toHaveCount(50)
+    await expect(changes.filter({ hasText: "bryn" })).toHaveCount(50)
+    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(50)
+    await expect(author).toHaveValue("BRYN")
+    await expect(account).toHaveValue(mention)
+    await expect(reset).toBeVisible()
+    await checkAccessibility()
+
+    await page.getByRole("link", { name: "Plus anciens" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toMatchObject({
+        type: "timeouts",
+        author: "BRYN",
+        account: mention,
+        before: expect.stringMatching(/^\d+$/),
+      })
+    await expect(changes).toHaveCount(2)
+    await expect(changes.filter({ hasText: "bryn" })).toHaveCount(2)
+    await expect(changes.filter({ hasText: "Compte : Lyra" })).toHaveCount(2)
+    await expect(author).toHaveValue("BRYN")
+    await expect(account).toHaveValue(mention)
+    await checkAccessibility()
+
+    await page.getByRole("link", { name: "Revenir aux plus récents" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({ type: "timeouts", author: "BRYN", account: mention })
+    await expect(changes).toHaveCount(50)
+
+    await typeFilter.getByRole("link", { name: "Tout", exact: true }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({ author: "BRYN", account: mention })
+    await expect(changes).toHaveCount(50)
+    await expect(changes.filter({ hasText: "Expulsion" })).toBeVisible()
+    await expect(author).toHaveValue("BRYN")
+    await expect(account).toHaveValue(mention)
+    await checkAccessibility()
+
+    await typeFilter.getByRole("link", { name: "Expulsions" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({ type: "kicks", author: "BRYN", account: mention })
+    await expect(changes).toHaveCount(1)
+    await expect(changes).toContainText(["Provocations"])
+    await expect(author).toHaveValue("BRYN")
+    await expect(account).toHaveValue(mention)
+    await checkAccessibility()
+
+    const copied = page.url()
+    await page.goto(copied)
+    await expect(page).toHaveURL(copied)
+    await expect(changes).toHaveCount(1)
+    await expect(changes).toContainText(["Provocations"])
+    await expect(author).toHaveValue("BRYN")
+    await expect(account).toHaveValue(mention)
+    await expect(
+      typeFilter.getByRole("link", { name: "Expulsions" })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(reset).toBeVisible()
+    await checkAccessibility()
+
+    await author.fill("personne")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({ type: "kicks", author: "personne", account: mention })
+    const noMatch = page.getByText(
+      "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
+    )
+    await expect(noMatch).toBeVisible()
+    await expect(changes).toHaveCount(0)
+    await checkAccessibility()
+
+    await noMatch
+      .locator("..")
+      .getByRole("link", { name: "Réinitialiser" })
+      .click()
+    await expect(page).toHaveURL("/audit-log")
+    await expect(author).toHaveValue("")
+    await expect(account).toHaveValue("")
+    await expect(reset).toHaveCount(0)
+    await expect(
+      typeFilter.getByRole("link", { name: "Tout", exact: true })
+    ).toHaveAttribute("aria-current", "true")
+    await expect(changes).toHaveCount(50)
     await checkAccessibility()
   })
 })
