@@ -37,7 +37,8 @@ export default function ErrorPage({
       ) : (
         <>
           {" "}
-          avec la référence <span className="font-mono">{reference}</span>.
+          avec la référence{" "}
+          <span className="font-mono wrap-anywhere">{reference}</span>.
         </>
       )}
     </ErrorNotice>
