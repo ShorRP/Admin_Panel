@@ -2,6 +2,7 @@ import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
+import { BAN_MESSAGE_DELETIONS } from "@/sanctions/ban-message-deletions"
 import {
   BAN_ROLE_ID,
   MODERATION_ROLE_ID,
@@ -40,7 +41,7 @@ const STAFF_PAGES = [
   { path: "/blocked-words", fixme: true },
   { path: "/audit-log", fixme: true },
   { path: "/records", fixme: true },
-  { path: `/records/${BRYNJA.id}`, fixme: true },
+  { path: `/records/${BRYNJA.id}`, fixme: false },
 ] as const
 
 const PUBLIC_PAGES = [
@@ -739,6 +740,127 @@ for (const screen of [...SCREENS, DESKTOP]) {
           expect(await smallTargets(page, "aside")).toEqual([])
         }
       }
+    })
+  })
+}
+
+const DESKTOP_DURATION_PX = 30
+
+const DESKTOP_CHOICE_PX = 19
+
+const CHOICE_COLUMN_MIN_PX = 170
+
+const CHOICE_GAP_PX = 8
+
+for (const screen of [...SCREENS, DESKTOP]) {
+  test.describe(`the record at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("sizes its header, stacks its terms and values and gives its controls their touch size on a touch screen", async ({
+      page,
+      logIn,
+    }) => {
+      await logIn(ALDIS)
+      await page.goto(`/records/${BRYNJA.id}`)
+      await settle(page)
+      const touch = await holdsTouch(page)
+      expect(touch).toBe(screen !== DESKTOP)
+      const stacked = screen.width < 640
+      const main = page.getByRole("main")
+
+      const avatar = stacked ? 56 : 68
+      expect(await sizeOf(main.locator("[data-slot=avatar]").first())).toEqual({
+        width: avatar,
+        height: avatar,
+      })
+      expect(await fontSizeOf(main.getByRole("heading", { level: 1 }))).toBe(
+        stacked ? "32px" : "38px"
+      )
+
+      const details = main.getByRole("region", { name: "Détails" })
+      const term = details.getByText("Nom d’utilisateur", { exact: true })
+      const value = details.getByText(BRYNJA.username, { exact: true })
+      expect(await fontSizeOf(term)).toBe(stacked ? "12.5px" : "14px")
+      const [termBox, valueBox] = [await boxOf(term), await boxOf(value)]
+      if (stacked) {
+        expect(valueBox.x).toBe(termBox.x)
+        expect(valueBox.y).toBeGreaterThanOrEqual(termBox.y + termBox.height)
+      } else {
+        expect(valueBox.x).toBeGreaterThan(termBox.x + termBox.width)
+        expect(valueBox.y).toBeLessThan(termBox.y + termBox.height)
+      }
+
+      const breadcrumb = main
+        .getByRole("navigation", { name: "Fil d’Ariane" })
+        .getByRole("link", { name: "Modération" })
+      expect((await sizeOf(breadcrumb)).height >= MIN_TARGET_PX).toBe(touch)
+
+      const sanctions = main.getByRole("region", {
+        name: "Sanctions",
+        exact: true,
+      })
+      const durations = sanctions.locator("label:has(input[name=duration])")
+      await expect(durations).toHaveCount(7)
+      for (const duration of await durations.all()) {
+        expect((await sizeOf(duration)).height).toBe(
+          touch ? MIN_TARGET_PX : DESKTOP_DURATION_PX
+        )
+      }
+      const notify = sanctions
+        .locator("label:has(input[name=notify])")
+        .filter({ visible: true })
+      expect((await sizeOf(notify)).height).toBe(
+        touch ? MIN_TARGET_PX : DESKTOP_CHOICE_PX
+      )
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+
+      await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+
+      await sanctions.getByRole("tab", { name: "Bannissement" }).click()
+      const deletions = sanctions.locator(
+        "label:has(input[name=deleteMessages])"
+      )
+      await expect(deletions).toHaveCount(BAN_MESSAGE_DELETIONS.length)
+      const columns = new Set<number>()
+      for (const deletion of await deletions.all()) {
+        const box = await boxOf(deletion)
+        columns.add(Math.round(box.x))
+        if (touch) {
+          expect(Math.round(box.height)).toBeGreaterThanOrEqual(MIN_TARGET_PX)
+        } else {
+          expect(Math.round(box.height)).toBe(DESKTOP_CHOICE_PX)
+        }
+      }
+      if (stacked) {
+        expect(columns.size).toBe(2)
+      } else if (touch) {
+        const group = await boxOf(deletions.first().locator(".."))
+        expect(columns.size).toBe(
+          Math.min(
+            Math.floor(
+              (group.width + CHOICE_GAP_PX) /
+                (CHOICE_COLUMN_MIN_PX + CHOICE_GAP_PX)
+            ),
+            BAN_MESSAGE_DELETIONS.length
+          )
+        )
+        if (screen.width === 1024) {
+          expect(columns.size).toBeGreaterThan(2)
+        }
+      }
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
     })
   })
 }
