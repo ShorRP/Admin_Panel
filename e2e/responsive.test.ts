@@ -326,6 +326,7 @@ for (const screen of SCREENS) {
       browserConsole.expectProblems([
         "console.error: Failed to load resource: the server responded with a status of 404 (Not Found)",
         `console.error: Error: ${minifiedReactError(441)}`,
+        `pageerror: ${minifiedReactError(419)}`,
       ])
       const phone = screen.width < 640
       const room = screen.width - 32
@@ -396,6 +397,10 @@ for (const screen of SCREENS) {
           reference.textContent = word
         }, LONG_WORD)
       expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+      await retry.click()
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Journal d’audit" })
+      ).toBeVisible()
 
       await page.goto("/privacy")
       await settle(page)
