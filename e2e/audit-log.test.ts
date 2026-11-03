@@ -288,6 +288,284 @@ function inAnHour() {
   return new Date(Date.now() + 3_600_000).toISOString()
 }
 
+const FILTERED_ADDRESS = /\/audit-log\?type=timeouts&author=aldis&account=lyra$/
+
+const TOUCH_TARGET_PX = 44
+
+function dialogTransitions(page: Page) {
+  return page.waitForFunction(
+    () => {
+      const properties = document
+        .getAnimations()
+        .flatMap((animation) =>
+          animation instanceof CSSTransition &&
+          animation.effect instanceof KeyframeEffect &&
+          animation.effect.target?.getAttribute("role") === "dialog"
+            ? [animation.transitionProperty]
+            : []
+        )
+      return properties.length > 0 && [...new Set(properties)].sort()
+    },
+    undefined,
+    { polling: "raf" }
+  )
+}
+
+test.describe("on a 360 px screen", () => {
+  test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
+
+  test("the author and the account fold behind a button that opens a sheet docked to the bottom, which sends the address of the inline form, each filter set is a chip that removes it, and a staff member logs out with the button, the chips and the pills in view, and no page is prefetched", async ({
+    page,
+    logIn,
+    discord,
+    prefetchedPaths,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+    const fold = page.getByRole("button", { name: /^Auteur et compte/ })
+    const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+    const chips = page.getByRole("list", { name: "Filtres actifs" })
+    const author = sheet.getByLabel("Auteur")
+    const account = sheet.getByLabel("Compte", { exact: true })
+    const changes = page.locator("ol").getByRole("listitem")
+    const menu = page.getByRole("dialog", { name: "Menu" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(page.getByLabel("Auteur")).toBeHidden()
+    await expect(page.getByRole("button", { name: "Filtrer" })).toHaveCount(0)
+    await expect(fold).toHaveAccessibleName("Auteur et compte")
+    await expect(chips).toHaveCount(0)
+    const [button, main] = await Promise.all([
+      fold.boundingBox(),
+      page.getByRole("main").boundingBox(),
+    ])
+    expect(button).toMatchObject({
+      width: main?.width,
+      height: TOUCH_TARGET_PX,
+    })
+    for (const pill of await typeFilter.getByRole("link").all()) {
+      expect((await pill.boundingBox())?.height).toBe(TOUCH_TARGET_PX)
+    }
+    await checkAccessibility()
+
+    await typeFilter.getByRole("link", { name: "Exclusions" }).click()
+    await expect(page).toHaveURL("/audit-log?type=timeouts")
+    await fold.tap()
+    await expect(sheet).toBeVisible()
+    await expect(sheet).toBeFocused()
+    await expect(sheet.getByRole("button", { name: "Filtrer" })).toBeVisible()
+    await expect(
+      sheet.getByRole("link", { name: "Réinitialiser" })
+    ).toBeVisible()
+    await expect
+      .poll(async () => {
+        const box = await sheet.boundingBox()
+        return [
+          box?.x,
+          box?.width,
+          Math.round((box?.y ?? 0) + (box?.height ?? 0)),
+        ]
+      })
+      .toEqual([0, 360, 760])
+    await expect(author).toHaveValue("")
+    await expect(account).toHaveValue("")
+    await checkAccessibility()
+
+    await author.fill("aldis")
+    await account.fill("lyra")
+    await sheet.getByRole("button", { name: "Filtrer" }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page).toHaveURL(FILTERED_ADDRESS)
+    expect([...new URL(page.url()).searchParams.keys()]).toEqual([
+      "type",
+      "author",
+      "account",
+    ])
+    await expect(changes).toHaveCount(1)
+    await expect(fold).toHaveAccessibleName(
+      /^Auteur et compte\s?2 filtres actifs$/
+    )
+    const removers = chips.getByRole("link")
+    await expect(removers).toHaveText([
+      "Retirer le filtre Auteur : aldis",
+      "Retirer le filtre Compte : lyra",
+    ])
+    await expect(removers.first()).toHaveAccessibleName(
+      "Retirer le filtre Auteur : aldis"
+    )
+    for (const chip of await removers.all()) {
+      expect((await chip.boundingBox())?.height).toBe(TOUCH_TARGET_PX)
+    }
+    await checkAccessibility()
+
+    await removers.first().click()
+    await expect(page).toHaveURL(/\/audit-log\?type=timeouts&account=lyra$/)
+    await expect(removers).toHaveText(["Retirer le filtre Compte : lyra"])
+    await expect(fold).toHaveAccessibleName(
+      /^Auteur et compte\s?1 filtre actif$/
+    )
+    await fold.click()
+    await expect(author).toHaveValue("")
+    await expect(account).toHaveValue("lyra")
+    await sheet.getByRole("link", { name: "Réinitialiser" }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page).toHaveURL("/audit-log")
+    await expect(chips).toHaveCount(0)
+    await expect(
+      typeFilter.getByRole("link", { name: "Tout", exact: true })
+    ).toHaveAttribute("aria-current", "true")
+    await checkAccessibility()
+
+    await page.goto(`/audit-log?type=timeouts&author=aldis&account=lyra`)
+    await page.waitForLoadState()
+    await expect(removers).toHaveCount(2)
+    const inView = [
+      ...(await typeFilter.getByRole("link").all()),
+      page.getByRole("link", { name: "Réinitialiser" }),
+      fold,
+      ...(await removers.all()),
+    ]
+    for (const control of inView) {
+      await expect(control).toBeInViewport()
+    }
+    await page
+      .getByRole("banner")
+      .getByRole("button", { name: "Ouvrir le menu" })
+      .click()
+    await expect(menu).toBeVisible()
+    const mounted = await page
+      .locator('main a[href], main button[aria-haspopup="dialog"]')
+      .all()
+    expect(mounted).toHaveLength(inView.length)
+    await logOutWithScriptsHeld(
+      page,
+      mounted,
+      menu.getByRole("button", { name: "Se déconnecter" })
+    )
+    expect(prefetchedPaths).toEqual([])
+  })
+
+  test("the filter sheet fades in and slides up only with motion", async ({
+    page,
+    logIn,
+  }) => {
+    const fold = page.getByRole("button", { name: /^Auteur et compte/ })
+    const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await page.waitForLoadState()
+    for (const reducedMotion of ["reduce", "no-preference"] as const) {
+      await page.emulateMedia({ reducedMotion })
+      const transitions = dialogTransitions(page)
+      await fold.click()
+      expect(await (await transitions).jsonValue()).toEqual(
+        reducedMotion === "reduce" ? ["opacity"] : ["opacity", "translate"]
+      )
+      await expect(sheet).toBeVisible()
+      await sheet.getByRole("button", { name: "Fermer" }).click()
+      await expect(sheet).toBeHidden()
+    }
+  })
+
+  test("the pagination's links take the whole width, side by side when both show", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    await seedBlockedWordChanges(discord, 101)
+    const main = page.getByRole("main")
+    const pagination = page.getByRole("navigation", {
+      name: "Pages du journal d’audit",
+    })
+    const older = pagination.getByRole("link", { name: "Plus anciens" })
+    const newer = pagination.getByRole("link", {
+      name: "Revenir aux plus récents",
+    })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log?author=aldis")
+    await expect(older).toBeVisible()
+    await expect(newer).toHaveCount(0)
+    const alone = await older.boundingBox()
+    expect([alone?.width, alone?.height]).toEqual([
+      (await main.boundingBox())?.width,
+      TOUCH_TARGET_PX,
+    ])
+    await checkAccessibility()
+
+    await older.click()
+    await expect(page).toHaveURL(/^[^?]*\/audit-log\?author=aldis&before=\d+$/)
+    await expect(newer).toBeVisible()
+    await expect(older).toBeVisible()
+    const [first, second, column] = await Promise.all([
+      newer.boundingBox(),
+      older.boundingBox(),
+      main.boundingBox(),
+    ])
+    expect(first?.y).toBe(second?.y)
+    expect(first?.height).toBe(second?.height)
+    expect(
+      Math.abs((first?.width ?? 0) - (second?.width ?? 0))
+    ).toBeLessThanOrEqual(1)
+    expect(first?.height).toBeGreaterThanOrEqual(TOUCH_TARGET_PX)
+    expect((first?.x ?? 0) + (first?.width ?? 0)).toBeLessThan(second?.x ?? 0)
+    expect(first?.x).toBe(column?.x)
+    expect(Math.round((second?.x ?? 0) + (second?.width ?? 0))).toBe(
+      Math.round((column?.x ?? 0) + (column?.width ?? 0))
+    )
+    await checkAccessibility()
+  })
+})
+
+test.describe("on a 768 px screen", () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test("the author and the account stay in the page's form, with no button and no chip, and send the address of the sheet", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+    const typeFilter = page.getByRole("navigation", {
+      name: "Filtrer par type",
+    })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log?type=timeouts")
+    await expect(
+      page.getByRole("button", { name: /^Auteur et compte/ })
+    ).toHaveCount(0)
+    for (const pill of await typeFilter.getByRole("link").all()) {
+      expect((await pill.boundingBox())?.height).toBe(TOUCH_TARGET_PX)
+    }
+    await page.getByLabel("Auteur").fill("aldis")
+    await page.getByLabel("Compte", { exact: true }).fill("lyra")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect(page).toHaveURL(FILTERED_ADDRESS)
+    await expect(
+      page.getByRole("list", { name: "Filtres actifs" })
+    ).toHaveCount(0)
+    await checkAccessibility()
+  })
+})
+
 test("a staff member who does not moderate sees each change's author and their own identity as text, in the sidebar, the bar and the menu, with no link to a record", async ({
   page,
   logIn,

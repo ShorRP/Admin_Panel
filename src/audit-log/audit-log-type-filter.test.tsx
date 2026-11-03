@@ -1,10 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import type { AuditLogFilters } from "./audit-log-filters"
+import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
-
-const NO_FILTER: AuditLogFilters = { type: null, author: null, account: null }
 
 function render(filters: Partial<AuditLogFilters>) {
   return renderToStaticMarkup(

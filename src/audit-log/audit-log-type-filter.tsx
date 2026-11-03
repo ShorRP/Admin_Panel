@@ -2,7 +2,7 @@ import Link from "next/link"
 import { cva } from "class-variance-authority"
 
 import { TextLink } from "@/ui/text-link"
-import { hasFilter, type AuditLogFilters } from "./audit-log-filters"
+import { hasFilter, NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import { TYPE_FILTER_CLASSES, TYPE_LINKS_CLASSES } from "./audit-log-layout"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
@@ -20,7 +20,7 @@ const TYPE_LINKS = [
 ]
 
 const typeLinkVariants = cva(
-  "inline-flex h-7.5 items-center rounded-full border px-3.25 text-[0.8125rem] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+  "inline-flex h-7.5 items-center rounded-full border px-3.25 text-[0.8125rem] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 touch:h-11",
   {
     variants: {
       current: {
@@ -61,10 +61,7 @@ export function AuditLogTypeFilter({ filters }: { filters: AuditLogFilters }) {
 
 export function ResetLink() {
   return (
-    <TextLink
-      href={auditLogHref({ type: null, author: null, account: null })}
-      className="text-[0.8125rem]"
-    >
+    <TextLink href={auditLogHref(NO_FILTER)} className="text-[0.8125rem]">
       Réinitialiser
     </TextLink>
   )

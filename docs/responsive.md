@@ -16,13 +16,13 @@ Three points had two options each in the mockups. Gilles chose on 2026-11-03:
 
 ## Breakpoints
 
-| Name | From     | Typical screen                | What changes                                                                                            |
-| ---- | -------- | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| base | 0        | phones, 360 to 639 px         | bar and its menu, forms stacked, main actions full width, filters folded, dialogs docked, compact pages |
-| `sm` | 640 px   | large phones in landscape     | rows of lists take their desktop grid, filter Sheets open from the right, 384 px wide                   |
-| `md` | 768 px   | tablets in portrait           | the 64 px rail, the filters inline again, fields at `text-sm`                                           |
-| `lg` | 1,024 px | tablets in landscape, laptops | the 252 px sidebar of #224                                                                              |
-| `xl` | 1,280 px | desktops                      | today's interface, unchanged                                                                            |
+| Name | From     | Typical screen                | What changes                                                                                                                                            |
+| ---- | -------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| base | 0        | phones, 360 to 639 px         | bar and its menu, forms stacked, main actions full width, filters folded, dialogs docked, compact pages                                                 |
+| `sm` | 640 px   | large phones in landscape     | rows of lists take their desktop grid, filter Sheets open from the right, 384 px wide, but the audit log's, which stays at the bottom under `md` (#359) |
+| `md` | 768 px   | tablets in portrait           | the 64 px rail, the filters inline again, fields at `text-sm`                                                                                           |
+| `lg` | 1,024 px | tablets in landscape, laptops | the 252 px sidebar of #224                                                                                                                              |
+| `xl` | 1,280 px | desktops                      | today's interface, unchanged                                                                                                                            |
 
 `touch:` holds under 1,024 px and under `(pointer: coarse)`, whatever the width, so a tablet in landscape and a desktop window narrower than 1,024 px both get the touch sizes (`src/ui/globals.css`, #355):
 
@@ -85,9 +85,11 @@ Delivered by #358.
 ### `/audit-log`
 
 - The type pills stay visible and wrap; under `touch` they take `h-11`.
-- From `md`, `AuditLogFilterForm` stays inline. Under `md`, it folds behind an outline button, full width, « Auteur et compte », with the number of filters set in a `primary` pill; the button opens a Sheet from the bottom holding a GET form of its own, the two fields, the type chosen and the search text of the URL as hidden fields, « Réinitialiser » and « Filtrer », while the inline form keeps its two fields, hidden under `md` (**Forms and filters** of `CLAUDE.md`), and the filters set show under the button as chips, « Auteur : Sigrid », each a `Link` to `auditLogHref` without that filter, with a cross and the name « Retirer le filtre Auteur : Sigrid ».
+- From `md`, `AuditLogFilterForm` stays inline. Under `md`, it folds behind an outline button, full width, « Auteur et compte », with the number of filters set in a `primary` pill; the button opens a Sheet from the bottom, at every width under `md`, titled « Auteur et compte » like the button, holding a GET form of its own, the two fields, the type chosen as a hidden field, « Réinitialiser » and « Filtrer », while the inline form keeps its two fields, hidden under `md` (**Forms and filters** of `CLAUDE.md`), and the filters set show under the button as chips, « Auteur : Sigrid », each a `Link` to `auditLogHref` without that filter, with a cross and the name « Retirer le filtre Auteur : Sigrid ». Delivered by #359: `FilterSheet` draws the button, with its count, and the Sheet, `FilterChips` the chips, and `AuditLogFilterFold`, which is the audit log's own, wires them with `auditLogHref`. `/records` can take `FilterSheet` and `FilterChips` as they stand (#360); a `side` that changes at `sm`, which #360's ticket asks for, needs responsive classes on the Sheet's content, since a static `side` prop cannot change with the screen, and `FilterSheet` takes none now.
+- The Sheet has no hidden search text, since the audit log has none beside its two filters, and its « Réinitialiser » leads to `/audit-log`, the page's own reset, so that it clears the type too (decided by the agent on 2026-11-03, on #359, for Gilles to review). It opens from the bottom up to 767 px, where the breakpoints table and the first draft of this section had it open from the right from `sm`: #359 says « par le bas » (decided by the agent on 2026-11-03, on #359, for Gilles to review).
+- The type left out of the button's count and of the chips, the wording of the count and of the list of chips, « 1 filtre actif » and « Filtres actifs », and the Sheet's title are the agent's, #359 naming none (decided by the agent on 2026-11-03, on #359, for Gilles to review).
 - The rows keep the two grids of #319; the staff member's `AccountLink` is 44 px high under `touch` since #357.
-- The pagination's links take the full width under `sm`, side by side when both show.
+- The pagination's links take the full width under `sm`, side by side in two equal columns when both show, their text wrapping within the 44 px.
 
 ### `/records`
 

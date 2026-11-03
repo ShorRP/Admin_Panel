@@ -39,7 +39,8 @@ const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
 
 const STAFF_PAGES = [
   { path: "/blocked-words", fixme: false },
-  { path: "/audit-log", fixme: true },
+  { path: "/audit-log", fixme: false },
+  { path: "/audit-log?type=blocked-words&author=aldis", fixme: false },
   { path: "/records", fixme: true },
   { path: `/records/${BRYNJA.id}`, fixme: false },
 ] as const
@@ -192,6 +193,31 @@ for (const screen of SCREENS) {
           expect(await smallTargets(page)).toEqual([])
         }
       )
+    }
+
+    if (screen.width < 768) {
+      test(`the audit log's filter sheet gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px, docked to the bottom and scrolling no wider`, async ({
+        page,
+        logIn,
+        checkAccessibility,
+      }) => {
+        await logIn(ALDIS)
+        await page.goto("/audit-log?type=blocked-words&author=aldis")
+        await settle(page)
+        await page.getByRole("button", { name: /^Auteur et compte/ }).click()
+        const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+        await expect(sheet).toBeVisible()
+        await expect(sheet.getByLabel("Auteur")).toHaveValue("aldis")
+        await expect
+          .poll(async () => {
+            const box = await boxOf(sheet)
+            return [box.x, box.width, Math.round(box.y + box.height)]
+          })
+          .toEqual([0, screen.width, screen.height])
+        expect(await smallTargets(page)).toEqual([])
+        expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+        await checkAccessibility()
+      })
     }
 
     for (const { path, fixme } of PUBLIC_PAGES) {

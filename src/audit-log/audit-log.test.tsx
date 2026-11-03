@@ -15,6 +15,7 @@ import { expect, test } from "vitest"
 
 import type { SanctionChange } from "@/sanctions/sanction-events"
 import { AuditLog } from "./audit-log"
+import { AuditLogFilterFold } from "./audit-log-filter-fold"
 import { AuditLogFilterForm } from "./audit-log-filter-form"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
@@ -75,9 +76,16 @@ const AUTOMATIC_TIMEOUT: Extract<
   ruleName: "Insultes",
 }
 
+function withoutGeneratedIds(html: string) {
+  return html.replace(/\s(?:id|aria-controls)="[^"]*"/g, "")
+}
+
 function render(page: Partial<AuditLogPage>, opensModeration = false) {
-  const { html, typeFilter, form } = renderWithFilters(page, opensModeration)
-  return html.replace(typeFilter, "").replace(form, "")
+  const { html, typeFilter, form, fold } = renderWithFilters(
+    page,
+    opensModeration
+  )
+  return html.replace(typeFilter, "").replace(form, "").replace(fold, "")
 }
 
 function renderWithFilters(
@@ -96,11 +104,20 @@ function renderWithFilters(
   const { type, author, account } = wholePage
   const filters = { type, author, account }
   return {
-    html: renderToStaticMarkup(
-      <AuditLog page={wholePage} opensModeration={opensModeration} />
+    html: withoutGeneratedIds(
+      renderToStaticMarkup(
+        <AuditLog page={wholePage} opensModeration={opensModeration} />
+      )
     ),
-    typeFilter: renderToStaticMarkup(<AuditLogTypeFilter filters={filters} />),
-    form: renderToStaticMarkup(<AuditLogFilterForm filters={filters} />),
+    typeFilter: withoutGeneratedIds(
+      renderToStaticMarkup(<AuditLogTypeFilter filters={filters} />)
+    ),
+    form: withoutGeneratedIds(
+      renderToStaticMarkup(<AuditLogFilterForm filters={filters} />)
+    ),
+    fold: withoutGeneratedIds(
+      renderToStaticMarkup(<AuditLogFilterFold filters={filters} />)
+    ),
   }
 }
 
@@ -436,8 +453,8 @@ test("an older page with no change says only that none is older, and links back 
   expect(links(html)).toEqual([NEWEST_LINK])
 })
 
-test("the audit log opens on the filter of its page's type, then the form of its author and its account, before its days", () => {
-  const { html, typeFilter, form } = renderWithFilters({
+test("the audit log opens on the filter of its page's type, then the form of its author and its account, then the same two folded behind a button, before its days", () => {
+  const { html, typeFilter, form, fold } = renderWithFilters({
     ...onOneDay(TIMEOUT),
     type: "timeouts",
     author: "bryn",
@@ -447,7 +464,8 @@ test("the audit log opens on the filter of its page's type, then the form of its
   expect(form).toContain('value="bryn"')
   expect(html.indexOf(typeFilter)).toBeGreaterThan(-1)
   expect(html.indexOf(form)).toBeGreaterThan(html.indexOf(typeFilter))
-  expect(html.indexOf(form)).toBeLessThan(html.indexOf("<section"))
+  expect(html.indexOf(fold)).toBeGreaterThan(html.indexOf(form))
+  expect(html.indexOf(fold)).toBeLessThan(html.indexOf("<section"))
 })
 
 test("an empty page of a type says that no change of that type is as recent as 45 days, and offers « Réinitialiser », which leads to every type", () => {
