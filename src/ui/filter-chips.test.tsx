@@ -2,7 +2,7 @@ import { X } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import { FilterChips } from "./filter-chips"
+import { FilterChips } from "@/ui/filter-chips"
 
 function drawing() {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<X />))?.[1]

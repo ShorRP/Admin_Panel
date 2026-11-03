@@ -1,5 +1,6 @@
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test } from "./fixtures"
+import { resize, settle } from "./settle"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -78,6 +79,25 @@ function ranks(first: number, last: number, total: number) {
     : `${first}–${last} sur ${total}`
 }
 
+const CHOICE_LABELS = [
+  "Rôle",
+  "État",
+  "Arrivée sur le serveur",
+  "Âge du compte Discord",
+  "Comptes de bot",
+  "Trier par",
+]
+
+const SENT_KEYS = [
+  "query",
+  "role",
+  "standing",
+  "joined",
+  "created",
+  "bots",
+  "sort",
+]
+
 function sent(values: Record<string, string>) {
   const fields = [
     "query",
@@ -90,6 +110,13 @@ function sent(values: Record<string, string>) {
   ]
   return `/records?${fields.map((name) => `${name}=${values[name] ?? ""}`).join("&")}`
 }
+
+const COMBINED = sent({
+  query: "garde",
+  role: GUARD.id,
+  standing: "members",
+  sort: "joined-recent",
+})
 
 test("a staff member who moderates filters, sorts and searches the list in one form, goes through the pages, and the URL keeps all of it, which reopens the same list", async ({
   page,
@@ -328,20 +355,12 @@ test("a value that is not one of the choices, a role the Discord server does not
   await checkAccessibility()
 })
 
-test("on a 360 px screen, the form wraps, each choice under its label and within the screen, and on a 1,280 px one four choices share a row, the last two sharing the next with the button", async ({
+test("from 768 px the six choices stay in the form, three to a row at 768 px and four at 1,280 px, the last ones sharing a row with the button, with no  Filtres  and no chip, and the form sends the address of the sheet", async ({
   page,
   logIn,
   checkAccessibility,
 }) => {
-  const labels = [
-    "Compte",
-    "Rôle",
-    "État",
-    "Arrivée sur le serveur",
-    "Âge du compte Discord",
-    "Comptes de bot",
-    "Trier par",
-  ]
+  const labels = ["Compte", ...CHOICE_LABELS]
   async function boxes() {
     return await Promise.all(
       labels.map(async (label) => {
@@ -353,36 +372,203 @@ test("on a 360 px screen, the form wraps, each choice under its label and within
       })
     )
   }
+  const button = page.getByRole("button", { name: "Chercher" })
 
-  await page.setViewportSize({ width: 1280, height: 900 })
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
-  await page.goto("/records")
-  await expect(page.getByLabel("Trier par")).toBeVisible()
+  await page.goto("/records?query=garde&standing=members")
+  await settle(page)
+  await expect(page.getByRole("button", { name: /^Filtres/ })).toBeHidden()
+  await expect(page.getByRole("list", { name: "Filtres actifs" })).toBeHidden()
   const wide = await boxes()
-  const button = await page
-    .getByRole("button", { name: "Chercher" })
-    .boundingBox()
+  const wideButton = await button.boundingBox()
   const lastRow = wide[5]
   expect(new Set(wide.slice(1, 5).map(({ y }) => y)).size).toBe(1)
   expect(wide[1]?.y).toBeGreaterThan(wide[0]?.y ?? Infinity)
   expect(lastRow?.y).toBeGreaterThan(wide[1]?.y ?? Infinity)
   expect(wide[6]?.y).toBe(lastRow?.y)
-  expect(button?.y).toBeGreaterThanOrEqual(lastRow?.y ?? Infinity)
-  expect(button?.y).toBeLessThan((lastRow?.y ?? 0) + (lastRow?.height ?? 0))
+  expect(wideButton?.y).toBeGreaterThanOrEqual(lastRow?.y ?? Infinity)
+  expect(wideButton?.y).toBeLessThan((lastRow?.y ?? 0) + (lastRow?.height ?? 0))
   await checkAccessibility()
 
-  await page.setViewportSize({ width: 360, height: 900 })
-  const narrow = await boxes()
-  for (const [index, box] of narrow.entries()) {
-    expect(box.x, labels[index]).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width, labels[index]).toBeLessThanOrEqual(360)
-    if (index > 0) {
-      const previous = narrow[index - 1]
-      expect(box.y, labels[index]).toBeGreaterThan(
-        (previous?.y ?? Infinity) + (previous?.height ?? 0) - 1
-      )
-    }
-  }
+  await resize(page, { width: 768, height: 1024 })
+  const medium = await boxes()
+  const mediumButton = await button.boundingBox()
+  expect(new Set(medium.slice(1, 4).map(({ y }) => y)).size).toBe(1)
+  expect(new Set(medium.slice(4, 7).map(({ y }) => y)).size).toBe(1)
+  expect(medium[1]?.y).toBeGreaterThan(medium[0]?.y ?? Infinity)
+  expect(medium[4]?.y).toBeGreaterThan(medium[1]?.y ?? Infinity)
+  expect(mediumButton?.y).toBeGreaterThan(
+    (medium[4]?.y ?? 0) + (medium[4]?.height ?? 0)
+  )
+  await expect(page.getByRole("button", { name: /^Filtres/ })).toBeHidden()
+  await expect(page.getByRole("list", { name: "Filtres actifs" })).toBeHidden()
   await checkAccessibility()
+
+  await page
+    .getByLabel("Rôle", { exact: true })
+    .selectOption({ label: "Garde" })
+  await page
+    .getByLabel("Trier par", { exact: true })
+    .selectOption({ label: "Arrivée récente" })
+  await button.click()
+  await expect(page).toHaveURL(COMBINED)
+})
+
+test.describe("on a 360 px screen", () => {
+  test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
+
+  test(" Filtres  and  Chercher  share a row, the sheet holds the six choices and  Appliquer  lands on the address of the sheet's choices, not of the form of the page, which a search sent from the page keeps, each chip removes one choice and  Réinitialiser  clears them", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const main = page.getByRole("main")
+    const field = page.getByLabel("Compte", { exact: true })
+    const filters = page.getByRole("button", { name: /^Filtres/ })
+    const search = page.getByRole("button", { name: "Chercher" })
+    const sheet = page.getByRole("dialog", { name: "Filtres" })
+    const chips = page.getByRole("list", { name: "Filtres actifs" })
+    const rows = (range: string) =>
+      main.getByRole("list", { name: range }).getByRole("link")
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto("/records?query=garde&standing=members")
+    await settle(page)
+    for (const label of CHOICE_LABELS) {
+      await expect(page.getByLabel(label, { exact: true }), label).toBeHidden()
+    }
+    await expect(filters).toHaveAccessibleName(/^Filtres\s?1 filtre actif$/)
+    await expect(chips.getByRole("link")).toHaveText([
+      "Retirer le filtre État : Membres",
+    ])
+    const [mainBox, fieldBox, filtersBox, searchBox] = await Promise.all([
+      main.boundingBox(),
+      field.boundingBox(),
+      filters.boundingBox(),
+      search.boundingBox(),
+    ])
+    expect(filtersBox?.y).toBe(searchBox?.y)
+    expect([filtersBox?.height, searchBox?.height]).toEqual([44, 44])
+    expect(filtersBox?.y).toBeGreaterThan(
+      (fieldBox?.y ?? Infinity) + (fieldBox?.height ?? 0) - 1
+    )
+    expect(filtersBox?.x).toBe(mainBox?.x)
+    expect(Math.round((searchBox?.x ?? 0) + (searchBox?.width ?? 0))).toBe(
+      Math.round((mainBox?.x ?? 0) + (mainBox?.width ?? 0))
+    )
+    expect(
+      Math.abs((filtersBox?.width ?? 0) - (searchBox?.width ?? 0))
+    ).toBeLessThanOrEqual(1)
+    await checkAccessibility()
+
+    await field.fill("zzz")
+    await filters.tap()
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByRole("combobox")).toHaveCount(6)
+    await expect(sheet.getByLabel("État", { exact: true })).toHaveValue(
+      "members"
+    )
+    await expect(sheet.getByLabel("Rôle", { exact: true })).toHaveValue("")
+    await expect(
+      sheet.getByRole("link", { name: "Réinitialiser" })
+    ).toBeVisible()
+    await expect(sheet.getByRole("button", { name: "Appliquer" })).toBeVisible()
+    await checkAccessibility()
+
+    await sheet
+      .getByLabel("Rôle", { exact: true })
+      .selectOption({ label: "Garde" })
+    await sheet
+      .getByLabel("Trier par", { exact: true })
+      .selectOption({ label: "Arrivée récente" })
+    await sheet.getByRole("button", { name: "Appliquer" }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page).toHaveURL(COMBINED)
+    expect([...new URL(page.url()).searchParams.keys()]).toEqual(SENT_KEYS)
+    await expect(field).toHaveValue("garde")
+    await expect(rows(ranks(1, 25, 30))).toHaveCount(25)
+    await expect(filters).toHaveAccessibleName(/^Filtres\s?3 filtres actifs$/)
+    const removers = chips.getByRole("link")
+    await expect(removers).toHaveText([
+      "Retirer le filtre Rôle : Garde",
+      "Retirer le filtre État : Membres",
+      "Retirer le filtre Trier par : Arrivée récente",
+    ])
+    for (const chip of await removers.all()) {
+      expect((await chip.boundingBox())?.height).toBe(44)
+    }
+    await checkAccessibility()
+
+    await removers.nth(1).click()
+    await expect(page).toHaveURL(
+      `/records?query=garde&role=${GUARD.id}&sort=joined-recent`
+    )
+    await expect(removers).toHaveCount(2)
+    await expect(filters).toHaveAccessibleName(/^Filtres\s?2 filtres actifs$/)
+
+    await field.fill("garde-0")
+    await search.tap()
+    await expect(page).toHaveURL(
+      sent({ query: "garde-0", role: GUARD.id, sort: "joined-recent" })
+    )
+    await expect(rows(ranks(1, 10, 10))).toHaveCount(10)
+    await expect(removers).toHaveCount(2)
+
+    await filters.tap()
+    await expect(sheet.getByLabel("Rôle", { exact: true })).toHaveValue(
+      GUARD.id
+    )
+    await sheet.getByRole("link", { name: "Réinitialiser" }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page).toHaveURL("/records?query=garde-0")
+    await expect(chips).toHaveCount(0)
+    await expect(filters).toHaveAccessibleName("Filtres")
+    await expect(field).toHaveValue("garde-0")
+    await checkAccessibility()
+  })
+})
+
+test.describe("under 768 px", () => {
+  test.use({ viewport: { width: 639, height: 760 }, hasTouch: true })
+
+  test("the sheet of the filters opens from the bottom under 640 px and from the right, 384 px wide, from 640 px", async ({
+    page,
+    logIn,
+  }) => {
+    const sheet = page.getByRole("dialog", { name: "Filtres" })
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto("/records")
+    await settle(page)
+    for (const { width, side } of [
+      { width: 639, side: "bottom" },
+      { width: 640, side: "right" },
+      { width: 700, side: "right" },
+      { width: 767, side: "right" },
+    ] as const) {
+      await resize(page, { width, height: 760 })
+      await page.getByRole("button", { name: /^Filtres/ }).click()
+      await expect(sheet).toBeVisible()
+      await expect
+        .poll(
+          async () => {
+            const box = await sheet.boundingBox()
+            return box === null
+              ? null
+              : [box.x, box.y, box.width, Math.round(box.y + box.height)]
+          },
+          { message: `a sheet at ${width} px` }
+        )
+        .toEqual(
+          side === "bottom"
+            ? [0, expect.any(Number), width, 760]
+            : [width - 384, 0, 384, 760]
+        )
+      await sheet.getByRole("button", { name: "Fermer" }).click()
+      await expect(sheet).toBeHidden()
+    }
+  })
 })

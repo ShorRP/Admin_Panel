@@ -2,8 +2,12 @@ import { ListFilter, SlidersHorizontal, type LucideIcon } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
+import {
+  FilterSheet,
+  FilterSheetForm,
+  FilterSheetTrigger,
+} from "@/ui/filter-sheet"
 import { Sheet } from "@/ui/sheet"
-import { FilterSheet, FilterSheetForm } from "./filter-sheet"
 
 function drawing(Icon: LucideIcon) {
   return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
@@ -114,7 +118,7 @@ test("with no hidden field, the sheet's form sends nothing but what is typed in 
   expect(html.match(/<input[^>]*>/g)).toHaveLength(1)
 })
 
-test("the sheet ends on « Réinitialiser », a link to the address it is given, then on its submit, whose label and filter icon it is given", () => {
+test("the sheet ends on « Réinitialiser », a link to the address it is given, then on its submit, whose label and filter icon it is given", () => {
   const html = renderForm()
   const reset = /<a([^>]*)>([^<]*)<\/a>/.exec(html)
   const submit =
@@ -136,4 +140,17 @@ test("the reset link says it is a link, so that what closes the sheet does not m
   const reset = /<a([^>]*)>Réinitialiser<\/a>/.exec(renderForm())?.[1] ?? ""
 
   expect(attribute(reset, "role")).toBe("link")
+})
+
+test("the trigger stands apart from the sheet's content, so that it can sit in a form of its own: it names the dialog and counts the same", () => {
+  const html = renderToStaticMarkup(
+    <Sheet>
+      <FilterSheetTrigger label="Filtres" activeCount={2} />
+    </Sheet>
+  )
+  const button = /<button[^>]*>/.exec(html)?.[0] ?? ""
+
+  expect(attribute(button, "aria-haspopup")).toBe("dialog")
+  expect(attribute(button, "type")).toBe("button")
+  expect(html.replace(/<[^>]*>/g, "")).toBe("Filtres22 filtres actifs")
 })
