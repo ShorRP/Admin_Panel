@@ -1,3 +1,4 @@
+import { cn } from "cn"
 import { ChevronDown } from "lucide-react"
 
 import { Overline } from "@/ui/overline"
@@ -5,6 +6,8 @@ import { counted } from "./french-text"
 import type { OtherAutoModRule } from "./read-blocked-words"
 
 const LABEL_ID = "other-auto-mod-rules"
+
+const TARGET_CLASSES = cn("touch:-my-2.75 touch:min-h-11 touch:py-2.75")
 
 export function OtherAutoModRules({ rules }: { rules: OtherAutoModRule[] }) {
   if (rules.length === 0) {
@@ -20,13 +23,15 @@ export function OtherAutoModRules({ rules }: { rules: OtherAutoModRule[] }) {
       </div>
       <ul className="flex flex-col border-t">
         {rules.map(({ id, name, keywords }) => (
-          <li
-            key={id}
-            className="border-b py-2.75 text-[0.84375rem] touch:py-0"
-          >
+          <li key={id} className="border-b py-2.75 text-[0.84375rem]">
             {keywords !== null && keywords.length > 0 ? (
               <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 touch:min-h-11 touch:py-2.75">
+                <summary
+                  className={cn(
+                    "flex cursor-pointer list-none items-center justify-between gap-2.5 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    TARGET_CLASSES
+                  )}
+                >
                   <span className="min-w-0 wrap-anywhere">{name}</span>
                   <span className="flex shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted-foreground group-hover:text-foreground">
                     {counted(keywords.length, "mot-clé", "mots-clés")}
@@ -36,7 +41,7 @@ export function OtherAutoModRules({ rules }: { rules: OtherAutoModRule[] }) {
                     />
                   </span>
                 </summary>
-                <ul className="mt-2 flex flex-wrap gap-1 touch:mb-2.75">
+                <ul className="mt-2 flex flex-wrap gap-1">
                   {keywords.map((keyword) => (
                     <li
                       key={keyword}
@@ -48,7 +53,12 @@ export function OtherAutoModRules({ rules }: { rules: OtherAutoModRule[] }) {
                 </ul>
               </details>
             ) : (
-              <span className="wrap-anywhere touch:flex touch:min-h-11 touch:items-center touch:py-2.75">
+              <span
+                className={cn(
+                  "wrap-anywhere touch:flex touch:items-center",
+                  TARGET_CLASSES
+                )}
+              >
                 {name}
               </span>
             )}

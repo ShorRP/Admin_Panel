@@ -1,9 +1,16 @@
+import { cn } from "cn"
 import { LoaderCircle, Plus } from "lucide-react"
 
 import { Button } from "@/ui/button"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
+import {
+  ACTION_COLUMN_CLASSES,
+  ACTION_ROW_CLASSES,
+  FORM_CARD_CLASSES,
+  FORM_CONTROL_CLASSES,
+} from "./add-blocked-word-form-layout"
 import type { BlockedWordActionId } from "./blocked-word-action"
 import { BlockedWordActionSelect } from "./blocked-word-action-select"
 import type { WriteResult } from "./write-result"
@@ -28,10 +35,7 @@ export function AddBlockedWordForm({
   action: (formData: FormData) => void
 }) {
   return (
-    <form
-      action={action}
-      className="flex flex-col rounded-xl border bg-card px-5 py-4.5"
-    >
+    <form action={action} className={FORM_CARD_CLASSES}>
       <Label htmlFor={FIELD_ID} className="text-[0.8125rem] leading-4.5">
         Ajouter un mot ou une expression
       </Label>
@@ -42,10 +46,10 @@ export function AddBlockedWordForm({
         aria-describedby={ALERT_ID}
         autoComplete="off"
         placeholder="Ex. : free nitro"
-        className="mt-2.5 h-9.5 px-3"
+        className={cn("mt-2.5 px-3", FORM_CONTROL_CLASSES)}
       />
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2.5">
-        <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-64 sm:flex-1">
+      <div className={ACTION_ROW_CLASSES}>
+        <div className={ACTION_COLUMN_CLASSES}>
           <Label htmlFor={ACTION_ID} className="text-[0.8125rem] leading-4.5">
             Action
           </Label>
@@ -60,7 +64,10 @@ export function AddBlockedWordForm({
         <Button
           type="submit"
           disabled={pending}
-          className="h-9.5 w-full px-3.5 has-data-[icon=inline-start]:pl-3 sm:w-auto"
+          className={cn(
+            "w-full px-3.5 has-data-[icon=inline-start]:pl-3 sm:w-auto",
+            FORM_CONTROL_CLASSES
+          )}
         >
           {pending ? (
             <>

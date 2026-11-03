@@ -65,7 +65,7 @@ export function BlockedWordList({
       </div>
       {words.length === 0 && (
         <EmptyListFrame className="mt-3.5">
-          <p>{nothingShown}</p>
+          <p className="wrap-anywhere">{nothingShown}</p>
         </EmptyListFrame>
       )}
       <ul className={cn("mt-3.5 empty:hidden", WORD_GRID_CLASSES)}>

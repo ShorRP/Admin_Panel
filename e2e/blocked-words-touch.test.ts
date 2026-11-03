@@ -32,6 +32,14 @@ const DESKTOP_ICON_BUTTON_PX = 28
 
 const DESKTOP_CONTROL_PX = 38
 
+const ROW_BORDER_PX = 1
+
+const DESKTOP_ROW_PX = 43.25
+
+const DESKTOP_SUMMARY_PX = 20.25
+
+const KEYWORDS_GAP_PX = 8
+
 const SHORT_RULE = "Liens"
 
 const LONG_RULE =
@@ -210,15 +218,55 @@ for (const screen of [...SCREENS, DESKTOP]) {
       const none = rows.filter({
         has: page.getByText(NO_KEYWORD_RULE, { exact: true }),
       })
-      const measured = touch ? [short, long, none] : [short, none]
-      for (const row of measured) {
-        expect((await sizeOf(row)).height >= MIN_TARGET_PX).toBe(touch)
+      expect((await boxOf(short)).height).toBeCloseTo(
+        touch ? MIN_TARGET_PX + ROW_BORDER_PX : DESKTOP_ROW_PX,
+        1
+      )
+      expect((await boxOf(none)).height).toBeCloseTo(
+        touch ? MIN_TARGET_PX + ROW_BORDER_PX : DESKTOP_ROW_PX,
+        1
+      )
+      expect((await boxOf(short.locator("summary"))).height).toBeCloseTo(
+        touch ? MIN_TARGET_PX : DESKTOP_SUMMARY_PX,
+        1
+      )
+      if (touch) {
+        expect((await sizeOf(long)).height).toBeGreaterThanOrEqual(
+          MIN_TARGET_PX
+        )
+        expect(
+          (await sizeOf(long.locator("summary"))).height
+        ).toBeGreaterThanOrEqual(MIN_TARGET_PX)
       }
-      for (const summary of (touch ? [short, long] : [short]).map((row) =>
-        row.locator("summary")
-      )) {
-        expect((await sizeOf(summary)).height >= MIN_TARGET_PX).toBe(touch)
+
+      for (const row of [short, long]) {
+        await row.locator("summary").click()
+        const [name, keywords] = await Promise.all(
+          [
+            row.locator("summary > span").first(),
+            row.locator("details > ul"),
+          ].map(boxOf)
+        )
+        const gap = keywords.y - (name.y + name.height)
+        expect(gap).toBeGreaterThan(KEYWORDS_GAP_PX - 0.1)
+        expect(gap).toBeLessThan(KEYWORDS_GAP_PX + 1)
       }
+    })
+
+    test("a filter text of 120 characters with no space that finds nothing wraps inside the column, which scrolls no wider than the screen", async ({
+      page,
+      logIn,
+    }) => {
+      await logIn(ALDIS)
+      await page.goto(`/blocked-words?query=${"x".repeat(120)}`)
+      await expect(
+        page.getByText(/^Aucun mot interdit ne contient/)
+      ).toBeVisible()
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }))
+      expect(scrollWidth).toBe(clientWidth)
     })
 
     test("while Discord answers late, the skeletons of the form, of the capacity gauge and of the filter take the room of what replaces them", async ({
