@@ -293,7 +293,7 @@ for (const screen of [...SCREENS, DESKTOP]) {
       await expect(gaugeSkeleton).toBeVisible()
       const skeletons = {
         form: await sizeOf(formSkeleton),
-        gauge: await sizeOf(gaugeSkeleton),
+        gaugeWidth: (await sizeOf(gaugeSkeleton)).width,
         filter: await sizeOf(
           listSkeleton.locator("[data-slot=skeleton]").nth(2)
         ),
@@ -310,7 +310,9 @@ for (const screen of [...SCREENS, DESKTOP]) {
         .filter({ has: page.getByLabel("Ajouter un mot ou une expression") })
       expect({
         form: await sizeOf(form),
-        gauge: await sizeOf(page.getByRole("group", { name: "Capacité" })),
+        gaugeWidth: (
+          await sizeOf(page.getByRole("group", { name: "Capacité" }))
+        ).width,
         filter: await sizeOf(
           page
             .locator("form")
