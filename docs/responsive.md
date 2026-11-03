@@ -2,7 +2,7 @@
 
 The patterns, the per-page specification and the review checklist behind the **Responsive** section of `CLAUDE.md`. The mockups that show them, every page at 360, 390, 768, 1,024 and 1,280 px in light and in dark, were made with Claude Design outside the repository, as the Hydromel mockup was (#221, #223); the repository keeps no capture of them. Where this file and a ticket differ, the ticket wins.
 
-Like the **Architecture** of `CLAUDE.md`, this file was written before the code. #355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls, #356 the navigation and #362 the login pages, the privacy policy and the error pages; the tickets of #354 deliver the rest, each making its part true (#358 to #361 the pages), so that a section below describes the target until its ticket lands.
+Like the **Architecture** of `CLAUDE.md`, this file was written before the code. #355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls, #356 the navigation, #358 `/blocked-words` and #362 the login pages, the privacy policy and the error pages; the tickets of #354 deliver the rest, each making its part true (#359 to #361 the other pages), so that a section below describes the target until its ticket lands.
 
 ## Options
 
@@ -73,11 +73,14 @@ Delivered by #356. `StaffHeader` keeps one `<aside>` for the rail and the sideba
 
 ### `/blocked-words`
 
-- The header wraps: the capacity gauge goes under the sentence and takes the full width under `sm`.
-- `AddBlockedWordForm`: under `sm`, « Action » takes the full width and « Ajouter » too, under it; from `sm`, today's row.
-- The list header: « La liste » and its count, `whitespace-nowrap`, then the filter form, `w-full sm:w-82`, as today.
-- The tiles keep `repeat(auto-fill,minmax(12.5rem,1fr))`, one column under about 420 px of room. A tile stays 48 px tall; its pencil and its cross are `icon-sm` `Button`s, which take `touch:size-11` since #357, so that only `pr-1` becoming `pr-0.5` under `touch` is left to do.
-- The side column goes under the list below a container of 780 px, as today; the rows of « Autres règles AutoMod » take `touch:min-h-11`, their `<summary>` too.
+Delivered by #358.
+
+- The header wraps: the capacity gauge goes under the sentence wherever the two do not fit side by side, and takes the full width under `sm` (`w-full sm:w-auto`, `CAPACITY_CLASSES`).
+- `AddBlockedWordForm`: under `sm`, « Action » takes the full width and « Ajouter » too, under it (`flex-col gap-3`, `w-full` on the choice and the button); from `sm`, today's row (`sm:flex-row sm:flex-wrap sm:items-end`, `sm:w-fit` and `sm:w-auto`).
+- The skeletons of the form, of the gauge and of the filter wear the classes of what they stand for, `touch:h-11` on their bars included, so that the content replaces the form's and the filter's at the same size at every width, and the gauge's at the same width, its height following the heading's font (63 px for the skeleton against 64 for the gauge on CI's runner, run 41700379802, 2026-11-03): before, the form's skeleton was 178 px high at 360 px against the form's 190, and the filter's 32 px against 44 (the first run of `e2e/blocked-words-touch.test.ts`, 2026-11-03). Each pair takes those classes from one constant, `add-blocked-word-form-layout.ts`, `blocked-word-capacity-layout.ts` and `blocked-word-list-layout.ts`, as the audit log's do, so that they cannot drift apart again (decided by the agent on 2026-11-03, on #358, for Gilles to review, since #358 asks for the skeleton's height alone).
+- The list header: « La liste » and its count, `whitespace-nowrap`, then the filter form, `w-full sm:w-82`, as today. The sentence that says no word matches a filter takes `wrap-anywhere`: with a filter of 120 characters and no space, the page scrolled sideways, 951 px wide at 360 px, without it (`e2e/blocked-words-touch.test.ts` with the class taken out, 2026-11-03).
+- The tiles keep `repeat(auto-fill,minmax(12.5rem,1fr))`, one column under about 420 px of room. A tile stays 48 px tall; its pencil and its cross are `icon-sm` `Button`s, which take `touch:size-11` since #357, so that only `pr-1` becoming `pr-0.5` under `touch` was left to do: the buttons then leave 2 px above and under them and 3 beside, the tile's border of 1 px included.
+- The side column goes under the list below a container of 780 px, as today. The rows of « Autres règles AutoMod » and their `<summary>` are 44 px high under `touch`, and keep the spacing a mouse has: the summary of a rule with keywords, or the name of a rule with none, takes `touch:min-h-11 touch:py-2.75` and cancels that padding with `touch:-my-2.75`, so that the row keeps its own `py-2.75` and the keywords of an open `<details>` stay 8 px under the name. A row of one line is then 44 px high inside its border, where it was 42.25 (measured by `e2e/blocked-words-touch.test.ts`, 2026-11-03), and a row of several lines does not change (inferred from the classes). Handing the padding to the target this way is the agent's decision (decided by the agent on 2026-11-03, on #358, for Gilles to review, since #358 asks for 44 px and this file only for `touch:min-h-11` on both).
 
 ### `/audit-log`
 
@@ -119,6 +122,7 @@ Delivered by #362.
 ## Known limits
 
 - **`viewport-fit=cover` and the safe areas.** The root layout's `viewport` sets `viewportFit: "cover"` since #355, so that the page extends under a phone's notch and home indicator. #356 pads the bar at the top, left and right, the rail and the sidebar at the left, by their width, and at the bottom, by their foot, and the page's column at its sides, which `e2e/responsive.test.ts` proves by overriding the insets through the Chrome DevTools Protocol's `Emulation.setSafeAreaInsetsOverride`, as Playwright's insets are 0 otherwise. The rail and the sidebar do not pad their top, where a landscape phone's inset is 0 and a tablet's status bar sits under the column's `pt-11` (inferred, not tried on a device). #357 pads the docked dialog, the footer of a Sheet and the toasts' viewport with `env(safe-area-inset-bottom)`, none of which a test proves yet. With a mouse every inset is 0, so no desktop page changes (inferred, #355).
+- **A touch tile's word.** A tile holds its word, its pencil and its cross in the 200 px of the grid's minimum, and the two 44 px buttons leave the word 90 px, 12 characters of the monospace font, where a mouse leaves it 120 (inferred from the tile's classes, not measured): a longer word is cut with an ellipsis, its tile's `title` holding it whole (#358).
 - **A search typed and not sent** is lost when a filter Sheet's form is sent, since the Sheet's form carries the URL's search text, not the field's (Gilles, 2026-11-03).
 
 ## Checklist
