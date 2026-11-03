@@ -8,10 +8,10 @@ function bars(html: string) {
   return html.match(/data-slot="skeleton"/g)?.length ?? 0
 }
 
-test("the skeleton of the filter's form is a bar for each of its two labels, its two fields and its button, with nothing to type in", () => {
+test("the skeleton of the filter's form is a bar for each of its two labels, its two fields and its button, then the bar of the button that folds them, with nothing to type in", () => {
   const html = renderToStaticMarkup(<AuditLogFilterFormSkeleton />)
 
-  expect(bars(html)).toBe(5)
+  expect(bars(html)).toBe(6)
   expect(html).not.toMatch(/<(form|input|button|label|a)[\s>]/)
   expect(html).not.toContain("role=")
 })

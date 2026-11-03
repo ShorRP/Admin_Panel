@@ -2,8 +2,7 @@ import Form from "next/form"
 import { ListFilter } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { Input } from "@/ui/input"
-import { Label } from "@/ui/label"
+import { AuditLogFilterField } from "./audit-log-filter-field"
 import type { AuditLogFilters } from "./audit-log-filters"
 import { FILTER_FIELD_CLASSES, FILTER_FORM_CLASSES } from "./audit-log-layout"
 
@@ -15,47 +14,24 @@ export function AuditLogFilterForm({
   return (
     <Form action="/audit-log" prefetch={false} className={FILTER_FORM_CLASSES}>
       {type !== null && <input type="hidden" name="type" value={type} />}
-      <FilterField
+      <AuditLogFilterField
         id="audit-log-author"
         name="author"
         label="Auteur"
         value={author}
+        className={FILTER_FIELD_CLASSES}
       />
-      <FilterField
+      <AuditLogFilterField
         id="audit-log-account"
         name="account"
         label="Compte"
         value={account}
+        className={FILTER_FIELD_CLASSES}
       />
       <Button type="submit">
         <ListFilter aria-hidden data-icon="inline-start" />
         Filtrer
       </Button>
     </Form>
-  )
-}
-
-function FilterField({
-  id,
-  name,
-  label,
-  value,
-}: {
-  id: string
-  name: string
-  label: string
-  value: string | null
-}) {
-  return (
-    <div className={FILTER_FIELD_CLASSES}>
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        name={name}
-        defaultValue={value ?? ""}
-        placeholder="Nom, ID ou mention"
-        autoComplete="off"
-      />
-    </div>
   )
 }

@@ -9,11 +9,23 @@ export const TYPE_FILTER_CLASSES = cn(
 export const TYPE_LINKS_CLASSES = cn("flex flex-wrap gap-1.5")
 
 export const FILTER_FORM_CLASSES = cn(
-  "flex flex-wrap items-end gap-x-3 gap-y-3.5"
+  "hidden flex-wrap items-end gap-x-3 gap-y-3.5 md:flex"
 )
 
 export const FILTER_FIELD_CLASSES = cn(
   "flex min-w-0 flex-1 basis-full flex-col gap-2 sm:max-w-72 sm:basis-56"
+)
+
+export const FILTER_FOLD_CLASSES = cn("flex flex-col gap-3 md:hidden")
+
+export const SHEET_FIELD_CLASSES = cn("flex min-w-0 flex-col gap-2")
+
+export const PAGINATION_CLASSES = cn(
+  "flex w-full gap-2 sm:ms-auto sm:w-auto sm:flex-wrap"
+)
+
+export const PAGINATION_LINK_CLASSES = cn(
+  "max-sm:min-w-0 max-sm:flex-1 max-sm:text-center max-sm:whitespace-normal"
 )
 
 export const DAY_HEADER_CLASSES = cn("flex items-center gap-3")

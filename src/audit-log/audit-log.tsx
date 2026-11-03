@@ -20,6 +20,7 @@ import { EmptyListFrame } from "@/ui/empty-list-frame"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
+import { AuditLogFilterFold } from "./audit-log-filter-fold"
 import { AuditLogFilterForm } from "./audit-log-filter-form"
 import { hasFilter, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
@@ -32,6 +33,8 @@ import {
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
   FILTERS_CLASSES,
+  PAGINATION_CLASSES,
+  PAGINATION_LINK_CLASSES,
 } from "./audit-log-layout"
 import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
 import { ParisDay } from "./paris-day"
@@ -69,6 +72,7 @@ export function AuditLog({
       <div className={FILTERS_CLASSES}>
         <AuditLogTypeFilter filters={filters} />
         <AuditLogFilterForm key={JSON.stringify(filters)} filters={filters} />
+        <AuditLogFilterFold filters={filters} />
       </div>
       {days.length === 0 ? (
         <NoChange filters={filters} before={before} />
@@ -91,13 +95,16 @@ export function AuditLog({
           {(before !== null || older !== null) && (
             <nav
               aria-label="Pages du journal d’audit"
-              className="ms-auto flex flex-wrap gap-2"
+              className={PAGINATION_CLASSES}
             >
               {before !== null && (
                 <Link
                   href={auditLogHref(filters)}
                   prefetch={false}
-                  className={buttonVariants({ variant: "outline" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline" }),
+                    PAGINATION_LINK_CLASSES
+                  )}
                 >
                   <ArrowLeft aria-hidden data-icon="inline-start" />
                   Revenir aux plus récents
@@ -107,7 +114,10 @@ export function AuditLog({
                 <Link
                   href={auditLogHref({ ...filters, before: older })}
                   prefetch={false}
-                  className={buttonVariants({ variant: "outline" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline" }),
+                    PAGINATION_LINK_CLASSES
+                  )}
                 >
                   <ArrowRight aria-hidden data-icon="inline-start" />
                   Plus anciens

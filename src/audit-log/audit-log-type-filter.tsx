@@ -20,7 +20,7 @@ const TYPE_LINKS = [
 ]
 
 const typeLinkVariants = cva(
-  "inline-flex h-7.5 items-center rounded-full border px-3.25 text-[0.8125rem] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+  "inline-flex h-7.5 items-center rounded-full border px-3.25 text-[0.8125rem] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 touch:h-11",
   {
     variants: {
       current: {

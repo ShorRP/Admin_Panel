@@ -46,7 +46,7 @@ export function AuditLogSkeleton() {
               <Skeleton
                 key={width}
                 className={cn(
-                  "h-7.5 rounded-full motion-reduce:animate-none",
+                  "h-7.5 rounded-full motion-reduce:animate-none touch:h-11",
                   width
                 )}
               />
