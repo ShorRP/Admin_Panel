@@ -7,7 +7,7 @@ import { PublicPageFrame } from "./public-page-frame"
 import { ShorLogo } from "./shor-logo"
 
 export const LOGIN_ACTION_CLASS = cn(
-  "h-10 gap-2 px-4 has-data-[icon=inline-start]:pl-3.5"
+  "h-10 w-full gap-2 px-4 has-data-[icon=inline-start]:pl-3.5 sm:w-auto"
 )
 
 export function LoginNotice({
@@ -26,7 +26,7 @@ export function LoginNotice({
           <ShorLogo className="h-12 w-11" />
           <div className="flex flex-col gap-3">
             <Overline>Panel du staff · Skyrim Roleplay</Overline>
-            <h1 className="font-heading text-[2.875rem] leading-[1.02] font-medium tracking-[-0.01em]">
+            <h1 className="font-heading text-[2.375rem] leading-[1.02] font-medium tracking-[-0.01em] sm:text-[2.875rem]">
               {title}
             </h1>
           </div>
@@ -34,7 +34,9 @@ export function LoginNotice({
             {children}
           </p>
           <OrnamentRule leadingLine />
-          <div className="flex flex-wrap gap-2">{actions}</div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {actions}
+          </div>
         </div>
       </main>
     </PublicPageFrame>
