@@ -37,10 +37,15 @@ function toggle(html: string) {
   }
 }
 
-function render(theme: Theme, { iconOnly = false } = {}) {
+function render(theme: Theme, { iconOnly = false, rail = false } = {}) {
   return toggle(
     renderToStaticMarkup(
-      <ThemeToggle theme={theme} onChoose={() => {}} iconOnly={iconOnly} />
+      <ThemeToggle
+        theme={theme}
+        onChoose={() => {}}
+        iconOnly={iconOnly}
+        rail={rail}
+      />
     )
   )
 }
@@ -88,4 +93,17 @@ test("with its icons alone, the theme toggle leaves « Auto », « Clair » and 
       content: '<span class="sr-only">Sombre</span>',
     },
   ])
+})
+
+test("in its rail form, the theme toggle offers the same icons and names, and presses the same choice, as in its labelled form", () => {
+  function withTextNames({ buttons }: ReturnType<typeof render>) {
+    return buttons.map(({ content, ...button }) => ({
+      ...button,
+      name: content.replace(/<[^>]*>/g, ""),
+    }))
+  }
+
+  expect(withTextNames(render("dark", { rail: true }))).toEqual(
+    withTextNames(render("dark"))
+  )
 })
