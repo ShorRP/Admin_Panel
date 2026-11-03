@@ -10,7 +10,7 @@ export function PageHeading({
     <h1
       {...props}
       className={cn(
-        "font-heading text-[2.375rem] leading-[1.05] font-medium tracking-[-0.01em]",
+        "font-heading text-[2rem] leading-[1.05] font-medium tracking-[-0.01em] sm:text-[2.375rem]",
         className
       )}
     >

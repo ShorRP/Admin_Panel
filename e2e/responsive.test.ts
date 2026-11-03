@@ -5,7 +5,7 @@ import {
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
 } from "../playwright.config"
-import { expect, test, type Page } from "./fixtures"
+import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -29,6 +29,8 @@ const SCREENS = [
   { width: 768, height: 1024, touchScreen: false },
   { width: 1024, height: 768, touchScreen: true },
 ] as const
+
+const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
 
 const STAFF_PAGES = [
   { path: "/blocked-words", fixme: true },
@@ -81,6 +83,23 @@ async function settle(page: Page) {
 async function resize(page: Page, size: { width: number; height: number }) {
   await settle(page)
   await page.setViewportSize(size)
+}
+
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox()
+  if (box === null) {
+    throw new Error("The element is not visible.")
+  }
+  return box
+}
+
+async function sizeOf(locator: Locator) {
+  const { width, height } = await boxOf(locator)
+  return { width: Math.round(width), height: Math.round(height) }
+}
+
+function fontSizeOf(locator: Locator) {
+  return locator.evaluate((element) => getComputedStyle(element).fontSize)
 }
 
 function holdsTouch(page: Page) {
@@ -256,7 +275,7 @@ test.fixme("the navigation is a bar below md, a 64 px rail from md and a 252 px 
   expect((await aside.boundingBox())?.width).toBe(252)
 })
 
-test.fixme("a dialog docks to the bottom of a 360 px screen, its two buttons sharing one row", async ({
+test("a dialog docks to the bottom of a 360 px screen, its two buttons sharing one row", async ({
   page,
   logIn,
 }) => {
@@ -280,3 +299,180 @@ test.fixme("a dialog docks to the bottom of a 360 px screen, its two buttons sha
   await dialog.getByRole("button", { name: "Annuler" }).click()
   await expect(dialog).toBeHidden()
 })
+
+const TOAST_FRAME_PX = 34
+
+const DESKTOP_CLOSE_BUTTON_PX = 28
+
+for (const screen of [...SCREENS, DESKTOP]) {
+  test.describe(`the shared controls at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("take their touch size on a touch screen and keep their desktop size with a mouse", async ({
+      page,
+      logIn,
+      discord,
+      readToast,
+      toast,
+    }) => {
+      discord.modifyMemberAs(
+        ALDIS.id,
+        BRYNJA.id,
+        {
+          communication_disabled_until: new Date(
+            Date.now() + 3_600_000
+          ).toISOString(),
+        },
+        "Insultes"
+      )
+
+      await logIn(ALDIS)
+      await page.goto("/blocked-words?query=mot")
+      await settle(page)
+      const touch = await holdsTouch(page)
+      expect(touch).toBe(screen !== DESKTOP)
+      const field = touch ? MIN_TARGET_PX : 32
+      const fieldText = screen.width < 768 ? "16px" : "14px"
+
+      expect(await fontSizeOf(page.getByRole("heading", { level: 1 }))).toBe(
+        screen.width < 640 ? "32px" : "38px"
+      )
+      expect(
+        await fontSizeOf(page.getByText("Capacité", { exact: true }))
+      ).toBe("11px")
+      expect(
+        (await sizeOf(page.getByRole("textbox", { name: "Filtrer la liste" })))
+          .height
+      ).toBe(field)
+      expect(
+        (await sizeOf(page.getByRole("button", { name: "Filtrer" }))).height
+      ).toBe(field)
+      const showAll = await sizeOf(
+        page.getByRole("link", { name: "Tout afficher" })
+      )
+      expect(showAll.height >= MIN_TARGET_PX).toBe(touch)
+
+      await page.getByPlaceholder(/^Ex./).fill("ab")
+      await page.getByRole("button", { name: "Ajouter" }).click()
+      await readToast(/est maintenant un mot interdit/)
+      const close = await sizeOf(
+        toast().getByRole("button", { name: "Fermer" })
+      )
+      expect(close).toEqual(
+        touch
+          ? { width: MIN_TARGET_PX, height: MIN_TARGET_PX }
+          : { width: DESKTOP_CLOSE_BUTTON_PX, height: DESKTOP_CLOSE_BUTTON_PX }
+      )
+      const text = await sizeOf(toast().locator("[data-slot=toast-title]"))
+      expect((await sizeOf(toast())).height).toBeLessThanOrEqual(
+        TOAST_FRAME_PX + Math.max(text.height, DESKTOP_CLOSE_BUTTON_PX)
+      )
+
+      await page.goto("/audit-log?author=aldis")
+      await settle(page)
+      const reset = await sizeOf(
+        page.getByRole("link", { name: "Réinitialiser" })
+      )
+      expect(reset.height >= MIN_TARGET_PX).toBe(touch)
+      const author = await sizeOf(
+        page.locator(`main a[href="/records/${ALDIS.id}"]`).first()
+      )
+      expect(author.height >= MIN_TARGET_PX).toBe(touch)
+      const account = page
+        .getByRole("main")
+        .getByRole("link", { name: "brynja" })
+      expect(
+        await account.evaluate((link) => getComputedStyle(link).display)
+      ).toBe("inline")
+      expect((await sizeOf(account)).height).toBeLessThan(MIN_TARGET_PX)
+
+      await page.goto("/records")
+      await settle(page)
+      expect(
+        await fontSizeOf(page.getByRole("combobox", { name: "Rôle" }))
+      ).toBe(fieldText)
+      expect(
+        await fontSizeOf(page.getByRole("textbox", { name: "Compte" }))
+      ).toBe(fieldText)
+
+      await page.goto(`/records/${BRYNJA.id}`)
+      await settle(page)
+      expect(
+        await fontSizeOf(page.getByText("Heures de Paris", { exact: true }))
+      ).toBe("11px")
+      const tab = page.getByRole("tab", { name: "Expulsion" })
+      expect((await sizeOf(tab)).height).toBe(touch ? MIN_TARGET_PX : 30)
+      await tab.click()
+      await page.getByRole("button", { name: "Expulser" }).click()
+      const dialog = page.getByRole("dialog")
+      await expect(dialog).toBeVisible()
+      expect(
+        (await sizeOf(dialog.getByRole("button", { name: "Annuler" }))).height
+      ).toBe(touch ? MIN_TARGET_PX : 36)
+      const box = await boxOf(dialog)
+      if (screen.width < 640) {
+        expect([box.x, box.width, Math.round(box.y + box.height)]).toEqual([
+          0,
+          screen.width,
+          screen.height,
+        ])
+      } else {
+        expect(Math.abs(box.x + box.width / 2 - screen.width / 2)).toBeLessThan(
+          1
+        )
+        expect(
+          Math.abs(box.y + box.height / 2 - screen.height / 2)
+        ).toBeLessThan(1)
+      }
+      await dialog.getByRole("button", { name: "Annuler" }).click()
+      await expect(dialog).toBeHidden()
+
+      await page.goto("/blocked-words")
+      await settle(page)
+      if (screen.width < 768) {
+        const menu = page.getByRole("button", { name: "Ouvrir le menu" })
+        expect(await sizeOf(menu)).toEqual({
+          width: MIN_TARGET_PX,
+          height: MIN_TARGET_PX,
+        })
+        await menu.click()
+        const sheet = page.getByRole("dialog")
+        await expect(sheet).toBeVisible()
+        expect(
+          await sizeOf(sheet.getByRole("button", { name: "Fermer" }))
+        ).toEqual({ width: MIN_TARGET_PX, height: MIN_TARGET_PX })
+        expect(
+          await fontSizeOf(sheet.getByText("Administration", { exact: true }))
+        ).toBe("11px")
+        expect(
+          (
+            await sizeOf(
+              sheet
+                .getByRole("group", { name: "Thème" })
+                .getByRole("button")
+                .first()
+            )
+          ).height
+        ).toBe(MIN_TARGET_PX)
+      } else {
+        expect(
+          await fontSizeOf(page.getByText("Administration", { exact: true }))
+        ).toBe("11px")
+        expect(
+          (
+            await sizeOf(
+              page
+                .getByRole("group", { name: "Thème" })
+                .getByRole("button")
+                .first()
+            )
+          ).height
+        ).toBe(touch ? MIN_TARGET_PX : 28)
+      }
+    })
+  })
+}
