@@ -1,11 +1,14 @@
 import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
+import { DiscordError } from "@/discord/discord-error"
+import { ROUTES } from "@/discord/routes"
 import {
   BAN_ROLE_ID,
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
 } from "../playwright.config"
 import { expect, test, type Locator, type Page } from "./fixtures"
+import { minifiedReactError } from "./minified-react-error"
 import { resize, settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -41,8 +44,10 @@ const STAFF_PAGES = [
 ] as const
 
 const PUBLIC_PAGES = [
-  { path: "/privacy", fixme: true },
-  { path: "/login/logged-out", fixme: true },
+  { path: "/privacy", fixme: false },
+  { path: "/login/logged-out", fixme: false },
+  { path: "/login/refused", fixme: false },
+  { path: "/login/failed", fixme: false },
 ] as const
 
 const MIN_TARGET_PX = 44
@@ -438,6 +443,116 @@ test("a dialog docks to the bottom of a 360 px screen, its two buttons sharing o
   await dialog.getByRole("button", { name: "Annuler" }).click()
   await expect(dialog).toBeHidden()
 })
+
+const LONG_WORD = "x".repeat(300)
+
+const ACTION_MAX_WIDTH_PX = 250
+
+for (const screen of SCREENS) {
+  test.describe(`the login, error and privacy pages at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("stack their actions at full width under 640 px, take a 38 px title there and wrap a long word", async ({
+      page,
+      discord,
+      logIn,
+      browserConsole,
+    }) => {
+      browserConsole.expectProblems([
+        "console.error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        `console.error: Error: ${minifiedReactError(441)}`,
+        `pageerror: ${minifiedReactError(419)}`,
+      ])
+      const phone = screen.width < 640
+      const room = screen.width - 32
+      function expectActionWidth(box: { x: number; width: number }) {
+        if (phone) {
+          expect([box.x, box.width]).toEqual([16, room])
+        } else {
+          expect(box.width).toBeLessThan(ACTION_MAX_WIDTH_PX)
+        }
+      }
+
+      await logIn(ALDIS)
+      await page.goto("/login/refused")
+      await settle(page)
+      expect(await fontSizeOf(page.getByRole("heading", { level: 1 }))).toBe(
+        phone ? "38px" : "46px"
+      )
+      const themeChoices = page
+        .getByRole("group", { name: "Thème" })
+        .getByRole("button")
+      expect(await themeChoices.count()).toBe(3)
+      for (const choice of await themeChoices.all()) {
+        expect(await sizeOf(choice)).toEqual({
+          width: MIN_TARGET_PX,
+          height: MIN_TARGET_PX,
+        })
+      }
+      const logInAgain = await boxOf(
+        page.getByRole("link", { name: "Se reconnecter" })
+      )
+      const logOut = await boxOf(
+        page.getByRole("button", { name: "Se déconnecter" })
+      )
+      expectActionWidth(logInAgain)
+      expectActionWidth(logOut)
+      if (phone) {
+        expect(logOut.y - (logInAgain.y + logInAgain.height)).toBe(8)
+      } else {
+        expect(Math.abs(logOut.y - logInAgain.y)).toBeLessThan(1)
+        expect(logOut.height).toBe(logInAgain.height)
+      }
+
+      await page.goto("/no-such-page")
+      await settle(page)
+      expectActionWidth(
+        await boxOf(page.getByRole("link", { name: "Revenir à l’accueil" }))
+      )
+      expect(await smallTargets(page)).toEqual([])
+
+      discord.failNext(
+        "getAuditLog",
+        new DiscordError({
+          method: "GET",
+          route: ROUTES.guildAuditLog,
+          status: 503,
+        })
+      )
+      await page.goto("/audit-log")
+      const retry = page.getByRole("button", { name: "Réessayer" })
+      await expect(retry).toBeVisible()
+      await page.waitForLoadState()
+      expectActionWidth(await boxOf(retry))
+      expect(await smallTargets(page)).toEqual([])
+      await page
+        .getByRole("main")
+        .getByText(/^\d+$/)
+        .evaluate((reference, word) => {
+          reference.textContent = word
+        }, LONG_WORD)
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+      await retry.click()
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Journal d’audit" })
+      ).toBeVisible()
+
+      await page.goto("/privacy")
+      await settle(page)
+      await page
+        .getByRole("code")
+        .first()
+        .evaluate((code, word) => {
+          code.textContent = word
+        }, LONG_WORD)
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+    })
+  })
+}
 
 const TOAST_FRAME_PX = 34
 

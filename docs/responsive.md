@@ -2,7 +2,7 @@
 
 The patterns, the per-page specification and the review checklist behind the **Responsive** section of `CLAUDE.md`. The mockups that show them, every page at 360, 390, 768, 1,024 and 1,280 px in light and in dark, were made with Claude Design outside the repository, as the Hydromel mockup was (#221, #223); the repository keeps no capture of them. Where this file and a ticket differ, the ticket wins.
 
-Like the **Architecture** of `CLAUDE.md`, this file was written before the code. #355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls and #356 the navigation; the tickets of #354 deliver the rest, each making its part true (#358 to #362 the pages), so that a section below describes the target until its ticket lands.
+Like the **Architecture** of `CLAUDE.md`, this file was written before the code. #355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls, #356 the navigation and #362 the login pages, the privacy policy and the error pages; the tickets of #354 deliver the rest, each making its part true (#358 to #361 the pages), so that a section below describes the target until its ticket lands.
 
 ## Options
 
@@ -103,10 +103,13 @@ Delivered by #356. `StaffHeader` keeps one `<aside>` for the rail and the sideba
 
 ### Login pages, the privacy policy and the error pages
 
-- `PublicPageFrame` keeps `max-w-2xl px-4 sm:px-12`; its theme toggle takes the touch size on each button from `ThemeToggle` (#357), and its footer's links `touch:min-h-11`.
-- `LoginNotice`: under `sm`, the title takes 38 px and the actions stack at full width.
-- `ErrorNotice`: under `sm`, the action takes the full width; the reference keeps `font-mono` and takes `wrap-anywhere`.
+Delivered by #362.
+
+- `PublicPageFrame` keeps `max-w-2xl px-4 sm:px-12`; its theme toggle takes the touch size on each button from `ThemeToggle` (#357), and its footer's links `touch:min-h-11`, « Confidentialité » with `touch:inline-flex touch:items-center` too, so that its text sits in the middle of the 44 px, as the `shor-rp.fr` link's does (inferred from CSS, not measured without it); `PublicPageFrame` passes them through `PrivacyPolicyLink`'s `className`, so that `privacy-policy-link.tsx` stays as it is, and the footer takes `items-center` (decided by the agent on 2026-11-03, on #362, for Gilles to review).
+- `LoginNotice`: under `sm`, the title takes 38 px and the actions stack at full width, in a column, `flex-col sm:flex-row sm:flex-wrap`, which stretches a link; `LOGIN_ACTION_CLASS` adds `w-full sm:w-auto` for the log-out button, which sits in a `<form>` and would otherwise keep its width (decided by the agent on 2026-11-03, on #362, for Gilles to review). The actions take the full width of the block of at most 400 px that holds them, not of the column, so that at 639 px they are 400 px wide where the error pages' action takes 607 (decided by the agent on 2026-11-03, on #362, for Gilles to review, since #362 says « toute la largeur »). On a touch screen the buttons take 44 px, the Button's `touch:h-11` winning over their 40 px.
+- `ErrorNotice`: under `sm`, the action takes the full width, through the same column; the reference keeps `font-mono` and takes `wrap-anywhere`.
 - The privacy policy's `<code>` takes `wrap-anywhere`.
+- `e2e/responsive.test.ts` crosses `/login/refused` and `/login/failed` beside `/privacy` and `/login/logged-out`, and its flow `the login, error and privacy pages at <width> px` measures the actions of the refused page, of the not-found page and of the error page, and the long word (**Checks** of `CLAUDE.md`).
 
 ## Known limits
 
