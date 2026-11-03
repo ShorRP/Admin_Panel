@@ -44,7 +44,7 @@ const PUBLIC_PAGES = [
 
 const MIN_TARGET_PX = 44
 
-const TARGETS =
+const TARGET_SELECTOR =
   "a[href], button, input:not([type=hidden]):not([type=radio]):not([type=checkbox]), select, textarea, summary, [role=tab], label:has(> input[type=radio]), label:has(> input[type=checkbox])"
 
 test.use({
@@ -143,7 +143,7 @@ function smallTargets(page: Page) {
             `${element.localName} « ${(element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 40)} » ${Math.round(box.width)}×${Math.round(box.height)}`
         )
     },
-    { selector: TARGETS, min: MIN_TARGET_PX }
+    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX }
   )
 }
 
@@ -170,8 +170,8 @@ for (const screen of SCREENS) {
         await checkAccessibility()
       })
 
-      const targets = fixme ? test.fixme : test
-      targets(
+      const sizeTest = fixme ? test.fixme : test
+      sizeTest(
         `${path} gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px`,
         async ({ page, logIn }) => {
           await logIn(ALDIS)
@@ -195,8 +195,8 @@ for (const screen of SCREENS) {
         await checkAccessibility()
       })
 
-      const targets = fixme ? test.fixme : test
-      targets(
+      const sizeTest = fixme ? test.fixme : test
+      sizeTest(
         `${path} gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px`,
         async ({ page }) => {
           await page.goto(path)

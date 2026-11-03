@@ -57,7 +57,7 @@ The page column keeps its margin, `px-[clamp(1.25rem,4vw,3.5rem)]`, and its `pb-
 | `AccountLink`   | content-sized                                                                | `touch:min-h-11` with `items-center`                                                                                                                                                                        |
 | `TextLink`      | content-sized                                                                | nothing inside a sentence; standing alone, `touch:min-h-11 touch:inline-flex touch:items-center`                                                                                                            |
 
-The confirmation footers, `SanctionConfirmation` and `BlockedWordActionChange`, go from `flex justify-end gap-2` to `grid grid-cols-2 gap-2 sm:flex sm:justify-end`.
+The confirmation footers, `SanctionConfirmation` and `BlockedWordActionChange`, go from `flex justify-end gap-2` to `grid grid-cols-2 gap-2 sm:flex sm:justify-end`. From `sm`, the dialog stays centered, at the copied `DialogContent`'s `sm:max-w-sm`, or at the `sm:max-w-110` that the panel's two dialogs, the sanctions' confirmation and the blocked words' change of action, pass it.
 
 ## Navigation
 
