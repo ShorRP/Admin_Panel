@@ -223,7 +223,7 @@ test("the viewport covers the whole screen, notch and home indicator included", 
   )
 })
 
-test("the navigation is a bar below md, a 64 px rail from md and a 252 px sidebar from lg, each naming its links alike", async ({
+test("the navigation is a bar below md, a 64 px rail from md and a 252 px sidebar from lg", async ({
   page,
   logIn,
 }) => {
@@ -267,6 +267,17 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   await expect(
     bar.getByRole("link", { name: "aldis", exact: true })
   ).toBeVisible()
+  const field = page.getByPlaceholder(/^Ex\./)
+  await field.focus()
+  expect(
+    await field.evaluate((element) => {
+      const { x, y, width, height } = element.getBoundingClientRect()
+      return (
+        document.elementFromPoint(x + width / 2, y + height / 2) === element
+      )
+    }),
+    "a field focused above the viewport scrolls in under the bar, not behind it"
+  ).toBe(true)
   expect(await smallTargets(page, "header")).toEqual([])
   await bar.getByRole("button", { name: "Ouvrir le menu" }).click()
   await expect(menu).toBeVisible()
@@ -285,18 +296,33 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   await expect(aside.getByTitle("aldis · Staff · Modération")).toBeVisible()
   expect(await smallTargets(page, "aside")).toEqual([])
   expect((await boxOf(administration)).width).toBe(1)
-  const blockedWords = await boxOf(
-    aside.getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
-  )
-  const count = await boxOf(
-    aside
-      .getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
-      .getByText("2", { exact: true })
-  )
-  expect(count.x).toBeGreaterThan(blockedWords.x + blockedWords.width / 2)
-  expect(count.y + count.height).toBeLessThan(
-    blockedWords.y + blockedWords.height / 2
-  )
+  const count = await aside
+    .getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
+    .getByText("2", { exact: true })
+    .evaluate((digits) => {
+      digits.textContent = "3 000"
+      const pill = digits.parentElement
+      const link = digits.closest("a")
+      const icon = link?.querySelector("svg")
+      const aside = digits.closest("aside")
+      if (pill === null || link === null || !icon || aside === null) {
+        throw new Error("The badge is not in its link.")
+      }
+      const pillBox = pill.getBoundingClientRect()
+      const linkBox = link.getBoundingClientRect()
+      const iconBox = icon.getBoundingClientRect()
+      return {
+        belowTheIcon: pillBox.top >= iconBox.bottom - 0.5,
+        withinTheLink:
+          pillBox.left >= linkBox.left && pillBox.right <= linkBox.right,
+        overflowsTheRail: aside.scrollWidth > aside.clientWidth,
+      }
+    })
+  expect(count).toEqual({
+    belowTheIcon: true,
+    withinTheLink: true,
+    overflowsTheRail: false,
+  })
   const themes = await Promise.all(
     (
       await aside
@@ -345,6 +371,11 @@ test("the bar, the rail, the sidebar and the page keep clear of the notch and th
 
   const barBox = await boxOf(bar)
   expect(barBox.height).toBe(56 + INSETS.top)
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).scrollPaddingTop
+    )
+  ).toBe(`${barBox.height}px`)
   expect(
     (
       await boxOf(
@@ -580,6 +611,18 @@ for (const screen of [...SCREENS, DESKTOP]) {
             )
           ).height
         ).toBe(touch ? MIN_TARGET_PX : 28)
+        expect(
+          (
+            await sizeOf(
+              page
+                .getByRole("complementary")
+                .getByRole("link", { name: "Journal d’audit" })
+            )
+          ).height
+        ).toBe(touch ? MIN_TARGET_PX : 36)
+        if (touch) {
+          expect(await smallTargets(page, "aside")).toEqual([])
+        }
       }
     })
   })

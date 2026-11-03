@@ -95,19 +95,15 @@ test("with its icons alone, the theme toggle leaves « Auto », « Clair » and 
   ])
 })
 
-test("in its rail form, the theme toggle keeps its icons before names that assistive technologies alone read below lg, and starts them as text from lg", () => {
-  expect(
-    render("dark", { rail: true }).buttons.map(
-      ({ pressed, iconStart, iconHidden, content }) => ({
-        pressed,
-        iconStart,
-        iconHidden,
-        name: /^<span class="[^"]*\bsr-only">(.*)<\/span>$/.exec(content)?.[1],
-      })
-    )
-  ).toEqual([
-    { pressed: "false", iconStart: true, iconHidden: true, name: "Auto" },
-    { pressed: "false", iconStart: true, iconHidden: true, name: "Clair" },
-    { pressed: "true", iconStart: true, iconHidden: true, name: "Sombre" },
-  ])
+test("in its rail form, the theme toggle offers the same icons and names, and presses the same choice, as in its labelled form", () => {
+  function withTextNames({ buttons }: ReturnType<typeof render>) {
+    return buttons.map(({ content, ...button }) => ({
+      ...button,
+      name: content.replace(/<[^>]*>/g, ""),
+    }))
+  }
+
+  expect(withTextNames(render("dark", { rail: true }))).toEqual(
+    withTextNames(render("dark"))
+  )
 })

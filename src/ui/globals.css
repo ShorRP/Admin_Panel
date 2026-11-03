@@ -247,6 +247,12 @@
   }
 }
 
+@media (width < 48rem) {
+  html:has([data-slot="bar"]) {
+    scroll-padding-top: calc(3.5rem + env(safe-area-inset-top));
+  }
+}
+
 ::view-transition-old(.section-crossfade),
 ::view-transition-old(.fade-exit) {
   animation: 150ms ease-out both view-fade-out;

@@ -240,9 +240,9 @@ test("the blocked words' link shows the count it is given after the section's na
 
     expect(
       sections.map(({ content }) => ({
-        countAfterName: content.startsWith(
-          `<span class="max-lg:sr-only">Mots interdits</span>${countMarkup}`
-        ),
+        countAfterName:
+          content.includes(countMarkup) &&
+          textOf(content) === "Mots interdits12",
         count: content.includes(countMarkup),
       }))
     ).toEqual([
@@ -296,19 +296,27 @@ test("the sidebar's foot offers the theme toggle, on Auto until the browser read
       ([, content = ""]) => textOf(content)
     )
   ).toEqual(["Auto"])
-  expect(buttons(foot)).toEqual([
+  const footButtons = buttons(foot)
+  expect(
+    footButtons.slice(0, 3).map(({ content, image }) => ({
+      content: textOf(content),
+      image,
+    }))
+  ).toEqual([
     {
-      content: '<span class="max-lg:sr-only">Auto</span>',
+      content: "Auto",
       image: { drawing: drawing(<Monitor />), hidden: true },
     },
     {
-      content: '<span class="max-lg:sr-only">Clair</span>',
+      content: "Clair",
       image: { drawing: drawing(<Sun />), hidden: true },
     },
     {
-      content: '<span class="max-lg:sr-only">Sombre</span>',
+      content: "Sombre",
       image: { drawing: drawing(<Moon />), hidden: true },
     },
+  ])
+  expect(footButtons.slice(3)).toEqual([
     {
       content: '<span class="sr-only">Se déconnecter</span>',
       image: { drawing: drawing(<LogOut />), hidden: true },
@@ -336,55 +344,30 @@ test("the sidebar's foot ends on a link to the privacy policy, below the staff m
   })
 })
 
-test("each of the sidebar's section links repeats its name in a title, for the rail, where the name is left to assistive technologies", async () => {
+test("each of the sidebar's section links repeats its name in a title, for the rail", async () => {
   const { sidebar } = await render("/blocked-words", { opensModeration: true })
 
   expect(
-    links(navOf(sidebar)).map(({ text, title, content }) => ({
-      text,
-      title,
-      nameForAssistiveTechnologiesBelowLg: content.includes(
-        `<span class="max-lg:sr-only">${text}</span>`
-      ),
-    }))
+    links(navOf(sidebar)).map(({ text, title }) => ({ text, title }))
   ).toEqual([
-    {
-      text: "Mots interdits",
-      title: "Mots interdits",
-      nameForAssistiveTechnologiesBelowLg: true,
-    },
-    {
-      text: "Journal d’audit",
-      title: "Journal d’audit",
-      nameForAssistiveTechnologiesBelowLg: true,
-    },
-    {
-      text: "Modération",
-      title: "Modération",
-      nameForAssistiveTechnologiesBelowLg: true,
-    },
+    { text: "Mots interdits", title: "Mots interdits" },
+    { text: "Journal d’audit", title: "Journal d’audit" },
+    { text: "Modération", title: "Modération" },
   ])
 })
 
-test("the sidebar's group titles stay the names of their lists, left to assistive technologies below lg, where a rule separates the groups", async () => {
-  const { sidebar } = await render("/blocked-words", { opensModeration: true })
-  const nav = navOf(sidebar)
-
-  expect(
+test("a rule, hidden from assistive technologies, separates the sidebar's two groups for the rail, and there is none for a staff member with one group", async () => {
+  const rules = (html: string) =>
     Array.from(
-      nav.matchAll(/<p id="([^"]*)" class="([^"]*)">([^<]*)<\/p>/g),
-      ([, , classes = "", title]) => ({
-        title,
-        belowLgForAssistiveTechnologies: classes.includes("max-lg:sr-only"),
-      })
+      navOf(html).matchAll(/<span aria-hidden="true" class="[^"]*"><\/span>/g)
     )
-  ).toEqual([
-    { title: "Administration", belowLgForAssistiveTechnologies: true },
-    { title: "Modération", belowLgForAssistiveTechnologies: true },
-  ])
-  expect(
-    Array.from(nav.matchAll(/<span aria-hidden="true" class="[^"]*"><\/span>/g))
-  ).toHaveLength(1)
+  const { sidebar: moderating } = await render("/blocked-words", {
+    opensModeration: true,
+  })
+  const { sidebar: administering } = await render("/blocked-words")
+
+  expect(rules(moderating)).toHaveLength(1)
+  expect(rules(administering)).toHaveLength(0)
 })
 
 test("the sidebar's link to the privacy policy shows a lock before its name, hidden from assistive technologies, and repeats the name in a title, for the rail", async () => {

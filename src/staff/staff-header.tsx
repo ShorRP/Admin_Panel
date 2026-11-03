@@ -50,9 +50,8 @@ const MEMBER_LINK_CLASSES = cn(
 )
 
 const MEMBER_LINK_PLACE_CLASSES = {
-  sidebar: "max-lg:size-11 max-lg:justify-center",
-  bar: "min-w-11 justify-center",
-  menu: "",
+  sidebar: cn("max-lg:size-11 max-lg:justify-center"),
+  bar: cn("min-w-11 justify-center"),
 }
 
 const BLOCKED_WORDS = {
@@ -84,7 +83,7 @@ const sectionLinkVariants = cva(
 
 const panelNameVariants = cva("", {
   variants: {
-    name: {
+    nameVisibility: {
       never: "sr-only",
       fromLg: "flex flex-col gap-1.25 max-lg:sr-only",
     },
@@ -126,7 +125,7 @@ export function StaffHeader({
         className="sticky top-0 hidden h-svh shrink-0 flex-col overflow-y-auto border-r bg-sidebar pl-[env(safe-area-inset-left)] text-sm text-sidebar-foreground md:flex md:w-[calc(4rem+env(safe-area-inset-left))] lg:w-[calc(15.75rem+env(safe-area-inset-left))]"
       >
         <PanelLink
-          name="fromLg"
+          nameVisibility="fromLg"
           className="px-5.5 pt-6 pb-5.5 max-lg:justify-center max-lg:px-0"
         />
         <OrnamentRule className="px-5.5 max-lg:hidden" />
@@ -159,9 +158,12 @@ export function StaffHeader({
           />
         </div>
       </aside>
-      <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-x-4 border-b bg-sidebar pt-[env(safe-area-inset-top)] pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-sidebar-foreground md:hidden">
+      <header
+        data-slot="bar"
+        className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-x-4 border-b bg-sidebar pt-[env(safe-area-inset-top)] pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-sidebar-foreground md:hidden"
+      >
         <PanelLink
-          name="never"
+          nameVisibility="never"
           className="-ml-2 min-h-11 min-w-11 justify-center"
         />
         <div className="ml-auto flex min-w-0 items-center gap-2 **:data-[slot=staff-member-name]:hidden">
@@ -278,7 +280,6 @@ function LinkedToOwnRecord({
     return children
   }
   const current = currentPath === record.href ? "page" : undefined
-  const classes = cn(MEMBER_LINK_CLASSES, MEMBER_LINK_PLACE_CLASSES[place])
   if (place === "menu") {
     return (
       <SheetClose
@@ -287,14 +288,18 @@ function LinkedToOwnRecord({
         render={
           <Link href={record.href} prefetch={false} aria-current={current} />
         }
-        className={classes}
+        className={MEMBER_LINK_CLASSES}
       >
         {children}
       </SheetClose>
     )
   }
   return (
-    <AccountLink href={record.href} current={current} className={classes}>
+    <AccountLink
+      href={record.href}
+      current={current}
+      className={cn(MEMBER_LINK_CLASSES, MEMBER_LINK_PLACE_CLASSES[place])}
+    >
       {place === "bar" && <span className="sr-only">{record.name}</span>}
       {children}
     </AccountLink>
@@ -327,15 +332,15 @@ function RoleName({ opensModeration }: { opensModeration: Promise<boolean> }) {
 
 function PanelLink({
   className,
-  name,
+  nameVisibility,
 }: {
   className?: string
-  name: "never" | "fromLg"
+  nameVisibility: "never" | "fromLg"
 }) {
   return (
     <a href="/" className={cn("flex shrink-0 items-center gap-3", className)}>
       <ShorLogo />
-      <span className={panelNameVariants({ name })}>
+      <span className={panelNameVariants({ nameVisibility })}>
         <span className="font-heading text-[1.1875rem] leading-none font-medium tracking-[0.24em] uppercase">
           Shor
         </span>{" "}
