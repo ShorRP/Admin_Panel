@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react"
 import {
   Ban,
   Gavel,
+  Lock,
   LogOut,
   Menu,
   Monitor,
@@ -33,6 +34,7 @@ function links(html: string) {
       text: textOf(content),
       href: /\shref="([^"]*)"/.exec(attributes)?.[1],
       current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
+      title: /\stitle="([^"]*)"/.exec(attributes)?.[1],
       image: image(imageAttributes, imageDrawing),
       content,
     })
@@ -238,7 +240,9 @@ test("the blocked words' link shows the count it is given after the section's na
 
     expect(
       sections.map(({ content }) => ({
-        countAfterName: content.startsWith(`Mots interdits${countMarkup}`),
+        countAfterName: content.startsWith(
+          `<span class="max-lg:sr-only">Mots interdits</span>${countMarkup}`
+        ),
         count: content.includes(countMarkup),
       }))
     ).toEqual([
@@ -294,15 +298,15 @@ test("the sidebar's foot offers the theme toggle, on Auto until the browser read
   ).toEqual(["Auto"])
   expect(buttons(foot)).toEqual([
     {
-      content: "Auto",
+      content: '<span class="max-lg:sr-only">Auto</span>',
       image: { drawing: drawing(<Monitor />), hidden: true },
     },
     {
-      content: "Clair",
+      content: '<span class="max-lg:sr-only">Clair</span>',
       image: { drawing: drawing(<Sun />), hidden: true },
     },
     {
-      content: "Sombre",
+      content: '<span class="max-lg:sr-only">Sombre</span>',
       image: { drawing: drawing(<Moon />), hidden: true },
     },
     {
@@ -330,6 +334,72 @@ test("the sidebar's foot ends on a link to the privacy policy, below the staff m
     afterMember: true,
     links: [{ text: "Confidentialité", href: "/privacy", current: undefined }],
   })
+})
+
+test("each of the sidebar's section links repeats its name in a title, for the rail, where the name is left to assistive technologies", async () => {
+  const { sidebar } = await render("/blocked-words", { opensModeration: true })
+
+  expect(
+    links(navOf(sidebar)).map(({ text, title, content }) => ({
+      text,
+      title,
+      nameForAssistiveTechnologiesBelowLg: content.includes(
+        `<span class="max-lg:sr-only">${text}</span>`
+      ),
+    }))
+  ).toEqual([
+    {
+      text: "Mots interdits",
+      title: "Mots interdits",
+      nameForAssistiveTechnologiesBelowLg: true,
+    },
+    {
+      text: "Journal d’audit",
+      title: "Journal d’audit",
+      nameForAssistiveTechnologiesBelowLg: true,
+    },
+    {
+      text: "Modération",
+      title: "Modération",
+      nameForAssistiveTechnologiesBelowLg: true,
+    },
+  ])
+})
+
+test("the sidebar's group titles stay the names of their lists, left to assistive technologies below lg, where a rule separates the groups", async () => {
+  const { sidebar } = await render("/blocked-words", { opensModeration: true })
+  const nav = navOf(sidebar)
+
+  expect(
+    Array.from(
+      nav.matchAll(/<p id="([^"]*)" class="([^"]*)">([^<]*)<\/p>/g),
+      ([, , classes = "", title]) => ({
+        title,
+        belowLgForAssistiveTechnologies: classes.includes("max-lg:sr-only"),
+      })
+    )
+  ).toEqual([
+    { title: "Administration", belowLgForAssistiveTechnologies: true },
+    { title: "Modération", belowLgForAssistiveTechnologies: true },
+  ])
+  expect(
+    Array.from(nav.matchAll(/<span aria-hidden="true" class="[^"]*"><\/span>/g))
+  ).toHaveLength(1)
+})
+
+test("the sidebar's link to the privacy policy shows a lock before its name, hidden from assistive technologies, and repeats the name in a title, for the rail", async () => {
+  const { sidebar } = await render("/blocked-words")
+  const foot = sidebar.slice(sidebar.indexOf("</nav>"))
+
+  expect(
+    links(foot).map(({ text, title, image }) => ({ text, title, image }))
+  ).toEqual([
+    {
+      text: "Confidentialité",
+      title: "Confidentialité",
+      image: { drawing: drawing(<Lock />), hidden: true },
+    },
+  ])
 })
 
 test("the bar names the staff member, then shows a menu button with a hidden menu icon, named « Ouvrir le menu » to assistive technologies alone", async () => {

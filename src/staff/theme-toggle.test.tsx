@@ -37,10 +37,15 @@ function toggle(html: string) {
   }
 }
 
-function render(theme: Theme, { iconOnly = false } = {}) {
+function render(theme: Theme, { iconOnly = false, rail = false } = {}) {
   return toggle(
     renderToStaticMarkup(
-      <ThemeToggle theme={theme} onChoose={() => {}} iconOnly={iconOnly} />
+      <ThemeToggle
+        theme={theme}
+        onChoose={() => {}}
+        iconOnly={iconOnly}
+        rail={rail}
+      />
     )
   )
 }
@@ -87,5 +92,22 @@ test("with its icons alone, the theme toggle leaves « Auto », « Clair » and 
       iconStart: false,
       content: '<span class="sr-only">Sombre</span>',
     },
+  ])
+})
+
+test("in its rail form, the theme toggle keeps its icons before names that assistive technologies alone read below lg, and starts them as text from lg", () => {
+  expect(
+    render("dark", { rail: true }).buttons.map(
+      ({ pressed, iconStart, iconHidden, content }) => ({
+        pressed,
+        iconStart,
+        iconHidden,
+        name: /^<span class="[^"]*\bsr-only">(.*)<\/span>$/.exec(content)?.[1],
+      })
+    )
+  ).toEqual([
+    { pressed: "false", iconStart: true, iconHidden: true, name: "Auto" },
+    { pressed: "false", iconStart: true, iconHidden: true, name: "Clair" },
+    { pressed: "true", iconStart: true, iconHidden: true, name: "Sombre" },
   ])
 })

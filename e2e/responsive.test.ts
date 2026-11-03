@@ -6,6 +6,7 @@ import {
   STAFF_ROLE_ID,
 } from "../playwright.config"
 import { expect, test, type Locator, type Page } from "./fixtures"
+import { resize, settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -68,23 +69,6 @@ test.beforeEach(({ discord }) => {
   )
 })
 
-const PENDING_SUSPENSE = '[id^="S:"], template[id^="B:"]'
-
-async function settle(page: Page) {
-  await page.waitForLoadState()
-  await page.waitForFunction(
-    (pending) =>
-      document.querySelector(pending) === null &&
-      document.activeViewTransition === null,
-    PENDING_SUSPENSE
-  )
-}
-
-async function resize(page: Page, size: { width: number; height: number }) {
-  await settle(page)
-  await page.setViewportSize(size)
-}
-
 async function boxOf(locator: Locator) {
   const box = await locator.boundingBox()
   if (box === null) {
@@ -131,9 +115,9 @@ function horizontalOverflow(page: Page) {
   })
 }
 
-function smallTargets(page: Page) {
+function smallTargets(page: Page, within = "body") {
   return page.evaluate(
-    ({ selector, min }) => {
+    ({ selector, min, root }) => {
       function inSentence(element: Element) {
         return (
           element.localName === "a" &&
@@ -144,7 +128,9 @@ function smallTargets(page: Page) {
             (element.textContent ?? "").trim().length
         )
       }
-      return [...document.querySelectorAll(selector)]
+      return [
+        ...(document.querySelector(root)?.querySelectorAll(selector) ?? []),
+      ]
         .filter((element) => {
           const box = element.getBoundingClientRect()
           return (
@@ -162,7 +148,7 @@ function smallTargets(page: Page) {
             `${element.localName} « ${(element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 40)} » ${Math.round(box.width)}×${Math.round(box.height)}`
         )
     },
-    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX }
+    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX, root: within }
   )
 }
 
@@ -237,20 +223,38 @@ test("the viewport covers the whole screen, notch and home indicator included", 
   )
 })
 
-test.fixme("the navigation is a bar below md, a 64 px rail from md and a 252 px sidebar from lg", async ({
+test("the navigation is a bar below md, a 64 px rail from md and a 252 px sidebar from lg, each naming its links alike", async ({
   page,
   logIn,
 }) => {
   const aside = page.getByRole("complementary", { includeHidden: true })
   const bar = page.getByRole("banner", { includeHidden: true })
+  const menu = page.getByRole("dialog", { name: "Menu" })
+  const administration = aside.getByText("Administration", { exact: true })
+  const ACCESSIBLE_NAMES = [
+    "Mots interdits 2 mots",
+    "Journal d’audit",
+    "Modération",
+  ]
   function scrolledBar() {
     return page.evaluate(() => {
-      window.scrollTo(0, 120)
+      window.scrollTo(0, 400)
       return {
         scrolled: window.scrollY,
         y: document.querySelector("header")?.getBoundingClientRect().y,
       }
     })
+  }
+  async function expectNamed(root: Locator) {
+    const sections = root.getByRole("navigation", { name: "Sections du panel" })
+    for (const name of ACCESSIBLE_NAMES) {
+      await expect(
+        sections.getByRole("link", { name, exact: true })
+      ).toBeVisible()
+    }
+    await expect(
+      root.getByRole("link", { name: "aldis", exact: true })
+    ).toBeVisible()
   }
 
   await page.setViewportSize({ width: 767, height: 300 })
@@ -259,20 +263,124 @@ test.fixme("the navigation is a bar below md, a 64 px rail from md and a 252 px 
   await settle(page)
   await expect(aside).toBeHidden()
   await expect(bar).toBeVisible()
-  expect(await scrolledBar()).toEqual({ scrolled: 120, y: 0 })
+  expect(await scrolledBar()).toEqual({ scrolled: 400, y: 0 })
+  await expect(
+    bar.getByRole("link", { name: "aldis", exact: true })
+  ).toBeVisible()
+  expect(await smallTargets(page, "header")).toEqual([])
+  await bar.getByRole("button", { name: "Ouvrir le menu" }).click()
+  await expect(menu).toBeVisible()
+  await expectNamed(menu)
+  expect(await smallTargets(page, "[role=dialog]")).toEqual([])
+  await page.keyboard.press("Escape")
+  await expect(menu).toBeHidden()
 
-  await resize(page, { width: 768, height: 300 })
+  await resize(page, { width: 768, height: 1024 })
   await expect(bar).toBeHidden()
   expect((await aside.boundingBox())?.width).toBe(64)
+  await expectNamed(aside)
   await expect(
-    aside.getByRole("link", { name: /^Mots interdits/ })
+    aside.getByTitle("Mots interdits", { exact: true })
   ).toBeVisible()
+  await expect(aside.getByTitle("aldis · Staff · Modération")).toBeVisible()
+  expect(await smallTargets(page, "aside")).toEqual([])
+  expect((await boxOf(administration)).width).toBe(1)
+  const blockedWords = await boxOf(
+    aside.getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
+  )
+  const count = await boxOf(
+    aside
+      .getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
+      .getByText("2", { exact: true })
+  )
+  expect(count.x).toBeGreaterThan(blockedWords.x + blockedWords.width / 2)
+  expect(count.y + count.height).toBeLessThan(
+    blockedWords.y + blockedWords.height / 2
+  )
+  const themes = await Promise.all(
+    (
+      await aside
+        .getByRole("group", { name: "Thème" })
+        .getByRole("button")
+        .all()
+    ).map(boxOf)
+  )
+  expect(themes).toHaveLength(3)
+  expect(new Set(themes.map(({ x }) => x)).size).toBe(1)
+  expect(
+    themes.every(
+      ({ y }, index) =>
+        index === 0 ||
+        y >= (themes[index - 1]?.y ?? 0) + (themes[index - 1]?.height ?? 0)
+    )
+  ).toBe(true)
 
   await resize(page, { width: 1023, height: 300 })
   expect((await aside.boundingBox())?.width).toBe(64)
+  const logOut = aside.getByRole("button", { name: "Se déconnecter" })
+  await logOut.scrollIntoViewIfNeeded()
+  await expect(logOut).toBeInViewport()
 
-  await resize(page, { width: 1024, height: 300 })
+  await resize(page, { width: 1024, height: 800 })
   expect((await aside.boundingBox())?.width).toBe(252)
+  await expectNamed(aside)
+  expect((await boxOf(administration)).width).toBeGreaterThan(20)
+})
+
+test("the bar, the rail, the sidebar and the page keep clear of the notch and the home indicator of the screen", async ({
+  page,
+  logIn,
+}) => {
+  const INSETS = { top: 47, left: 44, right: 40, bottom: 34 }
+  const aside = page.getByRole("complementary", { includeHidden: true })
+  const bar = page.getByRole("banner")
+  const main = page.getByRole("main")
+
+  await page.setViewportSize({ width: 767, height: 700 })
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await settle(page)
+  const insets = await page.context().newCDPSession(page)
+  await insets.send("Emulation.setSafeAreaInsetsOverride", { insets: INSETS })
+
+  const barBox = await boxOf(bar)
+  expect(barBox.height).toBe(56 + INSETS.top)
+  expect(
+    (
+      await boxOf(
+        bar.getByRole("link", { name: "Shor Panel du staff" }).locator("svg")
+      )
+    ).x
+  ).toBeGreaterThanOrEqual(INSETS.left)
+  const menu = await boxOf(bar.getByRole("button", { name: "Ouvrir le menu" }))
+  expect(menu.x + menu.width).toBeLessThanOrEqual(767 - INSETS.right)
+  expect(menu.y).toBeGreaterThanOrEqual(INSETS.top)
+  const content = await boxOf(main)
+  expect(content.x).toBeGreaterThanOrEqual(INSETS.left)
+  expect(content.x + content.width).toBeLessThanOrEqual(767 - INSETS.right)
+
+  await resize(page, { width: 768, height: 1024 })
+  expect((await boxOf(aside)).width).toBe(64 + INSETS.left)
+  expect(
+    (
+      await boxOf(
+        aside.getByRole("link", { name: "Mots interdits 2 mots", exact: true })
+      )
+    ).x
+  ).toBeGreaterThanOrEqual(INSETS.left)
+  const lock = await boxOf(aside.getByRole("link", { name: "Confidentialité" }))
+  expect(lock.y + lock.height).toBeLessThanOrEqual(1024 - INSETS.bottom)
+  expect((await boxOf(main)).x).toBeGreaterThanOrEqual(64 + INSETS.left)
+
+  await resize(page, { width: 1024, height: 800 })
+  expect((await boxOf(aside)).width).toBe(252 + INSETS.left)
+  expect(
+    (await boxOf(aside.getByRole("link", { name: "Shor Panel du staff" }))).x
+  ).toBeGreaterThanOrEqual(INSETS.left)
+  const privacy = await boxOf(
+    aside.getByRole("link", { name: "Confidentialité" })
+  )
+  expect(privacy.y + privacy.height).toBeLessThanOrEqual(800 - INSETS.bottom)
 })
 
 test("a dialog docks to the bottom of a 360 px screen, its two buttons sharing one row", async ({

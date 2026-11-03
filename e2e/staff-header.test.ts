@@ -2,6 +2,7 @@ import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test, type Page } from "./fixtures"
+import { resize } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -58,7 +59,7 @@ test("a staff member moves between sections through the sidebar, which marks the
   expect(prefetchedPaths).toEqual([])
 })
 
-test("from md, the sidebar runs 252 px wide down the screen's left edge and stays there as the page scrolls, while below md the bar takes its place at the top of the page, which it leaves as the page scrolls", async ({
+test("from lg, the sidebar runs 252 px wide down the screen's left edge and, from md, the rail runs 64 px wide there, each staying as the page scrolls, while below md the bar takes their place at the top of the page and stays there as the page scrolls", async ({
   page,
   logIn,
 }) => {
@@ -78,7 +79,7 @@ test("from md, the sidebar runs 252 px wide down the screen's left edge and stay
     })
   }
 
-  await page.setViewportSize({ width: 768, height: 300 })
+  await page.setViewportSize({ width: 1024, height: 300 })
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
   await page.waitForLoadState()
@@ -97,7 +98,23 @@ test("from md, the sidebar runs 252 px wide down the screen's left edge and stay
     },
   ])
 
-  await page.setViewportSize({ width: 767, height: 300 })
+  await resize(page, { width: 1023, height: 300 })
+  await expect(sidebar).toBeVisible()
+  await expect(bar).toBeHidden()
+  expect(await boxesAfterScrolling()).toEqual([
+    {
+      element: "aside",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 64, height: 300 },
+    },
+    {
+      element: "header",
+      scrolled: 120,
+      box: { x: 0, y: 0, width: 0, height: 0 },
+    },
+  ])
+
+  await resize(page, { width: 767, height: 300 })
   await expect(sidebar).toBeHidden()
   await expect(bar).toBeVisible()
   expect(await boxesAfterScrolling()).toEqual([
@@ -109,7 +126,7 @@ test("from md, the sidebar runs 252 px wide down the screen's left edge and stay
     {
       element: "header",
       scrolled: 120,
-      box: { x: 0, y: -120, width: 767, height: 56 },
+      box: { x: 0, y: 0, width: 767, height: 56 },
     },
   ])
 })
@@ -151,7 +168,7 @@ test.describe("for a staff member with an avatar on the Discord server", () => {
     await expect(sidebar.getByText("brynja", { exact: true })).toBeVisible()
     await checkAccessibility()
 
-    await page.setViewportSize({ width: 360, height: 760 })
+    await resize(page, { width: 360, height: 760 })
     await expect(header.locator("img")).toBeVisible()
     await expect(header.locator("img")).toHaveAttribute("src", avatarUrl)
     await expect(
