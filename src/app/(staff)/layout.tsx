@@ -9,6 +9,7 @@ import { requireStaffMember } from "@/staff/require-staff-member"
 import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
 import { StaffMemberIdentity } from "@/staff/staff-member-identity"
 import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
+import { staffRoleLabel } from "@/staff/staff-role-label"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
 import { Toaster } from "@/ui/toast"
 
@@ -31,7 +32,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
             </Suspense>
           }
         />
-        <div className="min-w-0 flex-1 px-[clamp(1.25rem,4vw,3.5rem)] pt-11 pb-24">
+        <div className="min-w-0 flex-1 pt-6 pr-[max(clamp(1.25rem,4vw,3.5rem),env(safe-area-inset-right))] pb-24 pl-[max(clamp(1.25rem,4vw,3.5rem),env(safe-area-inset-left))] md:pt-11 md:pl-[clamp(1.25rem,4vw,3.5rem)]">
           {children}
         </div>
       </div>
@@ -63,6 +64,12 @@ async function CurrentStaffMemberIdentity({
 }: {
   staffMember: Promise<StaffMember>
 }) {
-  const { name, avatarUrl } = await staffMember
-  return <StaffMemberIdentity name={name} avatarUrl={avatarUrl} />
+  const { name, avatarUrl, opensModeration } = await staffMember
+  return (
+    <StaffMemberIdentity
+      name={name}
+      staffRole={staffRoleLabel(opensModeration)}
+      avatarUrl={avatarUrl}
+    />
+  )
 }
