@@ -26,7 +26,7 @@ export function AccountRows({
             <Link
               href={recordHref(id)}
               prefetch={false}
-              className="flex items-center gap-3.5 px-4 py-3 text-sm transition-colors hover:bg-accent"
+              className="flex items-center gap-3.5 px-4 py-3 text-sm transition-colors hover:bg-accent touch:min-h-14"
             >
               <MemberAvatar name={name} avatarUrl={avatarUrl} />
               <div className="flex min-w-0 flex-1 flex-col items-start gap-x-3.5 gap-y-1.5 sm:flex-row sm:items-center">

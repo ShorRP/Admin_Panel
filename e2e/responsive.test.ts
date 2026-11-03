@@ -41,7 +41,8 @@ const STAFF_PAGES = [
   { path: "/blocked-words", fixme: false },
   { path: "/audit-log", fixme: false },
   { path: "/audit-log?type=blocked-words&author=aldis", fixme: false },
-  { path: "/records", fixme: true },
+  { path: "/records", fixme: false },
+  { path: "/records?standing=members&sort=joined-recent", fixme: false },
   { path: `/records/${BRYNJA.id}`, fixme: false },
 ] as const
 
@@ -50,6 +51,23 @@ const PUBLIC_PAGES = [
   { path: "/login/logged-out", fixme: false },
   { path: "/login/refused", fixme: false },
   { path: "/login/failed", fixme: false },
+] as const
+
+const FILTER_SHEETS = [
+  {
+    owner: "the audit log's",
+    path: "/audit-log?type=blocked-words&author=aldis",
+    name: "Auteur et compte",
+    field: "Auteur",
+    value: "aldis",
+  },
+  {
+    owner: "the list of accounts'",
+    path: "/records?standing=members&sort=joined-recent",
+    name: "Filtres",
+    field: "État",
+    value: "members",
+  },
 ] as const
 
 const MIN_TARGET_PX = 44
@@ -196,28 +214,37 @@ for (const screen of SCREENS) {
     }
 
     if (screen.width < 768) {
-      test(`the audit log's filter sheet gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px, docked to the bottom and scrolling no wider`, async ({
-        page,
-        logIn,
-        checkAccessibility,
-      }) => {
-        await logIn(ALDIS)
-        await page.goto("/audit-log?type=blocked-words&author=aldis")
-        await settle(page)
-        await page.getByRole("button", { name: /^Auteur et compte/ }).click()
-        const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
-        await expect(sheet).toBeVisible()
-        await expect(sheet.getByLabel("Auteur")).toHaveValue("aldis")
-        await expect
-          .poll(async () => {
-            const box = await boxOf(sheet)
-            return [box.x, box.width, Math.round(box.y + box.height)]
+      for (const { owner, path, name, field, value } of FILTER_SHEETS) {
+        test(`${owner} filter sheet gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px, docked to the bottom and scrolling no wider`, async ({
+          page,
+          logIn,
+          checkAccessibility,
+        }) => {
+          await logIn(ALDIS)
+          await page.goto(path)
+          await settle(page)
+          await page
+            .getByRole("button", { name: new RegExp(`^${name}`) })
+            .click()
+          const sheet = page.getByRole("dialog", { name })
+          await expect(sheet).toBeVisible()
+          await expect(sheet.getByLabel(field, { exact: true })).toHaveValue(
+            value
+          )
+          await expect
+            .poll(async () => {
+              const box = await boxOf(sheet)
+              return [box.x, box.width, Math.round(box.y + box.height)]
+            })
+            .toEqual([0, screen.width, screen.height])
+          expect(await smallTargets(page)).toEqual([])
+          expect(await horizontalOverflow(page)).toEqual({
+            scroll: 0,
+            wider: [],
           })
-          .toEqual([0, screen.width, screen.height])
-        expect(await smallTargets(page)).toEqual([])
-        expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
-        await checkAccessibility()
-      })
+          await checkAccessibility()
+        })
+      }
     }
 
     for (const { path, fixme } of PUBLIC_PAGES) {
@@ -674,11 +701,14 @@ for (const screen of [...SCREENS, DESKTOP]) {
       await page.goto("/records")
       await settle(page)
       expect(
-        await fontSizeOf(page.getByRole("combobox", { name: "Rôle" }))
-      ).toBe(fieldText)
-      expect(
         await fontSizeOf(page.getByRole("textbox", { name: "Compte" }))
       ).toBe(fieldText)
+      if (screen.width < 768) {
+        await page.getByRole("button", { name: "Filtres" }).click()
+      }
+      const role = page.getByRole("combobox", { name: "Rôle" })
+      expect(await fontSizeOf(role)).toBe(fieldText)
+      expect((await sizeOf(role)).height).toBe(touch ? MIN_TARGET_PX : 38)
 
       await page.goto(`/records/${BRYNJA.id}`)
       await settle(page)

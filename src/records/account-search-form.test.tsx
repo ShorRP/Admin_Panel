@@ -235,3 +235,68 @@ test("« Aucun rôle » opens selected when the URL asks for no role", () => {
     { value: "none", text: "Aucun rôle", selected: true },
   ])
 })
+
+function filtersButton(html: string) {
+  return /<button([^>]*)>(?:(?!<\/button>).)*Filtres(?:(?!<\/button>).)*<\/button>/.exec(
+    html
+  )
+}
+
+test("a button « Filtres » comes between the search and the choices, opens a dialog and sends nothing, so that « Chercher » stays the form's one submit", () => {
+  const html = render()
+  const button = filtersButton(html)
+
+  expect(attribute(button?.[1] ?? "", "type")).toBe("button")
+  expect(attribute(button?.[1] ?? "", "aria-haspopup")).toBe("dialog")
+  expect(html.indexOf('name="query"')).toBeLessThan(html.indexOf(">Filtres"))
+  expect(html.indexOf(">Filtres")).toBeLessThan(html.indexOf('name="role"'))
+  expect(html.match(/type="submit"/g)).toHaveLength(1)
+})
+
+test("with no choice set, « Filtres » counts none and no chip shows", () => {
+  const html = render({ ...NO_FILTERS, query: "ald" })
+
+  expect(filtersButton(html)?.[0].replace(/<[^>]*>/g, "")).toBe("Filtres")
+  expect(html).not.toContain("<ul")
+})
+
+test("« Filtres » counts the choices set, not the search, in words for assistive technologies", () => {
+  const html = render({
+    ...NO_FILTERS,
+    query: "ald",
+    standing: "members",
+    sort: "role",
+  })
+
+  expect(filtersButton(html)?.[0].replace(/<[^>]*>/g, "")).toBe(
+    "Filtres22 filtres actifs"
+  )
+})
+
+test("each choice set shows under the search as a chip, a link to the list without it, keeping the search and the other choices", () => {
+  const html = render({
+    ...NO_FILTERS,
+    query: "ald",
+    standing: "members",
+    sort: "role",
+  })
+  const chips = Array.from(
+    /<ul[^>]*>(.*?)<\/ul>/.exec(html)?.[1]?.matchAll(/<a([^>]*)>(.*?)<\/a>/g) ??
+      [],
+    ([, attributes = "", content = ""]) => ({
+      href: attribute(attributes, "href")?.replaceAll("&amp;", "&"),
+      name: content.replace(/<[^>]*>/g, ""),
+    })
+  )
+
+  expect(chips).toEqual([
+    {
+      href: "/records?query=ald&sort=role",
+      name: "Retirer le filtre État : Membres",
+    },
+    {
+      href: "/records?query=ald&standing=members",
+      name: "Retirer le filtre Trier par : Rôle le plus haut",
+    },
+  ])
+})

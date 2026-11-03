@@ -1,3 +1,5 @@
+import { FilterChips, type FilterChip } from "@/ui/filter-chips"
+import { FilterSheet } from "@/ui/filter-sheet"
 import {
   AUDIT_LOG_FILTER_FIELDS,
   AuditLogFilterFields,
@@ -5,8 +7,6 @@ import {
 import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import { FILTER_FOLD_CLASSES, SHEET_FIELD_CLASSES } from "./audit-log-layout"
-import { FilterChips, type FilterChip } from "./filter-chips"
-import { FilterSheet } from "./filter-sheet"
 
 export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
   const chips: FilterChip[] = AUDIT_LOG_FILTER_FIELDS.flatMap(

@@ -1,9 +1,10 @@
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test } from "./fixtures"
+import { expect, test, type Locator, type Page } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
 import { minifiedReactError } from "./minified-react-error"
+import { resize, settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -63,7 +64,7 @@ test("a staff member who moderates reads every account, 25 a page, without searc
   const pagination = main.getByRole("navigation", { name: "Pages des comptes" })
   const rows = (range: string) =>
     main.getByRole("list", { name: range }).getByRole("link")
-  const current = pagination.locator('[aria-current="page"]')
+  const current = pagination.locator('ol:visible [aria-current="page"]')
 
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
@@ -123,36 +124,173 @@ test("a staff member who moderates reads every account, 25 a page, without searc
   await checkAccessibility()
 })
 
-test("past 7 pages, the navigation keeps the first and the last page, the current one and its neighbours, apart by « … », and fits a 360 px screen", async ({
-  page,
-  logIn,
-  checkAccessibility,
-}) => {
-  const pagination = page
+function targetsOf(pagination: Locator) {
+  return pagination.evaluate((nav) => {
+    const shown = [...nav.querySelectorAll("a, [aria-current=page]")].filter(
+      (element) => element.getClientRects().length > 0
+    )
+    const box = nav.getBoundingClientRect()
+    return {
+      nav: { height: Math.round(box.height) },
+      targets: shown.map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect()
+        const samples = [
+          [x + width / 2, y + height / 2],
+          [x + 1, y + height / 2],
+          [x + width - 1, y + height / 2],
+          [x + width / 2, y + 1],
+          [x + width / 2, y + height - 1],
+        ] as const
+        return {
+          name: (element.textContent ?? "").trim(),
+          x: Math.round(x),
+          y: Math.round(y),
+          width: Math.round(width),
+          height: Math.round(height),
+          hit: samples.every(([sampleX, sampleY]) => {
+            const hit = document.elementFromPoint(sampleX, sampleY)
+            return hit !== null && element.contains(hit)
+          }),
+        }
+      }),
+      gaps: [...nav.querySelectorAll("li[aria-hidden] > span")]
+        .filter((glyph) => glyph.getClientRects().length > 0)
+        .map((glyph) => {
+          const item = glyph.parentElement
+          const before = item?.previousElementSibling?.getBoundingClientRect()
+          const after = item?.nextElementSibling?.getBoundingClientRect()
+          const { x, width } = glyph.getBoundingClientRect()
+          return {
+            beforeRight: Math.round(before?.right ?? NaN),
+            afterLeft: Math.round(after?.left ?? NaN),
+            center: Math.round(x + width / 2),
+          }
+        }),
+    }
+  })
+}
+
+function rowHeights(page: Page) {
+  return page
     .getByRole("main")
-    .getByRole("navigation", { name: "Pages des comptes" })
+    .locator("ul a[href^='/records/']")
+    .evaluateAll((links) =>
+      links.map((link) => Math.round(link.getBoundingClientRect().height))
+    )
+}
 
-  await page.setViewportSize({ width: 360, height: 760 })
-  await logIn(ALDIS)
-  await expect(page).toHaveURL("/blocked-words")
-  await page.goto("/records?page=5")
+test.describe("on a 360 px screen", () => {
+  test.use({ viewport: { width: 360, height: 760 } })
 
-  await expect(pagination.locator("li")).toHaveText([
-    "Page 1",
-    "…",
-    "Page 4",
-    "Page 5",
-    "Page 6",
-    "…",
-    "Page 9",
-  ])
-  await expect(pagination.locator('[aria-current="page"]')).toHaveText("Page 5")
-  for (const entry of await pagination.locator("a, li").all()) {
-    const box = await entry.boundingBox()
-    expect(box?.x).toBeGreaterThanOrEqual(0)
-    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(360)
-  }
-  await checkAccessibility()
+  test("past 7 pages, the navigation keeps the first and the last page, the current one and its neighbours, apart by « … », in one row of 44 px targets between two arrows that no « … » covers, and from 768 px the list of pages comes back with its arrows' text, as it stays at 1,024 px", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const pagination = page
+      .getByRole("main")
+      .getByRole("navigation", { name: "Pages des comptes" })
+    const entries = pagination.locator("ol:visible > li")
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto("/records?page=5")
+    await settle(page)
+    await expect(pagination.locator("ol:visible")).toHaveCount(1)
+    await expect(entries).toHaveText([
+      "Page 1",
+      "…",
+      "Page 4",
+      "Page 5",
+      "Page 6",
+      "…",
+      "Page 9",
+    ])
+    await expect(
+      pagination.locator('ol:visible [aria-current="page"]')
+    ).toHaveText("Page 5")
+    expect(await rowHeights(page)).toHaveLength(25)
+    expect(Math.min(...(await rowHeights(page)))).toBeGreaterThanOrEqual(56)
+    await pagination.scrollIntoViewIfNeeded()
+    const narrow = await targetsOf(pagination)
+    expect(narrow.nav.height).toBe(44)
+    expect(narrow.targets.map(({ name }) => name)).toEqual([
+      "Page précédente",
+      "Page 1",
+      "Page 4",
+      "Page 5",
+      "Page 6",
+      "Page 9",
+      "Page suivante",
+    ])
+    for (const [index, target] of narrow.targets.entries()) {
+      expect(target, target.name).toMatchObject({
+        y: narrow.targets[0]?.y,
+        width: 44,
+        height: 44,
+        hit: true,
+      })
+      expect(target.x, target.name).toBeGreaterThanOrEqual(20)
+      expect(target.x + target.width, target.name).toBeLessThanOrEqual(340)
+      const next = narrow.targets[index + 1]
+      if (next !== undefined) {
+        expect(next.x, target.name).toBeGreaterThanOrEqual(
+          target.x + target.width
+        )
+      }
+    }
+    expect(narrow.gaps).toHaveLength(2)
+    for (const { beforeRight, afterLeft, center } of narrow.gaps) {
+      expect(afterLeft).toBe(beforeRight)
+      expect(Math.abs(center - beforeRight)).toBeLessThanOrEqual(1)
+    }
+    await checkAccessibility()
+
+    await resize(page, { width: 768, height: 1024 })
+    await expect(pagination.locator("ol:visible")).toHaveCount(1)
+    await expect(entries).toHaveText([
+      "Page 1",
+      "…",
+      "Page 4",
+      "Page 5",
+      "Page 6",
+      "…",
+      "Page 9",
+    ])
+    expect(Math.min(...(await rowHeights(page)))).toBeGreaterThanOrEqual(56)
+    await pagination.scrollIntoViewIfNeeded()
+    const medium = await targetsOf(pagination)
+    expect(medium.targets.map(({ name }) => name)).toEqual(
+      narrow.targets.map(({ name }) => name)
+    )
+    for (const target of medium.targets) {
+      expect(target, target.name).toMatchObject({ height: 44, hit: true })
+      expect(target.width, target.name).toBeGreaterThanOrEqual(44)
+    }
+    expect(medium.targets[0]?.width).toBeGreaterThan(100)
+    expect(medium.targets.at(-1)?.width).toBeGreaterThan(100)
+    await checkAccessibility()
+
+    await resize(page, { width: 1024, height: 768 })
+    await expect(pagination.locator("ol:visible")).toHaveCount(1)
+    await expect(entries).toHaveText([
+      "Page 1",
+      "…",
+      "Page 4",
+      "Page 5",
+      "Page 6",
+      "…",
+      "Page 9",
+    ])
+    await pagination.scrollIntoViewIfNeeded()
+    const wide = await targetsOf(pagination)
+    expect(wide.targets.map(({ name }) => name)).toEqual(
+      narrow.targets.map(({ name }) => name)
+    )
+    expect(wide.targets[0]?.width).toBeGreaterThan(100)
+    expect(wide.targets.at(-1)?.width).toBeGreaterThan(100)
+    await checkAccessibility()
+  })
 })
 
 test("a page that is no page of the list shows the first, whatever it is, and a search by name shows its results counted and paged like the list, an ID or a mention its record", async ({

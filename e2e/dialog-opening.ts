@@ -46,3 +46,22 @@ export function startOfDialogOpening(page: Page) {
     { polling: "raf" }
   )
 }
+
+export function dialogTransitions(page: Page) {
+  return page.waitForFunction(
+    () => {
+      const properties = document
+        .getAnimations()
+        .flatMap((animation) =>
+          animation instanceof CSSTransition &&
+          animation.effect instanceof KeyframeEffect &&
+          animation.effect.target?.getAttribute("role") === "dialog"
+            ? [animation.transitionProperty]
+            : []
+        )
+      return properties.length > 0 && [...new Set(properties)].sort()
+    },
+    undefined,
+    { polling: "raf" }
+  )
+}
