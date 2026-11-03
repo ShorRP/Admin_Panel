@@ -26,15 +26,18 @@ export function PublicPageFrame({
         <StatefulThemeToggle iconOnly />
       </div>
       {children}
-      <footer className="flex flex-wrap justify-between gap-x-4 gap-y-2 text-xs text-muted-foreground">
+      <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-muted-foreground">
         <p>{note}</p>
         <div className="flex gap-4">
-          <PrivacyPolicyLink current={privacyPolicyCurrent} />
+          <PrivacyPolicyLink
+            current={privacyPolicyCurrent}
+            className="touch:inline-flex touch:min-h-11 touch:items-center"
+          />
           <a
             href="https://shor-rp.fr"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.25 transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.25 transition-colors hover:text-foreground touch:min-h-11"
           >
             shor-rp.fr
             <ExternalLink aria-hidden className="size-3" />

@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react"
 import {
   Ban,
   Gavel,
+  Lock,
   LogOut,
   Menu,
   Monitor,
@@ -33,6 +34,7 @@ function links(html: string) {
       text: textOf(content),
       href: /\shref="([^"]*)"/.exec(attributes)?.[1],
       current: /\saria-current="([^"]*)"/.exec(attributes)?.[1],
+      title: /\stitle="([^"]*)"/.exec(attributes)?.[1],
       image: image(imageAttributes, imageDrawing),
       content,
     })
@@ -238,7 +240,9 @@ test("the blocked words' link shows the count it is given after the section's na
 
     expect(
       sections.map(({ content }) => ({
-        countAfterName: content.startsWith(`Mots interdits${countMarkup}`),
+        countAfterName:
+          content.includes(countMarkup) &&
+          textOf(content) === "Mots interdits12",
         count: content.includes(countMarkup),
       }))
     ).toEqual([
@@ -292,7 +296,13 @@ test("the sidebar's foot offers the theme toggle, on Auto until the browser read
       ([, content = ""]) => textOf(content)
     )
   ).toEqual(["Auto"])
-  expect(buttons(foot)).toEqual([
+  const footButtons = buttons(foot)
+  expect(
+    footButtons.slice(0, 3).map(({ content, image }) => ({
+      content: textOf(content),
+      image,
+    }))
+  ).toEqual([
     {
       content: "Auto",
       image: { drawing: drawing(<Monitor />), hidden: true },
@@ -305,6 +315,8 @@ test("the sidebar's foot offers the theme toggle, on Auto until the browser read
       content: "Sombre",
       image: { drawing: drawing(<Moon />), hidden: true },
     },
+  ])
+  expect(footButtons.slice(3)).toEqual([
     {
       content: '<span class="sr-only">Se déconnecter</span>',
       image: { drawing: drawing(<LogOut />), hidden: true },
@@ -330,6 +342,47 @@ test("the sidebar's foot ends on a link to the privacy policy, below the staff m
     afterMember: true,
     links: [{ text: "Confidentialité", href: "/privacy", current: undefined }],
   })
+})
+
+test("each of the sidebar's section links repeats its name in a title, for the rail", async () => {
+  const { sidebar } = await render("/blocked-words", { opensModeration: true })
+
+  expect(
+    links(navOf(sidebar)).map(({ text, title }) => ({ text, title }))
+  ).toEqual([
+    { text: "Mots interdits", title: "Mots interdits" },
+    { text: "Journal d’audit", title: "Journal d’audit" },
+    { text: "Modération", title: "Modération" },
+  ])
+})
+
+test("a rule, hidden from assistive technologies, separates the sidebar's two groups for the rail, and there is none for a staff member with one group", async () => {
+  const rules = (html: string) =>
+    Array.from(
+      navOf(html).matchAll(/<span aria-hidden="true" class="[^"]*"><\/span>/g)
+    )
+  const { sidebar: moderating } = await render("/blocked-words", {
+    opensModeration: true,
+  })
+  const { sidebar: administering } = await render("/blocked-words")
+
+  expect(rules(moderating)).toHaveLength(1)
+  expect(rules(administering)).toHaveLength(0)
+})
+
+test("the sidebar's link to the privacy policy shows a lock before its name, hidden from assistive technologies, and repeats the name in a title, for the rail", async () => {
+  const { sidebar } = await render("/blocked-words")
+  const foot = sidebar.slice(sidebar.indexOf("</nav>"))
+
+  expect(
+    links(foot).map(({ text, title, image }) => ({ text, title, image }))
+  ).toEqual([
+    {
+      text: "Confidentialité",
+      title: "Confidentialité",
+      image: { drawing: drawing(<Lock />), hidden: true },
+    },
+  ])
 })
 
 test("the bar names the staff member, then shows a menu button with a hidden menu icon, named « Ouvrir le menu » to assistive technologies alone", async () => {

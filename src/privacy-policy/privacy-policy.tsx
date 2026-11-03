@@ -47,8 +47,9 @@ export function PrivacyPolicy() {
           <p>
             Le panel n’a pas de base de données. Il ne garde qu’une donnée :
             l’ID Discord du membre du staff connecté, dans un cookie chiffré et
-            signé, <code className="font-mono">__Host-session</code>, sur son
-            seul navigateur, 7 jours au plus, pour qu’il reste connecté. Se
+            signé,{" "}
+            <code className="font-mono wrap-anywhere">__Host-session</code>, sur
+            son seul navigateur, 7 jours au plus, pour qu’il reste connecté. Se
             déconnecter efface ce cookie.
           </p>
         </PolicySection>

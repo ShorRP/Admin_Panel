@@ -16,7 +16,9 @@ export function ErrorNotice({
     <main className="mx-auto flex max-w-2xl flex-col gap-5.5 px-4 py-12 sm:px-12">
       <PageHeader title={title}>{children}</PageHeader>
       <OrnamentRule leadingLine />
-      <div className="flex flex-wrap gap-2">{action}</div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {action}
+      </div>
     </main>
   )
 }
