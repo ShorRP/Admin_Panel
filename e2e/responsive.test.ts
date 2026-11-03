@@ -5,7 +5,7 @@ import {
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
 } from "../playwright.config"
-import { expect, test, type Page } from "./fixtures"
+import { expect, test, type Locator, type Page } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -29,6 +29,8 @@ const SCREENS = [
   { width: 768, height: 1024, touchScreen: false },
   { width: 1024, height: 768, touchScreen: true },
 ] as const
+
+const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
 
 const STAFF_PAGES = [
   { path: "/blocked-words", fixme: true },
@@ -81,6 +83,18 @@ async function settle(page: Page) {
 async function resize(page: Page, size: { width: number; height: number }) {
   await settle(page)
   await page.setViewportSize(size)
+}
+
+async function sizeOf(locator: Locator) {
+  const box = await locator.boundingBox()
+  if (box === null) {
+    throw new Error("The element is not visible.")
+  }
+  return { width: Math.round(box.width), height: Math.round(box.height) }
+}
+
+function fontSizeOf(locator: Locator) {
+  return locator.evaluate((element) => getComputedStyle(element).fontSize)
 }
 
 function holdsTouch(page: Page) {
@@ -256,7 +270,7 @@ test.fixme("the navigation is a bar below md, a 64 px rail from md and a 252 px 
   expect((await aside.boundingBox())?.width).toBe(252)
 })
 
-test.fixme("a dialog docks to the bottom of a 360 px screen, its two buttons sharing one row", async ({
+test("a dialog docks to the bottom of a 360 px screen, its two buttons sharing one row", async ({
   page,
   logIn,
 }) => {
@@ -280,3 +294,129 @@ test.fixme("a dialog docks to the bottom of a 360 px screen, its two buttons sha
   await dialog.getByRole("button", { name: "Annuler" }).click()
   await expect(dialog).toBeHidden()
 })
+
+for (const screen of [...SCREENS, DESKTOP]) {
+  test.describe(`the shared controls at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("take their touch size on a touch screen and keep their desktop size with a mouse", async ({
+      page,
+      logIn,
+      readToast,
+      toast,
+    }) => {
+      const touch = screen.width < 1024 || screen.touchScreen
+      const field = touch ? 44 : 32
+      const fieldText = screen.width < 768 ? "16px" : "14px"
+
+      await logIn(ALDIS)
+      await page.goto("/blocked-words?query=mot")
+      await settle(page)
+      expect(await fontSizeOf(page.getByRole("heading", { level: 1 }))).toBe(
+        screen.width < 640 ? "32px" : "38px"
+      )
+      expect(
+        await fontSizeOf(page.getByText("Capacité", { exact: true }))
+      ).toBe("11px")
+      expect(
+        (await sizeOf(page.getByRole("textbox", { name: "Filtrer la liste" })))
+          .height
+      ).toBe(field)
+      expect(
+        (await sizeOf(page.getByRole("button", { name: "Filtrer" }))).height
+      ).toBe(field)
+      const showAll = (
+        await sizeOf(page.getByRole("link", { name: "Tout afficher" }))
+      ).height
+      expect(showAll >= 44).toBe(touch)
+
+      await page.getByPlaceholder(/^Ex./).fill("ab")
+      await page.getByRole("button", { name: "Ajouter" }).click()
+      await readToast(/est maintenant un mot interdit/)
+      const close = await sizeOf(
+        toast().getByRole("button", { name: "Fermer" })
+      )
+      expect(close).toEqual(
+        touch ? { width: 44, height: 44 } : { width: 28, height: 28 }
+      )
+      const text = await sizeOf(toast().locator("[data-slot=toast-title]"))
+      expect((await sizeOf(toast())).height).toBeLessThanOrEqual(
+        34 + Math.max(text.height, 28)
+      )
+
+      await page.goto("/audit-log?author=aldis")
+      await settle(page)
+      const reset = (
+        await sizeOf(page.getByRole("link", { name: "Réinitialiser" }))
+      ).height
+      expect(reset >= 44).toBe(touch)
+      const author = (
+        await sizeOf(
+          page.locator(`main a[href="/records/${ALDIS.id}"]`).first()
+        )
+      ).height
+      expect(author >= 44).toBe(touch)
+
+      await page.goto("/records")
+      await settle(page)
+      expect(
+        await fontSizeOf(page.getByRole("combobox", { name: "Rôle" }))
+      ).toBe(fieldText)
+      expect(
+        await fontSizeOf(page.getByRole("textbox", { name: "Compte" }))
+      ).toBe(fieldText)
+
+      await page.goto(`/records/${BRYNJA.id}`)
+      await settle(page)
+      const tab = page.getByRole("tab", { name: "Expulsion" })
+      expect((await sizeOf(tab)).height).toBe(touch ? 44 : 30)
+      await tab.click()
+      await page.getByRole("button", { name: "Expulser" }).click()
+      const dialog = page.getByRole("dialog")
+      await expect(dialog).toBeVisible()
+      expect(
+        (await sizeOf(dialog.getByRole("button", { name: "Annuler" }))).height
+      ).toBe(touch ? 44 : 36)
+      await dialog.getByRole("button", { name: "Annuler" }).click()
+      await expect(dialog).toBeHidden()
+
+      await page.goto("/blocked-words")
+      await settle(page)
+      if (screen.width < 768) {
+        const menu = page.getByRole("button", { name: "Ouvrir le menu" })
+        expect(await sizeOf(menu)).toEqual({ width: 44, height: 44 })
+        await menu.click()
+        const sheet = page.getByRole("dialog")
+        await expect(sheet).toBeVisible()
+        expect(
+          await sizeOf(sheet.getByRole("button", { name: "Fermer" }))
+        ).toEqual({ width: 44, height: 44 })
+        expect(
+          (
+            await sizeOf(
+              sheet
+                .getByRole("group", { name: "Thème" })
+                .getByRole("button")
+                .first()
+            )
+          ).height
+        ).toBe(44)
+      } else {
+        expect(
+          (
+            await sizeOf(
+              page
+                .getByRole("group", { name: "Thème" })
+                .getByRole("button")
+                .first()
+            )
+          ).height
+        ).toBe(touch ? 44 : 28)
+      }
+    })
+  })
+}

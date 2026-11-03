@@ -11,10 +11,10 @@ const CHOICES = [
 ] as const
 
 const choiceVariants = cva(
-  "flex h-7 items-center justify-center gap-1.5 rounded-sm border border-transparent text-xs whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+  "flex h-7 items-center justify-center gap-1.5 rounded-sm border border-transparent text-xs whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs touch:h-11",
   {
     variants: {
-      iconOnly: { true: "w-7", false: "flex-1 px-2" },
+      iconOnly: { true: "w-7 touch:w-11", false: "flex-1 px-2" },
     },
   }
 )

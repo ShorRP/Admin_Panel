@@ -742,6 +742,7 @@ test.describe("for a staff member who moderates, with two words that only block"
         expect(await (await opening).jsonValue()).toEqual({
           opacity: "0",
           scale: prefersReducedMotion ? 1 : 0.95,
+          lift: 0,
         })
         await expect(changeDialogOf(page, "foo")).toBeVisible()
         await checkAccessibility()
@@ -773,9 +774,10 @@ test.describe("for a staff member who moderates, with two words that only block"
       const change = await dialog
         .getByRole("button", { name: "Changer" })
         .boundingBox()
-      expect(box?.x).toBeGreaterThanOrEqual(0)
-      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(360)
+      expect([box?.x, box?.width]).toEqual([0, 360])
+      expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(760)
       expect(change?.y).toBe(cancel?.y)
+      expect(change?.width).toBe(cancel?.width)
       expect(change?.x).toBeGreaterThanOrEqual(
         (cancel?.x ?? 0) + (cancel?.width ?? 0)
       )

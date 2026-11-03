@@ -18,7 +18,7 @@ export function RecordDetails({ record }: { record: AccountRecord }) {
         >
           Détails
         </h2>
-        <Overline className="text-[0.625rem] tracking-[0.16em] whitespace-nowrap">
+        <Overline className="tracking-[0.16em] whitespace-nowrap">
           Heures de Paris
         </Overline>
       </div>

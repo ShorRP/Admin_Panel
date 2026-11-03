@@ -274,7 +274,9 @@ function SanctionChangeDescription({
         {accountHref === null ? (
           account.name
         ) : (
-          <TextLink href={accountHref}>{account.name}</TextLink>
+          <TextLink href={accountHref} inSentence>
+            {account.name}
+          </TextLink>
         )}
         {detailOf(change)}
       </p>

@@ -15,11 +15,20 @@ export function startOfDialogOpening(page: Page) {
         animation?.effect instanceof KeyframeEffect
           ? animation.effect.target
           : null
-      if (animation === undefined || !(dialog instanceof HTMLElement)) {
+      if (
+        animation === undefined ||
+        animation.effect === null ||
+        !(dialog instanceof HTMLElement)
+      ) {
         return false
       }
       animation.pause()
       animation.currentTime = 0
+      const centerY = () => {
+        const { top, height } = dialog.getBoundingClientRect()
+        return top + height / 2
+      }
+      const startCenter = centerY()
       const start = {
         opacity: getComputedStyle(dialog).opacity,
         scale:
@@ -27,8 +36,11 @@ export function startOfDialogOpening(page: Page) {
             (dialog.getBoundingClientRect().width / dialog.offsetWidth) * 100
           ) / 100,
       }
+      animation.currentTime = animation.effect.getComputedTiming().endTime ?? 0
+      const lift = Math.round(startCenter - centerY())
+      animation.currentTime = 0
       animation.play()
-      return start
+      return { ...start, lift }
     },
     undefined,
     { polling: "raf" }

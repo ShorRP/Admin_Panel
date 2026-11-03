@@ -6,7 +6,7 @@ export function Overline({ className, ...props }: ComponentProps<"p">) {
     <p
       {...props}
       className={cn(
-        "text-[0.65625rem] leading-3.5 font-medium tracking-[0.18em] text-muted-foreground uppercase",
+        "text-[0.6875rem] leading-3.5 font-medium tracking-[0.18em] text-muted-foreground uppercase",
         className
       )}
     />

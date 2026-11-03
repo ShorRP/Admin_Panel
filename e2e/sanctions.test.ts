@@ -586,9 +586,40 @@ for (const { title, prefersReducedMotion } of [
       expect(await (await opening).jsonValue()).toEqual({
         opacity: "0",
         scale: prefersReducedMotion ? 1 : 0.95,
+        lift: 0,
       })
       await expect(page.getByRole("dialog")).toBeVisible()
       await checkAccessibility()
+    })
+
+    test.describe("on a 360 px screen", () => {
+      test.use({ viewport: { width: 360, height: 760 } })
+
+      test("the docked confirmation fades in, and slides up only with motion, with no zoom", async ({
+        page,
+        logIn,
+        checkAccessibility,
+      }) => {
+        const sanctions = sanctionsOf(page)
+
+        await logIn(SIGRID)
+        await expect(page).toHaveURL("/blocked-words")
+        await page.goto(`/records/${LYRA.id}`)
+        await page.waitForLoadState()
+        await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+
+        const opening = startOfDialogOpening(page)
+        await sanctions
+          .getByRole("tabpanel", { name: "Expulsion" })
+          .getByRole("button", { name: "Expulser" })
+          .click()
+
+        const start = await (await opening).jsonValue()
+        expect(start).toMatchObject({ opacity: "0", scale: 1 })
+        expect(start !== false && start.lift > 0).toBe(!prefersReducedMotion)
+        await expect(page.getByRole("dialog")).toBeVisible()
+        await checkAccessibility()
+      })
     })
   })
 }
@@ -620,6 +651,9 @@ test.describe("on a 360 px screen", () => {
       await expect(confirmation).toBeVisible()
       await checkAccessibility()
 
+      const dialog = await boxOf(confirmation)
+      expect([dialog.x, dialog.width]).toEqual([0, 360])
+      expect(Math.round(dialog.y + dialog.height)).toBe(760)
       const cancel = await boxOf(
         confirmation.getByRole("button", { name: "Annuler" })
       )
@@ -627,6 +661,7 @@ test.describe("on a 360 px screen", () => {
         confirmation.getByRole("button", { name: label })
       )
       expect(confirm.y).toBe(cancel.y)
+      expect(confirm.width).toBe(cancel.width)
       expect(confirm.x).toBeGreaterThanOrEqual(cancel.x + cancel.width)
       await confirmation.getByRole("button", { name: "Annuler" }).click()
       await expect(confirmation).toHaveCount(0)

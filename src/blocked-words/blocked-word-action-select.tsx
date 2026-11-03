@@ -29,7 +29,7 @@ export function BlockedWordActionSelect({
       name="action"
       defaultValue={selected}
       aria-describedby={describedBy}
-      className={cn("[&>select]:h-9.5", className)}
+      className={cn("[&>select]:h-9.5 [&>select]:touch:h-11", className)}
     >
       {actions.map((actionId) => (
         <NativeSelectOption key={actionId} value={actionId}>

@@ -290,7 +290,7 @@ function PanelLink({
         <span className="font-heading text-[1.1875rem] leading-none font-medium tracking-[0.24em] uppercase">
           Shor
         </span>{" "}
-        <span className="text-[0.59375rem] leading-none font-medium tracking-[0.22em] whitespace-nowrap text-muted-foreground uppercase">
+        <span className="text-[0.6875rem] leading-none font-medium tracking-[0.22em] whitespace-nowrap text-muted-foreground uppercase">
           Panel du staff
         </span>
       </span>
@@ -342,7 +342,7 @@ function SectionGroup({
 }) {
   return (
     <div>
-      <Overline id={id} className="px-2.5 pb-2 text-[0.625rem] leading-3.5">
+      <Overline id={id} className="px-2.5 pb-2">
         {title}
       </Overline>
       <ul aria-labelledby={id} className="flex flex-col gap-0.5">
