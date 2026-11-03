@@ -1,4 +1,5 @@
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import { dialogTransitions } from "./dialog-opening"
 import { expect, test } from "./fixtures"
 import { resize, settle } from "./settle"
 
@@ -355,7 +356,7 @@ test("a value that is not one of the choices, a role the Discord server does not
   await checkAccessibility()
 })
 
-test("from 768 px the six choices stay in the form, three to a row at 768 px and four at 1,280 px, the last ones sharing a row with the button, with no  Filtres  and no chip, and the form sends the address of the sheet", async ({
+test("from 768 px the six choices stay in the form, three to a row at 768 and 1,024 px and four at 1,280 px, the button on a row of its own at 768 px and sharing the last at 1,024 and 1,280 px, with no « Filtres » and no chip, and the form sends the address of the sheet", async ({
   page,
   logIn,
   checkAccessibility,
@@ -391,19 +392,36 @@ test("from 768 px the six choices stay in the form, three to a row at 768 px and
   expect(wideButton?.y).toBeLessThan((lastRow?.y ?? 0) + (lastRow?.height ?? 0))
   await checkAccessibility()
 
-  await resize(page, { width: 768, height: 1024 })
-  const medium = await boxes()
-  const mediumButton = await button.boundingBox()
-  expect(new Set(medium.slice(1, 4).map(({ y }) => y)).size).toBe(1)
-  expect(new Set(medium.slice(4, 7).map(({ y }) => y)).size).toBe(1)
-  expect(medium[1]?.y).toBeGreaterThan(medium[0]?.y ?? Infinity)
-  expect(medium[4]?.y).toBeGreaterThan(medium[1]?.y ?? Infinity)
-  expect(mediumButton?.y).toBeGreaterThan(
-    (medium[4]?.y ?? 0) + (medium[4]?.height ?? 0)
-  )
-  await expect(page.getByRole("button", { name: /^Filtres/ })).toBeHidden()
-  await expect(page.getByRole("list", { name: "Filtres actifs" })).toBeHidden()
-  await checkAccessibility()
+  for (const width of [1024, 768]) {
+    await resize(page, { width, height: 1024 })
+    const medium = await boxes()
+    const mediumButton = await button.boundingBox()
+    expect(
+      new Set(medium.slice(1, 4).map(({ y }) => y)).size,
+      `${width} px`
+    ).toBe(1)
+    expect(
+      new Set(medium.slice(4, 7).map(({ y }) => y)).size,
+      `${width} px`
+    ).toBe(1)
+    expect(medium[1]?.y).toBeGreaterThan(medium[0]?.y ?? Infinity)
+    expect(medium[4]?.y).toBeGreaterThan(medium[1]?.y ?? Infinity)
+    if (width === 1024) {
+      expect(mediumButton?.y).toBeGreaterThanOrEqual(medium[4]?.y ?? Infinity)
+      expect(mediumButton?.y).toBeLessThan(
+        (medium[4]?.y ?? 0) + (medium[4]?.height ?? 0)
+      )
+    } else {
+      expect(mediumButton?.y).toBeGreaterThan(
+        (medium[4]?.y ?? 0) + (medium[4]?.height ?? 0)
+      )
+    }
+    await expect(page.getByRole("button", { name: /^Filtres/ })).toBeHidden()
+    await expect(
+      page.getByRole("list", { name: "Filtres actifs" })
+    ).toBeHidden()
+    await checkAccessibility()
+  }
 
   await page
     .getByLabel("Rôle", { exact: true })
@@ -418,7 +436,7 @@ test("from 768 px the six choices stay in the form, three to a row at 768 px and
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
 
-  test(" Filtres  and  Chercher  share a row, the sheet holds the six choices and  Appliquer  lands on the address of the sheet's choices, not of the form of the page, which a search sent from the page keeps, each chip removes one choice and  Réinitialiser  clears them", async ({
+  test("« Filtres » and « Chercher » share a row, the sheet holds the six choices and « Appliquer » lands on the address of the sheet's choices, not of the form of the page, which a search sent from the page keeps, each chip removes one choice and « Réinitialiser » clears them", async ({
     page,
     logIn,
     checkAccessibility,
@@ -569,6 +587,36 @@ test.describe("under 768 px", () => {
         )
       await sheet.getByRole("button", { name: "Fermer" }).click()
       await expect(sheet).toBeHidden()
+    }
+  })
+
+  test("the sheet of the filters slides in only with motion, from the bottom under 640 px and from the right from 640 px, fades in alone otherwise, and passes axe while it is open", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const sheet = page.getByRole("dialog", { name: "Filtres" })
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto("/records")
+    await settle(page)
+    for (const width of [639, 700]) {
+      await resize(page, { width, height: 760 })
+      for (const reducedMotion of ["reduce", "no-preference"] as const) {
+        await page.emulateMedia({ reducedMotion })
+        const transitions = dialogTransitions(page)
+        await page.getByRole("button", { name: /^Filtres/ }).click()
+        expect(await (await transitions).jsonValue(), `${width} px`).toEqual(
+          reducedMotion === "reduce" ? ["opacity"] : ["opacity", "translate"]
+        )
+        await expect(sheet).toBeVisible()
+        if (width === 700 && reducedMotion === "reduce") {
+          await checkAccessibility()
+        }
+        await sheet.getByRole("button", { name: "Fermer" }).click()
+        await expect(sheet).toBeHidden()
+      }
     }
   })
 })

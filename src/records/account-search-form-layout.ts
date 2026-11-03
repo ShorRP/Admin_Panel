@@ -14,12 +14,17 @@ export const CHOICE_FIELD_CLASSES = cn(
 
 export const SHEET_CHOICE_FIELD_CLASSES = cn("flex min-w-0 flex-col gap-2")
 
+const CONTROL_HEIGHT_CLASSES = cn("h-9.5 touch:h-11")
+
 export const SELECT_CLASSES = cn(
   "w-full [&>select]:h-9.5 [&>select]:touch:h-11"
 )
 
+export const SELECT_SKELETON_CLASSES = cn(CONTROL_HEIGHT_CLASSES, "w-full")
+
 export const SUBMIT_CLASSES = cn(
-  "h-9.5 w-full px-4.5 has-data-[icon=inline-start]:pl-4 md:w-auto"
+  CONTROL_HEIGHT_CLASSES,
+  "w-full px-4.5 has-data-[icon=inline-start]:pl-4 md:w-auto"
 )
 
 export const FILTERS_BUTTON_CLASSES = cn("md:hidden")

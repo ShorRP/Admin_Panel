@@ -27,7 +27,7 @@ const FULL_LIST_CLASSES = cn(
 )
 
 const COMPACT_GAP_CLASSES = cn(
-  "flex w-0 justify-center text-sm text-muted-foreground"
+  "pointer-events-none flex w-0 justify-center text-sm text-muted-foreground"
 )
 
 const FULL_GAP_CLASSES = cn("px-1 text-sm text-muted-foreground")

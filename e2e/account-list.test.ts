@@ -1,7 +1,7 @@
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
-import { expect, test, type Locator } from "./fixtures"
+import { expect, test, type Locator, type Page } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
 import { minifiedReactError } from "./minified-react-error"
 import { resize, settle } from "./settle"
@@ -134,14 +134,23 @@ function targetsOf(pagination: Locator) {
       nav: { height: Math.round(box.height) },
       targets: shown.map((element) => {
         const { x, y, width, height } = element.getBoundingClientRect()
-        const hit = document.elementFromPoint(x + width / 2, y + height / 2)
+        const samples = [
+          [x + width / 2, y + height / 2],
+          [x + 1, y + height / 2],
+          [x + width - 1, y + height / 2],
+          [x + width / 2, y + 1],
+          [x + width / 2, y + height - 1],
+        ] as const
         return {
           name: (element.textContent ?? "").trim(),
           x: Math.round(x),
           y: Math.round(y),
           width: Math.round(width),
           height: Math.round(height),
-          hit: hit !== null && element.contains(hit),
+          hit: samples.every(([sampleX, sampleY]) => {
+            const hit = document.elementFromPoint(sampleX, sampleY)
+            return hit !== null && element.contains(hit)
+          }),
         }
       }),
       gaps: [...nav.querySelectorAll("li[aria-hidden] > span")]
@@ -161,10 +170,19 @@ function targetsOf(pagination: Locator) {
   })
 }
 
+function rowHeights(page: Page) {
+  return page
+    .getByRole("main")
+    .locator("ul a[href^='/records/']")
+    .evaluateAll((links) =>
+      links.map((link) => Math.round(link.getBoundingClientRect().height))
+    )
+}
+
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 } })
 
-  test("past 7 pages, the navigation keeps the first and the last page, the current one and its neighbours, apart by  … , in one row of 44 px targets between two arrows that no  …  covers, and from 768 px the list of pages comes back with its arrows' text", async ({
+  test("past 7 pages, the navigation keeps the first and the last page, the current one and its neighbours, apart by « … », in one row of 44 px targets between two arrows that no « … » covers, and from 768 px the list of pages comes back with its arrows' text, as it stays at 1,024 px", async ({
     page,
     logIn,
     checkAccessibility,
@@ -191,6 +209,8 @@ test.describe("on a 360 px screen", () => {
     await expect(
       pagination.locator('ol:visible [aria-current="page"]')
     ).toHaveText("Page 5")
+    expect(await rowHeights(page)).toHaveLength(25)
+    expect(Math.min(...(await rowHeights(page)))).toBeGreaterThanOrEqual(56)
     await pagination.scrollIntoViewIfNeeded()
     const narrow = await targetsOf(pagination)
     expect(narrow.nav.height).toBe(44)
@@ -237,6 +257,7 @@ test.describe("on a 360 px screen", () => {
       "…",
       "Page 9",
     ])
+    expect(Math.min(...(await rowHeights(page)))).toBeGreaterThanOrEqual(56)
     await pagination.scrollIntoViewIfNeeded()
     const medium = await targetsOf(pagination)
     expect(medium.targets.map(({ name }) => name)).toEqual(
@@ -248,6 +269,26 @@ test.describe("on a 360 px screen", () => {
     }
     expect(medium.targets[0]?.width).toBeGreaterThan(100)
     expect(medium.targets.at(-1)?.width).toBeGreaterThan(100)
+    await checkAccessibility()
+
+    await resize(page, { width: 1024, height: 768 })
+    await expect(pagination.locator("ol:visible")).toHaveCount(1)
+    await expect(entries).toHaveText([
+      "Page 1",
+      "…",
+      "Page 4",
+      "Page 5",
+      "Page 6",
+      "…",
+      "Page 9",
+    ])
+    await pagination.scrollIntoViewIfNeeded()
+    const wide = await targetsOf(pagination)
+    expect(wide.targets.map(({ name }) => name)).toEqual(
+      narrow.targets.map(({ name }) => name)
+    )
+    expect(wide.targets[0]?.width).toBeGreaterThan(100)
+    expect(wide.targets.at(-1)?.width).toBeGreaterThan(100)
     await checkAccessibility()
   })
 })

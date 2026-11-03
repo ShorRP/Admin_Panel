@@ -27,8 +27,6 @@ export type FilterSheetFormProps = {
 export type FilterSheetProps = FilterSheetFormProps & {
   label: string
   activeCount: number
-  triggerClassName?: string
-  rightFromSm?: boolean
 }
 
 const COUNT_CLASSES = cn(
@@ -43,21 +41,11 @@ const RIGHT_FROM_SM_CLASSES = cn(
   "sm:top-0! sm:left-auto! sm:h-full! sm:max-h-none! sm:w-3/4 sm:max-w-sm sm:border-t-0! sm:border-l! sm:data-ending-style:translate-x-[2.5rem] sm:data-ending-style:translate-y-0! sm:data-starting-style:translate-x-[2.5rem] sm:data-starting-style:translate-y-0!"
 )
 
-export function FilterSheet({
-  label,
-  activeCount,
-  triggerClassName,
-  rightFromSm,
-  ...form
-}: FilterSheetProps) {
+export function FilterSheet({ label, activeCount, ...form }: FilterSheetProps) {
   return (
     <Sheet>
-      <FilterSheetTrigger
-        label={label}
-        activeCount={activeCount}
-        className={triggerClassName}
-      />
-      <FilterSheetContent label={label} rightFromSm={rightFromSm}>
+      <FilterSheetTrigger label={label} activeCount={activeCount} />
+      <FilterSheetContent label={label}>
         <FilterSheetForm {...form} />
       </FilterSheetContent>
     </Sheet>

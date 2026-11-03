@@ -8,6 +8,7 @@ import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import { dialogTransitions } from "./dialog-opening"
 import { expect, test, type Locator, type Page } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
 
@@ -291,25 +292,6 @@ function inAnHour() {
 const FILTERED_ADDRESS = /\/audit-log\?type=timeouts&author=aldis&account=lyra$/
 
 const TOUCH_TARGET_PX = 44
-
-function dialogTransitions(page: Page) {
-  return page.waitForFunction(
-    () => {
-      const properties = document
-        .getAnimations()
-        .flatMap((animation) =>
-          animation instanceof CSSTransition &&
-          animation.effect instanceof KeyframeEffect &&
-          animation.effect.target?.getAttribute("role") === "dialog"
-            ? [animation.transitionProperty]
-            : []
-        )
-      return properties.length > 0 && [...new Set(properties)].sort()
-    },
-    undefined,
-    { polling: "raf" }
-  )
-}
 
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
