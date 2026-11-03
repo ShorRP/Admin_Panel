@@ -8,6 +8,7 @@ import type { Confirmation } from "./sanction-confirmation"
 import { SanctionConfirmationDialog } from "./sanction-confirmation-dialog"
 import {
   CHOICE_CLASS,
+  CHOICE_GROUP_CLASS,
   LEGEND_CLASS,
   NATIVE_CONTROL_CLASS,
   SANCTION_ALERT_ID,
@@ -48,7 +49,7 @@ export function BanForm({
       </p>
       <fieldset>
         <legend className={LEGEND_CLASS}>Messages à supprimer</legend>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <div className={CHOICE_GROUP_CLASS}>
           {BAN_MESSAGE_DELETIONS.map(({ seconds, label }) => (
             <label key={seconds} className={CHOICE_CLASS}>
               <input

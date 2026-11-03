@@ -80,7 +80,7 @@ export function TimeoutForms({
             {TIMEOUT_DURATIONS.map(({ seconds, label }) => (
               <label
                 key={seconds}
-                className="relative inline-flex h-7.5 items-center rounded-lg border border-input px-2.75 text-[0.78125rem] whitespace-nowrap has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:bg-input/30 dark:has-checked:bg-primary"
+                className="relative inline-flex h-7.5 items-center rounded-lg border border-input px-2.75 text-[0.78125rem] whitespace-nowrap has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:bg-input/30 dark:has-checked:bg-primary touch:h-11"
               >
                 <input
                   type="radio"

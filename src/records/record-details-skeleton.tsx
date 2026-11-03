@@ -14,9 +14,9 @@ export function RecordDetailsSkeleton() {
       <span className="sr-only">Chargement de la fiche…</span>
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-5">
-          <Skeleton className="size-17 shrink-0 rounded-full motion-reduce:animate-none" />
+          <Skeleton className="size-14 shrink-0 rounded-full motion-reduce:animate-none sm:size-17" />
           <div className="flex min-w-0 flex-1 flex-col gap-2.25">
-            <Skeleton className="h-10 w-56 max-w-full motion-reduce:animate-none" />
+            <Skeleton className="h-8.5 w-56 max-w-full motion-reduce:animate-none sm:h-10" />
             <div className="flex flex-wrap items-center gap-3">
               <Skeleton className="h-6 w-36 rounded-full motion-reduce:animate-none" />
               <Skeleton className="h-3.5 w-24 motion-reduce:animate-none" />
@@ -37,7 +37,7 @@ export function RecordDetailsSkeleton() {
               {DETAIL_VALUE_WIDTHS.map((width) => (
                 <div
                   key={width}
-                  className="flex gap-4 border-t py-3.5 first:border-t-transparent"
+                  className="flex flex-col gap-1.5 border-t py-3.5 first:border-t-transparent sm:flex-row sm:gap-4"
                 >
                   <Skeleton className="h-3.5 w-24 shrink-0 motion-reduce:animate-none sm:w-36" />
                   <Skeleton

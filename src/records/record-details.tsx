@@ -22,7 +22,7 @@ export function RecordDetails({ record }: { record: AccountRecord }) {
           Heures de Paris
         </Overline>
       </div>
-      <dl className="grid grid-cols-[minmax(6.875rem,min(11.875rem,40%))_minmax(0,1fr)] gap-x-4 px-5 pt-1 pb-1.5 text-sm">
+      <dl className="grid grid-cols-1 gap-x-4 px-5 pt-1 pb-1.5 text-sm sm:grid-cols-[minmax(6.875rem,min(11.875rem,40%))_minmax(0,1fr)]">
         {standing.kind === "banned" && (
           <>
             <Entry term="Motif du bannissement">
@@ -86,8 +86,10 @@ function Entry({
   children: ReactNode
 }) {
   return (
-    <div className="col-span-2 grid grid-cols-subgrid items-baseline border-t py-2.75 first:border-t-transparent">
-      <dt className="text-muted-foreground">{term}</dt>
+    <div className="grid grid-cols-1 gap-y-1 border-t py-2.75 first:border-t-transparent sm:col-span-2 sm:grid-cols-subgrid sm:items-baseline sm:gap-y-0">
+      <dt className="text-[0.78125rem] text-muted-foreground sm:text-sm">
+        {term}
+      </dt>
       <dd className={cn("wrap-anywhere", className)}>{children}</dd>
     </div>
   )

@@ -9,7 +9,7 @@ export function RecordBreadcrumb() {
           <Link
             href="/records"
             prefetch={false}
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground touch:min-h-11"
           >
             <ArrowLeft aria-hidden className="size-3.5" />
             Modération

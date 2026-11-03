@@ -32,17 +32,19 @@ const SCREENS = [
 
 const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
 
-const STAFF_PAGES = [
+type ResponsivePage = { path: string; fixme?: true }
+
+const STAFF_PAGES: ResponsivePage[] = [
   { path: "/blocked-words", fixme: true },
   { path: "/audit-log", fixme: true },
   { path: "/records", fixme: true },
   { path: `/records/${BRYNJA.id}`, fixme: true },
-] as const
+]
 
-const PUBLIC_PAGES = [
+const PUBLIC_PAGES: ResponsivePage[] = [
   { path: "/privacy", fixme: true },
   { path: "/login/logged-out", fixme: true },
-] as const
+]
 
 const MIN_TARGET_PX = 44
 
@@ -131,9 +133,9 @@ function horizontalOverflow(page: Page) {
   })
 }
 
-function smallTargets(page: Page) {
+function smallTargets(page: Page, scope = "body") {
   return page.evaluate(
-    ({ selector, min }) => {
+    ({ selector, min, within }) => {
       function inSentence(element: Element) {
         return (
           element.localName === "a" &&
@@ -144,7 +146,11 @@ function smallTargets(page: Page) {
             (element.textContent ?? "").trim().length
         )
       }
-      return [...document.querySelectorAll(selector)]
+      const root = document.querySelector(within)
+      if (root === null) {
+        throw new Error(`There is no ${within} to measure.`)
+      }
+      return [...root.querySelectorAll(selector)]
         .filter((element) => {
           const box = element.getBoundingClientRect()
           return (
@@ -162,7 +168,7 @@ function smallTargets(page: Page) {
             `${element.localName} « ${(element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 40)} » ${Math.round(box.width)}×${Math.round(box.height)}`
         )
     },
-    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX }
+    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX, within: scope }
   )
 }
 
@@ -473,6 +479,109 @@ for (const screen of [...SCREENS, DESKTOP]) {
           ).height
         ).toBe(touch ? MIN_TARGET_PX : 28)
       }
+    })
+  })
+}
+
+const DESKTOP_DURATION_PX = 30
+
+const DESKTOP_CHOICE_PX = 19
+
+for (const screen of [...SCREENS, DESKTOP]) {
+  test.describe(`the record at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("sizes its header, stacks its terms and values and gives its controls their touch size on a touch screen", async ({
+      page,
+      logIn,
+    }) => {
+      await logIn(ALDIS)
+      await page.goto(`/records/${BRYNJA.id}`)
+      await settle(page)
+      const touch = await holdsTouch(page)
+      expect(touch).toBe(screen !== DESKTOP)
+      const stacked = screen.width < 640
+      const main = page.getByRole("main")
+
+      const avatar = stacked ? 56 : 68
+      expect(await sizeOf(main.locator("[data-slot=avatar]").first())).toEqual({
+        width: avatar,
+        height: avatar,
+      })
+      expect(await fontSizeOf(main.getByRole("heading", { level: 1 }))).toBe(
+        stacked ? "32px" : "38px"
+      )
+
+      const details = main.getByRole("region", { name: "Détails" })
+      const term = details.getByText("Nom d’utilisateur", { exact: true })
+      const value = details.getByText(BRYNJA.username, { exact: true })
+      expect(await fontSizeOf(term)).toBe(stacked ? "12.5px" : "14px")
+      const [termBox, valueBox] = [await boxOf(term), await boxOf(value)]
+      if (stacked) {
+        expect(valueBox.x).toBe(termBox.x)
+        expect(valueBox.y).toBeGreaterThanOrEqual(termBox.y + termBox.height)
+      } else {
+        expect(valueBox.x).toBeGreaterThan(termBox.x + termBox.width)
+        expect(valueBox.y).toBeLessThan(termBox.y + termBox.height)
+      }
+
+      const breadcrumb = main
+        .getByRole("navigation", { name: "Fil d’Ariane" })
+        .getByRole("link", { name: "Modération" })
+      expect((await sizeOf(breadcrumb)).height >= MIN_TARGET_PX).toBe(touch)
+
+      const sanctions = main.getByRole("region", {
+        name: "Sanctions",
+        exact: true,
+      })
+      const durations = sanctions.locator("label:has(input[name=duration])")
+      await expect(durations).toHaveCount(7)
+      for (const duration of await durations.all()) {
+        expect((await sizeOf(duration)).height).toBe(
+          touch ? MIN_TARGET_PX : DESKTOP_DURATION_PX
+        )
+      }
+      const notify = sanctions
+        .locator("label:has(input[name=notify])")
+        .filter({ visible: true })
+      expect((await sizeOf(notify)).height).toBe(
+        touch ? MIN_TARGET_PX : DESKTOP_CHOICE_PX
+      )
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+
+      await sanctions.getByRole("tab", { name: "Expulsion" }).click()
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+
+      await sanctions.getByRole("tab", { name: "Bannissement" }).click()
+      const deletions = sanctions.locator(
+        "label:has(input[name=deleteMessages])"
+      )
+      await expect(deletions).toHaveCount(7)
+      const columns = new Set<number>()
+      for (const deletion of await deletions.all()) {
+        const box = await boxOf(deletion)
+        columns.add(Math.round(box.x))
+        if (touch) {
+          expect(Math.round(box.height)).toBeGreaterThanOrEqual(MIN_TARGET_PX)
+        } else {
+          expect(Math.round(box.height)).toBe(DESKTOP_CHOICE_PX)
+        }
+      }
+      if (stacked) {
+        expect(columns.size).toBe(2)
+      }
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
     })
   })
 }
