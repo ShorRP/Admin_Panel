@@ -135,7 +135,7 @@ test("a staff member who moderates finds accounts by name through « Modération
   ).toBeVisible()
 })
 
-test("a record shows its details and its history on the left and its sanctions on the right, which stay in view as the page scrolls, and puts them in one column, details, sanctions then history, where both columns do not fit and on a 360 px screen, each detail's value beside its term", async ({
+test("a record shows its details and its history on the left and its sanctions on the right, which stay in view as the page scrolls, and puts them in one column, details, sanctions then history, where both columns do not fit and on a 360 px screen, each detail's value beside its term from 640 px and under it below", async ({
   page,
   logIn,
   checkAccessibility,
@@ -193,8 +193,15 @@ test("a record shows its details and its history on the left and its sanctions o
     )
     const term = await boxOf(details.getByText("Nom d’utilisateur"))
     const value = await boxOf(details.getByText(LYRA.username, { exact: true }))
-    expect(value.x, `at ${width} px`).toBeGreaterThan(term.x + term.width)
-    expect(value.y, `at ${width} px`).toBeLessThan(term.y + term.height)
+    if (width < 640) {
+      expect(value.x, `at ${width} px`).toBe(term.x)
+      expect(value.y, `at ${width} px`).toBeGreaterThanOrEqual(
+        term.y + term.height
+      )
+    } else {
+      expect(value.x, `at ${width} px`).toBeGreaterThan(term.x + term.width)
+      expect(value.y, `at ${width} px`).toBeLessThan(term.y + term.height)
+    }
   }
 })
 

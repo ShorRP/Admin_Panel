@@ -98,11 +98,14 @@ Delivered by #358.
 
 ### `/records/{userId}`
 
+Delivered by #361.
+
 - The breadcrumb's link takes `touch:min-h-11`.
-- The header: under `sm`, the avatar takes 56 px and the name 32 px.
+- The header: under `sm`, the avatar takes `size-14`, 56 px, with its initials at 23 px, and the name 32 px, which `PageHeading` has had since #357; `RecordDetailsSkeleton` follows.
 - `RecordColumns` keeps its container query at 50.75 rem.
-- `RecordDetails`: under `sm`, each entry stacks, the term in 12.5 px above its value, through `grid-cols-1` and a `sm:grid-cols-subgrid` row.
-- `RecordSanctions`: the tabs are 44 px high under `touch` since #357, their own `min-h-7.5` staying beneath; the durations take `touch:h-11`; the radios of « Messages à supprimer » become, under `touch`, a grid of two columns under `sm` and `repeat(auto-fill,minmax(10.625rem,1fr))` from `sm`, each label `min-h-11`; `NotifyCheckbox`'s label takes `touch:min-h-11`; the main buttons already take the full width.
+- Its end-to-end flow, `the record at <width> px` of `e2e/responsive.test.ts`, measures `main` alone, so that the navigation's own targets are left to the page-wide 44 px test, which the record has passed since #361 (decided by the agent on 2026-11-03, on #361, for Gilles to review).
+- `RecordDetails`: under `sm`, each entry stacks, the term in 12.5 px above its value, through `grid-cols-1` and a `sm:grid-cols-subgrid` row; the skeleton's pairs stack the same way.
+- `RecordSanctions`: the tabs are 44 px high under `touch` since #357, their own `min-h-7.5` staying beneath; the durations take `touch:h-11`; the radios of « Messages à supprimer » stand in `CHOICE_GROUP_CLASS`, which becomes, under `touch`, a grid of two columns under `sm` and `repeat(auto-fill,minmax(10.625rem,1fr))` from `sm`, with `gap-x-2` and no row gap, each label `touch:min-h-11` through `CHOICE_CLASS`, which `NotifyCheckbox`'s label shares; the main buttons already take the full width.
 
 ### Login pages, the privacy policy and the error pages
 

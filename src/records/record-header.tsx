@@ -15,7 +15,7 @@ export function RecordHeader({ record }: { record: AccountRecord | null }) {
           <MemberAvatar
             name={record.name}
             avatarUrl={record.avatarUrl}
-            className="size-17 shadow-[0_0_0_4px_var(--color-background),0_0_0_5px_var(--color-border)] *:data-[slot=avatar-fallback]:font-heading *:data-[slot=avatar-fallback]:text-[1.75rem]"
+            className="size-14 shadow-[0_0_0_4px_var(--color-background),0_0_0_5px_var(--color-border)] *:data-[slot=avatar-fallback]:font-heading *:data-[slot=avatar-fallback]:text-[1.4375rem] sm:size-17 sm:*:data-[slot=avatar-fallback]:text-[1.75rem]"
           />
           <div className="flex min-w-0 flex-col gap-2.25">
             <PageHeading className="wrap-anywhere">{record.name}</PageHeading>
