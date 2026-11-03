@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 
 import { APPLY_STORED_THEME } from "@/ui/theme"
 
@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   },
   description: "Le panel où le staff de Shor administre le serveur Discord.",
 }
+
+export const viewport: Viewport = { viewportFit: "cover" }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
