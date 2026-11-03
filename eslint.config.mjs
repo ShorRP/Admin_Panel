@@ -3,6 +3,8 @@ import nextTs from "eslint-config-next/typescript"
 import jsxA11y from "eslint-plugin-jsx-a11y"
 import { defineConfig, globalIgnores } from "eslint/config"
 
+import { responsiveClasses } from "./eslint-rules/responsive-classes.mjs"
+
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -97,6 +99,14 @@ export default defineConfig([
         },
       ],
     },
+  },
+  {
+    name: "admin-panel/responsive-classes",
+    files: ["src/**/*.{ts,tsx}"],
+    plugins: {
+      "admin-panel": { rules: { "responsive-classes": responsiveClasses } },
+    },
+    rules: { "admin-panel/responsive-classes": "error" },
   },
   globalIgnores([
     ".next/**",

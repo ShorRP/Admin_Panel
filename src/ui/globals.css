@@ -17,6 +17,15 @@
   }
 }
 
+@custom-variant touch {
+  @media (width < 64rem) {
+    @slot;
+  }
+  @media (pointer: coarse) {
+    @slot;
+  }
+}
+
 @theme {
   --font-heading: "EB Garamond", var(--font-serif);
 }
@@ -226,6 +235,10 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   * {
     @apply border-border outline-ring/50;
   }
