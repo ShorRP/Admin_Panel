@@ -4,6 +4,8 @@ status: accepted
 
 # The Admin Panel never connects to Discord's gateway; event-driven features belong to ShorBot
 
+ADR 0008 supersedes, on 2026-11-03, the passages on the panel's own Discord application and on its Interactions Endpoint: the panel and the Bot share one Discord application, whose interactions are all the Bot's.
+
 The Admin Panel only calls Discord's REST API. Any feature that must react to Discord events, such as automatic sanctions, message logs or reaction roles, is built in ShorBot, the Bot (`GLOSSARY.md`), behind an HTTP API designed before either side writes code for it, unless what the two share can sit on the Discord server itself, as the name of a rule does below. Shor keeps a single bot connected to the gateway. Decided by Gilles on 2026-10-23, when loanspac developed ShorBot; Gilles took ShorBot over on 2026-10-28, then, on 2026-10-29, split the work with loanspac, who develops ShorBot while he develops the panel.
 
 The panel's own Discord application (ADR 0002) does put a bot user on the Discord server, but that user never connects to the gateway: it only makes REST calls, when a staff member uses the panel. The docs call it the panel's application, never a bot. Clarified by Gilles on 2026-10-23, while grilling #7.

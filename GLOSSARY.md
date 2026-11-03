@@ -29,7 +29,7 @@ A Discord account on the Discord server. A banned account is no longer one.
 _Avoid_: user (alone), player
 
 **Bot account**:
-An account that Discord flags as a bot, whoever runs it: the Bot, the Admin Panel's own Discord application, or the bot of a service. The Bot is one of them, not the only one.
+An account that Discord flags as a bot, whoever runs it: Shor's Discord application, which the Bot and the Admin Panel share, or the bot of a service. Shor's is one of them, not the only one.
 _Avoid_: bot (alone, which names Shor's Bot), application account
 
 **Staff**:
@@ -46,8 +46,12 @@ _Avoid_: admin role, mod role
 The web application where the staff administer the Discord server without code or bot commands, and where anyone with a Discord account takes the few steps that concern them, such as contesting a ban.
 _Avoid_: dashboard, painel, staff panel (the interface's « Panel du staff », under Shor's name, is a label, not a name of it)
 
+**Discord application**:
+Shor's application in Discord's Developer Portal, whose token the Bot and the Admin Panel both use. On the Discord server it is a single bot account.
+_Avoid_: panel's application, bot (alone), Shor Panel (its former name)
+
 **Bot**:
-Shor's Discord bot, which reacts to what happens on the Discord server and serves its members there, such as their support tickets. Not the Admin Panel's own Discord application, which acts only when a staff member uses the panel.
+The program that keeps Shor's Discord application connected to Discord, which reacts to what happens on the Discord server, serves its members there, such as their support tickets, and answers every interaction. Not the Admin Panel, which acts through the same Discord application only when a staff member uses it.
 _Avoid_: ShorBot (the repository's name), client, panel bot
 
 **Audit log**:
