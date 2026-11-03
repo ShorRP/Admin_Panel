@@ -8,13 +8,13 @@ export function AddBlockedWordFormSkeleton() {
     >
       <span className="sr-only">Chargement du formulaire…</span>
       <Skeleton className="h-4.5 w-52 motion-reduce:animate-none" />
-      <Skeleton className="mt-2.5 h-9.5 w-full motion-reduce:animate-none" />
-      <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2.5">
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-64">
+      <Skeleton className="mt-2.5 h-9.5 w-full motion-reduce:animate-none touch:h-11" />
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2.5">
+        <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-64 sm:flex-1">
           <Skeleton className="h-4.5 w-12 motion-reduce:animate-none" />
-          <Skeleton className="h-9.5 w-full motion-reduce:animate-none" />
+          <Skeleton className="h-9.5 w-full motion-reduce:animate-none touch:h-11" />
         </div>
-        <Skeleton className="h-9.5 w-24 motion-reduce:animate-none" />
+        <Skeleton className="h-9.5 w-full motion-reduce:animate-none sm:w-24 touch:h-11" />
       </div>
     </div>
   )

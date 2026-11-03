@@ -44,8 +44,8 @@ export function AddBlockedWordForm({
         placeholder="Ex. : free nitro"
         className="mt-2.5 h-9.5 px-3"
       />
-      <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2.5">
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-64">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2.5">
+        <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-64 sm:flex-1">
           <Label htmlFor={ACTION_ID} className="text-[0.8125rem] leading-4.5">
             Action
           </Label>
@@ -54,12 +54,13 @@ export function AddBlockedWordForm({
             actions={actions}
             selected={state?.ok === false ? state.action : DEFAULT_ACTION}
             describedBy={ALERT_ID}
+            className="w-full sm:w-fit"
           />
         </div>
         <Button
           type="submit"
           disabled={pending}
-          className="h-9.5 px-3.5 has-data-[icon=inline-start]:pl-3"
+          className="h-9.5 w-full px-3.5 has-data-[icon=inline-start]:pl-3 sm:w-auto"
         >
           {pending ? (
             <>

@@ -46,12 +46,14 @@ export function BlockedWordList({
         <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <h2
             id={HEADING_ID}
-            className="font-heading text-[1.375rem] leading-[1.2] font-medium"
+            className="font-heading text-[1.375rem] leading-[1.2] font-medium whitespace-nowrap"
           >
             La liste
           </h2>
           {count !== null && (
-            <p className="text-[0.8125rem] text-muted-foreground">{count}</p>
+            <p className="text-[0.8125rem] whitespace-nowrap text-muted-foreground">
+              {count}
+            </p>
           )}
           {query !== null && (
             <TextLink href="/blocked-words" className="text-[0.8125rem]">
@@ -80,7 +82,10 @@ export function BlockedWordList({
             >
               <li
                 title={word}
-                className={cn(removable ? "pr-1" : "pr-3", WORD_TILE_CLASSES)}
+                className={cn(
+                  removable ? "pr-1 touch:pr-0.5" : "pr-3",
+                  WORD_TILE_CLASSES
+                )}
               >
                 <div className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-[0.78125rem]">

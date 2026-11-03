@@ -12,7 +12,7 @@ export function BlockedWordCapacity({ count }: { count: number }) {
     <div
       role="group"
       aria-labelledby={LABEL_ID}
-      className="flex min-w-52.5 flex-col gap-2"
+      className="flex w-full min-w-52.5 flex-col gap-2 sm:w-auto"
     >
       <Overline id={LABEL_ID}>Capacité</Overline>
       <p className="flex items-baseline gap-1.5">

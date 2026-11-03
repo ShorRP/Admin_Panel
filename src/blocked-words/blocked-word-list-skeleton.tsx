@@ -20,7 +20,7 @@ export function BlockedWordListSkeleton() {
         </div>
         <Skeleton
           className={cn(
-            "h-8 motion-reduce:animate-none",
+            "h-8 motion-reduce:animate-none touch:h-11",
             FILTER_FORM_WIDTH_CLASSES
           )}
         />
