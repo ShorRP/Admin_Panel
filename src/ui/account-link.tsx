@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { cn } from "cn"
 
-const TOUCH_CLASSES = cn("touch:min-h-11 touch:items-center")
+const TOUCH_CLASSES = cn("touch:flex touch:min-h-11 touch:items-center")
 
 export function AccountLink({
   href,
