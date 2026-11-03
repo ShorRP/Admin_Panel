@@ -10,6 +10,12 @@ export type AuditLogFilters = {
   account: string | null
 }
 
+export const NO_FILTER: AuditLogFilters = {
+  type: null,
+  author: null,
+  account: null,
+}
+
 export type AccountIdentity = { id: Snowflake | null; name: string | null }
 
 const CHANGE_TYPE = z.enum(CHANGE_TYPES).nullable().catch(null)

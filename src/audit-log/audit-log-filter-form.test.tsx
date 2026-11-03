@@ -3,9 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
 import { AuditLogFilterForm } from "./audit-log-filter-form"
-import type { AuditLogFilters } from "./audit-log-filters"
-
-const NO_FILTER: AuditLogFilters = { type: null, author: null, account: null }
+import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 
 function render(filters: Partial<AuditLogFilters>) {
   return renderToStaticMarkup(

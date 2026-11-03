@@ -292,8 +292,27 @@ const FILTERED_ADDRESS = /\/audit-log\?type=timeouts&author=aldis&account=lyra$/
 
 const TOUCH_TARGET_PX = 44
 
+function dialogTransitions(page: Page) {
+  return page.waitForFunction(
+    () => {
+      const properties = document
+        .getAnimations()
+        .flatMap((animation) =>
+          animation instanceof CSSTransition &&
+          animation.effect instanceof KeyframeEffect &&
+          animation.effect.target?.getAttribute("role") === "dialog"
+            ? [animation.transitionProperty]
+            : []
+        )
+      return properties.length > 0 && [...new Set(properties)].sort()
+    },
+    undefined,
+    { polling: "raf" }
+  )
+}
+
 test.describe("on a 360 px screen", () => {
-  test.use({ viewport: { width: 360, height: 760 } })
+  test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
 
   test("the author and the account fold behind a button that opens a sheet docked to the bottom, which sends the address of the inline form, each filter set is a chip that removes it, and a staff member logs out with the button, the chips and the pills in view, and no page is prefetched", async ({
     page,
@@ -340,8 +359,9 @@ test.describe("on a 360 px screen", () => {
 
     await typeFilter.getByRole("link", { name: "Exclusions" }).click()
     await expect(page).toHaveURL("/audit-log?type=timeouts")
-    await fold.click()
+    await fold.tap()
     await expect(sheet).toBeVisible()
+    await expect(sheet).toBeFocused()
     await expect(sheet.getByRole("button", { name: "Filtrer" })).toBeVisible()
     await expect(
       sheet.getByRole("link", { name: "Réinitialiser" })
@@ -434,6 +454,29 @@ test.describe("on a 360 px screen", () => {
     expect(prefetchedPaths).toEqual([])
   })
 
+  test("the filter sheet fades in and slides up only with motion", async ({
+    page,
+    logIn,
+  }) => {
+    const fold = page.getByRole("button", { name: /^Auteur et compte/ })
+    const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await page.waitForLoadState()
+    for (const reducedMotion of ["reduce", "no-preference"] as const) {
+      await page.emulateMedia({ reducedMotion })
+      const transitions = dialogTransitions(page)
+      await fold.click()
+      expect(await (await transitions).jsonValue()).toEqual(
+        reducedMotion === "reduce" ? ["opacity"] : ["opacity", "translate"]
+      )
+      await expect(sheet).toBeVisible()
+      await sheet.getByRole("button", { name: "Fermer" }).click()
+      await expect(sheet).toBeHidden()
+    }
+  })
+
   test("the pagination's links take the whole width, side by side when both show", async ({
     page,
     logIn,
@@ -472,6 +515,9 @@ test.describe("on a 360 px screen", () => {
     ])
     expect(first?.y).toBe(second?.y)
     expect(first?.height).toBe(second?.height)
+    expect(
+      Math.abs((first?.width ?? 0) - (second?.width ?? 0))
+    ).toBeLessThanOrEqual(1)
     expect(first?.height).toBeGreaterThanOrEqual(TOUCH_TARGET_PX)
     expect((first?.x ?? 0) + (first?.width ?? 0)).toBeLessThan(second?.x ?? 0)
     expect(first?.x).toBe(column?.x)

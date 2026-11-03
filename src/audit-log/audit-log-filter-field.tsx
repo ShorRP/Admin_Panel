@@ -1,29 +1,31 @@
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
+import type { AuditLogFilters } from "./audit-log-filters"
 
-export function AuditLogFilterField({
-  id,
-  name,
-  label,
-  value,
+export const AUDIT_LOG_FILTER_FIELDS = [
+  { name: "author", label: "Auteur" },
+  { name: "account", label: "Compte" },
+] as const
+
+export function AuditLogFilterFields({
+  filters,
+  idPrefix,
   className,
 }: {
-  id: string
-  name: string
-  label: string
-  value: string | null
+  filters: AuditLogFilters
+  idPrefix: string
   className: string
 }) {
-  return (
-    <div className={className}>
-      <Label htmlFor={id}>{label}</Label>
+  return AUDIT_LOG_FILTER_FIELDS.map(({ name, label }) => (
+    <div key={name} className={className}>
+      <Label htmlFor={`${idPrefix}-${name}`}>{label}</Label>
       <Input
-        id={id}
+        id={`${idPrefix}-${name}`}
         name={name}
-        defaultValue={value ?? ""}
+        defaultValue={filters[name] ?? ""}
         placeholder="Nom, ID ou mention"
         autoComplete="off"
       />
     </div>
-  )
+  ))
 }

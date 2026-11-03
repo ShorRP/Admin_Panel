@@ -1,28 +1,28 @@
-import { AuditLogFilterField } from "./audit-log-filter-field"
-import type { AuditLogFilters } from "./audit-log-filters"
+import {
+  AUDIT_LOG_FILTER_FIELDS,
+  AuditLogFilterFields,
+} from "./audit-log-filter-field"
+import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import { FILTER_FOLD_CLASSES, SHEET_FIELD_CLASSES } from "./audit-log-layout"
 import { FilterChips, type FilterChip } from "./filter-chips"
 import { FilterSheet } from "./filter-sheet"
 
-const NO_FILTER: AuditLogFilters = { type: null, author: null, account: null }
-
 export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
-  const chips: FilterChip[] = []
-  if (filters.author !== null) {
-    chips.push({
-      name: "Auteur",
-      value: filters.author,
-      href: auditLogHref({ ...filters, author: null }),
-    })
-  }
-  if (filters.account !== null) {
-    chips.push({
-      name: "Compte",
-      value: filters.account,
-      href: auditLogHref({ ...filters, account: null }),
-    })
-  }
+  const chips: FilterChip[] = AUDIT_LOG_FILTER_FIELDS.flatMap(
+    ({ name, label }) => {
+      const value = filters[name]
+      return value === null
+        ? []
+        : [
+            {
+              name: label,
+              value,
+              href: auditLogHref({ ...filters, [name]: null }),
+            },
+          ]
+    }
+  )
   return (
     <div className={FILTER_FOLD_CLASSES}>
       <FilterSheet
@@ -35,34 +35,13 @@ export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
         resetHref={auditLogHref(NO_FILTER)}
         submitLabel="Filtrer"
       >
-        <AuditLogSheetFields filters={filters} />
+        <AuditLogFilterFields
+          filters={filters}
+          idPrefix="audit-log-sheet"
+          className={SHEET_FIELD_CLASSES}
+        />
       </FilterSheet>
       <FilterChips chips={chips} />
     </div>
-  )
-}
-
-export function AuditLogSheetFields({
-  filters: { author, account },
-}: {
-  filters: AuditLogFilters
-}) {
-  return (
-    <>
-      <AuditLogFilterField
-        id="audit-log-sheet-author"
-        name="author"
-        label="Auteur"
-        value={author}
-        className={SHEET_FIELD_CLASSES}
-      />
-      <AuditLogFilterField
-        id="audit-log-sheet-account"
-        name="account"
-        label="Compte"
-        value={account}
-        className={SHEET_FIELD_CLASSES}
-      />
-    </>
   )
 }

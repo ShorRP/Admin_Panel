@@ -50,7 +50,7 @@ export function FilterSheet({
           </>
         )}
       </SheetTrigger>
-      <SheetContent side="bottom">
+      <SheetContent side="bottom" className="motion-reduce:translate-y-0!">
         <SheetHeader>
           <SheetTitle>{form.label}</SheetTitle>
         </SheetHeader>

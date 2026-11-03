@@ -1,23 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import {
-  AuditLogFilterFold,
-  AuditLogSheetFields,
-} from "./audit-log-filter-fold"
-import type { AuditLogFilters } from "./audit-log-filters"
-
-const NO_FILTER: AuditLogFilters = { type: null, author: null, account: null }
+import { AuditLogFilterFold } from "./audit-log-filter-fold"
+import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 
 function renderFold(filters: Partial<AuditLogFilters>) {
   return renderToStaticMarkup(
     <AuditLogFilterFold filters={{ ...NO_FILTER, ...filters }} />
-  )
-}
-
-function renderFields(filters: Partial<AuditLogFilters>) {
-  return renderToStaticMarkup(
-    <AuditLogSheetFields filters={{ ...NO_FILTER, ...filters }} />
   )
 }
 
@@ -74,28 +63,4 @@ test("each filter set shows as a chip, a link to the audit log without that filt
       name: "Retirer le filtre Compte : lyra",
     },
   ])
-})
-
-test("the sheet's fields are the author and the account, under their labels, holding what was searched, with ids of their own", () => {
-  const html = renderFields({ author: "bryn", account: "lyra" })
-  const inputs = Array.from(html.matchAll(/<input[^>]*>/g), ([input = ""]) => ({
-    name: attribute(input, "name"),
-    value: attribute(input, "value"),
-    id: attribute(input, "id"),
-  }))
-  const labels = Array.from(
-    html.matchAll(/<label[^>]*\sfor="([^"]*)"[^>]*>([^<]*)<\/label>/g),
-    ([, htmlFor, text]) => ({ htmlFor, text })
-  )
-
-  expect(inputs.map(({ name, value }) => ({ name, value }))).toEqual([
-    { name: "author", value: "bryn" },
-    { name: "account", value: "lyra" },
-  ])
-  expect(labels).toEqual([
-    { htmlFor: inputs[0]?.id, text: "Auteur" },
-    { htmlFor: inputs[1]?.id, text: "Compte" },
-  ])
-  expect(inputs.map(({ id }) => id)).not.toContain("audit-log-author")
-  expect(inputs.map(({ id }) => id)).not.toContain("audit-log-account")
 })
