@@ -1,5 +1,6 @@
 import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
+import { BAN_MESSAGE_DELETIONS } from "@/sanctions/ban-message-deletions"
 import {
   BAN_ROLE_ID,
   MODERATION_ROLE_ID,
@@ -135,7 +136,7 @@ function horizontalOverflow(page: Page) {
 
 function smallTargets(page: Page, scope = "body") {
   return page.evaluate(
-    ({ selector, min, within }) => {
+    ({ selector, min, scope }) => {
       function inSentence(element: Element) {
         return (
           element.localName === "a" &&
@@ -146,9 +147,9 @@ function smallTargets(page: Page, scope = "body") {
             (element.textContent ?? "").trim().length
         )
       }
-      const root = document.querySelector(within)
+      const root = document.querySelector(scope)
       if (root === null) {
-        throw new Error(`There is no ${within} to measure.`)
+        throw new Error(`There is no ${scope} to measure.`)
       }
       return [...root.querySelectorAll(selector)]
         .filter((element) => {
@@ -168,7 +169,7 @@ function smallTargets(page: Page, scope = "body") {
             `${element.localName} « ${(element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 40)} » ${Math.round(box.width)}×${Math.round(box.height)}`
         )
     },
-    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX, within: scope }
+    { selector: TARGET_SELECTOR, min: MIN_TARGET_PX, scope }
   )
 }
 
@@ -487,6 +488,10 @@ const DESKTOP_DURATION_PX = 30
 
 const DESKTOP_CHOICE_PX = 19
 
+const CHOICE_COLUMN_MIN_PX = 170
+
+const CHOICE_GAP_PX = 8
+
 for (const screen of [...SCREENS, DESKTOP]) {
   test.describe(`the record at ${screen.width} px`, () => {
     test.use({
@@ -564,7 +569,7 @@ for (const screen of [...SCREENS, DESKTOP]) {
       const deletions = sanctions.locator(
         "label:has(input[name=deleteMessages])"
       )
-      await expect(deletions).toHaveCount(7)
+      await expect(deletions).toHaveCount(BAN_MESSAGE_DELETIONS.length)
       const columns = new Set<number>()
       for (const deletion of await deletions.all()) {
         const box = await boxOf(deletion)
@@ -577,6 +582,20 @@ for (const screen of [...SCREENS, DESKTOP]) {
       }
       if (stacked) {
         expect(columns.size).toBe(2)
+      } else if (touch) {
+        const group = await boxOf(deletions.first().locator(".."))
+        expect(columns.size).toBe(
+          Math.min(
+            Math.floor(
+              (group.width + CHOICE_GAP_PX) /
+                (CHOICE_COLUMN_MIN_PX + CHOICE_GAP_PX)
+            ),
+            BAN_MESSAGE_DELETIONS.length
+          )
+        )
+        if (screen.width === 1024) {
+          expect(columns.size).toBeGreaterThan(2)
+        }
       }
       if (touch) {
         expect(await smallTargets(page, "main")).toEqual([])

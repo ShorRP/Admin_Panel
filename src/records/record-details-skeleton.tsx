@@ -37,7 +37,7 @@ export function RecordDetailsSkeleton() {
               {DETAIL_VALUE_WIDTHS.map((width) => (
                 <div
                   key={width}
-                  className="flex flex-col gap-1.5 border-t py-3.5 first:border-t-transparent sm:flex-row sm:gap-4"
+                  className="flex flex-col gap-1 border-t py-3.5 first:border-t-transparent sm:flex-row sm:gap-4"
                 >
                   <Skeleton className="h-3.5 w-24 shrink-0 motion-reduce:animate-none sm:w-36" />
                   <Skeleton
