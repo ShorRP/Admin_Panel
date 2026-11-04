@@ -10,6 +10,8 @@ import { RecordView } from "@/records/record-view"
 import { readSanctionHistory } from "@/sanctions/read-sanction-history"
 import { readSanctionOptions } from "@/sanctions/sanction-options"
 import { requireModerationAccess } from "@/staff/require-staff-member"
+import { configuredArchivesChannelId } from "@/ticket-archives/archives-channel"
+import { readTicketArchives } from "@/ticket-archives/read-ticket-archives"
 import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 
 export const metadata: Metadata = { title: "Fiche" }
@@ -41,9 +43,17 @@ async function RecordFromDiscord({
   const staffMember = await requireModerationAccess(discord)
   const { userId } = await params
   const record = await readRecord(discord, userId)
-  const [options, history] = await Promise.all([
+  const [options, history, ticketArchives] = await Promise.all([
     readSanctionOptions(discord, staffMember, record),
     readSanctionHistory(discord, record),
+    readTicketArchives(discord, configuredArchivesChannelId(), record),
   ])
-  return <RecordView record={record} options={options} history={history} />
+  return (
+    <RecordView
+      record={record}
+      options={options}
+      history={history}
+      ticketArchives={ticketArchives}
+    />
+  )
 }

@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
 import type { SanctionOptions } from "@/sanctions/sanction-options"
+import type { TicketArchives } from "@/ticket-archives/read-ticket-archives"
 import type { AccountRecord } from "./read-record"
 import { RecordView } from "./record-view"
 
@@ -26,6 +27,12 @@ const REFUSED: SanctionOptions = {
   reason: "Tu ne peux pas sanctionner ce membre.",
 }
 
+const NO_ARCHIVE: TicketArchives = {
+  kind: "read",
+  archives: [],
+  complete: true,
+}
+
 function regions(html: string) {
   return Array.from(
     html.matchAll(/<section aria-labelledby="([^"]+)"/g),
@@ -37,9 +44,14 @@ function sanctionsColumnHidden(html: string) {
   return /<div hidden=""[^>]*><section aria-labelledby="sanctions"/.test(html)
 }
 
-test("a record shows its header, then its details, its sanctions and its history", () => {
+test("a record shows its header, then its details, its sanctions, its history and its support tickets", () => {
   const html = renderToStaticMarkup(
-    <RecordView record={LYRA} options={REFUSED} history={[]} />
+    <RecordView
+      record={LYRA}
+      options={REFUSED}
+      history={[]}
+      ticketArchives={NO_ARCHIVE}
+    />
   )
 
   expect(/<h1[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe("Lyra des Brumes")
@@ -47,6 +59,7 @@ test("a record shows its header, then its details, its sanctions and its history
     "record-details",
     "sanctions",
     "sanction-history",
+    "ticket-archives",
   ])
   expect(sanctionsColumnHidden(html)).toBe(false)
 })
@@ -57,6 +70,7 @@ test("a record that offers no sanction hides the column of its sanctions, which 
       record={{ ...LYRA, standing: { kind: "absent" } }}
       options={{ kind: "none" }}
       history={[]}
+      ticketArchives={NO_ARCHIVE}
     />
   )
 
@@ -64,13 +78,19 @@ test("a record that offers no sanction hides the column of its sanctions, which 
     "record-details",
     "sanctions",
     "sanction-history",
+    "ticket-archives",
   ])
   expect(sanctionsColumnHidden(html)).toBe(true)
 })
 
 test("an ID that names no account shows its header alone", () => {
   const html = renderToStaticMarkup(
-    <RecordView record={null} options={{ kind: "none" }} history={null} />
+    <RecordView
+      record={null}
+      options={{ kind: "none" }}
+      history={null}
+      ticketArchives={null}
+    />
   )
 
   expect(/<h1[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe("Fiche")

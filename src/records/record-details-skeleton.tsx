@@ -8,6 +8,8 @@ const DETAIL_VALUE_WIDTHS = ["w-32", "w-24", "w-40", "w-36", "w-28"] as const
 
 const HISTORY_ENTRY_WIDTHS = ["w-48", "w-40"] as const
 
+const TICKET_ENTRY_WIDTHS = ["w-44", "w-36"] as const
+
 export function RecordDetailsSkeleton() {
   return (
     <div role="status" className="flex flex-col gap-6">
@@ -63,6 +65,21 @@ export function RecordDetailsSkeleton() {
                     className={cn("h-4 motion-reduce:animate-none", width)}
                   />
                   <Skeleton className="h-3.5 w-56 max-w-full motion-reduce:animate-none" />
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+        tickets={
+          <div className="flex flex-col gap-4.5">
+            <Skeleton className="h-7 w-52 max-w-full motion-reduce:animate-none" />
+            <div className="flex flex-col divide-y rounded-xl border bg-card">
+              {TICKET_ENTRY_WIDTHS.map((width) => (
+                <div key={width} className="flex flex-col gap-2 px-5 py-3.5">
+                  <Skeleton
+                    className={cn("h-4 motion-reduce:animate-none", width)}
+                  />
+                  <Skeleton className="h-3.5 w-64 max-w-full motion-reduce:animate-none" />
                 </div>
               ))}
             </div>

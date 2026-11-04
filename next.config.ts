@@ -7,6 +7,7 @@ import {
 } from "@/discord/env"
 import { parseMonitoringEnv } from "@/monitoring/env"
 import { parseStaffEnv } from "@/staff/env"
+import { parseTicketArchivesEnv } from "@/ticket-archives/env"
 
 const { testProxy } = parseTestProxyEnv(process.env)
 
@@ -15,6 +16,7 @@ if (process.env.VERCEL) {
   parseDiscordOAuthEnv(process.env)
   parseMonitoringEnv(process.env)
   parseStaffEnv(process.env)
+  parseTicketArchivesEnv(process.env)
 }
 
 const contentSecurityPolicy = [

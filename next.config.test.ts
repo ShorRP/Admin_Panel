@@ -142,3 +142,29 @@ test("a production build on Vercel needs ALERT_WEBHOOK_URL", async () => {
 
   await expect(loadedConfig()).resolves.toBeDefined()
 })
+
+test("a build on Vercel refuses an archives channel that is no snowflake, and takes one that is unset or empty", async () => {
+  vi.stubEnv("VERCEL", "1")
+  vi.stubEnv("VERCEL_ENV", "preview")
+  vi.stubEnv("DISCORD_BOT_TOKEN", "a-bot-token")
+  vi.stubEnv("DISCORD_GUILD_ID", "1100000000000000000")
+  vi.stubEnv("DISCORD_CLIENT_ID", "1200000000000000000")
+  vi.stubEnv("DISCORD_CLIENT_SECRET", "a-client-secret")
+  vi.stubEnv("DISCORD_REDIRECT_URI", "https://panel.example/login/callback")
+  vi.stubEnv("E2E_TEST_PROXY", undefined)
+  vi.stubEnv("STAFF_ROLE_ID", "1300000000000000000")
+  vi.stubEnv("MODERATION_ROLE_IDS", "1300000000000000002")
+  vi.stubEnv("BAN_ROLE_IDS", "1300000000000000003")
+  vi.stubEnv("SESSION_SECRET", "a-session-secret-of-32-chars-xxx")
+  vi.stubEnv("TICKET_ARCHIVES_CHANNEL_ID", "transcriptions")
+
+  await expect(loadedConfig()).rejects.toThrow(/TICKET_ARCHIVES_CHANNEL_ID/)
+
+  vi.stubEnv("TICKET_ARCHIVES_CHANNEL_ID", "")
+
+  await expect(loadedConfig()).resolves.toBeDefined()
+
+  vi.stubEnv("TICKET_ARCHIVES_CHANNEL_ID", undefined)
+
+  await expect(loadedConfig()).resolves.toBeDefined()
+})
