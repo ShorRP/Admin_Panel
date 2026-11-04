@@ -17,5 +17,5 @@ The embed's title, « 🗄️ ARCHIVE D'UN TICKET », its six field names, « Ou
 
 - #197 no longer waits on the store (#174, #175). Its retention is the message's: an archive stays until a staff member deletes it, which is also how one is erased.
 - The panel's configuration holds the archives channel's ID for each Discord server, beside ShorBot's.
-- How the panel finds an account's archives, by paging the channel's history or by the guild message search, which needs the privileged Message Content intent (https://docs.discord.com/developers/change-log, 2026-03-19), is settled when #197 is built, with a preference for paging.
+- The panel finds an account's archives by paging the channel's history, 100 messages a call and 10 calls at most, which needs no privileged intent, where the guild message search needs the Message Content intent (https://docs.discord.com/developers/change-log, 2026-03-19). Past the 1,000 newest messages, the oldest archives are not read, and the record says so (#197).
 - The archive holds no conversation: the support ticket's channel and its messages are gone 5 seconds after its closing (ShorRP/ShorBot#23).
