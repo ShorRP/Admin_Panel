@@ -20,7 +20,7 @@ The orchestrating skills are run by the user. When you see the moment for one, s
 - grilled change too big for one session → `/to-spec`, then `/to-tickets`
 - effort too foggy to scope → `/wayfinder`
 - the answer lives in a teammate's head (the POs, the staff, loanspac) → `/to-questionnaire`
-- an epic of `ready-for-agent` and `skill:implement` sub-tickets, to deliver without Gilles → `/deliver-epic <n>`
+- an epic of `ready-for-agent` and `skill:implement` sub-tickets, to deliver without Gilles, its `ready-for-human` ones walked through with him in guide sessions → `/deliver-epic <n>`
 - every `ready-for-agent` and `skill:implement` ticket of the backlog, to deliver without Gilles, one at a time in board order → `/deliver-backlog`
 
 ## Language

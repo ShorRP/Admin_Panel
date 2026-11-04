@@ -398,6 +398,34 @@ test("finishing a PBI whose ticket is still open removes nothing", () => {
   })
 })
 
+test("finishing a PBI whose ticket is left open on purpose cleans up and says the ticket stays open", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    const result = finishPbi(
+      finishArguments(pbi, {
+        ticketOpen: true,
+        forge: { ...MERGED_AND_CLOSED, issue: () => ({ state: "OPEN" }) },
+      })
+    )
+    assert.equal(result.ok, true, result.lines.join("\n"))
+    assert.equal(
+      result.lines[1],
+      "ticket #7: open, left open for its manual criterion"
+    )
+    assert.equal(fs.existsSync(pbi.worktree), false)
+    assert.ok(!branchesOf(pbi.repository).includes(pbi.branch))
+  })
+})
+
+test("finishing a PBI left open on purpose whose ticket closed meanwhile says it is closed", () => {
+  withPbi((pbi) => {
+    pbi.mergeIntoOrigin()
+    const result = finishPbi(finishArguments(pbi, { ticketOpen: true }))
+    assert.equal(result.ok, true, result.lines.join("\n"))
+    assert.equal(result.lines[1], "ticket #7: closed")
+  })
+})
+
 test("finishing a PBI whose worktree holds an untracked file removes nothing", () => {
   withPbi((pbi) => {
     pbi.mergeIntoOrigin()
@@ -632,8 +660,25 @@ test("the command line finishes from the repository of the folder it runs in, an
     assert.equal(lost.status, 2)
     assert.match(
       lost.stderr,
-      /usage: node .*finish-pbi\.mjs <ticket> <pr> <worktree> <branch>/
+      /usage: node .*finish-pbi\.mjs <ticket> <pr> <worktree> <branch> \[--ticket-open\]/
     )
+    const flagged = spawnSync(
+      process.execPath,
+      [FINISH_SCRIPT, "7", "70", pbi.worktree, pbi.branch, "--ticket-open"],
+      { cwd: pbi.worktree, encoding: "utf8" }
+    )
+    assert.equal(flagged.status, 1, flagged.stderr)
+    assert.match(
+      flagged.stdout,
+      /^refused: run this from outside the worktree/m
+    )
+    const unknown = spawnSync(
+      process.execPath,
+      [FINISH_SCRIPT, "7", "70", pbi.worktree, pbi.branch, "--keep"],
+      { cwd: pbi.repository, encoding: "utf8" }
+    )
+    assert.equal(unknown.status, 2)
+    assert.match(unknown.stderr, /usage: /)
   })
 })
 

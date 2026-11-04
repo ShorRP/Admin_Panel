@@ -6,8 +6,9 @@ import { pathToFileURL } from 'node:url'
 import { releaseSlots, slotsDir } from './slots.mjs'
 
 const USAGE = [
-  'usage: node .claude/skills/deliver-epic/scripts/finish-pbi.mjs <ticket> <pr> <worktree> <branch>',
+  'usage: node .claude/skills/deliver-epic/scripts/finish-pbi.mjs <ticket> <pr> <worktree> <branch> [--ticket-open]',
   '  checks that the pull request is merged and the ticket closed, removes the PBI worktree and its branches once merged,',
+  '  --ticket-open accepts an open ticket, left open for a criterion that waits on a manual try,',
   "  frees the ticket's slots, and prints a line per step; exits 1 when a line begins refused:, failed: or kept:",
 ].join('\n')
 
@@ -76,7 +77,7 @@ export function githubForge(run = args => execFileSync('gh', args, { encoding: '
   }
 }
 
-export function finishPbi({ repository, ticket, pr, worktree, branch, forge, cwd = process.cwd() }) {
+export function finishPbi({ repository, ticket, pr, worktree, branch, forge, ticketOpen = false, cwd = process.cwd() }) {
   const lines = []
   const refuse = message => {
     lines.push(`refused: ${message}`)
@@ -96,8 +97,9 @@ export function finishPbi({ repository, ticket, pr, worktree, branch, forge, cwd
     }
     lines.push(`pull request #${pr}: merged into ${base}`)
     const issue = forge.issue(ticket)
-    if (issue.state !== 'CLOSED') return refuse(`ticket #${ticket} is ${issue.state}, not CLOSED`)
-    lines.push(`ticket #${ticket}: closed`)
+    if (issue.state === 'CLOSED') lines.push(`ticket #${ticket}: closed`)
+    else if (ticketOpen) lines.push(`ticket #${ticket}: open, left open for its manual criterion`)
+    else return refuse(`ticket #${ticket} is ${issue.state}, not CLOSED`)
     if (branch === base) return refuse(`branch ${branch} is the branch the pull request merged into`)
     git(repository, 'fetch', '--prune', 'origin')
     const entry = worktreeEntries(repository).find(candidate => samePath(candidate.path, worktree))
@@ -145,7 +147,8 @@ export function finishPbi({ repository, ticket, pr, worktree, branch, forge, cwd
 }
 
 function main(args) {
-  const [ticket, pr, worktree, branch, ...extra] = args
+  const ticketOpen = args.at(-1) === '--ticket-open'
+  const [ticket, pr, worktree, branch, ...extra] = ticketOpen ? args.slice(0, -1) : args
   if (!/^\d+$/.test(ticket ?? '') || !/^\d+$/.test(pr ?? '') || !worktree || !branch || extra.length) {
     console.error(USAGE)
     return 2
@@ -157,6 +160,7 @@ function main(args) {
     worktree: path.resolve(worktree),
     branch,
     forge: githubForge(),
+    ticketOpen,
   })
   console.log(lines.join('\n'))
   return ok ? 0 : 1
