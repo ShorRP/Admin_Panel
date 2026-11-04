@@ -9,6 +9,7 @@ import {
   type FakeUser,
 } from "@/discord/fake-discord"
 import { httpAdapter } from "@/discord/http-adapter"
+import { ARCHIVES_CHANNEL_ID } from "../playwright.config"
 
 type Fixtures = {
   discordState: FakeDiscordState
@@ -44,7 +45,10 @@ export const test = base.extend<Fixtures>({
   discordState: [{}, { option: true }],
   discord: [
     async ({ next, discordState }, use) => {
-      const discord = new FakeDiscord(discordState)
+      const discord = new FakeDiscord({
+        ...discordState,
+        channels: [...(discordState.channels ?? []), ARCHIVES_CHANNEL_ID],
+      })
       const answer = httpAdapter(discord, discord)
       const adapterErrors: unknown[] = []
       next.onFetch(async (request) => {

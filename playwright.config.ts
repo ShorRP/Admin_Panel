@@ -10,6 +10,8 @@ export const MODERATION_ROLE_ID = "1300000000000000002"
 
 export const BAN_ROLE_ID = "1300000000000000003"
 
+export const ARCHIVES_CHANNEL_ID = "1300000000000000040"
+
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
@@ -31,6 +33,7 @@ export default defineConfig({
       STAFF_ROLE_ID,
       MODERATION_ROLE_IDS: MODERATION_ROLE_ID,
       BAN_ROLE_IDS: BAN_ROLE_ID,
+      TICKET_ARCHIVES_CHANNEL_ID: ARCHIVES_CHANNEL_ID,
       SESSION_SECRET: "e2e-session-secret-of-32-chars-x",
     },
   },

@@ -3,7 +3,9 @@ import { newPanelRule } from "@/blocked-words/panel-rule"
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { BAN_MESSAGE_DELETIONS } from "@/sanctions/ban-message-deletions"
+import { archiveMessage } from "@/ticket-archives/archive-message"
 import {
+  ARCHIVES_CHANNEL_ID,
   BAN_ROLE_ID,
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
@@ -84,6 +86,21 @@ test.use({
       { user: BRYNJA, roles: [GUARD.id] },
     ],
     bans: [{ user: CORVUS }],
+    channelMessages: [
+      archiveMessage({
+        channelId: ARCHIVES_CHANNEL_ID,
+        openerId: BRYNJA.id,
+        closerId: ALDIS.id,
+        reason: "Résolu",
+      }),
+      archiveMessage({
+        channelId: ARCHIVES_CHANNEL_ID,
+        openerId: BRYNJA.id,
+        closerId: ALDIS.id,
+        kind: null,
+        reason: "x".repeat(300),
+      }),
+    ],
   },
 })
 
@@ -849,6 +866,22 @@ for (const screen of [...SCREENS, DESKTOP]) {
         expect(valueBox.x).toBeGreaterThan(termBox.x + termBox.width)
         expect(valueBox.y).toBeLessThan(termBox.y + termBox.height)
       }
+
+      const history = main.getByRole("region", {
+        name: "Historique des sanctions",
+      })
+      const tickets = main.getByRole("region", { name: "Tickets de support" })
+      await expect(tickets.getByRole("listitem")).toHaveCount(2)
+      const [historyBox, ticketsBox] = [
+        await boxOf(history),
+        await boxOf(tickets),
+      ]
+      expect(ticketsBox.x).toBe(historyBox.x)
+      expect(ticketsBox.y).toBeGreaterThan(historyBox.y + historyBox.height)
+      expect(
+        (await sizeOf(tickets.getByRole("link", { name: "aldis" }).first()))
+          .height
+      ).toBeLessThan(MIN_TARGET_PX)
 
       const breadcrumb = main
         .getByRole("navigation", { name: "Fil d’Ariane" })
