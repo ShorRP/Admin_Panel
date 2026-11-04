@@ -19,6 +19,8 @@ export const CONTRACT_RULE_PREFIX = "Contract "
 
 const NO_ACCOUNT_ID = "100000000000000000"
 
+const NO_CHANNEL_ID = "100000000000000000"
+
 export type ContractTarget = {
   discord: DiscordApi
   outsider: Snowflake
@@ -153,6 +155,8 @@ function patient(discord: DiscordApi): DiscordApi {
     createDm: (recipientId) => patiently(() => discord.createDm(recipientId)),
     createMessage: (channelId, message) =>
       patiently(() => discord.createMessage(channelId, message)),
+    listMessages: (channelId, query) =>
+      patiently(() => discord.listMessages(channelId, query)),
     listAutoModerationRules: () =>
       patiently(() => discord.listAutoModerationRules()),
     createAutoModerationRule: (rule, reason) =>
@@ -807,6 +811,51 @@ export function describeDiscordApiContract(
       expect(channel.type).toBe(ChannelType.DM)
       expect(message).toMatchObject({ channel_id: channel.id, content })
       expect((await discord.createDm(member)).id).toBe(channel.id)
+    })
+
+    test("the messages of a channel are listed newest first with their author and their embed, a page after the other", async () => {
+      const { discord, member, deleteMessage } = connected()
+      const embed = {
+        title: uniqueText("an embed"),
+        fields: [{ name: "Champ", value: "valeur, « é »", inline: true }],
+      }
+      const channel = await discord.createDm(member)
+      const older = await discord.createMessage(channel.id, {
+        content: uniqueText("an older message"),
+        allowed_mentions: { parse: [] },
+      })
+      onTestFinished(() => deleteMessage(channel.id, older.id))
+      const newer = await discord.createMessage(channel.id, {
+        embeds: [embed],
+        allowed_mentions: { parse: [] },
+      })
+      onTestFinished(() => deleteMessage(channel.id, newer.id))
+
+      const listed = await discord.listMessages(channel.id, { limit: 2 })
+      const beforeNewer = await discord.listMessages(channel.id, {
+        before: newer.id,
+        limit: 1,
+      })
+
+      expect(listed.map(({ id }) => id)).toEqual([newer.id, older.id])
+      expect(listed[0]).toMatchObject({
+        channel_id: channel.id,
+        author: { id: (await discord.getApplicationUser()).id },
+        embeds: [embed],
+      })
+      expect(beforeNewer.map(({ id }) => id)).toEqual([older.id])
+    })
+
+    test("the messages of a channel that does not exist fail as Unknown Channel", async () => {
+      const { discord } = connected()
+
+      await expect(
+        discord.listMessages(NO_CHANNEL_ID, { limit: 1 })
+      ).rejects.toMatchObject({
+        status: 404,
+        code: RESTJSONErrorCodes.UnknownChannel,
+        unavailable: false,
+      })
     })
   })
 }
