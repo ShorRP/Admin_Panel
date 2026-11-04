@@ -42,11 +42,12 @@ async function RecordFromDiscord({
   const discord = createDiscordApi()
   const staffMember = await requireModerationAccess(discord)
   const { userId } = await params
+  const archivesChannelId = configuredArchivesChannelId()
   const record = await readRecord(discord, userId)
   const [options, history, ticketArchives] = await Promise.all([
     readSanctionOptions(discord, staffMember, record),
     readSanctionHistory(discord, record),
-    readTicketArchives(discord, configuredArchivesChannelId(), record),
+    readTicketArchives(discord, archivesChannelId, record),
   ])
   return (
     <RecordView

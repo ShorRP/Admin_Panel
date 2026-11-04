@@ -4,12 +4,13 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
 import { memberName, userName } from "@/discord/member-name"
-import {
-  MAX_PAGES,
-  PAGE_SIZE,
-  ticketArchiveOf,
-  type TicketArchive,
-} from "./ticket-archive"
+import { ticketArchiveOf, type TicketArchive } from "./ticket-archive"
+
+const PAGE_SIZE = 100
+
+const MAX_PAGES = 10
+
+export const MAX_MESSAGES_READ = PAGE_SIZE * MAX_PAGES
 
 export type ReadTicketArchive = Omit<TicketArchive, "closerId"> & {
   closer: { id: Snowflake; name: string | null }
@@ -33,8 +34,8 @@ export async function readTicketArchives(
   const { id: applicationId } = await discord.getApplicationUser()
   const archives: TicketArchive[] = []
   let before: Snowflake | undefined
-  let complete = false
-  for (let page = 0; page < MAX_PAGES && !complete; page++) {
+  let lastPageFull = false
+  for (let page = 0; page < MAX_PAGES; page++) {
     const messages = await discord.listMessages(archivesChannelId, {
       ...(before === undefined ? {} : { before }),
       limit: PAGE_SIZE,
@@ -46,9 +47,17 @@ export async function readTicketArchives(
         archives.push(archive)
       }
     }
-    complete = messages.length < PAGE_SIZE
+    lastPageFull = messages.length === PAGE_SIZE
     before = messages.at(-1)?.id
+    if (!lastPageFull) {
+      break
+    }
   }
+  const complete =
+    !lastPageFull ||
+    before === undefined ||
+    (await discord.listMessages(archivesChannelId, { before, limit: 1 }))
+      .length === 0
   const names = await closerNames(discord, archives)
   return {
     kind: "read",

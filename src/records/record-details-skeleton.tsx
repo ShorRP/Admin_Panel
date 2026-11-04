@@ -1,5 +1,10 @@
 import { cn } from "cn"
 
+import {
+  TICKET_ARCHIVE_ENTRIES_CLASSES,
+  TICKET_ARCHIVE_ENTRY_CLASSES,
+  TICKET_ARCHIVES_CLASSES,
+} from "@/ticket-archives/ticket-archive-layout"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { Skeleton } from "@/ui/skeleton"
 import { RecordColumns } from "./record-columns"
@@ -71,11 +76,14 @@ export function RecordDetailsSkeleton() {
           </div>
         }
         tickets={
-          <div className="flex flex-col gap-4.5">
+          <div className={TICKET_ARCHIVES_CLASSES}>
             <Skeleton className="h-7 w-52 max-w-full motion-reduce:animate-none" />
-            <div className="flex flex-col divide-y rounded-xl border bg-card">
+            <div className={TICKET_ARCHIVE_ENTRIES_CLASSES}>
               {TICKET_ENTRY_WIDTHS.map((width) => (
-                <div key={width} className="flex flex-col gap-2 px-5 py-3.5">
+                <div
+                  key={width}
+                  className={cn(TICKET_ARCHIVE_ENTRY_CLASSES, "gap-2")}
+                >
                   <Skeleton
                     className={cn("h-4 motion-reduce:animate-none", width)}
                   />

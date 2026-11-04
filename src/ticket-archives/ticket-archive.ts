@@ -20,12 +20,6 @@ const PLAIN_TEXT_ID = /`(\d{17,20})`/
 
 const LONG_TIMESTAMP = /^<t:(\d+):F>$/
 
-export const PAGE_SIZE = 100
-
-export const MAX_PAGES = 10
-
-export const MAX_MESSAGES_READ = PAGE_SIZE * MAX_PAGES
-
 export type TicketArchive = {
   messageId: Snowflake
   openerId: Snowflake
@@ -77,5 +71,9 @@ function memberIdOf(value: string | undefined) {
 function momentOf(value: string | undefined) {
   const seconds =
     value === undefined ? undefined : LONG_TIMESTAMP.exec(value)?.[1]
-  return seconds === undefined ? null : new Date(Number(seconds) * 1000)
+  if (seconds === undefined) {
+    return null
+  }
+  const moment = new Date(Number(seconds) * 1000)
+  return Number.isNaN(moment.getTime()) ? null : moment
 }

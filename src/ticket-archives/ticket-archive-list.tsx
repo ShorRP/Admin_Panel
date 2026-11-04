@@ -1,15 +1,25 @@
+import { cn } from "cn"
+
 import { recordHref } from "@/records/record-href"
 import { frenchNumber } from "@/ui/french-number"
 import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
-import type { ReadTicketArchive, TicketArchives } from "./read-ticket-archives"
-import { MAX_MESSAGES_READ } from "./ticket-archive"
+import {
+  MAX_MESSAGES_READ,
+  type ReadTicketArchive,
+  type TicketArchives,
+} from "./read-ticket-archives"
+import {
+  TICKET_ARCHIVE_ENTRIES_CLASSES,
+  TICKET_ARCHIVE_ENTRY_CLASSES,
+  TICKET_ARCHIVES_CLASSES,
+} from "./ticket-archive-layout"
 
 const HEADING_ID = "ticket-archives"
 
 export function TicketArchiveList({ archives }: { archives: TicketArchives }) {
   return (
-    <section aria-labelledby={HEADING_ID} className="flex flex-col gap-4.5">
+    <section aria-labelledby={HEADING_ID} className={TICKET_ARCHIVES_CLASSES}>
       <h2
         id={HEADING_ID}
         className="font-heading text-2xl leading-[1.2] font-medium"
@@ -25,7 +35,7 @@ export function TicketArchiveList({ archives }: { archives: TicketArchives }) {
           Aucun ticket de support archivé pour ce compte.
         </p>
       ) : (
-        <ol className="flex flex-col divide-y rounded-xl border bg-card">
+        <ol className={TICKET_ARCHIVE_ENTRIES_CLASSES}>
           {archives.archives.map((archive) => (
             <TicketArchiveItem key={archive.messageId} archive={archive} />
           ))}
@@ -48,7 +58,7 @@ function TicketArchiveItem({
   archive: ReadTicketArchive
 }) {
   return (
-    <li className="flex flex-col gap-0.75 px-5 py-3.5">
+    <li className={cn(TICKET_ARCHIVE_ENTRY_CLASSES, "gap-0.75")}>
       <p className="font-medium wrap-anywhere">
         {requestKind ?? "Type de demande inconnu"}
       </p>

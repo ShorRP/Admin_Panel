@@ -190,6 +190,14 @@ const BREACHES = [
     "whose closing date is not in the long format",
     withField("Fermé le", "<t:1762182659:R>"),
   ],
+  [
+    "whose opening date is beyond the dates JavaScript holds",
+    withField("Ouvert le", "<t:99999999999999:F>"),
+  ],
+  [
+    "whose closing date is a run of digits that is no number",
+    withField("Fermé le", `<t:${"9".repeat(400)}:F>`),
+  ],
 ] as const
 
 for (const [breach, message] of BREACHES) {
@@ -264,35 +272,59 @@ test("the channel is paged through, 100 messages at a time, to its beginning", a
   })
 })
 
-test("the channel is read for 1,000 messages at most: an archive beyond them is not shown, and the archives read are said to be incomplete", async () => {
+const BOUNDARIES = [
+  { messages: 999, shown: true, complete: true },
+  { messages: 1000, shown: true, complete: true },
+  { messages: 1001, shown: false, complete: false },
+] as const
+
+for (const { messages, shown, complete } of BOUNDARIES) {
+  test(`a channel of ${messages} messages is read for 1,000 at most: the archive that is its oldest message is ${shown ? "shown" : "not shown"}, and the archives read are ${complete ? "complete" : "said to be incomplete"}`, async () => {
+    const discord = new FakeDiscord({
+      channels: [CHANNEL_ID],
+      channelMessages: [
+        opened(ALDIS.id, { reason: "La plus ancienne" }),
+        ...Array.from({ length: messages - 1 }, () => opened(CORVUS.id)),
+      ],
+    })
+
+    expect(await archivesOf(discord)).toEqual({
+      kind: "read",
+      complete,
+      archives: shown
+        ? [expect.objectContaining({ reason: "La plus ancienne" })]
+        : [],
+    })
+  })
+}
+
+test("when the mention and the plain ID of an archive disagree, the plain ID wins, for the opener and for the closer", async () => {
   const discord = new FakeDiscord({
+    members: [{ user: ALDIS }, { user: BRYNJA }, { user: LYRA }],
     channels: [CHANNEL_ID],
     channelMessages: [
-      opened(ALDIS.id, { reason: "La 1 001e" }),
-      opened(ALDIS.id, { reason: "La 1 000e" }),
-      ...Array.from({ length: 999 }, () => opened(CORVUS.id)),
+      {
+        channelId: CHANNEL_ID,
+        embeds: [
+          {
+            ...archiveEmbed({ openerId: ALDIS.id }),
+            fields: archiveEmbed({ openerId: ALDIS.id }).fields?.map((field) =>
+              field.name === "Ouvert par"
+                ? { ...field, value: `<@${LYRA.id}> (\`${ALDIS.id}\`)` }
+                : field.name === "Fermé par"
+                  ? { ...field, value: `<@${LYRA.id}> (\`${BRYNJA.id}\`)` }
+                  : field
+            ),
+          },
+        ],
+      },
     ],
   })
 
-  const archives = await archivesOf(discord)
-
-  expect(archives).toMatchObject({
-    complete: false,
-    archives: [{ reason: "La 1 000e" }],
+  expect(await archivesOf(discord, ALDIS)).toMatchObject({
+    archives: [{ closer: { id: BRYNJA.id } }],
   })
-})
-
-test("a channel of fewer than 1,000 messages is read to its beginning, complete", async () => {
-  const discord = new FakeDiscord({
-    channels: [CHANNEL_ID],
-    channelMessages: Array.from({ length: 999 }, () => opened(CORVUS.id)),
-  })
-
-  expect(await archivesOf(discord)).toEqual({
-    kind: "read",
-    complete: true,
-    archives: [],
-  })
+  expect(await archivesOf(discord, LYRA)).toMatchObject({ archives: [] })
 })
 
 test("an account with no archive, in an archives channel with no message, has none", async () => {
