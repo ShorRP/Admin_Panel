@@ -7,7 +7,7 @@ Gilles set these rules for every `deliver-epic` run, on 2026-10-29 (ShorRP/Admin
 3. **Agents decide.** Where `CLAUDE.md` or a skill says to ask Gilles, to name a contradiction and ask which side wins, or to grill a doubt (step 8 of `groom-backlog`), the agent picks the most acceptable option and applies it: the one that keeps the ticket's decisions, then the epic's, then the rules of `CLAUDE.md`, with the smallest scope. It records the decision in its own name, never in Gilles':
    - in the docs, in English: `(decided by the agent on <date>, on #<n>, for Gilles to review)`;
    - in the ticket, in French, under a heading `Décisions de l'agent (à revoir par Gilles)`.
-4. **Gilles is called only for a stop**, and a stop has three reasons only.
+4. **Gilles is called only for a human step**: a stop, which has three reasons only, and, in `deliver-epic`, a human PBI or the manual criterion of a merged PBI. `deliver-epic` walks him through each in a guide session, step by step, and never skips one: the PBIs that wait on it wait (its `SKILL.md`, **A human PBI**; Gilles, 2026-11-04).
 
 ## Stops
 
@@ -17,4 +17,4 @@ Gilles set these rules for every `deliver-epic` run, on 2026-10-29 (ShorRP/Admin
 
 `CLAUDE.md` names the concrete triggers of each, its file names and services: read them with these three in mind.
 
-A stop is declared before the action, and holds up that PBI alone. The agent stops short of the action and tells the orchestrator what Gilles must do; the orchestrator marks the ticket, notifies Gilles and carries on with the rest (`SKILL.md`, **Stops**). Everything else is settled without him: a red CI, a flaky test, a fuzzy ticket, a merge conflict.
+A stop is declared before the action, and holds up that PBI alone. The agent stops short of the action and tells the orchestrator what Gilles must do; the orchestrator marks the ticket, hands the step to Gilles as its run's **Stops** say, and carries on with the rest. Everything else is settled without him: a red CI, a flaky test, a fuzzy ticket, a merge conflict.
