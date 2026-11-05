@@ -1,5 +1,10 @@
 import { cn } from "cn"
 
+import {
+  TICKET_ARCHIVE_ENTRIES_CLASSES,
+  TICKET_ARCHIVE_ENTRY_CLASSES,
+  TICKET_ARCHIVES_CLASSES,
+} from "@/ticket-archives/ticket-archive-layout"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { Skeleton } from "@/ui/skeleton"
 import { RecordColumns } from "./record-columns"
@@ -7,6 +12,8 @@ import { RecordColumns } from "./record-columns"
 const DETAIL_VALUE_WIDTHS = ["w-32", "w-24", "w-40", "w-36", "w-28"] as const
 
 const HISTORY_ENTRY_WIDTHS = ["w-48", "w-40"] as const
+
+const TICKET_ENTRY_WIDTHS = ["w-44", "w-36"] as const
 
 export function RecordDetailsSkeleton() {
   return (
@@ -63,6 +70,24 @@ export function RecordDetailsSkeleton() {
                     className={cn("h-4 motion-reduce:animate-none", width)}
                   />
                   <Skeleton className="h-3.5 w-56 max-w-full motion-reduce:animate-none" />
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+        tickets={
+          <div className={TICKET_ARCHIVES_CLASSES}>
+            <Skeleton className="h-7 w-52 max-w-full motion-reduce:animate-none" />
+            <div className={TICKET_ARCHIVE_ENTRIES_CLASSES}>
+              {TICKET_ENTRY_WIDTHS.map((width) => (
+                <div
+                  key={width}
+                  className={cn(TICKET_ARCHIVE_ENTRY_CLASSES, "gap-2")}
+                >
+                  <Skeleton
+                    className={cn("h-4 motion-reduce:animate-none", width)}
+                  />
+                  <Skeleton className="h-3.5 w-64 max-w-full motion-reduce:animate-none" />
                 </div>
               ))}
             </div>

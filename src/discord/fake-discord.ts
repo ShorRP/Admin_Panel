@@ -12,6 +12,7 @@ import {
   type APIAutoModerationRule,
   type APIAutoModerationRuleTriggerMetadata,
   type APIBan,
+  type APIEmbed,
   type APIGuildMember,
   type APIRole,
   type APIUser,
@@ -26,6 +27,7 @@ import {
 import type {
   BanBody,
   BansQuery,
+  ChannelMessage,
   DiscordApi,
   DmChannel,
   Guild,
@@ -33,6 +35,7 @@ import type {
   MembersQuery,
   Message,
   MessageBody,
+  MessagesQuery,
 } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
@@ -58,6 +61,13 @@ export type FakeBan = {
 
 export type FakeRole = Pick<APIRole, "id" | "name"> & Partial<APIRole>
 
+export type FakeChannelMessage = {
+  channelId: Snowflake
+  authorId?: Snowflake
+  content?: string
+  embeds?: APIEmbed[]
+}
+
 export type FakeDiscordState = {
   ownerId?: Snowflake
   applicationRoles?: Snowflake[]
@@ -67,6 +77,8 @@ export type FakeDiscordState = {
   roles?: FakeRole[]
   autoModerationRules?: APIAutoModerationRule[]
   auditLogEntries?: APIAuditLogEntry[]
+  channels?: Snowflake[]
+  channelMessages?: FakeChannelMessage[]
 }
 
 type FailingMethod = Exclude<
@@ -99,6 +111,8 @@ const DEFAULT_OWNER_ID = "1000000000000000000"
 const DEFAULT_AUDIT_LOG_LIMIT = 50
 
 const DEFAULT_MEMBERS_LIMIT = 1
+
+const DEFAULT_MESSAGES_LIMIT = 50
 
 const DEFAULT_BANS_LIMIT = 1000
 
@@ -198,6 +212,15 @@ function unknownMember(method: HttpMethod) {
   )
 }
 
+function unknownChannel(method: HttpMethod) {
+  return notFound(
+    method,
+    ROUTES.channelMessages,
+    RESTJSONErrorCodes.UnknownChannel,
+    "Unknown Channel"
+  )
+}
+
 function cannotSendMessages(code: RESTJSONErrorCodes) {
   return new DiscordError({
     method: "POST",
@@ -286,8 +309,9 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   private readonly refusingDirectMessages = new Set<Snowflake>()
   private readonly directChannels = new Map<
     Snowflake,
-    { recipientId: Snowflake; messages: Message[] }
+    { recipientId: Snowflake; messages: ChannelMessage[] }
   >()
+  private readonly channels = new Map<Snowflake, ChannelMessage[]>()
   private readonly users = new Map<Snowflake, APIUser>()
   private readonly bans = new Map<Snowflake, APIBan>()
   private readonly deletedMessageSeconds = new Map<Snowflake, number>()
@@ -329,6 +353,24 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     ].map(apiRole)
     this.rules = structuredClone(state.autoModerationRules ?? [])
     this.entries = structuredClone(state.auditLogEntries ?? [])
+    for (const channelId of state.channels ?? []) {
+      this.channels.set(channelId, [])
+    }
+    for (const message of state.channelMessages ?? []) {
+      const messages = this.channels.get(message.channelId) ?? []
+      this.channels.set(message.channelId, messages)
+      messages.push({
+        id: this.nextSnowflake(),
+        channel_id: message.channelId,
+        content: message.content ?? "",
+        author:
+          message.authorId === undefined
+            ? this.applicationUser
+            : (this.knownUser(message.authorId) ??
+              apiUser({ id: message.authorId, username: "author" })),
+        embeds: structuredClone(message.embeds ?? []),
+      })
+    }
   }
 
   failNext(method: FailingMethod, error: DiscordError) {
@@ -572,39 +614,59 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     })
   }
 
-  createMessage(channelId: Snowflake, { content = "" }: MessageBody) {
+  createMessage(
+    channelId: Snowflake,
+    { content = "", embeds = [] }: MessageBody
+  ) {
     return this.answer("createMessage", (): Message => {
       const route = ROUTES.channelMessages
       const channel = this.directChannels.get(channelId)
-      if (channel === undefined) {
-        throw new DiscordError({
-          method: "POST",
-          route,
-          status: 404,
-          code: RESTJSONErrorCodes.UnknownChannel,
-          discordMessage: "Unknown Channel",
-        })
+      const messages = channel?.messages ?? this.channels.get(channelId)
+      if (messages === undefined) {
+        throw unknownChannel("POST")
       }
-      if (content === "" || lengthOf(content) > MAX_MESSAGE_LENGTH) {
+      if (
+        (content === "" && embeds.length === 0) ||
+        lengthOf(content) > MAX_MESSAGE_LENGTH
+      ) {
         throw refused("POST", route)
       }
-      if (!this.members.has(channel.recipientId)) {
-        throw cannotSendMessages(
-          RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds
-        )
+      if (channel !== undefined) {
+        if (!this.members.has(channel.recipientId)) {
+          throw cannotSendMessages(
+            RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds
+          )
+        }
+        if (this.refusingDirectMessages.has(channel.recipientId)) {
+          throw cannotSendMessages(
+            RESTJSONErrorCodes.CannotSendMessagesToThisUser
+          )
+        }
       }
-      if (this.refusingDirectMessages.has(channel.recipientId)) {
-        throw cannotSendMessages(
-          RESTJSONErrorCodes.CannotSendMessagesToThisUser
-        )
-      }
-      const message = {
+      const message: ChannelMessage = {
         id: this.nextSnowflake(),
         channel_id: channelId,
         content,
+        author: this.applicationUser,
+        embeds: structuredClone(embeds),
       }
-      channel.messages.push(message)
+      messages.push(message)
       return message
+    })
+  }
+
+  listMessages(channelId: Snowflake, { before, limit }: MessagesQuery) {
+    return this.answer("listMessages", () => {
+      const messages =
+        this.directChannels.get(channelId)?.messages ??
+        this.channels.get(channelId)
+      if (messages === undefined) {
+        throw unknownChannel("GET")
+      }
+      return messages
+        .filter(({ id }) => before === undefined || BigInt(id) < BigInt(before))
+        .toSorted((left, right) => byId(right, left))
+        .slice(0, limit ?? DEFAULT_MESSAGES_LIMIT)
     })
   }
 

@@ -50,9 +50,9 @@ test("the privacy policy opens on the public pages' overline, its heading, what 
       "Panel du staff · Skyrim Roleplay",
       "Politique de confidentialité",
       "Ce que le panel du staff de Shor lit, garde et écrit sur les comptes Discord, pourquoi, combien de temps, qui le voit, et comment demander à le corriger ou à l’effacer.",
-      "Mise à jour le 2 nov. 2026.",
+      "Mise à jour le 5 nov. 2026.",
     ],
-    updated: ["2026-11-02", "2 nov. 2026"],
+    updated: ["2026-11-05", "5 nov. 2026"],
     rule: true,
   })
 })
@@ -100,6 +100,18 @@ test("the privacy policy says the panel reads from Discord, at each page, what i
   expect(text).toMatch(/la fiche d’un compte/)
   expect(text).toMatch(/« Server Members Intent »/)
   expect(text).toMatch(/l’historique du navigateur les garde/)
+})
+
+test("the privacy policy says the panel reads, for the staff who moderate, the archives of the support tickets an account opened from the archives channel, with no conversation, and that they stay in Discord until a staff member deletes their message", () => {
+  const text = sectionText("Ce que le panel lit sans le garder")
+
+  expect(text).toMatch(/les tickets de support qu’il a ouverts/)
+  expect(text).toMatch(
+    /le type de demande, les dates d’ouverture et de fermeture, le nom de la personne qui l’a fermé et le motif de la fermeture, sans aucune conversation/
+  )
+  expect(text).toMatch(
+    /tant qu’un membre du staff n’a pas supprimé son message/
+  )
 })
 
 test("the privacy policy says Discord keeps what the panel writes, every change's reason naming its staff member 45 days, a ban's reason while the ban lasts, and a sanction's direct message until the application deletes it", () => {

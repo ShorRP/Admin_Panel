@@ -365,6 +365,32 @@ test("listMembers reads the members after a user, up to its limit", async () => 
   )
 })
 
+test("listMessages reads the messages of a channel before a message, up to its limit, under the route's pattern when Discord refuses", async () => {
+  const CHANNEL_ID = "444444444444444444"
+  const { fetch, requests } = answering(
+    Response.json([]),
+    Response.json({ message: "Missing Access", code: 50001 }, { status: 403 })
+  )
+  const discord = restDiscordApi(ENV, fetch)
+
+  expect(
+    await discord.listMessages(CHANNEL_ID, { before: USER_ID, limit: 100 })
+  ).toEqual([])
+  const refusal = await discord
+    .listMessages(CHANNEL_ID, { limit: 100 })
+    .catch((error: unknown) => error)
+
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/channels/${CHANNEL_ID}/messages?before=${USER_ID}&limit=100`
+  )
+  expect(refusal).toMatchObject({
+    status: 403,
+    code: 50001,
+    route: "/channels/{channel.id}/messages",
+  })
+})
+
 test("listRoles reads the Discord server's roles", async () => {
   const { fetch, requests } = answering(Response.json([]))
 

@@ -12,6 +12,7 @@ import {
   type APIRole,
   type APIUser,
   type RESTGetAPIAuditLogQuery,
+  type RESTGetAPIChannelMessagesQuery,
   type RESTGetAPIGuildBansQuery,
   type RESTGetAPIGuildMembersQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
@@ -48,6 +49,10 @@ export type DiscordApi = {
   removeBan(userId: Snowflake, reason: string): Promise<void>
   createDm(recipientId: Snowflake): Promise<DmChannel>
   createMessage(channelId: Snowflake, message: MessageBody): Promise<Message>
+  listMessages(
+    channelId: Snowflake,
+    query: MessagesQuery
+  ): Promise<ChannelMessage[]>
   listAutoModerationRules(): Promise<APIAutoModerationRule[]>
   createAutoModerationRule(
     rule: RESTPostAPIAutoModerationRuleJSONBody,
@@ -83,10 +88,20 @@ export type DmChannel = Pick<APIDMChannel, "id" | "type">
 
 export type MessageBody = Pick<
   RESTPostAPIChannelMessageJSONBody,
-  "content" | "allowed_mentions"
+  "content" | "embeds" | "allowed_mentions"
 >
 
 export type Message = Pick<APIMessage, "id" | "channel_id" | "content">
+
+export type MessagesQuery = Pick<
+  RESTGetAPIChannelMessagesQuery,
+  "before" | "limit"
+>
+
+export type ChannelMessage = Pick<
+  APIMessage,
+  "id" | "channel_id" | "content" | "author" | "embeds"
+>
 
 export function createDiscordApi(): DiscordApi {
   return restDiscordApi(parseDiscordApiEnv(process.env), globalThis.fetch)
@@ -220,6 +235,15 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
         route: ROUTES.channelMessages,
         params: { "channel.id": channelId },
         body: message,
+      })
+    },
+
+    async listMessages(channelId, query) {
+      return await call<APIMessage[]>({
+        method: "GET",
+        route: ROUTES.channelMessages,
+        params: { "channel.id": channelId },
+        query: { ...query },
       })
     },
 

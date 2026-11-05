@@ -2,6 +2,8 @@ import type { SanctionHistoryEntry } from "@/sanctions/read-sanction-history"
 import { SanctionHistory } from "@/sanctions/sanction-history"
 import type { SanctionOptions } from "@/sanctions/sanction-options"
 import { StatefulRecordSanctions } from "@/sanctions/stateful-record-sanctions"
+import type { TicketArchives } from "@/ticket-archives/read-ticket-archives"
+import { TicketArchiveList } from "@/ticket-archives/ticket-archive-list"
 import type { AccountRecord } from "./read-record"
 import { RecordColumns } from "./record-columns"
 import { RecordDetails } from "./record-details"
@@ -11,10 +13,12 @@ export function RecordView({
   record,
   options,
   history,
+  ticketArchives,
 }: {
   record: AccountRecord | null
   options: SanctionOptions
   history: SanctionHistoryEntry[] | null
+  ticketArchives: TicketArchives | null
 }) {
   return (
     <>
@@ -25,6 +29,11 @@ export function RecordView({
           details={<RecordDetails record={record} />}
           sanctions={<StatefulRecordSanctions options={options} />}
           history={<SanctionHistory history={history} />}
+          tickets={
+            ticketArchives !== null && (
+              <TicketArchiveList archives={ticketArchives} />
+            )
+          }
         />
       )}
     </>

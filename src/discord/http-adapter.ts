@@ -13,6 +13,7 @@ import type {
   MemberChanges,
   MembersQuery,
   MessageBody,
+  MessagesQuery,
 } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
 import type { DiscordOAuth } from "./discord-oauth"
@@ -186,6 +187,15 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     },
     {
       method: "GET",
+      route: ROUTES.channelMessages,
+      answer: (request, param) =>
+        api.listMessages(
+          param("channel.id"),
+          messagesQuery(new URL(request.url).searchParams)
+        ),
+    },
+    {
+      method: "GET",
       route: ROUTES.user,
       answer: async (_, param) =>
         found(
@@ -291,6 +301,19 @@ function auditLogQuery(search: URLSearchParams) {
   }
   if (after !== null) {
     query.after = after
+  }
+  if (limit !== null) {
+    query.limit = Number(limit)
+  }
+  return query
+}
+
+function messagesQuery(search: URLSearchParams) {
+  const query: MessagesQuery = {}
+  const before = search.get("before")
+  const limit = search.get("limit")
+  if (before !== null) {
+    query.before = before
   }
   if (limit !== null) {
     query.limit = Number(limit)

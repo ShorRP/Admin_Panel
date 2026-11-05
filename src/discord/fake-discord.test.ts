@@ -134,3 +134,75 @@ test("the fake reads a member's arrival as given, a member given none as arrived
     ["Shor Panel", "2026-01-01T00:00:00.000000+00:00"],
   ])
 })
+
+const ARCHIVES_CHANNEL_ID = "555555555555555555"
+
+test("the fake lists the messages a channel was given newest first, with the application as the author unless another is named, and the embeds as given", async () => {
+  const embed = { title: "Archive", fields: [{ name: "Motif", value: "Test" }] }
+  const discord = new FakeDiscord({
+    members: [{ user: MEMBER }],
+    channelMessages: [
+      { channelId: ARCHIVES_CHANNEL_ID, embeds: [embed] },
+      { channelId: ARCHIVES_CHANNEL_ID, authorId: MEMBER.id, content: "Salut" },
+    ],
+  })
+
+  const listed = await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 10 })
+
+  expect(
+    listed.map(({ author, content, embeds }) => [author.id, content, embeds])
+  ).toEqual([
+    [MEMBER.id, "Salut", []],
+    [discord.applicationUser.id, "", [embed]],
+  ])
+})
+
+test("the fake lists a channel it was given with no message as empty, and a channel it was not given as Unknown Channel", async () => {
+  const discord = new FakeDiscord({ channels: [ARCHIVES_CHANNEL_ID] })
+
+  expect(
+    await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 100 })
+  ).toEqual([])
+  await expect(
+    discord.listMessages("555555555555555556", { limit: 100 })
+  ).rejects.toMatchObject({
+    status: 404,
+    code: RESTJSONErrorCodes.UnknownChannel,
+  })
+})
+
+test("the fake pages through a channel by the message before the last of the previous page, 50 messages by default", async () => {
+  const discord = new FakeDiscord({
+    channelMessages: Array.from({ length: 120 }, (_, index) => ({
+      channelId: ARCHIVES_CHANNEL_ID,
+      content: String(index),
+    })),
+  })
+
+  const first = await discord.listMessages(ARCHIVES_CHANNEL_ID, {})
+  const second = await discord.listMessages(ARCHIVES_CHANNEL_ID, {
+    before: first.at(-1)?.id,
+    limit: 100,
+  })
+
+  expect(first.map(({ content }) => content)).toEqual(
+    Array.from({ length: 50 }, (_, index) => String(119 - index))
+  )
+  expect(second.map(({ content }) => content)).toEqual(
+    Array.from({ length: 70 }, (_, index) => String(69 - index))
+  )
+})
+
+test("the application posts an embed to a channel the fake was given, and it is listed as the application's", async () => {
+  const discord = new FakeDiscord({ channels: [ARCHIVES_CHANNEL_ID] })
+
+  await discord.createMessage(ARCHIVES_CHANNEL_ID, {
+    embeds: [{ title: "Archive" }],
+  })
+
+  expect(
+    (await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 1 })).map(
+      ({ author, embeds }) => [author.id, embeds]
+    )
+  ).toEqual([[discord.applicationUser.id, [{ title: "Archive" }]]])
+})

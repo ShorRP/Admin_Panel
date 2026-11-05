@@ -4,7 +4,7 @@ import { PublicPageFrame } from "@/staff/public-page-frame"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { PageHeader } from "@/ui/page-header"
 
-const LAST_UPDATED = "2026-11-02"
+const LAST_UPDATED = "2026-11-05"
 
 const lastUpdatedDay = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",
@@ -80,7 +80,16 @@ export function PrivacyPolicy() {
             <li>
               pour le staff qui modère, la fiche d’un compte : ses noms, son
               avatar, ses rôles, ses dates, sa situation sur le serveur et les
-              entrées du journal d’audit de Discord qui le concernent.
+              entrées du journal d’audit de Discord qui le concernent ;
+            </li>
+            <li>
+              pour le staff qui modère, sur la fiche d’un compte, les tickets de
+              support qu’il a ouverts : le Bot de Shor poste dans un salon
+              réservé au staff l’archive de chaque ticket fermé, et le panel y
+              lit le type de demande, les dates d’ouverture et de fermeture, le
+              nom de la personne qui l’a fermé et le motif de la fermeture, sans
+              aucune conversation. Cette archive reste dans ce salon, sur
+              Discord, tant qu’un membre du staff n’a pas supprimé son message.
             </li>
           </PolicyList>
           <p>

@@ -50,7 +50,8 @@ export default defineConfig([
               message: "Only test files import the in-memory Monitor.",
             },
             {
-              regex: "(^|/)(answering-fetch|discord-api-contract)$",
+              regex:
+                "(^|/)(answering-fetch|discord-api-contract|archive-message)$",
               message: "Only test files import the tests' helpers.",
             },
           ],
