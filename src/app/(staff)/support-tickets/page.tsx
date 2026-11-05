@@ -5,6 +5,7 @@ import { connection } from "next/server"
 import { createDiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import { configuredArchivesChannelId } from "@/ticket-archives/archives-channel"
+import { readKindCounts } from "@/ticket-archives/read-kind-counts"
 import { readTicketArchivePage } from "@/ticket-archives/read-ticket-archive-page"
 import { SupportTicketArchives } from "@/ticket-archives/support-ticket-archives"
 import { SupportTicketArchivesSkeleton } from "@/ticket-archives/support-ticket-archives-skeleton"
@@ -29,8 +30,9 @@ export default function SupportTicketsPage({
           title="Tickets de support"
           className="max-w-160"
         >
-          Les tickets de support fermés, du plus récent au plus ancien : leur
-          type de demande, qui les a ouverts et fermés, quand, et pourquoi.
+          Les tickets de support fermés : leur type de demande, qui les a
+          ouverts et fermés, quand, et pourquoi. Filtre-les par type, par
+          ouvreur ou fermeur, par période ou par un mot du motif.
         </PageHeader>
         <OrnamentRule leadingLine />
         <SuspenseWithSkeleton skeleton={<SupportTicketArchivesSkeleton />}>
@@ -47,14 +49,15 @@ async function SupportTicketArchivesFromDiscord({
   await connection()
   const discord = createDiscordApi()
   const staffMember = await requireStaffMember(discord)
-  const { page } = await searchParams
+  const read = await readTicketArchivePage(
+    discord,
+    configuredArchivesChannelId(),
+    await searchParams
+  )
   return (
     <SupportTicketArchives
-      read={await readTicketArchivePage(
-        discord,
-        configuredArchivesChannelId(),
-        page
-      )}
+      read={read}
+      counts={readKindCounts(discord, read)}
       opensModeration={staffMember.opensModeration}
     />
   )

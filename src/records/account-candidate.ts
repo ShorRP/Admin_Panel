@@ -59,7 +59,7 @@ function isBotAccount({ bot }: Pick<APIUser, "bot">) {
   return bot === true
 }
 
-function lowerCaseNames(
+export function lowerCaseNames(
   { username, global_name }: Pick<APIUser, "username" | "global_name">,
   nick: string | null | undefined
 ) {

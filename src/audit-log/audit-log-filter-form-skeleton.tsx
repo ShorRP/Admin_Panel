@@ -1,7 +1,8 @@
 import { cn } from "cn"
 
+import { FILTER_FORM_CLASSES } from "@/ui/filter-layout"
 import { Skeleton } from "@/ui/skeleton"
-import { FILTER_FIELD_CLASSES, FILTER_FORM_CLASSES } from "./audit-log-layout"
+import { FILTER_FIELD_CLASSES } from "./audit-log-layout"
 
 const LABEL_WIDTHS = ["w-12", "w-14"] as const
 

@@ -973,6 +973,7 @@ export function describeDiscordApiContract(
         | "shared"
         | "content"
         | "accent"
+        | "apostrophe"
         | "first"
         | "second"
         | "contentOfM3"
@@ -1021,6 +1022,7 @@ export function describeDiscordApiContract(
           shared: uniqueWord(),
           content: uniqueWord(),
           accent: `${uniqueWord()}é${uniqueWord()}`,
+          apostrophe: uniqueWord(),
           first: uniqueWord(),
           second: uniqueWord(),
           contentOfM3: uniqueWord(),
@@ -1034,7 +1036,7 @@ export function describeDiscordApiContract(
         }
         const { shared } = words
         const first = await postInReadableTextChannel(discord, {
-          content: `Contract: ${shared} ${words.content} ${words.accent} ${words.first} ${words.second}`,
+          content: `Contract: ${shared} ${words.content} ${words.accent} ${words.first} ${words.second} l’${words.apostrophe}`,
           allowed_mentions: { parse: [] },
         })
         const { channelId } = first
@@ -1102,7 +1104,8 @@ export function describeDiscordApiContract(
       test(
         "a word of a message's content finds that message, with its channel, its author and its content",
         async () => {
-          const { shared, content, accent, first, second } = fixture.words
+          const { shared, content, accent, first, second, apostrophe } =
+            fixture.words
 
           const found = await indexed(async () => {
             const result = await search({ content })
@@ -1116,7 +1119,7 @@ export function describeDiscordApiContract(
           expect(found.messages[0]).toMatchObject({
             channel_id: fixture.channelId,
             author: { id: fixture.applicationId },
-            content: `Contract: ${shared} ${content} ${accent} ${first} ${second}`,
+            content: `Contract: ${shared} ${content} ${accent} ${first} ${second} l’${apostrophe}`,
           })
         },
         SEARCH_TEST_TIMEOUT_MS
@@ -1138,11 +1141,14 @@ export function describeDiscordApiContract(
       )
 
       test(
-        "a word is found whole, whatever its case, with the accents it was written with",
+        "a word is found whole, whatever its case, with the accents it was written with, and an apostrophe joins the letters around it into one word",
         async () => {
-          const { content, accent } = fixture.words
+          const { content, accent, apostrophe } = fixture.words
           await indexed(async () => {
             expect(await foundIds({ content: content.toUpperCase() })).toEqual([
+              fixture.ids.m1,
+            ])
+            expect(await foundIds({ content: `l’${apostrophe}` })).toEqual([
               fixture.ids.m1,
             ])
             expect(await foundIds({ content: accent })).toEqual([
@@ -1154,6 +1160,7 @@ export function describeDiscordApiContract(
             []
           )
           expect(await foundIds({ content: content.slice(0, 5) })).toEqual([])
+          expect(await foundIds({ content: apostrophe })).toEqual([])
         },
         SEARCH_TEST_TIMEOUT_MS
       )

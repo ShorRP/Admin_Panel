@@ -17,6 +17,7 @@ import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
 import { AccountLink } from "@/ui/account-link"
 import { buttonVariants } from "@/ui/button"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
+import { FILTERS_CLASSES } from "@/ui/filter-layout"
 import { MemberAvatar } from "@/ui/member-avatar"
 import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
@@ -32,7 +33,6 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
-  FILTERS_CLASSES,
   PAGINATION_CLASSES,
   PAGINATION_LINK_CLASSES,
 } from "./audit-log-layout"

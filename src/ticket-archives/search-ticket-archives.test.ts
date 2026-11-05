@@ -12,6 +12,7 @@ import { archiveEmbed, archiveMessage } from "./archive-message"
 import {
   ARCHIVES_PER_PAGE,
   searchTicketArchives,
+  type SearchFilters,
 } from "./search-ticket-archives"
 
 const CHANNEL_ID = "1562505523490848881"
@@ -41,7 +42,7 @@ async function searchOf(
   discord: FakeDiscord,
   offset = 0,
   channelId = CHANNEL_ID,
-  filters: { text?: string } = {}
+  filters: SearchFilters = {}
 ) {
   const { id } = await discord.getApplicationUser()
   return await searchTicketArchives(discord, channelId, id, offset, filters)
@@ -238,4 +239,29 @@ test("an ID is a whole word: the start of an ID finds nothing", async () => {
   })
 
   expect(found).toEqual({ total: 0, messages: 0, archives: [] })
+})
+
+test("the bounds keep the archives sent after the lower one and before the upper one, and the oldest come first when asked", async () => {
+  const discord = new FakeDiscord(
+    stateWith(
+      archive("Septembre", { sentAt: new Date("2026-09-15T10:00:00Z") }),
+      archive("Octobre", { sentAt: new Date("2026-10-15T10:00:00Z") }),
+      archive("Novembre", { sentAt: new Date("2026-11-15T10:00:00Z") })
+    )
+  )
+  const all = await discord.searchMessages({})
+  const [november, , september] = all.messages
+
+  const between = await searchOf(discord, 0, CHANNEL_ID, {
+    minId: september?.id ?? "",
+    maxId: november?.id ?? "",
+  })
+  const since = await searchOf(discord, 0, CHANNEL_ID, {
+    minId: september?.id ?? "",
+    oldestFirst: true,
+  })
+
+  expect(reasonsOf(between)).toEqual(["Octobre"])
+  expect(between.total).toBe(1)
+  expect(reasonsOf(since)).toEqual(["Octobre", "Novembre"])
 })

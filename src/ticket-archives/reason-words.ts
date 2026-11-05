@@ -1,0 +1,19 @@
+const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+(?:’[\p{L}\p{N}]+)*/gu
+
+const HAS_WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]/u
+
+export function wordsOf(text: string) {
+  return text.toLowerCase().match(WORD) ?? []
+}
+
+export function longestTermOf(text: string) {
+  return text
+    .split(/\s+/)
+    .filter((term) => HAS_WORD.test(term))
+    .toSorted((left, right) => right.length - left.length)[0]
+}
+
+export function holdsWords(text: string, searched: string) {
+  const words = new Set(wordsOf(text))
+  return wordsOf(searched).every((word) => words.has(word))
+}

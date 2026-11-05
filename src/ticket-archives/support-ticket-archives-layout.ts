@@ -2,6 +2,8 @@ import { cn } from "cn"
 
 import { TICKET_ARCHIVE_ENTRY_CLASSES } from "./ticket-archive-layout"
 
+export const SUPPORT_TICKET_ARCHIVES_LAYOUT_CLASSES = cn("flex flex-col gap-7")
+
 export const SUPPORT_TICKET_ARCHIVES_CLASSES = cn("flex flex-col gap-2.5")
 
 export const SUPPORT_TICKET_ENTRY_CLASSES = cn(
