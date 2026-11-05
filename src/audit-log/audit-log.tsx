@@ -14,7 +14,6 @@ import { AccountLink } from "@/ui/account-link"
 import { LogDay } from "@/ui/log-day"
 import { LogEmpty } from "@/ui/log-empty"
 import { LogFrame } from "@/ui/log-frame"
-import { LOG_ROW_AUTHOR_CLASSES } from "@/ui/log-layout"
 import { LogPagination } from "@/ui/log-pagination"
 import { LogRow } from "@/ui/log-row"
 import { MemberAvatar } from "@/ui/member-avatar"
@@ -23,6 +22,7 @@ import { AuditLogFilterFold } from "./audit-log-filter-fold"
 import { AuditLogFilterForm } from "./audit-log-filter-form"
 import { hasFilter, NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
+import { CHANGE_AUTHOR_CLASSES } from "./audit-log-layout"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type {
   AuditLogChange,
@@ -136,11 +136,11 @@ function ChangeRow({
     <LogRow
       date={change.date}
       Icon={Icon}
-      iconClassName={color}
+      tileClassName={color}
       trailing={
         <AccountLink
           href={recordHrefForModerator(change.memberId, opensModeration)}
-          className={LOG_ROW_AUTHOR_CLASSES}
+          className={CHANGE_AUTHOR_CLASSES}
         >
           {change.kind !== "automatic-timeout" && (
             <MemberAvatar

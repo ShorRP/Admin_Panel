@@ -12,7 +12,6 @@ import {
   LOG_DAY_HEADER_CLASSES,
   LOG_DAY_LINES_CLASSES,
   LOG_FRAME_CLASSES,
-  LOG_ROW_AUTHOR_CLASSES,
   LOG_ROW_BODY_CLASSES,
   LOG_ROW_CLASSES,
   LOG_ROW_ICON_TILE_CLASSES,
@@ -20,6 +19,8 @@ import {
   LOG_ROW_TRAILING_CLASSES,
 } from "@/ui/log-layout"
 import { Skeleton } from "@/ui/skeleton"
+
+const AUTHOR_CLASSES = cn("flex min-w-0 flex-row-reverse items-center gap-2")
 
 const DAYS = [
   {
@@ -100,7 +101,7 @@ export function LogSkeleton({
                   )}
                 </div>
                 <div className={LOG_ROW_TRAILING_CLASSES}>
-                  <div className={LOG_ROW_AUTHOR_CLASSES}>
+                  <div className={AUTHOR_CLASSES}>
                     <Skeleton className="size-6 shrink-0 rounded-full motion-reduce:animate-none" />
                     <Skeleton className="h-3.5 w-16 motion-reduce:animate-none" />
                   </div>

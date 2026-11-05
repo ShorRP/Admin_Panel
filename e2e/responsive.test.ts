@@ -92,6 +92,14 @@ const FILTER_SHEETS = [
 
 const MIN_TARGET_PX = 44
 
+const RAIL_RULE = {
+  hidden: "true",
+  width: 24,
+  height: 1,
+  belowThePreviousGroup: true,
+  aboveTheNextLink: true,
+}
+
 const TARGET_SELECTOR =
   "a[href], button, input:not([type=hidden]):not([type=radio]):not([type=checkbox]), select, textarea, summary, [role=tab], label:has(> input[type=radio]), label:has(> input[type=checkbox])"
 
@@ -390,25 +398,31 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
     return aside
       .getByRole("navigation", { name: "Sections du panel" })
       .evaluate((nav) =>
-        Array.from(nav.children).flatMap((group, index, groups) => {
-          const rule = group.firstElementChild
-          const before = groups[index - 1]?.querySelector("li:last-child a")
-          const after = group.querySelector("li a")
-          if (index === 0 || !rule || !before || !after) {
-            return []
-          }
-          const { width, height, top, bottom } = rule.getBoundingClientRect()
-          return [
-            {
-              hidden: rule.getAttribute("aria-hidden"),
-              width,
-              height,
-              belowThePreviousGroup:
-                top >= before.getBoundingClientRect().bottom,
-              aboveTheNextLink: bottom <= after.getBoundingClientRect().top,
-            },
-          ]
-        })
+        Object.fromEntries(
+          Array.from(nav.children).flatMap((group, index, groups) => {
+            const title = group.querySelector("p")?.textContent
+            const rule = group.firstElementChild
+            const before = groups[index - 1]?.querySelector("li:last-child a")
+            const after = group.querySelector("li a")
+            if (index === 0 || !title || !rule || !before || !after) {
+              return []
+            }
+            const { width, height, top, bottom } = rule.getBoundingClientRect()
+            return [
+              [
+                title,
+                {
+                  hidden: rule.getAttribute("aria-hidden"),
+                  width,
+                  height,
+                  belowThePreviousGroup:
+                    top >= before.getBoundingClientRect().bottom,
+                  aboveTheNextLink: bottom <= after.getBoundingClientRect().top,
+                },
+              ],
+            ]
+          })
+        )
       )
   }
   async function expectNamed(root: Locator) {
@@ -471,15 +485,11 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   expect(
     await groupRules(),
     "a 24 px rule, hidden from assistive technologies, between each group and the one before it"
-  ).toEqual(
-    ["Journaux", "Modération", "Support"].map(() => ({
-      hidden: "true",
-      width: 24,
-      height: 1,
-      belowThePreviousGroup: true,
-      aboveTheNextLink: true,
-    }))
-  )
+  ).toEqual({
+    Journaux: RAIL_RULE,
+    Modération: RAIL_RULE,
+    Support: RAIL_RULE,
+  })
   const count = await aside
     .getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
     .getByText("2", { exact: true })
@@ -537,13 +547,18 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   expect((await boxOf(administration)).width).toBeGreaterThan(20)
   expect((await boxOf(logs)).width).toBeGreaterThan(20)
   expect(
-    (await groupRules()).map(({ width, height }) => ({ width, height })),
+    Object.fromEntries(
+      Object.entries(await groupRules()).map(([title, { width, height }]) => [
+        title,
+        { width, height },
+      ])
+    ),
     "the rules of the rail are gone from the sidebar"
-  ).toEqual([
-    { width: 0, height: 0 },
-    { width: 0, height: 0 },
-    { width: 0, height: 0 },
-  ])
+  ).toEqual({
+    Journaux: { width: 0, height: 0 },
+    Modération: { width: 0, height: 0 },
+    Support: { width: 0, height: 0 },
+  })
 })
 
 test("the bar, the rail, the sidebar and the page keep clear of the notch and the home indicator of the screen", async ({

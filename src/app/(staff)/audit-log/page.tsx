@@ -17,7 +17,7 @@ export default function AuditLogPage({
     <LogPage
       overline="45 derniers jours · Heures de Paris"
       title="Journal d’audit"
-      description="Qui a changé quoi, et quand : les mots interdits, les sanctions et leurs levées, depuis le panel comme depuis Discord."
+      description="Qui a changé quoi, et quand : les mots interdits, les sanctions et leurs levées, depuis le panel comme depuis Discord."
       skeleton={<AuditLogSkeleton />}
     >
       <AuditLogFromDiscord searchParams={searchParams} />

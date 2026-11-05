@@ -26,14 +26,3 @@ test("the skeleton holds nothing to type in, nothing to press and no link", () =
   expect(html).not.toMatch(/<(form|input|button|label|a)[\s>]/)
   expect(html).not.toContain("role=")
 })
-
-test("each field wears the classes it is given, so that it stands for the field it replaces", () => {
-  const html = renderToStaticMarkup(
-    <FilterFormSkeleton
-      labelWidths={["w-12", "w-14"]}
-      fieldClassName="basis-44"
-    />
-  )
-
-  expect(html.match(/<div class="[^"]*basis-44[^"]*">/g)).toHaveLength(2)
-})

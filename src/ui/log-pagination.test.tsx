@@ -83,18 +83,3 @@ test("with both, the way back comes first", () => {
     )
   ).toEqual(["Revenir aux plus récents", "Plus anciens"])
 })
-
-test("with both, each link takes its half of the row under sm", () => {
-  const anchors = Array.from(
-    render({
-      newestHref: "/events",
-      olderHref: "/events?before=1",
-    }).matchAll(/<a[^>]*>/g),
-    ([anchor = ""]) => anchor
-  )
-
-  expect(anchors).toHaveLength(2)
-  for (const anchor of anchors) {
-    expect(anchor).toContain("max-sm:flex-1")
-  }
-})

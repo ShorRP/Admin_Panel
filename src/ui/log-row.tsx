@@ -14,13 +14,13 @@ import { ParisTime } from "@/ui/paris-time"
 export function LogRow({
   date,
   Icon,
-  iconClassName,
+  tileClassName,
   trailing,
   children,
 }: {
   date: Date
   Icon: LucideIcon
-  iconClassName: string
+  tileClassName: string
   trailing: ReactNode
   children: ReactNode
 }) {
@@ -36,7 +36,7 @@ export function LogRow({
       </span>
       <span
         aria-hidden
-        className={cn(LOG_ROW_ICON_TILE_CLASSES, iconClassName)}
+        className={cn(LOG_ROW_ICON_TILE_CLASSES, tileClassName)}
       >
         <Icon className="size-3.75" />
       </span>

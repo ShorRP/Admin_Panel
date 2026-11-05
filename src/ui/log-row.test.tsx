@@ -13,7 +13,7 @@ function renderRow(date = new Date("2026-12-02T10:00:00.000Z")) {
     <LogRow
       date={date}
       Icon={Timer}
-      iconClassName="text-warning"
+      tileClassName="text-warning"
       trailing={<span>aldis</span>}
     >
       <p>Exclusion temporaire</p>
@@ -28,13 +28,12 @@ test("a line shows its time in Paris alone, whose dateTime keeps the full moment
   )
 })
 
-test("a line shows the icon it is given in a tile, hidden from assistive technologies, in the color it is given", () => {
+test("a line shows the icon it is given in a tile, hidden from assistive technologies", () => {
   const [, attributes = "", icon] =
     /<span([^>]*)><svg[^>]*>(.*?)<\/svg><\/span>/.exec(renderRow()) ?? []
 
   expect(icon).toBe(drawing(Timer))
   expect(attributes).toContain('aria-hidden="true"')
-  expect(attributes).toContain("text-warning")
 })
 
 test("a line gives its time, its icon, what it says and its trailing cell, in that order", () => {

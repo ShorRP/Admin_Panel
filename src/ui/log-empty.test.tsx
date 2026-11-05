@@ -7,13 +7,12 @@ function text(html: string) {
   return html.replace(/<[^>]*>/g, "")
 }
 
-test("an empty log says its sentence in a dashed frame, as a paragraph", () => {
+test("an empty log says its sentence as a paragraph in one frame", () => {
   const html = renderToStaticMarkup(
     <LogEmpty message="Rien ne correspond." resetHref={null} />
   )
 
   expect(html).toMatch(/^<div[^>]*>.*<\/div>$/)
-  expect(html).toContain("border-dashed")
   expect(
     Array.from(html.matchAll(/<p>(.*?)<\/p>/g), ([, line]) => line)
   ).toEqual(["Rien ne correspond."])

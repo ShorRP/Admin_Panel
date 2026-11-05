@@ -26,10 +26,6 @@ export const LOG_ROW_TRAILING_CLASSES = cn(
   "min-w-0 max-sm:col-start-3 max-sm:row-start-1"
 )
 
-export const LOG_ROW_AUTHOR_CLASSES = cn(
-  "flex min-w-0 flex-row-reverse items-center gap-2"
-)
-
 export const LOG_PAGINATION_CLASSES = cn(
   "flex w-full gap-2 sm:ms-auto sm:w-auto sm:flex-wrap"
 )

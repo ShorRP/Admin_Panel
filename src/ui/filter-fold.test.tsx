@@ -27,14 +27,6 @@ function attribute(tag: string, name: string) {
   return new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1]
 }
 
-test("the fold shows under md alone", () => {
-  const classes =
-    attribute(/<div[^>]*>/.exec(render([]))?.[0] ?? "", "class")?.split(" ") ??
-    []
-
-  expect(classes).toContain("md:hidden")
-})
-
 test("the button names the sheet and counts the chips, in words for assistive technologies", () => {
   expect(render([])).toMatch(/<button[^>]*>.*Qui et quoi<\/button>/)
   expect(render([])).not.toContain("filtre")

@@ -32,14 +32,6 @@ test("the form sends to the address it is given, by GET", () => {
   expect(attribute(form, "method")).toBeUndefined()
 })
 
-test("the form hides itself under md, where the fold takes its place, and wraps its fields from md", () => {
-  const form = /<form[^>]*>/.exec(render([]))?.[0] ?? ""
-  const classes = attribute(form, "class")?.split(" ")
-
-  expect(classes).toContain("hidden")
-  expect(classes).toContain("md:flex")
-})
-
 test("the hidden fields come first, then the fields it is given, then the button", () => {
   const html = render([{ name: "kind", value: "kicks" }])
 

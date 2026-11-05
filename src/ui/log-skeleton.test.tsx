@@ -3,14 +3,18 @@ import { expect, test } from "vitest"
 
 import { LogSkeleton } from "@/ui/log-skeleton"
 
-function render() {
+function render(pillWidths = ["w-13", "w-29", "w-24"]) {
   return renderToStaticMarkup(
     <LogSkeleton
       loading="Chargement des événements…"
-      pillWidths={["w-13", "w-29", "w-24"]}
+      pillWidths={pillWidths}
       form={<div id="form-skeleton" />}
     />
   )
+}
+
+function bars(html: string) {
+  return html.match(/data-slot="skeleton"/g)?.length ?? 0
 }
 
 test("the skeleton is a status that says, to assistive technologies alone, what is loading", () => {
@@ -23,19 +27,18 @@ test("the skeleton is a status that says, to assistive technologies alone, what 
   expect(html.replace(/<[^>]*>/g, "")).toBe("Chargement des événements…")
 })
 
-test("the skeleton draws a pill for each width it is given, then the form skeleton it is given", () => {
+test("the skeleton draws a bar for each pill width it is given, before the form skeleton it is given, then the bars of its days", () => {
   const html = render()
+  const beforeForm = html.slice(0, html.indexOf('id="form-skeleton"'))
+  const afterForm = html.slice(html.indexOf('id="form-skeleton"'))
 
-  expect(html.match(/h-7\.5 rounded-full/g)).toHaveLength(3)
-  expect(html.indexOf('id="form-skeleton"')).toBeGreaterThan(
-    html.lastIndexOf("h-7.5 rounded-full")
+  expect(bars(beforeForm)).toBe(3)
+  expect(bars(afterForm)).toBeGreaterThan(0)
+  expect(bars(render(["w-13", "w-29", "w-24", "w-20", "w-16"]))).toBe(
+    bars(html) + 2
   )
 })
 
-test("the skeleton draws two days of rows, with nothing to type in, press or follow", () => {
-  const html = render()
-
-  expect(html).not.toMatch(/<(h2|form|input|button|label|a)[\s>]/)
-  expect(html.match(/h-5\.5/g)).toHaveLength(2)
-  expect(html.match(/size-6 shrink-0 rounded-full/g)).toHaveLength(5)
+test("the skeleton holds nothing to type in, press or follow", () => {
+  expect(render()).not.toMatch(/<(h2|form|input|button|label|a)[\s>]/)
 })

@@ -5,7 +5,11 @@ import {
   AUDIT_LOG_FILTER_FIELDS,
   AuditLogFilterFields,
 } from "./audit-log-filter-field"
-import { NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
+import {
+  hiddenFieldsOf,
+  NO_FILTER,
+  type AuditLogFilters,
+} from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 
 export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
@@ -28,9 +32,7 @@ export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
       label="Auteur et compte"
       chips={chips}
       action="/audit-log"
-      hiddenFields={
-        filters.type === null ? [] : [{ name: "type", value: filters.type }]
-      }
+      hiddenFields={hiddenFieldsOf(filters)}
       resetHref={auditLogHref(NO_FILTER)}
       submitLabel="Filtrer"
     >
