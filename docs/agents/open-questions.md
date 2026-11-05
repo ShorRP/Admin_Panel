@@ -5,7 +5,7 @@ Decisions or facts the code and its history can't explain. Each entry gives the 
 ## How do Shor's whitelist and launcher work?
 
 - **Question:** Where does the whitelist live: in Shor's SkyMP server, in its launcher, in a Discord role, or elsewhere? Who grants it today, and how? Can anything outside the game read or change it, and does the game know a player's Discord account?
-- **Where it shows up:** the Admin Panel stays on Discord's side until this is known (Gilles, 2026-10-27, while grilling the features that follow the MVP). An application for the whitelist on the panel, and a Linked Role fed by the game, need the game's side, as does the game servers' state that ShorBot shows (ADR 0003). `GLOSSARY.md` defines the whitelist without saying where it is kept.
+- **Where it shows up:** the Admin Panel stays on Discord's side until this is known (Gilles, 2026-10-27, while grilling the features that follow the MVP). An application for the whitelist on the panel, and a Linked Role fed by the game, need the game's side, as does the game servers' state that ShorBot shows (ADR 0003). `GLOSSARY.md` defines the whitelist without saying where it is kept. The game log names a character's game account by a number, such as `compte 2094594320`, which the panel shows as a number with no link to a record until the game's account is tied to a Discord account (Gilles, 2026-11-05, while grilling the logs' pages, ADR 0010).
 - **Who is likely to know:** loanspac, who said Shor has its own SkyMP server and launcher (ADR 0001), and the POs.
 - **Blocked on it:** any feature of the panel that reads from or writes to the game.
 
