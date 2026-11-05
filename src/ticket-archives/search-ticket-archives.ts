@@ -13,19 +13,35 @@ export type SearchedTicketArchives = {
   archives: TicketArchive[]
 }
 
+export type SearchFilters = {
+  text?: string
+  minId?: Snowflake
+  maxId?: Snowflake
+  oldestFirst?: boolean
+  limit?: number
+}
+
 export async function searchTicketArchives(
   discord: DiscordApi,
   archivesChannelId: Snowflake,
   applicationId: Snowflake,
   offset: number,
-  { text }: { text?: string } = {}
+  {
+    text,
+    minId,
+    maxId,
+    oldestFirst = false,
+    limit = ARCHIVES_PER_PAGE,
+  }: SearchFilters = {}
 ): Promise<SearchedTicketArchives> {
   const { total_results, messages } = await discord.searchMessages({
     ...(text === undefined ? {} : { content: text }),
+    ...(minId === undefined ? {} : { min_id: minId }),
+    ...(maxId === undefined ? {} : { max_id: maxId }),
     channel_id: [archivesChannelId],
     author_id: [applicationId],
-    sort_order: "desc",
-    limit: ARCHIVES_PER_PAGE,
+    sort_order: oldestFirst ? "asc" : "desc",
+    limit,
     offset,
   })
   return {

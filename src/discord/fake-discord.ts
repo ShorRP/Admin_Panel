@@ -78,6 +78,7 @@ export type FakeChannelMessage = {
   authorId?: Snowflake
   content?: string
   embeds?: APIEmbed[]
+  sentAt?: Date
 }
 
 export type FakeDiscordState = {
@@ -440,7 +441,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       const messages = this.channels.get(message.channelId) ?? []
       this.channels.set(message.channelId, messages)
       messages.push({
-        id: this.nextSnowflake(),
+        id: this.nextSnowflake(message.sentAt),
         channel_id: message.channelId,
         content: message.content ?? "",
         author:
@@ -1047,10 +1048,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     )
   }
 
-  private nextSnowflake(): Snowflake {
+  private nextSnowflake(at: Date = new Date()): Snowflake {
     this.increment = (this.increment + 1) % 4096
     return (
-      (BigInt(Date.now()) - DISCORD_EPOCH) * BigInt(4194304) +
+      (BigInt(at.getTime()) - DISCORD_EPOCH) * BigInt(4194304) +
       BigInt(this.increment)
     ).toString()
   }

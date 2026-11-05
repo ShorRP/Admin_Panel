@@ -90,10 +90,13 @@ export function PrivacyPolicy() {
               fermé, et le panel y lit le nom de la personne qui l’a ouvert, le
               type de demande, les dates d’ouverture et de fermeture, le nom de
               la personne qui l’a fermé et le motif de la fermeture, sans aucune
-              conversation. Pour trouver les tickets d’un compte, le panel
-              envoie l’ID de ce compte à la recherche de messages de Discord.
-              Cette archive reste dans ce salon, sur Discord, tant qu’un membre
-              du staff n’a pas supprimé son message.
+              conversation. Pour trouver des tickets, le panel envoie à la
+              recherche de messages de Discord l’ID du compte, les mots du motif
+              ou l’emoji du type de demande que le staff a choisis, et, pour
+              chercher un compte par son nom, il lit la liste des membres et des
+              comptes bannis sans l’afficher. Cette archive reste dans ce salon,
+              sur Discord, tant qu’un membre du staff n’a pas supprimé son
+              message.
             </li>
           </PolicyList>
           <p>
