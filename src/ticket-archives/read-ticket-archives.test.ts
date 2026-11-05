@@ -1,6 +1,7 @@
 import { RESTJSONErrorCodes, type APIEmbed } from "discord-api-types/v10"
 import { expect, test } from "vitest"
 
+import type { MessageSearchQuery } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord, type FakeChannelMessage } from "@/discord/fake-discord"
 import { archiveEmbed, archiveMessage } from "./archive-message"
@@ -22,11 +23,34 @@ const LYRA = { id: "1400000000000000004", username: "lyra_gates" }
 
 const MISSING_ACCESS = new DiscordError({
   method: "GET",
-  route: "/channels/{channel.id}/messages",
+  route: "/guilds/{guild.id}/messages/search",
   status: 403,
   code: RESTJSONErrorCodes.MissingAccess,
   discordMessage: "Missing Access",
 })
+
+const RATE_LIMITED = new DiscordError({
+  method: "GET",
+  route: "/guilds/{guild.id}/messages/search",
+  status: 429,
+  retryAfter: 4.4,
+  discordMessage: "You are being rate limited.",
+})
+
+class ArchiveClosedBetweenSearches extends FakeDiscord {
+  private closed = false
+
+  override async searchMessages(query: MessageSearchQuery) {
+    const found = await super.searchMessages(query)
+    if (!this.closed) {
+      this.closed = true
+      await this.createMessage(CHANNEL_ID, {
+        embeds: [archiveEmbed({ openerId: ALDIS.id, reason: "Fermée entre" })],
+      })
+    }
+    return found
+  }
+}
 
 function opened(openerId: string, overrides = {}): FakeChannelMessage {
   return archiveMessage({ channelId: CHANNEL_ID, openerId, ...overrides })
@@ -254,49 +278,100 @@ test("a closer is named by their nickname on the Discord server, else by their a
   ])
 })
 
-test("the channel is paged through, 100 messages at a time, to its beginning", async () => {
+function reasonsOf(archives: Awaited<ReturnType<typeof archivesOf>>) {
+  return archives?.kind === "read"
+    ? archives.archives.map(({ reason }) => reason)
+    : []
+}
+
+test("an account's oldest archive is found however long ago the channel posted it: no count of messages in the channel limits the read", async () => {
   const discord = new FakeDiscord({
     channels: [CHANNEL_ID],
     channelMessages: [
       opened(ALDIS.id, { reason: "La plus ancienne" }),
-      ...Array.from({ length: 249 }, () => opened(CORVUS.id)),
-      opened(ALDIS.id, { reason: "La plus récente" }),
+      ...Array.from({ length: 1500 }, () => opened(CORVUS.id)),
     ],
+  })
+
+  expect(await archivesOf(discord)).toMatchObject({
+    complete: true,
+    archives: [{ reason: "La plus ancienne" }],
+  })
+})
+
+test("an account's archives are read from every page of the search, newest first, whatever their number", async () => {
+  const discord = new FakeDiscord({
+    channels: [CHANNEL_ID],
+    channelMessages: Array.from({ length: 60 }, (_, index) =>
+      opened(ALDIS.id, { reason: `Archive ${index}` })
+    ),
   })
 
   const archives = await archivesOf(discord)
 
-  expect(archives).toMatchObject({
-    complete: true,
-    archives: [{ reason: "La plus récente" }, { reason: "La plus ancienne" }],
-  })
+  expect(archives).toMatchObject({ complete: true })
+  expect(reasonsOf(archives)).toEqual(
+    Array.from({ length: 60 }, (_, index) => `Archive ${59 - index}`)
+  )
 })
 
-const BOUNDARIES = [
-  { messages: 999, shown: true, complete: true },
-  { messages: 1000, shown: true, complete: true },
-  { messages: 1001, shown: false, complete: false },
+test("the archives an account closed, and those that quote its ID in their reason, are left out: only the tickets it opened are its own", async () => {
+  const discord = new FakeDiscord({
+    channels: [CHANNEL_ID],
+    channelMessages: [
+      opened(ALDIS.id, { closerId: LYRA.id, reason: "Ouvert par Aldis" }),
+      opened(LYRA.id, { closerId: ALDIS.id, reason: "Fermé par Aldis" }),
+      opened(LYRA.id, {
+        closerId: LYRA.id,
+        reason: `Voir aussi ${ALDIS.id}`,
+      }),
+      opened(LYRA.id, { closerId: LYRA.id, reason: "Sans Aldis" }),
+    ],
+  })
+
+  expect(reasonsOf(await archivesOf(discord))).toEqual(["Ouvert par Aldis"])
+})
+
+const CAP = [
+  { closed: 99, oldestShown: true, complete: true },
+  { closed: 100, oldestShown: false, complete: false },
 ] as const
 
-for (const { messages, shown, complete } of BOUNDARIES) {
-  test(`a channel of ${messages} messages is read for 1,000 at most: the archive that is its oldest message is ${shown ? "shown" : "not shown"}, and the archives read are ${complete ? "complete" : "said to be incomplete"}`, async () => {
+for (const { closed, oldestShown, complete } of CAP) {
+  test(`an account cited in ${closed + 1} archives, 1 it opened long ago and ${closed} it closed, is read for the 100 newest: its ticket is ${oldestShown ? "shown" : "not shown"}, and the read is ${complete ? "complete" : "said to be incomplete"}`, async () => {
     const discord = new FakeDiscord({
       channels: [CHANNEL_ID],
       channelMessages: [
-        opened(ALDIS.id, { reason: "La plus ancienne" }),
-        ...Array.from({ length: messages - 1 }, () => opened(CORVUS.id)),
+        opened(ALDIS.id, { closerId: LYRA.id, reason: "La plus ancienne" }),
+        ...Array.from({ length: closed }, () =>
+          opened(LYRA.id, { closerId: ALDIS.id })
+        ),
       ],
     })
 
     expect(await archivesOf(discord)).toEqual({
       kind: "read",
       complete,
-      archives: shown
+      archives: oldestShown
         ? [expect.objectContaining({ reason: "La plus ancienne" })]
         : [],
     })
   })
 }
+
+test("an archive posted between two pages of the search shifts the next page by one: it shows no archive twice", async () => {
+  const discord = new ArchiveClosedBetweenSearches({
+    channels: [CHANNEL_ID],
+    channelMessages: Array.from({ length: 30 }, (_, index) =>
+      opened(ALDIS.id, { reason: `Archive ${index}` })
+    ),
+  })
+
+  const reasons = reasonsOf(await archivesOf(discord))
+
+  expect(reasons).toHaveLength(30)
+  expect(new Set(reasons).size).toBe(30)
+})
 
 test("when the mention and the plain ID of an archive disagree, the plain ID wins, for the opener and for the closer", async () => {
   const discord = new FakeDiscord({
@@ -347,26 +422,58 @@ test("without an archives channel in the configuration, the archives are not con
   await expect(discord.getApplicationUser()).rejects.toBe(MISSING_ACCESS)
 })
 
-test("without an account, there are no archives to read", async () => {
+test("without an account, there are no archives to read, and Discord is not searched", async () => {
   const discord = new FakeDiscord({ channels: [CHANNEL_ID] })
-  discord.failNext("listMessages", MISSING_ACCESS)
+  discord.failNext("searchMessages", MISSING_ACCESS)
 
   expect(await readTicketArchives(discord, CHANNEL_ID, null)).toBeNull()
-  await expect(discord.listMessages(CHANNEL_ID, { limit: 1 })).rejects.toBe(
-    MISSING_ACCESS
-  )
+  await expect(
+    discord.searchMessages({ channel_id: [CHANNEL_ID] })
+  ).rejects.toBe(MISSING_ACCESS)
 })
 
-test("a channel the application cannot read fails the read with Discord's error", async () => {
+test("a channel the application cannot search fails the read with Discord's error", async () => {
   const discord = new FakeDiscord({ channels: [CHANNEL_ID] })
-  discord.failNext("listMessages", MISSING_ACCESS)
+  discord.failNext("searchMessages", MISSING_ACCESS)
 
   await expect(archivesOf(discord)).rejects.toBe(MISSING_ACCESS)
 })
 
-test("a channel that does not exist fails the read as Unknown Channel", async () => {
+test("a search that Discord rate limits beyond what the client waits for fails the read with Discord's error, which says Discord is unavailable", async () => {
+  const discord = new FakeDiscord({
+    channels: [CHANNEL_ID],
+    channelMessages: [opened(ALDIS.id)],
+  })
+  discord.failNext("searchMessages", RATE_LIMITED)
+
+  await expect(archivesOf(discord)).rejects.toMatchObject({
+    status: 429,
+    unavailable: true,
+  })
+  expect(await archivesOf(discord)).toMatchObject({
+    archives: [{ requestKind: "🔧 Problème technique" }],
+  })
+})
+
+test("a second page of results that Discord refuses fails the whole read: the first page's archives are not shown alone", async () => {
+  class RefusingLaterPages extends FakeDiscord {
+    override searchMessages(query: MessageSearchQuery) {
+      return query.offset === 0
+        ? super.searchMessages(query)
+        : Promise.reject(RATE_LIMITED)
+    }
+  }
+  const discord = new RefusingLaterPages({
+    channels: [CHANNEL_ID],
+    channelMessages: Array.from({ length: 30 }, () => opened(ALDIS.id)),
+  })
+
+  await expect(archivesOf(discord)).rejects.toBe(RATE_LIMITED)
+})
+
+test("a channel that does not exist fails the read as Missing Access, as Discord answers a search of one", async () => {
   await expect(archivesOf(new FakeDiscord())).rejects.toMatchObject({
-    status: 404,
-    code: RESTJSONErrorCodes.UnknownChannel,
+    status: 403,
+    code: RESTJSONErrorCodes.MissingAccess,
   })
 })

@@ -13,7 +13,7 @@ The game log's format, the title `<category> · <action>`, its fields and its fo
 ## Considered Options
 
 - **A store fed by the panel or by the Bot** (Neon, #174, #175): a second copy of what Discord keeps, with its retention and its personal data, for a filter Discord's search gives.
-- **Reading the channels' history page by page and filtering in memory**, as a record reads its archives (ADR 0009): bounded by the pages read, 1,000 messages for an archive, where a log channel grows by the hour.
+- **Reading the channels' history page by page and filtering in memory**, as a record read its archives until #387 (ADR 0009): bounded by the pages read, 1,000 messages for an archive, where a log channel grows by the hour.
 
 ## Consequences
 

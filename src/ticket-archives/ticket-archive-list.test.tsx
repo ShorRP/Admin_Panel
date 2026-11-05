@@ -59,6 +59,21 @@ test("an account that opened no support ticket says so, with no list", () => {
   expect(html).not.toContain("<ol")
 })
 
+test("an account none of whose tickets are among the archives read does not say that it opened none: it says that none was found among those read, and that the older ones may not show", () => {
+  const html = renderToStaticMarkup(
+    <TicketArchiveList
+      archives={{ kind: "read", archives: [], complete: false }}
+    />
+  )
+
+  expect(text(html)).not.toContain("Aucun ticket de support archivé")
+  expect(text(html)).toContain(
+    "Aucun ticket de support de ce compte parmi les archives lues."
+  )
+  expect(text(html)).toContain("ses tickets plus anciens ne s’affichent")
+  expect(html).not.toContain("<ol")
+})
+
 test("each archive says its request kind, when it opened and closed in Paris time, who closed it and why, in the order given", () => {
   const html = renderToStaticMarkup(
     <TicketArchiveList
@@ -105,7 +120,7 @@ test("the closer is a link to their record, by their name, or by their ID when n
   ])
 })
 
-test("archives read from fewer messages than the channel holds say that the older tickets are not shown, with the number of messages read", () => {
+test("archives read from fewer archives than cite the account say how many were read, whether the account opened or closed them, and that its older tickets may not show", () => {
   const html = renderToStaticMarkup(
     <TicketArchiveList
       archives={{ kind: "read", archives: [REPORT], complete: false }}
@@ -113,11 +128,12 @@ test("archives read from fewer messages than the channel holds say that the olde
   )
 
   expect(text(html)).toContain(
-    "Seuls les 1 000 derniers messages du salon des archives ont été lus : les tickets plus anciens ne s’affichent pas."
+    "Seules les 100 archives les plus récentes où ce compte apparaît, qu’il les ait ouvertes ou fermées, ont été lues : ses tickets plus anciens ne s’affichent peut-être pas."
   )
+  expect(text(html)).not.toContain("messages du salon")
 })
 
-test("archives read from the whole channel say nothing of what was not read", () => {
+test("archives read from every archive that cites the account say nothing of what was not read", () => {
   const html = renderToStaticMarkup(
     <TicketArchiveList
       archives={{ kind: "read", archives: [REPORT], complete: true }}
