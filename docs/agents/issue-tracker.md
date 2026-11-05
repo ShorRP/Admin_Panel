@@ -117,3 +117,9 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's `## Decisions so far`. The answer opens with `## Décisions`, `## Réponse` or `## Résolution`: it is the ticket's record, in place of the closing comment `groom-backlog` asks of a delivered ticket.
+
+## Gotchas
+
+- The API can show Auto-add to project `enabled` while it adds nothing: its filter, which the API hides, once held a stray `label:`. Only an issue that `github-project-automation` puts on the board proves it works (`docs/agents/issue-tracker.md`, **Board workflows**).
+- Writes to the project board need gh's `project` scope; `read:project` only lets `backlog.mjs plan` read it. When `apply` fails on a missing scope, run `gh auth refresh -s project`, which opens a browser.
+- A browser tab of the project board keeps its own copy of the views in `sessionStorage` (`projects-v2/session-store-v1/…/memex-views`), which survives F5. On 2026-10-23, a tab opened between two view changes kept showing the older grouping after a reload, while a new tab showed the saved one (inferred from the key's contents, not from GitHub's code). After a view changes, check it in a new tab.
