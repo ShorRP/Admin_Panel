@@ -100,6 +100,9 @@ test("the privacy policy says the panel reads from Discord, at each page, what i
   expect(text).toMatch(/la fiche d’un compte/)
   expect(text).toMatch(/« Server Members Intent »/)
   expect(text).toMatch(/l’historique du navigateur les garde/)
+  expect(text).toMatch(
+    /celles de la liste des comptes, du journal d’audit et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
+  )
 })
 
 test("the privacy policy says the panel reads, for the staff who moderate, the archives of the support tickets an account opened from the archives channel, with no conversation, and that they stay in Discord until a staff member deletes their message", () => {
@@ -111,6 +114,17 @@ test("the privacy policy says the panel reads, for the staff who moderate, the a
   )
   expect(text).toMatch(
     /tant qu’un membre du staff n’a pas supprimé son message/
+  )
+})
+
+test("the privacy policy says that, to find tickets, the panel sends Discord's search of messages the account's ID, the words of the reason or the emoji of the request kind that the staff chose, and reads the members and the banned accounts to find an account by its name", () => {
+  const text = sectionText("Ce que le panel lit sans le garder")
+
+  expect(text).toMatch(
+    /Pour trouver des tickets, le panel envoie à la recherche de messages de Discord l’ID du compte, les mots du motif ou l’emoji du type de demande que le staff a choisis/
+  )
+  expect(text).toMatch(
+    /pour chercher un compte par son nom, il lit la liste des membres et des comptes bannis sans l’afficher/
   )
 })
 

@@ -90,8 +90,13 @@ export function PrivacyPolicy() {
               fermé, et le panel y lit le nom de la personne qui l’a ouvert, le
               type de demande, les dates d’ouverture et de fermeture, le nom de
               la personne qui l’a fermé et le motif de la fermeture, sans aucune
-              conversation. Cette archive reste dans ce salon, sur Discord, tant
-              qu’un membre du staff n’a pas supprimé son message ;
+              conversation. Pour trouver des tickets, le panel envoie à la
+              recherche de messages de Discord l’ID du compte, les mots du motif
+              ou l’emoji du type de demande que le staff a choisis, et, pour
+              chercher un compte par son nom, il lit la liste des membres et des
+              comptes bannis sans l’afficher. Cette archive reste dans ce salon,
+              sur Discord, tant qu’un membre du staff n’a pas supprimé son
+              message ;
             </li>
             <li>
               pour tout le staff, sur la page des tickets de support, les
@@ -115,9 +120,10 @@ export function PrivacyPolicy() {
           </p>
           <p>
             L’adresse d’une fiche contient l’ID du compte, et celles de la liste
-            des comptes et du journal d’audit, le texte cherché, un nom, un ID
-            ou une mention, et les filtres choisis : l’historique du navigateur
-            les garde, comme toute adresse.
+            des comptes, du journal d’audit et des tickets de support, le texte
+            cherché, un nom, un ID ou une mention, les mots d’un motif, et les
+            filtres choisis : l’historique du navigateur les garde, comme toute
+            adresse.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel écrit dans Discord">

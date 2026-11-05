@@ -125,11 +125,13 @@ test.describe("a few tickets", () => {
     await expect(
       main.getByRole("heading", { level: 1, name: "Tickets de support" })
     ).toBeVisible()
-    await expect(main.getByRole("listitem")).toHaveText(NEWEST_FIRST)
+    const archives = main.getByRole("list", { name: "1–4 sur 4" })
+    await expect(archives.getByRole("listitem")).toHaveText(NEWEST_FIRST)
     await expect(page.getByText("Forgé par un membre")).toHaveCount(0)
-    await expect(main.getByRole("list", { name: "1–4 sur 4" })).toBeVisible()
-    await expect(main.getByRole("link")).toHaveCount(0)
-    await expect(main.getByRole("navigation")).toHaveCount(0)
+    await expect(archives.getByRole("link")).toHaveCount(0)
+    await expect(
+      main.getByRole("navigation", { name: "Pages des archives" })
+    ).toHaveCount(0)
     await checkAccessibility()
   })
 
@@ -143,8 +145,9 @@ test.describe("a few tickets", () => {
     await logIn(ALDIS)
     await page.goto("/support-tickets")
 
-    await expect(main.getByRole("listitem")).toHaveText(NEWEST_FIRST)
-    const links = await main
+    const archives = main.getByRole("list", { name: "1–4 sur 4" })
+    await expect(archives.getByRole("listitem")).toHaveText(NEWEST_FIRST)
+    const links = await archives
       .getByRole("link")
       .evaluateAll((elements) =>
         elements.map((link) => [link.textContent, link.getAttribute("href")])
@@ -161,7 +164,7 @@ test.describe("a few tickets", () => {
     ])
     await checkAccessibility()
 
-    await main.getByRole("link", { name: "Brynja la Rousse" }).click()
+    await archives.getByRole("link", { name: "Brynja la Rousse" }).click()
     await expect(page).toHaveURL(`/records/${BRYNJA.id}`)
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "Brynja la Rousse"
@@ -177,10 +180,13 @@ test.describe("a few tickets", () => {
     await page.setViewportSize({ width: 1280, height: 1600 })
     await logIn(ALDIS)
     await page.goto("/support-tickets")
-    await expect(page.getByRole("main").getByRole("listitem")).toHaveCount(4)
+    const archives = page
+      .getByRole("main")
+      .getByRole("list", { name: "1–4 sur 4" })
+    await expect(archives.getByRole("listitem")).toHaveCount(4)
     await checkAccessibility()
 
-    const links = await page.getByRole("main").getByRole("link").all()
+    const links = await archives.getByRole("link").all()
     expect(links).toHaveLength(8)
     for (const link of links) {
       await expect(link).toBeInViewport()
@@ -300,8 +306,10 @@ test.describe("no ticket", () => {
 
     const main = page.getByRole("main")
     await expect(main).toContainText("Aucune archive de ticket à afficher.")
-    await expect(main.getByRole("listitem")).toHaveCount(0)
-    await expect(main.getByRole("navigation")).toHaveCount(0)
+    await expect(main.getByRole("list", { name: /sur/ })).toHaveCount(0)
+    await expect(
+      main.getByRole("navigation", { name: "Pages des archives" })
+    ).toHaveCount(0)
     await checkAccessibility()
   })
 

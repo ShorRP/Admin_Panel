@@ -5,7 +5,7 @@ import { frenchNumber } from "@/ui/french-number"
 import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
 import {
-  MAX_MESSAGES_READ,
+  MAX_CITING_ARCHIVES_READ,
   type ReadTicketArchive,
   type TicketArchives,
 } from "./read-ticket-archives"
@@ -32,7 +32,9 @@ export function TicketArchiveList({ archives }: { archives: TicketArchives }) {
         </p>
       ) : archives.archives.length === 0 ? (
         <p className="text-muted-foreground">
-          Aucun ticket de support archivé pour ce compte.
+          {archives.complete
+            ? "Aucun ticket de support archivé pour ce compte."
+            : "Aucun ticket de support de ce compte parmi les archives lues."}
         </p>
       ) : (
         <ol className={TICKET_ARCHIVE_ENTRIES_CLASSES}>
@@ -43,9 +45,9 @@ export function TicketArchiveList({ archives }: { archives: TicketArchives }) {
       )}
       {archives.kind === "read" && !archives.complete && (
         <p className="text-xs text-muted-foreground">
-          Seuls les {frenchNumber(MAX_MESSAGES_READ)} derniers messages du salon
-          des archives ont été lus : les tickets plus anciens ne s’affichent
-          pas.
+          Seules les {frenchNumber(MAX_CITING_ARCHIVES_READ)} archives les plus
+          récentes où ce compte apparaît, qu’il les ait ouvertes ou fermées, ont
+          été lues : ses tickets plus anciens ne s’affichent peut-être pas.
         </p>
       )}
     </section>

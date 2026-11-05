@@ -138,7 +138,7 @@ const MAX_SEARCH_TEXT_LENGTH = 1024
 
 const SEARCH_SLOP = 2
 
-const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+/gu
+const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+(?:’[\p{L}\p{N}]+)*/gu
 
 const DISCORD_EPOCH = BigInt(1420070400000)
 
@@ -1048,10 +1048,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     )
   }
 
-  private nextSnowflake(at?: Date): Snowflake {
+  private nextSnowflake(at: Date = new Date()): Snowflake {
     this.increment = (this.increment + 1) % 4096
     return (
-      (BigInt(at?.getTime() ?? Date.now()) - DISCORD_EPOCH) * BigInt(4194304) +
+      (BigInt(at.getTime()) - DISCORD_EPOCH) * BigInt(4194304) +
       BigInt(this.increment)
     ).toString()
   }

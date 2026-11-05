@@ -5,6 +5,7 @@ import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord, type FakeChannelMessage } from "@/discord/fake-discord"
 import { archiveEmbed, archiveMessage } from "./archive-message"
 import { readTicketArchivePage } from "./read-ticket-archive-page"
+import { NO_FILTERS } from "./ticket-archive-filters"
 
 const CHANNEL_ID = "1562505523490848881"
 
@@ -48,8 +49,21 @@ function serverWith(count: number) {
   })
 }
 
+const BROWSING = {
+  filters: NO_FILTERS,
+  limit: "offset",
+  accountNotice: null,
+  kindCounts: {
+    kind: "to-search",
+    archivesChannelId: CHANNEL_ID,
+    applicationId: expect.any(String),
+    period: {},
+    chosen: null,
+  },
+}
+
 async function pageOf(discord: FakeDiscord, page?: unknown) {
-  const read = await readTicketArchivePage(discord, CHANNEL_ID, page)
+  const read = await readTicketArchivePage(discord, CHANNEL_ID, { page })
   if (read.kind !== "page") {
     throw new Error("The archives are not configured.")
   }
@@ -64,7 +78,7 @@ test("without an archives channel in the configuration, the archives are not con
   const discord = new FakeDiscord()
   discord.failNext("getApplicationUser", RATE_LIMITED)
 
-  expect(await readTicketArchivePage(discord, null, undefined)).toEqual({
+  expect(await readTicketArchivePage(discord, null, {})).toEqual({
     kind: "unconfigured",
   })
   await expect(discord.getApplicationUser()).rejects.toBe(RATE_LIMITED)
@@ -92,6 +106,7 @@ test("the first page holds the newest archives, each with its request kind, who 
   })
 
   expect(await pageOf(discord)).toEqual({
+    ...BROWSING,
     kind: "page",
     page: 1,
     pages: 1,
@@ -160,6 +175,7 @@ test("a request kind of « Inconnu » reads as no request kind", async () => {
 
 test("an archives channel with no message has one empty page", async () => {
   expect(await pageOf(serverWith(0))).toEqual({
+    ...BROWSING,
     kind: "page",
     page: 1,
     pages: 1,
@@ -331,7 +347,7 @@ test("a name that cannot be read fails the read with Discord's error", async () 
 
 test("a channel that does not exist fails the read as Missing Access", async () => {
   await expect(
-    readTicketArchivePage(new FakeDiscord(), CHANNEL_ID, undefined)
+    readTicketArchivePage(new FakeDiscord(), CHANNEL_ID, {})
   ).rejects.toMatchObject({
     status: 403,
     code: RESTJSONErrorCodes.MissingAccess,

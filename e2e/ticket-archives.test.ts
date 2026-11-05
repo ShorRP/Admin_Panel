@@ -1,3 +1,4 @@
+import type { FakeDiscordState } from "@/discord/fake-discord"
 import { archiveMessage } from "@/ticket-archives/archive-message"
 import {
   ARCHIVES_CHANNEL_ID,
@@ -42,51 +43,51 @@ function ticket(openerId: string, overrides = {}) {
   })
 }
 
-test.use({
-  discordState: {
-    roles: [STAFF, MODERATION, PANEL, GUARD],
-    applicationRoles: [PANEL.id],
-    members: [
-      { user: ALDIS, roles: [STAFF.id, MODERATION.id] },
-      { user: BRYNJA, nick: "Brynja la Rousse", roles: [STAFF.id] },
-      {
-        user: LYRA,
-        roles: [GUARD.id],
-        communication_disabled_until: "2099-11-02T18:30:00.000000+00:00",
-      },
-      { user: CORVUS },
-    ],
-    users: [HALDOR],
-    channelMessages: [
-      ticket(LYRA.id, {
-        kind: "🔧 Problème technique",
-        openedAt: new Date("2026-10-20T08:00:00Z"),
-        closedAt: new Date("2026-10-20T08:45:00Z"),
-        closerId: BRYNJA.id,
-        reason: "Launcher réinstallé",
-      }),
-      ticket(CORVUS.id, { reason: "Ticket de Corvus" }),
-      ticket(LYRA.id, {
-        kind: null,
-        openedAt: new Date("2026-10-25T18:10:00Z"),
-        closedAt: new Date("2026-10-25T18:20:00Z"),
-        closerId: HALDOR.id,
-        reason: "Ticket renommé",
-      }),
-      ticket(LYRA.id, {
-        authorId: BRYNJA.id,
-        reason: "Forgé par un membre",
-      }),
-      ticket(LYRA.id, {
-        kind: "🚨 Signaler un joueur",
-        openedAt: new Date("2026-11-03T14:32:10Z"),
-        closedAt: new Date("2026-11-03T15:10:59Z"),
-        closerId: ALDIS.id,
-        reason: LONG_WORD,
-      }),
-    ],
-  },
-})
+const STATE: FakeDiscordState = {
+  roles: [STAFF, MODERATION, PANEL, GUARD],
+  applicationRoles: [PANEL.id],
+  members: [
+    { user: ALDIS, roles: [STAFF.id, MODERATION.id] },
+    { user: BRYNJA, nick: "Brynja la Rousse", roles: [STAFF.id] },
+    {
+      user: LYRA,
+      roles: [GUARD.id],
+      communication_disabled_until: "2099-11-02T18:30:00.000000+00:00",
+    },
+    { user: CORVUS },
+  ],
+  users: [HALDOR],
+  channelMessages: [
+    ticket(LYRA.id, {
+      kind: "🔧 Problème technique",
+      openedAt: new Date("2026-10-20T08:00:00Z"),
+      closedAt: new Date("2026-10-20T08:45:00Z"),
+      closerId: BRYNJA.id,
+      reason: "Launcher réinstallé",
+    }),
+    ticket(CORVUS.id, { reason: "Ticket de Corvus" }),
+    ticket(LYRA.id, {
+      kind: null,
+      openedAt: new Date("2026-10-25T18:10:00Z"),
+      closedAt: new Date("2026-10-25T18:20:00Z"),
+      closerId: HALDOR.id,
+      reason: "Ticket renommé",
+    }),
+    ticket(LYRA.id, {
+      authorId: BRYNJA.id,
+      reason: "Forgé par un membre",
+    }),
+    ticket(LYRA.id, {
+      kind: "🚨 Signaler un joueur",
+      openedAt: new Date("2026-11-03T14:32:10Z"),
+      closedAt: new Date("2026-11-03T15:10:59Z"),
+      closerId: ALDIS.id,
+      reason: LONG_WORD,
+    }),
+  ],
+}
+
+test.use({ discordState: STATE })
 
 test("a moderator reads, under the history of an account, the support tickets it opened, newest first, each with its request kind, its dates, who closed it and why, and follows the closer to their record", async ({
   page,
@@ -188,4 +189,40 @@ test("the tickets come last in a record: under the history, on the left, with th
       narrow.history.y + narrow.history.height
     )
   }
+})
+
+test.describe("an account cited in more than 100 archives", () => {
+  test.use({
+    discordState: {
+      ...STATE,
+      channelMessages: [
+        ...Array.from({ length: 100 }, (_, index) =>
+          ticket(CORVUS.id, {
+            closerId: ALDIS.id,
+            reason: `Fermé par Aldis ${index}`,
+          })
+        ),
+        ticket(ALDIS.id, { closerId: BRYNJA.id, reason: "Ouvert par Aldis" }),
+      ],
+    },
+  })
+
+  test("the record shows the tickets among the 100 newest archives that cite it, and says that its older tickets may not show", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const tickets = page.getByRole("region", { name: "Tickets de support" })
+
+    await logIn(ALDIS)
+    await expect(page).toHaveURL("/blocked-words")
+    await page.goto(`/records/${ALDIS.id}`)
+
+    await expect(tickets.getByRole("listitem")).toHaveCount(1)
+    await expect(tickets).toContainText("Ouvert par Aldis")
+    await expect(tickets).toContainText(
+      "Seules les 100 archives les plus récentes où ce compte apparaît, qu’il les ait ouvertes ou fermées, ont été lues : ses tickets plus anciens ne s’affichent peut-être pas."
+    )
+    await checkAccessibility()
+  })
 })

@@ -324,6 +324,47 @@ test("with Message Content off, the fake's search gives a message of another aut
   ).toBe(1)
 })
 
+test("a message sent at a given time gets an ID of that time, so a search bounded by two IDs keeps the messages of a period", async () => {
+  const discord = new FakeDiscord({
+    channelMessages: [
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "septembre",
+        sentAt: new Date("2026-09-15T10:00:00Z"),
+      },
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "octobre",
+        sentAt: new Date("2026-10-15T10:00:00Z"),
+      },
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "novembre",
+        sentAt: new Date("2026-11-15T10:00:00Z"),
+      },
+    ],
+  })
+  const all = await discord.searchMessages({})
+  const [november, october, september] = all.messages
+
+  expect(all.messages.map(({ content }) => content)).toEqual([
+    "novembre",
+    "octobre",
+    "septembre",
+  ])
+  expect(snowflakeDate(october?.id ?? "")).toEqual(
+    new Date("2026-10-15T10:00:00Z")
+  )
+  expect(
+    (
+      await discord.searchMessages({
+        min_id: september?.id ?? "",
+        max_id: november?.id ?? "",
+      })
+    ).messages.map(({ content }) => content)
+  ).toEqual(["octobre"])
+})
+
 const OTHER_CHANNEL_ID = "555555555555555570"
 
 function searchable(...contents: string[]) {

@@ -53,6 +53,10 @@ const STAFF_PAGES = [
   { path: `/records/${BRYNJA.id}`, fixme: false },
   { path: "/support-tickets", fixme: false },
   { path: "/support-tickets?page=2", fixme: false },
+  {
+    path: `/support-tickets?opener=${BRYNJA.id}&reason=r%C3%A9solu&sort=oldest`,
+    fixme: false,
+  },
 ] as const
 
 const PUBLIC_PAGES = [
@@ -76,6 +80,13 @@ const FILTER_SHEETS = [
     name: "Filtres",
     field: "État",
     value: "members",
+  },
+  {
+    owner: "the support tickets'",
+    path: `/support-tickets?opener=${BRYNJA.id}&reason=r%C3%A9solu&sort=oldest`,
+    name: "Filtres",
+    field: "Motif",
+    value: "résolu",
   },
 ] as const
 

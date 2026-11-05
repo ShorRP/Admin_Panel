@@ -13,6 +13,7 @@ import {
   configuredArchivesChannelId,
   configuredTicketsCategoryId,
 } from "@/ticket-archives/archives-channel"
+import { readKindCounts } from "@/ticket-archives/read-kind-counts"
 import { readTicketArchivePage } from "@/ticket-archives/read-ticket-archive-page"
 import { SupportTicketArchives } from "@/ticket-archives/support-ticket-archives"
 import { SupportTicketArchivesSkeleton } from "@/ticket-archives/support-ticket-archives-skeleton"
@@ -40,7 +41,8 @@ export default function SupportTicketsPage({
         >
           Les tickets encore ouverts que tu vois sur Discord, puis les archives
           des tickets fermés : leur type de demande, qui les a ouverts et
-          fermés, quand, et pourquoi.
+          fermés, quand, et pourquoi. Filtre les archives par type, par ouvreur
+          ou fermeur, par période ou par un mot du motif.
         </PageHeader>
         <OrnamentRule leadingLine />
         <SupportTicketsSection id="open-support-tickets" title="En cours">
@@ -88,14 +90,15 @@ async function SupportTicketArchivesFromDiscord({
   searchParams,
 }: { staff: Staff } & Pick<PageProps<"/support-tickets">, "searchParams">) {
   const { discord, staffMember } = await staff
-  const { page } = await searchParams
+  const read = await readTicketArchivePage(
+    discord,
+    configuredArchivesChannelId(),
+    await searchParams
+  )
   return (
     <SupportTicketArchives
-      read={await readTicketArchivePage(
-        discord,
-        configuredArchivesChannelId(),
-        page
-      )}
+      read={read}
+      counts={readKindCounts(discord, read)}
       opensModeration={staffMember.opensModeration}
     />
   )

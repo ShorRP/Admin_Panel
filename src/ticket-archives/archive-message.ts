@@ -45,20 +45,24 @@ export function archiveEmbed({
 type ArchiveMessage = {
   channelId: Snowflake
   authorId?: Snowflake
+  sentAt?: Date
   embeds: APIEmbed[]
 }
 
 export function archiveMessage({
   channelId,
   authorId,
+  sentAt,
   ...archive
 }: Archive & {
   channelId: Snowflake
   authorId?: Snowflake
+  sentAt?: Date
 }): ArchiveMessage {
   return {
     channelId,
     ...(authorId === undefined ? {} : { authorId }),
+    ...(sentAt === undefined ? {} : { sentAt }),
     embeds: [archiveEmbed(archive)],
   }
 }
