@@ -3,7 +3,7 @@ import "server-only"
 import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
-import { memberName, userName } from "@/discord/member-name"
+import { accountNames } from "./account-names"
 import { ticketArchiveOf, type TicketArchive } from "./ticket-archive"
 
 const PAGE_SIZE = 100
@@ -58,7 +58,10 @@ export async function readTicketArchives(
     before === undefined ||
     (await discord.listMessages(archivesChannelId, { before, limit: 1 }))
       .length === 0
-  const names = await closerNames(discord, archives)
+  const names = await accountNames(
+    discord,
+    archives.map(({ closerId }) => closerId)
+  )
   return {
     kind: "read",
     complete,
@@ -67,21 +70,4 @@ export async function readTicketArchives(
       closer: { id: closerId, name: names.get(closerId) ?? null },
     })),
   }
-}
-
-async function closerNames(discord: DiscordApi, archives: TicketArchive[]) {
-  const ids = new Set(archives.map(({ closerId }) => closerId))
-  const names = new Map<Snowflake, string | null>()
-  await Promise.all(
-    [...ids].map(async (id) => {
-      const member = await discord.getMember(id)
-      if (member !== null) {
-        names.set(id, memberName(member))
-        return
-      }
-      const user = await discord.getUser(id)
-      names.set(id, user === null ? null : userName(user))
-    })
-  )
-  return names
 }

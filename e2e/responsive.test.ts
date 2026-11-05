@@ -46,6 +46,8 @@ const STAFF_PAGES = [
   { path: "/records", fixme: false },
   { path: "/records?standing=members&sort=joined-recent", fixme: false },
   { path: `/records/${BRYNJA.id}`, fixme: false },
+  { path: "/support-tickets", fixme: false },
+  { path: "/support-tickets?page=2", fixme: false },
 ] as const
 
 const PUBLIC_PAGES = [
@@ -87,6 +89,14 @@ test.use({
     ],
     bans: [{ user: CORVUS }],
     channelMessages: [
+      ...Array.from({ length: 26 }, (_, index) =>
+        archiveMessage({
+          channelId: ARCHIVES_CHANNEL_ID,
+          openerId: CORVUS.id,
+          closerId: ALDIS.id,
+          reason: `Archive ${index}`,
+        })
+      ),
       archiveMessage({
         channelId: ARCHIVES_CHANNEL_ID,
         openerId: BRYNJA.id,
@@ -311,6 +321,7 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
     "Mots interdits 2 mots",
     "Journal d’audit",
     "Modération",
+    "Tickets de support",
   ]
   function scrolledBar() {
     return page.evaluate(() => {
