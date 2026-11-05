@@ -122,6 +122,10 @@ _Avoid_: comment
 A private channel on the Discord server where one member and the staff in charge of that kind of request handle it, from its opening to its closing with a reason.
 _Avoid_: ticket (alone), which also names an issue of the tracker; support channel
 
+**Tickets category**:
+The category of the Discord server where the Bot creates the channel of each support ticket, « ・TICKETS PRIVÉS ・ » on Shor. A support ticket is in progress while its channel is in it.
+_Avoid_: tickets folder
+
 **Ticket archive**:
 The record of a closed support ticket: who opened it, its request kind, when it opened and closed, who closed it and why, with no conversation. The Bot posts it in the archives channel before the support ticket is deleted.
 _Avoid_: transcript (a copy of the conversation, which the Bot never reads), log

@@ -2,9 +2,17 @@ import { ViewTransition } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
 
-import { createDiscordApi } from "@/discord/discord-api"
+import { createDiscordApi, type DiscordApi } from "@/discord/discord-api"
 import { requireStaffMember } from "@/staff/require-staff-member"
-import { configuredArchivesChannelId } from "@/ticket-archives/archives-channel"
+import type { StaffMember } from "@/staff/staff-member"
+import { OpenSupportTickets } from "@/support-tickets/open-support-tickets"
+import { OpenSupportTicketsSkeleton } from "@/support-tickets/open-support-tickets-skeleton"
+import { readOpenSupportTickets } from "@/support-tickets/read-open-support-tickets"
+import { SupportTicketsSection } from "@/support-tickets/support-tickets-section"
+import {
+  configuredArchivesChannelId,
+  configuredTicketsCategoryId,
+} from "@/ticket-archives/archives-channel"
 import { readKindCounts } from "@/ticket-archives/read-kind-counts"
 import { readTicketArchivePage } from "@/ticket-archives/read-ticket-archive-page"
 import { SupportTicketArchives } from "@/ticket-archives/support-ticket-archives"
@@ -18,6 +26,7 @@ export const metadata: Metadata = { title: "Tickets de support" }
 export default function SupportTicketsPage({
   searchParams,
 }: PageProps<"/support-tickets">) {
+  const staff = staffFromDiscord()
   return (
     <ViewTransition
       enter="section-crossfade"
@@ -26,29 +35,61 @@ export default function SupportTicketsPage({
     >
       <main className="mx-auto flex max-w-270 flex-col gap-7">
         <PageHeader
-          overline="Archives · Heures de Paris"
+          overline="Tickets · Heures de Paris"
           title="Tickets de support"
           className="max-w-160"
         >
-          Les tickets de support fermés : leur type de demande, qui les a
-          ouverts et fermés, quand, et pourquoi. Filtre-les par type, par
-          ouvreur ou fermeur, par période ou par un mot du motif.
+          Les tickets encore ouverts que tu vois sur Discord, puis les archives
+          des tickets fermés : leur type de demande, qui les a ouverts et
+          fermés, quand, et pourquoi. Filtre les archives par type, par ouvreur
+          ou fermeur, par période ou par un mot du motif.
         </PageHeader>
         <OrnamentRule leadingLine />
-        <SuspenseWithSkeleton skeleton={<SupportTicketArchivesSkeleton />}>
-          <SupportTicketArchivesFromDiscord searchParams={searchParams} />
-        </SuspenseWithSkeleton>
+        <SupportTicketsSection id="open-support-tickets" title="En cours">
+          <SuspenseWithSkeleton skeleton={<OpenSupportTicketsSkeleton />}>
+            <OpenSupportTicketsFromDiscord staff={staff} />
+          </SuspenseWithSkeleton>
+        </SupportTicketsSection>
+        <SupportTicketsSection id="support-ticket-archives" title="Archives">
+          <SuspenseWithSkeleton skeleton={<SupportTicketArchivesSkeleton />}>
+            <SupportTicketArchivesFromDiscord
+              staff={staff}
+              searchParams={searchParams}
+            />
+          </SuspenseWithSkeleton>
+        </SupportTicketsSection>
       </main>
     </ViewTransition>
   )
 }
 
-async function SupportTicketArchivesFromDiscord({
-  searchParams,
-}: Pick<PageProps<"/support-tickets">, "searchParams">) {
+type Staff = Promise<{ discord: DiscordApi; staffMember: StaffMember }>
+
+async function staffFromDiscord() {
   await connection()
   const discord = createDiscordApi()
-  const staffMember = await requireStaffMember(discord)
+  return { discord, staffMember: await requireStaffMember(discord) }
+}
+
+async function OpenSupportTicketsFromDiscord({ staff }: { staff: Staff }) {
+  const { discord, staffMember } = await staff
+  return (
+    <OpenSupportTickets
+      read={await readOpenSupportTickets(
+        discord,
+        staffMember,
+        configuredTicketsCategoryId()
+      )}
+      opensModeration={staffMember.opensModeration}
+    />
+  )
+}
+
+async function SupportTicketArchivesFromDiscord({
+  staff,
+  searchParams,
+}: { staff: Staff } & Pick<PageProps<"/support-tickets">, "searchParams">) {
+  const { discord, staffMember } = await staff
   const read = await readTicketArchivePage(
     discord,
     configuredArchivesChannelId(),

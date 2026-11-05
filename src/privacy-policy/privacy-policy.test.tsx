@@ -137,6 +137,24 @@ test("the privacy policy says the whole staff reads the archives of every suppor
   )
 })
 
+test("the privacy policy says the panel reads, for the whole staff, the conversations of the support tickets in progress whose channel they view on Discord, 100 messages at most, and keeps none of them", () => {
+  const text = sectionText("Ce que le panel lit sans le garder")
+
+  expect(text).toMatch(
+    /pour tout le staff, sur la page des tickets de support, les tickets encore ouverts dont le salon est visible pour lui sur Discord/
+  )
+  expect(text).toMatch(
+    /le nombre de messages, le nom des membres du staff qui y ont répondu, et un extrait du dernier message avec le nom de son auteur/
+  )
+  expect(text).toMatch(
+    /lit pour cela les 100 derniers messages de la conversation/
+  )
+  expect(text).toMatch(/n’en garde rien/)
+  expect(sectionText("Qui le voit")).toMatch(
+    /les tickets en cours dont il voit le salon sur Discord/
+  )
+})
+
 test("the privacy policy says Discord keeps what the panel writes, every change's reason naming its staff member 45 days, a ban's reason while the ban lasts, and a sanction's direct message until the application deletes it", () => {
   const text = sectionText("Ce que le panel écrit dans Discord")
 

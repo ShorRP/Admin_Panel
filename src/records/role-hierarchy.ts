@@ -1,6 +1,6 @@
 import type { APIRole, Snowflake } from "discord-api-types/v10"
 
-import { compareIds } from "./compare-ids"
+import { compareIds } from "@/discord/compare-ids"
 
 export type HighestRole = {
   name: string

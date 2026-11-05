@@ -96,7 +96,20 @@ export function PrivacyPolicy() {
               chercher un compte par son nom, il lit la liste des membres et des
               comptes bannis sans l’afficher. Cette archive reste dans ce salon,
               sur Discord, tant qu’un membre du staff n’a pas supprimé son
-              message.
+              message ;
+            </li>
+            <li>
+              pour tout le staff, sur la page des tickets de support, les
+              tickets encore ouverts dont le salon est visible pour lui sur
+              Discord : le type de demande, le nom de la personne qui l’a
+              ouvert, les dates d’ouverture et de dernière activité, le nombre
+              de messages, le nom des membres du staff qui y ont répondu, et un
+              extrait du dernier message avec le nom de son auteur. Le panel lit
+              pour cela les 100 derniers messages de la conversation du ticket,
+              que seuls voient la personne qui l’a ouvert et le staff de ce type
+              de demande, et n’en garde rien : la conversation reste dans le
+              salon du ticket, sur Discord, jusqu’à la suppression de ce salon à
+              la fermeture du ticket.
             </li>
           </PolicyList>
           <p>
@@ -156,7 +169,8 @@ export function PrivacyPolicy() {
             Le panel ne s’ouvre qu’au staff de Shor, après une connexion avec
             Discord, et vérifie à chaque page que le membre a toujours le rôle
             staff. Tout le staff voit le journal d’audit et les archives des
-            tickets de support ; seul le staff qui modère voit la liste des
+            tickets de support, ainsi que les tickets en cours dont il voit le
+            salon sur Discord ; seul le staff qui modère voit la liste des
             comptes et leurs fiches.
           </p>
         </PolicySection>

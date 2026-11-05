@@ -1,6 +1,6 @@
+import { compareIds } from "@/discord/compare-ids"
 import type { AccountCandidate } from "./account-candidate"
 import type { AccountListFilters } from "./account-list-filters"
-import { compareIds } from "./compare-ids"
 
 const nameCollator = new Intl.Collator("fr-FR", { sensitivity: "accent" })
 

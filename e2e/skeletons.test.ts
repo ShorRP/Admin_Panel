@@ -19,7 +19,10 @@ const PAGES = [
   },
   {
     path: "/support-tickets",
-    loading: ["Chargement des archives de tickets…"],
+    loading: [
+      "Chargement des tickets en cours…",
+      "Chargement des archives de tickets…",
+    ],
     content: "Aucune archive de ticket à afficher.",
   },
   {
