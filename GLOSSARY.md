@@ -58,6 +58,14 @@ _Avoid_: ShorBot (the repository's name), client, panel bot
 The Admin Panel's record of which staff member changed what, and when, beside the automatic sanctions. Not the panel's logs, which say only why the panel failed.
 _Avoid_: logs, moderation log
 
+**Game log**:
+The record the game server posts in a channel of the Discord server of what happens on Shor, such as a staff member's administration command in game or a character's disconnection.
+_Avoid_: logs, log-jeux (the channel's name)
+
+**Bot log**:
+The record the Bot posts in a channel of the Discord server of what it does on its own, with no staff member behind it, such as a role it gives or a temporary voice channel it creates. Not the audit log, which says what the staff changed.
+_Avoid_: logs, admin log, log-admin (the channel's name)
+
 **Privacy policy**:
 The public statement of what Shor's Discord applications read, keep and write about people, why, for how long, who sees it, and how to ask for it to be corrected or deleted. Anyone can read it, with or without a Discord account.
 _Avoid_: privacy notice, GDPR page, legal notice (French « mentions légales », which name the publisher, not the data)
