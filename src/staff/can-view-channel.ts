@@ -44,7 +44,8 @@ function holds(permissions: bigint, permission: bigint) {
 
 function basePermissions(guild: Guild, staffMember: StaffMember) {
   const everyone = guild.roles.find(({ id }) => id === guild.id)
-  let permissions = BigInt(everyone?.permissions ?? "0")
+  let permissions =
+    everyone === undefined ? NO_PERMISSIONS : BigInt(everyone.permissions)
   for (const role of guild.roles) {
     if (staffMember.roleIds.includes(role.id)) {
       permissions |= BigInt(role.permissions)
@@ -62,7 +63,11 @@ function channelPermissions(
   let permissions = base
   const everyone = overwrites.find(({ id }) => id === guildId)
   if (everyone !== undefined) {
-    permissions = overwrittenBy(permissions, everyone.allow, everyone.deny)
+    permissions = overwrittenBy(
+      permissions,
+      BigInt(everyone.allow),
+      BigInt(everyone.deny)
+    )
   }
   let allow = NO_PERMISSIONS
   let deny = NO_PERMISSIONS
@@ -72,14 +77,18 @@ function channelPermissions(
       deny |= BigInt(overwrite.deny)
     }
   }
-  permissions = (permissions & ~deny) | allow
+  permissions = overwrittenBy(permissions, allow, deny)
   const own = overwrites.find(({ id }) => id === staffMember.id)
   if (own !== undefined) {
-    permissions = overwrittenBy(permissions, own.allow, own.deny)
+    permissions = overwrittenBy(
+      permissions,
+      BigInt(own.allow),
+      BigInt(own.deny)
+    )
   }
   return permissions
 }
 
-function overwrittenBy(permissions: bigint, allow: string, deny: string) {
-  return (permissions & ~BigInt(deny)) | BigInt(allow)
+function overwrittenBy(permissions: bigint, allow: bigint, deny: bigint) {
+  return (permissions & ~deny) | allow
 }
