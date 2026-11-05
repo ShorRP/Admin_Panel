@@ -217,6 +217,223 @@ test("the fake pages through a channel by the message before the last of the pre
   )
 })
 
+function withoutMessageContent() {
+  const applicationId = new FakeDiscord().applicationUser.id
+  return new FakeDiscord({
+    messageContentIntent: false,
+    members: [{ user: MEMBER }],
+    channelMessages: [
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        authorId: MEMBER.id,
+        content: "Bonjour tout le monde",
+        embeds: [{ title: "Titre du membre" }],
+      },
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "Message de l'application",
+        embeds: [{ title: "Titre de l'application" }],
+      },
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        authorId: MEMBER.id,
+        content: `Salut <@${applicationId}> et <@!${applicationId}>`,
+        embeds: [{ title: "Titre de la mention" }],
+      },
+    ],
+  })
+}
+
+test("with Message Content off, the fake empties the content and the embeds of a message of another author when it lists a channel, and keeps those of the application's and of a message that mentions the application", async () => {
+  const discord = withoutMessageContent()
+
+  const listed = await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 10 })
+
+  expect(
+    listed.map(({ author, content, embeds }) => [author.id, content, embeds])
+  ).toEqual([
+    [
+      MEMBER.id,
+      `Salut <@${discord.applicationUser.id}> et <@!${discord.applicationUser.id}>`,
+      [{ title: "Titre de la mention" }],
+    ],
+    [
+      discord.applicationUser.id,
+      "Message de l'application",
+      [{ title: "Titre de l'application" }],
+    ],
+    [MEMBER.id, "", []],
+  ])
+})
+
+test("with Message Content off, the fake's search gives a message of another author without its content and its embeds, and finds it by no text", async () => {
+  const discord = withoutMessageContent()
+
+  const all = await discord.searchMessages({
+    channel_id: [ARCHIVES_CHANNEL_ID],
+  })
+
+  expect(all.total_results).toBe(3)
+  expect(
+    all.messages.map(({ author, content, embeds }) => [
+      author.id,
+      content === "",
+      embeds.length,
+    ])
+  ).toEqual([
+    [MEMBER.id, false, 1],
+    [discord.applicationUser.id, false, 1],
+    [MEMBER.id, true, 0],
+  ])
+  expect(
+    (await discord.searchMessages({ content: "bonjour" })).total_results
+  ).toBe(0)
+  expect(
+    (await discord.searchMessages({ content: "titre membre" })).total_results
+  ).toBe(0)
+  expect(
+    (await discord.searchMessages({ content: "application" })).total_results
+  ).toBe(1)
+})
+
+const OTHER_CHANNEL_ID = "555555555555555570"
+
+function searchable(...contents: string[]) {
+  return new FakeDiscord({
+    channels: [ARCHIVES_CHANNEL_ID, OTHER_CHANNEL_ID],
+    channelMessages: contents.map((content) => ({
+      channelId: ARCHIVES_CHANNEL_ID,
+      content,
+    })),
+  })
+}
+
+async function foundContents(discord: FakeDiscord, text: string) {
+  return (await discord.searchMessages({ content: text })).messages.map(
+    ({ content }) => content
+  )
+}
+
+test("the fake's search reads every channel it was given when none is named, and only those named otherwise, leaving out a channel it was not given when another is named", async () => {
+  const discord = new FakeDiscord({
+    channels: [ARCHIVES_CHANNEL_ID, OTHER_CHANNEL_ID],
+    channelMessages: [
+      { channelId: ARCHIVES_CHANNEL_ID, content: "dans les archives" },
+      { channelId: OTHER_CHANNEL_ID, content: "dans l'autre salon" },
+    ],
+  })
+  const dm = await discord.createDm(discord.applicationUser.id)
+  await discord.createMessage(dm.id, { content: "dans un message privé" })
+
+  const contents = async (channelIds: string[]) =>
+    (await discord.searchMessages({ channel_id: channelIds })).messages.map(
+      ({ content }) => content
+    )
+
+  expect(await contents([])).toEqual([
+    "dans l'autre salon",
+    "dans les archives",
+  ])
+  expect(await contents([OTHER_CHANNEL_ID])).toEqual(["dans l'autre salon"])
+  expect(await contents([OTHER_CHANNEL_ID, "555555555555555599"])).toEqual([
+    "dans l'autre salon",
+  ])
+})
+
+test("the fake's search finds the whole words of a text in any order when they sit within 2 words of one another, in one text of a message", async () => {
+  const discord = searchable(
+    "un deux trois quatre cinq six",
+    "un deux",
+    "un x y trois"
+  )
+
+  expect(await foundContents(discord, "trois un")).toEqual([
+    "un x y trois",
+    "un deux trois quatre cinq six",
+  ])
+  expect(await foundContents(discord, "un quatre")).toEqual([
+    "un deux trois quatre cinq six",
+  ])
+  expect(await foundContents(discord, "un cinq")).toEqual([])
+  expect(await foundContents(discord, "un un")).toEqual([])
+})
+
+test("the fake's search finds the words of a text apart from the case, splits them at what is not a letter, a digit or an emoji, and keeps their accents", async () => {
+  const discord = searchable("Ticket-4242 résolu 🔧", "Ticket 99")
+
+  expect(await foundContents(discord, "TICKET 4242")).toEqual([
+    "Ticket-4242 résolu 🔧",
+  ])
+  expect(await foundContents(discord, "résolu")).toEqual([
+    "Ticket-4242 résolu 🔧",
+  ])
+  expect(await foundContents(discord, "resolu")).toEqual([])
+  expect(await foundContents(discord, "🔧")).toEqual(["Ticket-4242 résolu 🔧"])
+  expect(await foundContents(discord, "ticke")).toEqual([])
+})
+
+test("the fake's search takes a blank text for no filter, and a text with no word in it for a filter that nothing passes", async () => {
+  const discord = searchable("un", "deux")
+
+  expect(await foundContents(discord, "")).toEqual(["deux", "un"])
+  expect(await foundContents(discord, "   ")).toEqual(["deux", "un"])
+  expect(await foundContents(discord, "«»")).toEqual([])
+})
+
+test("the fake's search reads a message's embed one text at a time", async () => {
+  const discord = new FakeDiscord({
+    channelMessages: [
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "un",
+        embeds: [
+          {
+            title: "deux",
+            description: "trois",
+            fields: [{ name: "quatre", value: "cinq" }],
+            footer: { text: "six" },
+          },
+        ],
+      },
+    ],
+  })
+
+  for (const text of ["un", "deux", "trois", "quatre", "cinq", "six"]) {
+    expect(
+      (await discord.searchMessages({ content: text })).total_results
+    ).toBe(1)
+  }
+  expect(
+    (await discord.searchMessages({ content: "un deux" })).total_results
+  ).toBe(0)
+  expect(
+    (await discord.searchMessages({ content: "quatre cinq" })).total_results
+  ).toBe(0)
+})
+
+test("with Message Content on, which is the default, the fake gives every message whole", async () => {
+  const discord = new FakeDiscord({
+    members: [{ user: MEMBER }],
+    channelMessages: [
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        authorId: MEMBER.id,
+        content: "Bonjour tout le monde",
+        embeds: [{ title: "Titre du membre" }],
+      },
+    ],
+  })
+
+  const found = await discord.searchMessages({ content: "bonjour" })
+
+  expect(found.messages.map(({ content }) => content)).toEqual([
+    "Bonjour tout le monde",
+  ])
+  expect(
+    (await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 1 }))[0]?.embeds
+  ).toEqual([{ title: "Titre du membre" }])
+})
+
 test("the application posts an embed to a channel the fake was given, and it is listed as the application's", async () => {
   const discord = new FakeDiscord({ channels: [ARCHIVES_CHANNEL_ID] })
 

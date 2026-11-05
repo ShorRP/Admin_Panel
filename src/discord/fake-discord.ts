@@ -37,6 +37,8 @@ import type {
   MembersQuery,
   Message,
   MessageBody,
+  MessageSearchQuery,
+  MessageSearchResult,
   MessagesQuery,
 } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
@@ -89,6 +91,7 @@ export type FakeDiscordState = {
   auditLogEntries?: APIAuditLogEntry[]
   channels?: (Snowflake | FakeChannel)[]
   channelMessages?: FakeChannelMessage[]
+  messageContentIntent?: boolean
 }
 
 type FailingMethod = Exclude<
@@ -125,6 +128,16 @@ const DEFAULT_MEMBERS_LIMIT = 1
 const DEFAULT_MESSAGES_LIMIT = 50
 
 const DEFAULT_BANS_LIMIT = 1000
+
+const DEFAULT_SEARCH_LIMIT = 25
+
+const MAX_SEARCH_OFFSET = 9975
+
+const MAX_SEARCH_TEXT_LENGTH = 1024
+
+const SEARCH_SLOP = 2
+
+const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+/gu
 
 const DISCORD_EPOCH = BigInt(1420070400000)
 
@@ -186,6 +199,37 @@ function apiChannel(channel: Snowflake | FakeChannel): GuildChannel {
   }
 }
 
+function wordsOf(text: string): string[] {
+  return text.toLowerCase().match(WORD) ?? []
+}
+
+function containsClose(words: string[], wanted: string[]) {
+  return words.some((_, start) => {
+    const window = words.slice(start, start + wanted.length + SEARCH_SLOP)
+    return wanted.every((word) => {
+      const at = window.indexOf(word)
+      if (at < 0) {
+        return false
+      }
+      window.splice(at, 1)
+      return true
+    })
+  })
+}
+
+function textsOf({ content, embeds }: ChannelMessage) {
+  return [
+    content,
+    ...embeds.flatMap(({ title, description, author, footer, fields }) => [
+      title,
+      description,
+      author?.name,
+      footer?.text,
+      ...(fields ?? []).flatMap((field) => [field.name, field.value]),
+    ]),
+  ].filter((text) => text !== undefined)
+}
+
 function refusedGrant(discordMessage: string) {
   return new DiscordError({
     method: "POST",
@@ -212,6 +256,16 @@ function missingPermissions(method: HttpMethod, route: DiscordRoute) {
     status: 403,
     code: RESTJSONErrorCodes.MissingPermissions,
     discordMessage: "Missing Permissions",
+  })
+}
+
+function missingAccess(method: HttpMethod, route: DiscordRoute) {
+  return new DiscordError({
+    method,
+    route,
+    status: 403,
+    code: RESTJSONErrorCodes.MissingAccess,
+    discordMessage: "Missing Access",
   })
 }
 
@@ -326,6 +380,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   })
   private increment = 0
   private readonly ownerId: Snowflake
+  private readonly messageContentIntent: boolean
   private readonly members = new Map<Snowflake, APIGuildMember>()
   private readonly refusingDirectMessages = new Set<Snowflake>()
   private readonly directChannels = new Map<
@@ -349,6 +404,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
 
   constructor(state: FakeDiscordState = {}) {
     this.ownerId = state.ownerId ?? DEFAULT_OWNER_ID
+    this.messageContentIntent = state.messageContentIntent ?? true
     for (const member of [
       { user: this.applicationUser, roles: state.applicationRoles ?? [] },
       ...(state.members ?? []),
@@ -395,6 +451,16 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         embeds: structuredClone(message.embeds ?? []),
       })
     }
+  }
+
+  private readable(message: ChannelMessage): ChannelMessage {
+    const applicationId = this.applicationUser.id
+    return this.messageContentIntent ||
+      message.author.id === applicationId ||
+      message.content.includes(`<@${applicationId}>`) ||
+      message.content.includes(`<@!${applicationId}>`)
+      ? message
+      : { ...message, content: "", embeds: [] }
   }
 
   failNext(method: FailingMethod, error: DiscordError) {
@@ -691,6 +757,65 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         .filter(({ id }) => before === undefined || BigInt(id) < BigInt(before))
         .toSorted((left, right) => byId(right, left))
         .slice(0, limit ?? DEFAULT_MESSAGES_LIMIT)
+        .map((message) => this.readable(message))
+    })
+  }
+
+  searchMessages({
+    content = "",
+    channel_id: channelIds = [],
+    author_id: authorIds = [],
+    min_id: minId,
+    max_id: maxId,
+    limit = DEFAULT_SEARCH_LIMIT,
+    offset = 0,
+    sort_order: sortOrder = "desc",
+  }: MessageSearchQuery) {
+    return this.answer("searchMessages", (): MessageSearchResult => {
+      const route = ROUTES.guildMessagesSearch
+      if (
+        !Number.isInteger(limit) ||
+        !Number.isInteger(offset) ||
+        limit < 1 ||
+        limit > DEFAULT_SEARCH_LIMIT ||
+        offset < 0 ||
+        offset > MAX_SEARCH_OFFSET ||
+        lengthOf(content) > MAX_SEARCH_TEXT_LENGTH
+      ) {
+        throw refused("GET", route)
+      }
+      const searched =
+        channelIds.length === 0
+          ? [...this.channels.keys()]
+          : channelIds.filter((id) => this.channels.has(id))
+      if (searched.length === 0) {
+        throw missingAccess("GET", route)
+      }
+      const wanted = wordsOf(content)
+      const found = searched
+        .flatMap((id) => this.channels.get(id) ?? [])
+        .map((message) => this.readable(message))
+        .filter(
+          ({ id, author }) =>
+            (authorIds.length === 0 || authorIds.includes(author.id)) &&
+            (minId === undefined || BigInt(id) > BigInt(minId)) &&
+            (maxId === undefined || BigInt(id) < BigInt(maxId))
+        )
+        .filter(
+          (message) =>
+            content.trim() === "" ||
+            (wanted.length > 0 &&
+              textsOf(message).some((text) =>
+                containsClose(wordsOf(text), wanted)
+              ))
+        )
+        .toSorted((left, right) =>
+          sortOrder === "asc" ? byId(left, right) : byId(right, left)
+        )
+      return {
+        total_results: found.length,
+        messages: found.slice(offset, offset + limit),
+      }
     })
   }
 

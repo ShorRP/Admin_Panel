@@ -11,9 +11,17 @@ import {
   type RESTPostAPIAutoModerationRuleJSONBody,
   type Snowflake,
 } from "discord-api-types/v10"
-import { describe, expect, onTestFinished, test } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  chai,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from "vitest"
 
-import type { DiscordApi } from "./discord-api"
+import type { DiscordApi, MessageBody, MessageSearchQuery } from "./discord-api"
 import { DiscordError } from "./discord-error"
 
 export const CONTRACT_RULE_PREFIX = "Contract "
@@ -175,7 +183,57 @@ function patient(discord: DiscordApi): DiscordApi {
     listBans: (query) => patiently(() => discord.listBans(query)),
     listRoles: () => patiently(() => discord.listRoles()),
     listChannels: () => patiently(() => discord.listChannels()),
+    searchMessages: (query) => patiently(() => discord.searchMessages(query)),
   }
+}
+
+const INDEX_TIMEOUT_MS = 240_000
+
+const INDEX_INTERVAL_MS = 5000
+
+const SEARCH_TEST_TIMEOUT_MS = INDEX_TIMEOUT_MS + 60_000
+
+async function indexed<T>(check: () => Promise<T>) {
+  const deadline = Date.now() + INDEX_TIMEOUT_MS
+  for (;;) {
+    try {
+      return await check()
+    } catch (error) {
+      if (!(error instanceof chai.AssertionError) || Date.now() > deadline) {
+        throw error
+      }
+      await sleep(INDEX_INTERVAL_MS)
+    }
+  }
+}
+
+function uniqueWord() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(10)), (byte) =>
+    String.fromCharCode(97 + (byte % 26))
+  ).join("")
+}
+
+async function postInReadableTextChannel(
+  discord: DiscordApi,
+  message: MessageBody
+) {
+  for (const { id, type } of await discord.listChannels()) {
+    if (type !== ChannelType.GuildText) {
+      continue
+    }
+    try {
+      await discord.listMessages(id, { limit: 1 })
+    } catch (error) {
+      if (error instanceof DiscordError && error.status === 403) {
+        continue
+      }
+      throw error
+    }
+    return { channelId: id, message: await discord.createMessage(id, message) }
+  }
+  throw new Error(
+    "The Discord server has no text channel that the application reads"
+  )
 }
 
 async function applicationMember(discord: DiscordApi) {
@@ -900,6 +958,329 @@ export function describeDiscordApiContract(
         status: 404,
         code: RESTJSONErrorCodes.UnknownChannel,
         unavailable: false,
+      })
+    })
+    describe("the search of the Discord server's messages", () => {
+      const TEXT_PARTS = [
+        "title",
+        "description",
+        "authorName",
+        "fieldName",
+        "fieldValue",
+        "footer",
+      ] as const
+      type Words = Record<
+        | "shared"
+        | "content"
+        | "accent"
+        | "first"
+        | "second"
+        | "contentOfM3"
+        | "embedOfM3"
+        | (typeof TEXT_PARTS)[number],
+        string
+      >
+      type Fixture = {
+        channelId: Snowflake
+        applicationId: Snowflake
+        words: Words
+        ids: Record<"m1" | "m2" | "m3" | "m4" | "m5" | "m6", Snowflake>
+      }
+      let connectedTarget: ContractTarget | undefined
+      let fixture: Fixture
+      const posted: { channelId: Snowflake; id: Snowflake }[] = []
+
+      function target() {
+        if (connectedTarget === undefined) {
+          throw new Error("The search tests ran before the target connected")
+        }
+        return connectedTarget
+      }
+
+      async function search(query: MessageSearchQuery) {
+        return await patient(target().discord).searchMessages({
+          channel_id: [fixture.channelId],
+          ...query,
+        })
+      }
+
+      async function foundIds(query: MessageSearchQuery) {
+        return (await search(query)).messages.map(({ id }) => id)
+      }
+
+      async function finds(query: MessageSearchQuery, expected: Snowflake[]) {
+        await indexed(async () => {
+          expect(await foundIds(query)).toEqual(expected)
+        })
+      }
+
+      beforeAll(async () => {
+        connectedTarget = connect()
+        const discord = patient(connectedTarget.discord)
+        const words: Words = {
+          shared: uniqueWord(),
+          content: uniqueWord(),
+          accent: `${uniqueWord()}é${uniqueWord()}`,
+          first: uniqueWord(),
+          second: uniqueWord(),
+          contentOfM3: uniqueWord(),
+          embedOfM3: uniqueWord(),
+          title: uniqueWord(),
+          description: uniqueWord(),
+          authorName: uniqueWord(),
+          fieldName: uniqueWord(),
+          fieldValue: uniqueWord(),
+          footer: uniqueWord(),
+        }
+        const { shared } = words
+        const first = await postInReadableTextChannel(discord, {
+          content: `Contract: ${shared} ${words.content} ${words.accent} ${words.first} ${words.second}`,
+          allowed_mentions: { parse: [] },
+        })
+        const { channelId } = first
+        posted.push({ channelId, id: first.message.id })
+        const post = async (message: MessageBody) => {
+          const created = await discord.createMessage(channelId, {
+            ...message,
+            allowed_mentions: { parse: [] },
+          })
+          posted.push({ channelId, id: created.id })
+          return created.id
+        }
+        const m2 = await post({
+          embeds: [
+            {
+              title: `Contract ${words.title}`,
+              description: `${shared} ${words.description}`,
+              author: { name: `Contract ${words.authorName}` },
+              fields: [
+                {
+                  name: `Contract ${words.fieldName}`,
+                  value: `Contract ${words.fieldValue}`,
+                },
+              ],
+              footer: { text: `Contract ${words.footer}` },
+            },
+          ],
+        })
+        const m3 = await post({
+          content: `${shared} ${words.contentOfM3}`,
+          embeds: [{ description: `${shared} ${words.embedOfM3}` }],
+        })
+        const m4 = await post({ content: `${shared} four` })
+        const m5 = await post({ content: `${shared} five` })
+        const m6 = await post({ content: `${shared} six` })
+        fixture = {
+          channelId,
+          applicationId: (await discord.getApplicationUser()).id,
+          words,
+          ids: { m1: first.message.id, m2, m3, m4, m5, m6 },
+        }
+      }, SEARCH_TEST_TIMEOUT_MS)
+
+      afterAll(async () => {
+        if (connectedTarget === undefined) {
+          return
+        }
+        const failures: unknown[] = []
+        for (const { channelId, id } of posted) {
+          try {
+            await connectedTarget.deleteMessage(channelId, id)
+          } catch (error) {
+            failures.push(error)
+          }
+        }
+        await connectedTarget.cleanUp()
+        if (failures.length > 0) {
+          throw new AggregateError(
+            failures,
+            `${failures.length} of the ${posted.length} messages posted for the search were not deleted`
+          )
+        }
+      }, SEARCH_TEST_TIMEOUT_MS)
+
+      test(
+        "a word of a message's content finds that message, with its channel, its author and its content",
+        async () => {
+          const { shared, content, accent, first, second } = fixture.words
+
+          const found = await indexed(async () => {
+            const result = await search({ content })
+            expect(result.messages.map(({ id }) => id)).toEqual([
+              fixture.ids.m1,
+            ])
+            return result
+          })
+
+          expect(found.total_results).toBe(1)
+          expect(found.messages[0]).toMatchObject({
+            channel_id: fixture.channelId,
+            author: { id: fixture.applicationId },
+            content: `Contract: ${shared} ${content} ${accent} ${first} ${second}`,
+          })
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "the text of an embed is read: its title, its description, its author's name, its field names and values and its footer find the message that holds them",
+        async () => {
+          for (const part of TEXT_PARTS) {
+            await indexed(async () => {
+              expect(
+                await foundIds({ content: fixture.words[part] }),
+                part
+              ).toEqual([fixture.ids.m2])
+            })
+          }
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "a word is found whole, whatever its case, with the accents it was written with",
+        async () => {
+          const { content, accent } = fixture.words
+          await indexed(async () => {
+            expect(await foundIds({ content: content.toUpperCase() })).toEqual([
+              fixture.ids.m1,
+            ])
+            expect(await foundIds({ content: accent })).toEqual([
+              fixture.ids.m1,
+            ])
+          })
+
+          expect(await foundIds({ content: accent.replace("é", "e") })).toEqual(
+            []
+          )
+          expect(await foundIds({ content: content.slice(0, 5) })).toEqual([])
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "several words find a message when they sit close together in one text of it, in any order, and none when they sit in two texts",
+        async () => {
+          const { first, second, content, description } = fixture.words
+          const { contentOfM3, embedOfM3 } = fixture.words
+          await indexed(async () => {
+            expect(await foundIds({ content: `${second} ${first}` })).toEqual([
+              fixture.ids.m1,
+            ])
+            expect(await foundIds({ content: contentOfM3 })).toEqual([
+              fixture.ids.m3,
+            ])
+            expect(await foundIds({ content: embedOfM3 })).toEqual([
+              fixture.ids.m3,
+            ])
+            expect(await foundIds({ content: description })).toEqual([
+              fixture.ids.m2,
+            ])
+          })
+
+          expect(
+            await foundIds({ content: `${content} ${description}` })
+          ).toEqual([])
+          expect(
+            await foundIds({ content: `${contentOfM3} ${embedOfM3}` })
+          ).toEqual([])
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "the author filter keeps the messages of the accounts it names and none of another account's",
+        async () => {
+          const { content } = fixture.words
+          await indexed(async () => {
+            expect(
+              await foundIds({ content, author_id: [fixture.applicationId] })
+            ).toEqual([fixture.ids.m1])
+          })
+
+          expect(
+            await foundIds({ content, author_id: [target().member] })
+          ).toEqual([])
+          await finds(
+            { content, author_id: [target().member, fixture.applicationId] },
+            [fixture.ids.m1]
+          )
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "min_id and max_id keep the messages strictly after and strictly before a message",
+        async () => {
+          const { m1, m2, m3, m4, m5, m6 } = fixture.ids
+          const { shared } = fixture.words
+          await finds({ content: shared }, [m6, m5, m4, m3, m2, m1])
+          await finds({ content: shared, min_id: m2 }, [m6, m5, m4, m3])
+          await finds({ content: shared, max_id: m5 }, [m4, m3, m2, m1])
+          await finds({ content: shared, min_id: m2, max_id: m5 }, [m4, m3])
+          expect(
+            await foundIds({ content: shared, min_id: m3, max_id: m3 })
+          ).toEqual([])
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "limit and offset cut the results into pages, newest first, and sort_order asc reverses them, with the total of all pages",
+        async () => {
+          const { m1, m2, m3, m4, m5, m6 } = fixture.ids
+          const { shared } = fixture.words
+          await indexed(async () => {
+            const first = await search({ content: shared, limit: 2 })
+            expect(first.messages.map(({ id }) => id)).toEqual([m6, m5])
+            expect(first.total_results).toBe(6)
+          })
+          await finds({ content: shared, limit: 2, offset: 2 }, [m4, m3])
+          await finds({ content: shared, limit: 2, offset: 4 }, [m2, m1])
+          expect(
+            await foundIds({ content: shared, limit: 2, offset: 6 })
+          ).toEqual([])
+          await finds(
+            { content: shared, limit: 2, offset: 2, sort_order: "asc" },
+            [m3, m4]
+          )
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test(
+        "a limit over 25, an offset over 9975, a limit or an offset that is not an integer and a text of more than 1024 characters are refused as an invalid form body",
+        async () => {
+          const discord = patient(target().discord)
+
+          for (const query of [
+            { limit: 26 },
+            { offset: 9976 },
+            { limit: 2.5 },
+            { offset: 1.5 },
+            { limit: Number.NaN },
+            { offset: Number.NaN },
+            { content: "a".repeat(1025) },
+          ]) {
+            await expect(
+              discord.searchMessages(query),
+              JSON.stringify(query).slice(0, 40)
+            ).rejects.toMatchObject(REFUSED)
+          }
+        },
+        SEARCH_TEST_TIMEOUT_MS
+      )
+
+      test("a channel that does not exist is refused as Missing Access", async () => {
+        await expect(
+          patient(target().discord).searchMessages({
+            channel_id: [NO_CHANNEL_ID],
+          })
+        ).rejects.toMatchObject({
+          status: 403,
+          code: RESTJSONErrorCodes.MissingAccess,
+          unavailable: false,
+        })
       })
     })
   })

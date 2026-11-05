@@ -31,6 +31,7 @@ export class DiscordError extends Error {
     this.retryAfter = details.retryAfter
     this.unavailable =
       details.status === undefined ||
+      details.status === 202 ||
       details.status === 429 ||
       details.status >= 500
   }

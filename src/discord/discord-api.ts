@@ -1,5 +1,6 @@
 import "server-only"
 
+import { setTimeout as sleep } from "node:timers/promises"
 import {
   RESTJSONErrorCodes,
   type APIAuditLog,
@@ -10,12 +11,15 @@ import {
   type APIGuildChannel,
   type APIGuildMember,
   type APIMessage,
+  type APIMessageSearchIndexNotReadyResponse,
+  type APIMessageSearchResult,
   type APIRole,
   type APIUser,
   type RESTGetAPIAuditLogQuery,
   type RESTGetAPIChannelMessagesQuery,
   type RESTGetAPIGuildBansQuery,
   type RESTGetAPIGuildMembersQuery,
+  type RESTGetAPIGuildMessagesSearchQuery,
   type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPatchAPIGuildMemberJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
@@ -28,7 +32,9 @@ import { DiscordError, type HttpMethod } from "./discord-error"
 import { parseDiscordApiEnv, type DiscordApiEnv } from "./env"
 import {
   API_BASE,
+  MAX_RETRY_AFTER_S,
   requestDiscord,
+  requestDiscordAnswer,
   requestDiscordJson,
   type DiscordRequest,
   type Fetch,
@@ -71,6 +77,7 @@ export type DiscordApi = {
   listBans(query: BansQuery): Promise<APIBan[]>
   listRoles(): Promise<APIRole[]>
   listChannels(): Promise<GuildChannel[]>
+  searchMessages(query: MessageSearchQuery): Promise<MessageSearchResult>
 }
 
 export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
@@ -112,6 +119,27 @@ export type ChannelMessage = Pick<
   "id" | "channel_id" | "content" | "author" | "embeds"
 >
 
+export type MessageSearchQuery = Pick<
+  RESTGetAPIGuildMessagesSearchQuery,
+  | "content"
+  | "channel_id"
+  | "author_id"
+  | "min_id"
+  | "max_id"
+  | "limit"
+  | "offset"
+  | "sort_order"
+>
+
+export type MessageSearchResult = Pick<
+  APIMessageSearchResult,
+  "total_results"
+> & {
+  messages: ChannelMessage[]
+}
+
+const MIN_INDEX_RETRY_S = 0.25
+
 export function createDiscordApi(): DiscordApi {
   return restDiscordApi(parseDiscordApiEnv(process.env), globalThis.fetch)
 }
@@ -120,7 +148,7 @@ type Call = {
   method: HttpMethod
   route: DiscordRoute
   params?: Record<string, string>
-  query?: Record<string, string | number | undefined>
+  query?: Record<string, string | number | readonly string[] | undefined>
   body?: object
   reason?: string
 }
@@ -138,8 +166,10 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
       API_BASE + fillRoute(route, { "guild.id": env.guildId, ...params })
     )
     for (const [name, value] of Object.entries(query ?? {})) {
-      if (value !== undefined) {
-        url.searchParams.set(name, String(value))
+      for (const item of typeof value === "object" ? value : [value]) {
+        if (item !== undefined) {
+          url.searchParams.append(name, String(item))
+        }
       }
     }
     return {
@@ -340,6 +370,38 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
         method: "GET",
         route: ROUTES.guildChannels,
       })
+    },
+
+    async searchMessages(query) {
+      const request = discordRequest({
+        method: "GET",
+        route: ROUTES.guildMessagesSearch,
+        query: { ...query },
+      })
+      for (let attempt = 0; ; attempt++) {
+        const { status, body } = await requestDiscordAnswer<
+          APIMessageSearchResult | APIMessageSearchIndexNotReadyResponse
+        >(fetch, request)
+        if ("messages" in body) {
+          return {
+            total_results: body.total_results,
+            messages: body.messages.flat(),
+          }
+        }
+        const retryAfter =
+          typeof body.retry_after === "number" ? body.retry_after : undefined
+        if (attempt > 0 || (retryAfter ?? 0) > MAX_RETRY_AFTER_S) {
+          throw new DiscordError({
+            method: request.method,
+            route: request.route,
+            status,
+            code: body.code,
+            discordMessage: body.message,
+            retryAfter,
+          })
+        }
+        await sleep(Math.max(retryAfter ?? 0, MIN_INDEX_RETRY_S) * 1000)
+      }
     },
   }
 }
