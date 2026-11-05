@@ -32,7 +32,9 @@ export function TicketArchiveList({ archives }: { archives: TicketArchives }) {
         </p>
       ) : archives.archives.length === 0 ? (
         <p className="text-muted-foreground">
-          Aucun ticket de support archivé pour ce compte.
+          {archives.complete
+            ? "Aucun ticket de support archivé pour ce compte."
+            : "Aucun ticket de support de ce compte parmi les archives lues."}
         </p>
       ) : (
         <ol className={TICKET_ARCHIVE_ENTRIES_CLASSES}>

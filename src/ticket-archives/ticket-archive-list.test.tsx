@@ -59,6 +59,21 @@ test("an account that opened no support ticket says so, with no list", () => {
   expect(html).not.toContain("<ol")
 })
 
+test("an account none of whose tickets are among the archives read does not say that it opened none: it says that none was found among those read, and that the older ones may not show", () => {
+  const html = renderToStaticMarkup(
+    <TicketArchiveList
+      archives={{ kind: "read", archives: [], complete: false }}
+    />
+  )
+
+  expect(text(html)).not.toContain("Aucun ticket de support archivé")
+  expect(text(html)).toContain(
+    "Aucun ticket de support de ce compte parmi les archives lues."
+  )
+  expect(text(html)).toContain("ses tickets plus anciens ne s’affichent")
+  expect(html).not.toContain("<ol")
+})
+
 test("each archive says its request kind, when it opened and closed in Paris time, who closed it and why, in the order given", () => {
   const html = renderToStaticMarkup(
     <TicketArchiveList

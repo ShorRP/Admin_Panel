@@ -114,6 +114,12 @@ test("the privacy policy says the panel reads, for the staff who moderate, the a
   )
 })
 
+test("the privacy policy says that, to find the tickets of an account, the panel sends the account's ID to Discord's search of messages", () => {
+  expect(sectionText("Ce que le panel lit sans le garder")).toMatch(
+    /Pour trouver les tickets d’un compte, le panel envoie l’ID de ce compte à la recherche de messages de Discord\./
+  )
+})
+
 test("the privacy policy says the whole staff reads the archives of every support ticket on their page, with who opened and who closed each, where only the staff who moderate read them on a record", () => {
   expect(sectionText("Ce que le panel lit sans le garder")).toMatch(
     /pour tout le staff, sur la page des tickets de support, ceux de tous les comptes.*le nom de la personne qui l’a ouvert, le type de demande/

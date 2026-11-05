@@ -221,7 +221,7 @@ test.describe("an account cited in more than 100 archives", () => {
     await expect(tickets.getByRole("listitem")).toHaveCount(1)
     await expect(tickets).toContainText("Ouvert par Aldis")
     await expect(tickets).toContainText(
-      "Seules les 100 archives les plus récentes où ce compte apparaît, qu’il les ait ouvertes ou fermées, ont été lues : ses tickets plus anciens ne s’affichent peut-être pas."
+      "Seules les 100 archives les plus récentes où ce compte apparaît, qu’il les ait ouvertes ou fermées, ont été lues : ses tickets plus anciens ne s’affichent peut-être pas."
     )
     await checkAccessibility()
   })
