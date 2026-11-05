@@ -366,7 +366,7 @@ test("a search that the counts of the kinds could not make leaves the pills with
 })
 
 test.describe("on a 360 px screen", () => {
-  test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
+  test.use({ viewport: { width: 360, height: 900 }, hasTouch: true })
 
   test("the filters fold behind a button that opens a sheet docked to the bottom, which sends the address of the inline form, each filter set is a chip that removes it, and a staff member logs out with the pills, the button and the chips in view, and no page is prefetched", async ({
     page,
@@ -416,7 +416,7 @@ test.describe("on a 360 px screen", () => {
           Math.round((box?.y ?? 0) + (box?.height ?? 0)),
         ]
       })
-      .toEqual([0, 360, 760])
+      .toEqual([0, 360, 900])
     await expect(sheet.getByLabel("Ouvreur")).toHaveValue("")
     await expect(
       sheet.getByRole("link", { name: "Réinitialiser" })

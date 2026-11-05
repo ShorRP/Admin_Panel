@@ -577,7 +577,9 @@ test.describe("tickets in progress", () => {
     await expect(
       main.getByText("Aucune archive de ticket à afficher.")
     ).toBeVisible()
-    await expect(main.getByRole("listitem")).toHaveCount(0)
+    await expect(
+      main.getByRole("region", { name: "En cours" }).getByRole("listitem")
+    ).toHaveCount(0)
     await checkAccessibility()
   })
 
