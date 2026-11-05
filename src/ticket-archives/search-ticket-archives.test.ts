@@ -40,10 +40,11 @@ class SearchIgnoringAuthors extends FakeDiscord {
 async function searchOf(
   discord: FakeDiscord,
   offset = 0,
-  channelId = CHANNEL_ID
+  channelId = CHANNEL_ID,
+  filters: { text?: string } = {}
 ) {
   const { id } = await discord.getApplicationUser()
-  return await searchTicketArchives(discord, channelId, id, offset)
+  return await searchTicketArchives(discord, channelId, id, offset, filters)
 }
 
 function reasonsOf({ archives }: { archives: { reason: string }[] }) {
@@ -202,4 +203,39 @@ test("a channel that does not exist fails as Missing Access, as Discord answers 
     status: 403,
     code: RESTJSONErrorCodes.MissingAccess,
   })
+})
+
+test("a text narrows the archives to those that hold it as a word, in whichever field: an ID found as the opener, as the closer or in the reason", async () => {
+  const discord = new FakeDiscord(
+    stateWith(
+      archive("Ouverte par Aldis", { openerId: ALDIS.id, closerId: LYRA.id }),
+      archive("Fermée par Aldis", { openerId: LYRA.id, closerId: ALDIS.id }),
+      archive(`Cite ${ALDIS.id} dans son motif`, {
+        openerId: LYRA.id,
+        closerId: LYRA.id,
+      }),
+      archive("Sans Aldis", { openerId: LYRA.id, closerId: LYRA.id })
+    )
+  )
+
+  const found = await searchOf(discord, 0, CHANNEL_ID, { text: ALDIS.id })
+
+  expect(reasonsOf(found)).toEqual([
+    `Cite ${ALDIS.id} dans son motif`,
+    "Fermée par Aldis",
+    "Ouverte par Aldis",
+  ])
+  expect(found.total).toBe(3)
+})
+
+test("an ID is a whole word: the start of an ID finds nothing", async () => {
+  const discord = new FakeDiscord(
+    stateWith(archive("Pour Lyra", { openerId: LYRA.id, closerId: LYRA.id }))
+  )
+
+  const found = await searchOf(discord, 0, CHANNEL_ID, {
+    text: LYRA.id.slice(0, -1),
+  })
+
+  expect(found).toEqual({ total: 0, messages: 0, archives: [] })
 })

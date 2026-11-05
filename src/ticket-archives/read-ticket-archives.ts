@@ -4,13 +4,15 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
 import { accountNames } from "./account-names"
-import { ticketArchiveOf, type TicketArchive } from "./ticket-archive"
+import {
+  ARCHIVES_PER_PAGE,
+  searchTicketArchives,
+} from "./search-ticket-archives"
+import type { TicketArchive } from "./ticket-archive"
 
-const PAGE_SIZE = 100
+const MAX_SEARCHES = 4
 
-const MAX_PAGES = 10
-
-export const MAX_MESSAGES_READ = PAGE_SIZE * MAX_PAGES
+export const MAX_CITING_ARCHIVES_READ = MAX_SEARCHES * ARCHIVES_PER_PAGE
 
 export type ReadTicketArchive = Omit<TicketArchive, "closerId"> & {
   closer: { id: Snowflake; name: string | null }
@@ -32,39 +34,35 @@ export async function readTicketArchives(
     return { kind: "unconfigured" }
   }
   const { id: applicationId } = await discord.getApplicationUser()
-  const archives: TicketArchive[] = []
-  let before: Snowflake | undefined
-  let lastPageFull = false
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const messages = await discord.listMessages(archivesChannelId, {
-      ...(before === undefined ? {} : { before }),
-      limit: PAGE_SIZE,
-    })
-    for (const { id, author, embeds } of messages) {
-      const archive =
-        author.id === applicationId ? ticketArchiveOf(id, embeds) : null
-      if (archive !== null && archive.openerId === account.id) {
-        archives.push(archive)
+  const opened = new Map<Snowflake, TicketArchive>()
+  let citing = 0
+  for (let page = 0; page < MAX_SEARCHES; page++) {
+    const offset = page * ARCHIVES_PER_PAGE
+    const found = await searchTicketArchives(
+      discord,
+      archivesChannelId,
+      applicationId,
+      offset,
+      { text: account.id }
+    )
+    citing = found.total
+    for (const archive of found.archives) {
+      if (archive.openerId === account.id) {
+        opened.set(archive.messageId, archive)
       }
     }
-    lastPageFull = messages.length === PAGE_SIZE
-    before = messages.at(-1)?.id
-    if (!lastPageFull) {
+    if (offset + ARCHIVES_PER_PAGE >= citing) {
       break
     }
   }
-  const complete =
-    !lastPageFull ||
-    before === undefined ||
-    (await discord.listMessages(archivesChannelId, { before, limit: 1 }))
-      .length === 0
+  const archives = [...opened.values()]
   const names = await accountNames(
     discord,
     archives.map(({ closerId }) => closerId)
   )
   return {
     kind: "read",
-    complete,
+    complete: citing <= MAX_CITING_ARCHIVES_READ,
     archives: archives.map(({ closerId, ...archive }) => ({
       ...archive,
       closer: { id: closerId, name: names.get(closerId) ?? null },

@@ -17,9 +17,11 @@ export async function searchTicketArchives(
   discord: DiscordApi,
   archivesChannelId: Snowflake,
   applicationId: Snowflake,
-  offset: number
+  offset: number,
+  { text }: { text?: string } = {}
 ): Promise<SearchedTicketArchives> {
   const { total_results, messages } = await discord.searchMessages({
+    ...(text === undefined ? {} : { content: text }),
     channel_id: [archivesChannelId],
     author_id: [applicationId],
     sort_order: "desc",
