@@ -29,7 +29,7 @@ export default function SupportTicketsPage({
           title="Tickets de support"
           className="max-w-160"
         >
-          Les tickets de support fermés, du plus récent au plus ancien : leur
+          Les tickets de support fermés, du plus récent au plus ancien : leur
           type de demande, qui les a ouverts et fermés, quand, et pourquoi.
         </PageHeader>
         <OrnamentRule leadingLine />

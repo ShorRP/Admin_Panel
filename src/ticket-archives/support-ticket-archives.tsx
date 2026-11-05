@@ -1,5 +1,3 @@
-import { cn } from "cn"
-
 import { recordHrefForModerator } from "@/records/record-href"
 import { AccountLink } from "@/ui/account-link"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
@@ -7,7 +5,7 @@ import { frenchNumber } from "@/ui/french-number"
 import { Overline } from "@/ui/overline"
 import { Pagination } from "@/ui/pagination"
 import { ParisTime } from "@/ui/paris-time"
-import { TEXT_LINK_CLASSES } from "@/ui/text-link"
+import { TextLink } from "@/ui/text-link"
 import {
   MAX_ARCHIVES_READ,
   type ArchivesPage,
@@ -16,10 +14,11 @@ import {
 } from "./read-ticket-archive-page"
 import {
   SUPPORT_TICKET_ARCHIVES_CLASSES,
-  SUPPORT_TICKET_ENTRIES_CLASSES,
   SUPPORT_TICKET_ENTRY_CLASSES,
   SUPPORT_TICKET_EVENTS_CLASSES,
+  SUPPORT_TICKET_NAME_CLASSES,
 } from "./support-ticket-archives-layout"
+import { TICKET_ARCHIVE_ENTRIES_CLASSES } from "./ticket-archive-layout"
 import { ticketArchivesHref } from "./ticket-archives-href"
 
 const COUNT_ID = "support-ticket-archives-count"
@@ -52,7 +51,7 @@ export function SupportTicketArchives({
           <Overline id={COUNT_ID}>{ranksOf(read)}</Overline>
           <ol
             aria-labelledby={COUNT_ID}
-            className={SUPPORT_TICKET_ENTRIES_CLASSES}
+            className={TICKET_ARCHIVE_ENTRIES_CLASSES}
           >
             {archives.map((archive) => (
               <SupportTicketArchive
@@ -73,7 +72,7 @@ export function SupportTicketArchives({
       {!complete && (
         <p className="text-xs text-muted-foreground">
           Discord ne permet de lire que les {frenchNumber(MAX_ARCHIVES_READ)}{" "}
-          archives les plus récentes : les plus anciennes ne s’affichent pas.
+          archives les plus récentes : les plus anciennes ne s’affichent pas.
         </p>
       )}
     </div>
@@ -115,7 +114,7 @@ function SupportTicketArchive({
         />
       </div>
       <p className="text-[0.84375rem] text-pretty wrap-anywhere">
-        <span className="text-muted-foreground">Motif : </span>
+        <span className="text-muted-foreground">Motif : </span>
         {reason}
       </p>
     </li>
@@ -137,15 +136,15 @@ function ArchiveEvent({
   return (
     <div className="flex min-w-0 flex-col">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <AccountLink
-        href={href}
-        className={cn(
-          "w-fit max-w-full text-sm font-medium wrap-anywhere touch:w-full",
-          href !== null && TEXT_LINK_CLASSES
-        )}
-      >
-        {account.name ?? account.id}
-      </AccountLink>
+      {href === null ? (
+        <AccountLink href={null} className={SUPPORT_TICKET_NAME_CLASSES}>
+          {account.name ?? account.id}
+        </AccountLink>
+      ) : (
+        <TextLink href={href} className={SUPPORT_TICKET_NAME_CLASSES}>
+          {account.name ?? account.id}
+        </TextLink>
+      )}
       <p className="text-[0.8125rem] text-muted-foreground">
         <ParisTime date={moment} />
       </p>

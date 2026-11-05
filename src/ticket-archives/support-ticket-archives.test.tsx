@@ -88,8 +88,8 @@ test("each archive says its request kind, who opened it and who closed it, when,
   const html = render(pageOf())
 
   expect(items(html)).toEqual([
-    "🚨 Signaler un joueurOuvert parLyra3 nov. 2026, 15:32Fermé parBrynja la Rousse3 nov. 2026, 16:10Motif : Signalement traité, joueur averti",
-    "Type de demande inconnuOuvert par14000000000000000031 nov. 2026, 10:00Fermé par14000000000000000041 nov. 2026, 10:30Motif : Résolu",
+    "🚨 Signaler un joueurOuvert parLyra3 nov. 2026, 15:32Fermé parBrynja la Rousse3 nov. 2026, 16:10Motif : Signalement traité, joueur averti",
+    "Type de demande inconnuOuvert par14000000000000000031 nov. 2026, 10:00Fermé par14000000000000000041 nov. 2026, 10:30Motif : Résolu",
   ])
 })
 
@@ -176,7 +176,7 @@ test("archives that Discord's search does not reach in full say how many it reac
   )
 
   expect(text(html)).toContain(
-    "Discord ne permet de lire que les 10 000 archives les plus récentes : les plus anciennes ne s’affichent pas."
+    "Discord ne permet de lire que les 10 000 archives les plus récentes : les plus anciennes ne s’affichent pas."
   )
 })
 

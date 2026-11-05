@@ -80,10 +80,10 @@ const THREE_TICKETS = [
 ]
 
 const NEWEST_FIRST = [
-  `🚨 Signaler un joueurOuvert parLyra3 nov. 2026, 15:32Fermé paraldis3 nov. 2026, 16:10Motif : ${LONG_WORD}`,
-  "Type de demande inconnuOuvert parLyra25 oct. 2026, 19:10Fermé parhaldor25 oct. 2026, 19:20Motif : Ticket renommé",
-  "🔧 Problème techniqueOuvert parcorvus22 oct. 2026, 12:00Fermé paraldis22 oct. 2026, 12:10Motif : Ticket de Corvus",
-  "🔧 Problème techniqueOuvert parLyra20 oct. 2026, 10:00Fermé parBrynja la Rousse20 oct. 2026, 10:45Motif : Launcher réinstallé",
+  `🚨 Signaler un joueurOuvert parLyra3 nov. 2026, 15:32Fermé paraldis3 nov. 2026, 16:10Motif : ${LONG_WORD}`,
+  "Type de demande inconnuOuvert parLyra25 oct. 2026, 19:10Fermé parhaldor25 oct. 2026, 19:20Motif : Ticket renommé",
+  "🔧 Problème techniqueOuvert parcorvus22 oct. 2026, 12:00Fermé paraldis22 oct. 2026, 12:10Motif : Ticket de Corvus",
+  "🔧 Problème techniqueOuvert parLyra20 oct. 2026, 10:00Fermé parBrynja la Rousse20 oct. 2026, 10:45Motif : Launcher réinstallé",
 ]
 
 test.describe("a few tickets", () => {
@@ -213,7 +213,7 @@ test.describe("sixty tickets", () => {
 
     await expect(archivesNamed("1–25 sur 60")).toHaveCount(25)
     await expect(archivesNamed("1–25 sur 60").first()).toContainText(
-      "Motif : Archive 59"
+      "Motif : Archive 59"
     )
     await expect(pagination.getByRole("link", { name: "Page 1" })).toHaveCount(
       0
@@ -227,16 +227,16 @@ test.describe("sixty tickets", () => {
     await expect(page).toHaveURL("/support-tickets?page=2")
     await expect(archivesNamed("26–50 sur 60")).toHaveCount(25)
     await expect(archivesNamed("26–50 sur 60").first()).toContainText(
-      "Motif : Archive 34"
+      "Motif : Archive 34"
     )
-    await expect(page.getByText("Motif : Archive 59")).toHaveCount(0)
+    await expect(page.getByText("Motif : Archive 59")).toHaveCount(0)
     await checkAccessibility()
 
     await pagination.getByRole("link", { name: "Page 3" }).click()
     await expect(page).toHaveURL("/support-tickets?page=3")
     await expect(archivesNamed("51–60 sur 60")).toHaveCount(10)
     await expect(archivesNamed("51–60 sur 60").last()).toContainText(
-      "Motif : Archive 0"
+      "Motif : Archive 0"
     )
     await expect(
       pagination.getByRole("link", { name: "Page suivante" })
