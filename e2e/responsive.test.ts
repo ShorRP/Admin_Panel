@@ -3,12 +3,17 @@ import { newPanelRule } from "@/blocked-words/panel-rule"
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { BAN_MESSAGE_DELETIONS } from "@/sanctions/ban-message-deletions"
+import {
+  channelIdAt,
+  supportTicketChannel,
+} from "@/support-tickets/support-ticket-channel"
 import { archiveMessage } from "@/ticket-archives/archive-message"
 import {
   ARCHIVES_CHANNEL_ID,
   BAN_ROLE_ID,
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
+  TICKET_CATEGORY_ID,
 } from "../playwright.config"
 import { expect, test, type Locator, type Page } from "./fixtures"
 import { minifiedReactError } from "./minified-react-error"
@@ -79,6 +84,10 @@ const MIN_TARGET_PX = 44
 const TARGET_SELECTOR =
   "a[href], button, input:not([type=hidden]):not([type=radio]):not([type=checkbox]), select, textarea, summary, [role=tab], label:has(> input[type=radio]), label:has(> input[type=checkbox])"
 
+const WALL_OF_TEXT_TICKET_ID = channelIdAt("2026-11-02T10:00:00Z")
+
+const WELCOME_TICKET_ID = channelIdAt("2026-11-03T14:32:10Z")
+
 test.use({
   discordState: {
     roles: [STAFF, MODERATION, BANS, PANEL, GUARD],
@@ -88,7 +97,40 @@ test.use({
       { user: BRYNJA, roles: [GUARD.id] },
     ],
     bans: [{ user: CORVUS }],
+    channels: [
+      supportTicketChannel({
+        id: WALL_OF_TEXT_TICKET_ID,
+        categoryId: TICKET_CATEGORY_ID,
+        openerId: BRYNJA.id,
+        roleIds: [STAFF_ROLE_ID],
+      }),
+      supportTicketChannel({
+        id: WELCOME_TICKET_ID,
+        categoryId: TICKET_CATEGORY_ID,
+        openerId: CORVUS.id,
+        roleIds: [STAFF_ROLE_ID],
+        emoji: "🚨",
+        pseudo: "corvus",
+      }),
+    ],
     channelMessages: [
+      {
+        channelId: WALL_OF_TEXT_TICKET_ID,
+        authorId: ALDIS.id,
+        content: "On regarde ça",
+        sentAt: new Date("2026-11-02T11:00:00Z"),
+      },
+      {
+        channelId: WALL_OF_TEXT_TICKET_ID,
+        authorId: BRYNJA.id,
+        content: "x".repeat(300),
+        sentAt: new Date("2026-11-02T12:00:00Z"),
+      },
+      {
+        channelId: WELCOME_TICKET_ID,
+        content: `<@${CORVUS.id}> Bienvenue`,
+        sentAt: new Date("2026-11-03T14:32:12Z"),
+      },
       ...Array.from({ length: 26 }, (_, index) =>
         archiveMessage({
           channelId: ARCHIVES_CHANNEL_ID,
@@ -957,6 +999,77 @@ for (const screen of [...SCREENS, DESKTOP]) {
           expect(columns.size).toBeGreaterThan(2)
         }
       }
+      if (touch) {
+        expect(await smallTargets(page, "main")).toEqual([])
+      }
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+    })
+  })
+}
+
+const TICKET_CARD_PADDING_PX = 42
+
+const TICKET_FACTS_COLUMNS_FROM_PX = 448
+
+for (const screen of [...SCREENS, DESKTOP]) {
+  test.describe(`the tickets in progress at ${screen.width} px`, () => {
+    test.use({
+      viewport: { width: screen.width, height: screen.height },
+      hasTouch: screen.touchScreen,
+      isMobile: screen.touchScreen,
+    })
+
+    test("stack as cards under 1,024 px, sit two to a row from it above the archives, wrap their last message and give their links a touch target", async ({
+      page,
+      logIn,
+    }) => {
+      await logIn(ALDIS)
+      await page.goto("/support-tickets")
+      await settle(page)
+      const touch = await holdsTouch(page)
+      expect(touch).toBe(screen !== DESKTOP)
+      const main = page.getByRole("main")
+      const list = main.getByRole("list", { name: "2 tickets" })
+      const cards = list.getByRole("listitem")
+      await expect(cards).toHaveCount(2)
+
+      const [listBox, first, second] = [
+        await boxOf(list),
+        await boxOf(cards.nth(0)),
+        await boxOf(cards.nth(1)),
+      ]
+      if (screen.width >= 1024) {
+        expect(Math.round(second.y)).toBe(Math.round(first.y))
+        expect(second.x).toBeGreaterThan(first.x + first.width - 1)
+        expect(Math.round(second.width)).toBe(Math.round(first.width))
+      } else {
+        expect(second.x).toBe(first.x)
+        expect(Math.round(first.width)).toBe(Math.round(listBox.width))
+        expect(Math.round(second.width)).toBe(Math.round(listBox.width))
+        expect(second.y).toBeGreaterThanOrEqual(first.y + first.height)
+      }
+      const archives = await boxOf(
+        main.getByRole("region", { name: "Archives" })
+      )
+      expect(archives.y).toBeGreaterThan(first.y + first.height)
+      expect(archives.y).toBeGreaterThan(second.y + second.height)
+
+      const card = cards.first()
+      const [opened, active] = [
+        await boxOf(card.getByText("Ouvert par", { exact: true })),
+        await boxOf(card.getByText("Dernière activité", { exact: true })),
+      ]
+      const twoColumns =
+        first.width - TICKET_CARD_PADDING_PX >= TICKET_FACTS_COLUMNS_FROM_PX
+      expect(Math.round(active.y) === Math.round(opened.y)).toBe(twoColumns)
+
+      const link = card.getByRole("link", { name: "Ouvrir dans Discord" })
+      expect((await sizeOf(link)).height >= MIN_TARGET_PX).toBe(touch)
+      expect(
+        await card.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth
+        )
+      ).toBe(true)
       if (touch) {
         expect(await smallTargets(page, "main")).toEqual([])
       }

@@ -12,6 +12,7 @@ import { expect, test } from "vitest"
 
 import { describeDiscordApiContract } from "./discord-api-contract"
 import { FakeDiscord, type FakeChannel } from "./fake-discord"
+import { snowflakeDate } from "./snowflake-date"
 
 const OUTSIDER = { id: "222222222222222222", username: "outsider" }
 
@@ -178,6 +179,33 @@ test("the fake lists the messages a channel was given newest first, with the app
   ).toEqual([
     [MEMBER.id, "Salut", []],
     [discord.applicationUser.id, "", [embed]],
+  ])
+})
+
+test("the fake dates a message it was given a sending time in its ID, and lists a channel's messages by those times whatever the order it was given them in", async () => {
+  const discord = new FakeDiscord({
+    channels: [ARCHIVES_CHANNEL_ID],
+    channelMessages: [
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "plus récent",
+        sentAt: new Date("2026-11-04T10:00:00Z"),
+      },
+      {
+        channelId: ARCHIVES_CHANNEL_ID,
+        content: "plus ancien",
+        sentAt: new Date("2026-11-03T09:30:15Z"),
+      },
+    ],
+  })
+
+  const listed = await discord.listMessages(ARCHIVES_CHANNEL_ID, { limit: 10 })
+
+  expect(
+    listed.map(({ content, id }) => [content, snowflakeDate(id).toISOString()])
+  ).toEqual([
+    ["plus récent", "2026-11-04T10:00:00.000Z"],
+    ["plus ancien", "2026-11-03T09:30:15.000Z"],
   ])
 })
 
