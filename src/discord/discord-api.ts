@@ -388,17 +388,19 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
             messages: body.messages.flat(),
           }
         }
-        if (attempt > 0 || body.retry_after > MAX_RETRY_AFTER_S) {
+        const retryAfter =
+          typeof body.retry_after === "number" ? body.retry_after : undefined
+        if (attempt > 0 || (retryAfter ?? 0) > MAX_RETRY_AFTER_S) {
           throw new DiscordError({
             method: request.method,
             route: request.route,
             status,
             code: body.code,
             discordMessage: body.message,
-            retryAfter: body.retry_after,
+            retryAfter,
           })
         }
-        await sleep(Math.max(body.retry_after, MIN_INDEX_RETRY_S) * 1000)
+        await sleep(Math.max(retryAfter ?? 0, MIN_INDEX_RETRY_S) * 1000)
       }
     },
   }

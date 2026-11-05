@@ -516,6 +516,47 @@ test("a search retried after a delay of 0 waits a short while first", async () =
   expect(Date.now() - started).toBeGreaterThanOrEqual(200)
 })
 
+test("a search the index cannot answer yet, with no delay or one that is not a number, is retried after a short while, and then read", async () => {
+  for (const delay of [undefined, "soon"]) {
+    const { fetch, requests } = answering(
+      Response.json(
+        {
+          message: "Index not yet available. Try again later",
+          code: 110000,
+          retry_after: delay,
+        },
+        { status: 202 }
+      ),
+      searchAnswer(1, FOUND_MESSAGE)
+    )
+    const started = Date.now()
+
+    const result = await restDiscordApi(ENV, fetch).searchMessages({})
+
+    expect(result.messages.map(({ id }) => id)).toEqual([FOUND_MESSAGE.id])
+    expect(requests).toHaveLength(2)
+    expect(Date.now() - started).toBeGreaterThanOrEqual(200)
+  }
+})
+
+test("a search the index cannot answer after its retry, with no delay given, is Discord unavailable with no delay", async () => {
+  const notReady = () =>
+    Response.json(
+      { message: "Index not yet available. Try again later", code: 110000 },
+      { status: 202 }
+    )
+  const { fetch } = answering(notReady(), notReady())
+
+  const error = await failureOf(restDiscordApi(ENV, fetch).searchMessages({}))
+
+  expect(error).toMatchObject({
+    status: 202,
+    code: 110000,
+    retryAfter: undefined,
+    unavailable: true,
+  })
+})
+
 test("a search the index cannot answer after its retry is Discord unavailable, with Discord's code and delay", async () => {
   const { fetch, requests } = answering(
     indexNotReady(0.005),

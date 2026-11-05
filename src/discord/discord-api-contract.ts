@@ -986,12 +986,19 @@ export function describeDiscordApiContract(
         words: Words
         ids: Record<"m1" | "m2" | "m3" | "m4" | "m5" | "m6", Snowflake>
       }
-      let target: ContractTarget
+      let connectedTarget: ContractTarget | undefined
       let fixture: Fixture
       const posted: { channelId: Snowflake; id: Snowflake }[] = []
 
+      function target() {
+        if (connectedTarget === undefined) {
+          throw new Error("The search tests ran before the target connected")
+        }
+        return connectedTarget
+      }
+
       async function search(query: MessageSearchQuery) {
-        return await patient(target.discord).searchMessages({
+        return await patient(target().discord).searchMessages({
           channel_id: [fixture.channelId],
           ...query,
         })
@@ -1008,20 +1015,23 @@ export function describeDiscordApiContract(
       }
 
       beforeAll(async () => {
-        target = connect()
-        const discord = patient(target.discord)
-        const words = Object.fromEntries(
-          [
-            "shared",
-            "content",
-            "first",
-            "second",
-            "contentOfM3",
-            "embedOfM3",
-            ...TEXT_PARTS,
-          ].map((name) => [name, uniqueWord()])
-        ) as Words
-        words.accent = `${uniqueWord()}é${uniqueWord()}`
+        connectedTarget = connect()
+        const discord = patient(connectedTarget.discord)
+        const words: Words = {
+          shared: uniqueWord(),
+          content: uniqueWord(),
+          accent: `${uniqueWord()}é${uniqueWord()}`,
+          first: uniqueWord(),
+          second: uniqueWord(),
+          contentOfM3: uniqueWord(),
+          embedOfM3: uniqueWord(),
+          title: uniqueWord(),
+          description: uniqueWord(),
+          authorName: uniqueWord(),
+          fieldName: uniqueWord(),
+          fieldValue: uniqueWord(),
+          footer: uniqueWord(),
+        }
         const { shared } = words
         const first = await postInReadableTextChannel(discord, {
           content: `Contract: ${shared} ${words.content} ${words.accent} ${words.first} ${words.second}`,
@@ -1069,10 +1079,24 @@ export function describeDiscordApiContract(
       }, SEARCH_TEST_TIMEOUT_MS)
 
       afterAll(async () => {
-        for (const { channelId, id } of posted) {
-          await target.deleteMessage(channelId, id).catch(() => undefined)
+        if (connectedTarget === undefined) {
+          return
         }
-        await target.cleanUp()
+        const failures: unknown[] = []
+        for (const { channelId, id } of posted) {
+          try {
+            await connectedTarget.deleteMessage(channelId, id)
+          } catch (error) {
+            failures.push(error)
+          }
+        }
+        await connectedTarget.cleanUp()
+        if (failures.length > 0) {
+          throw new AggregateError(
+            failures,
+            `${failures.length} of the ${posted.length} messages posted for the search were not deleted`
+          )
+        }
       }, SEARCH_TEST_TIMEOUT_MS)
 
       test(
@@ -1175,10 +1199,10 @@ export function describeDiscordApiContract(
           })
 
           expect(
-            await foundIds({ content, author_id: [target.member] })
+            await foundIds({ content, author_id: [target().member] })
           ).toEqual([])
           await finds(
-            { content, author_id: [target.member, fixture.applicationId] },
+            { content, author_id: [target().member, fixture.applicationId] },
             [fixture.ids.m1]
           )
         },
@@ -1225,26 +1249,31 @@ export function describeDiscordApiContract(
       )
 
       test(
-        "a limit over 25, an offset over 9975 and a text of more than 1024 characters are refused as an invalid form body",
+        "a limit over 25, an offset over 9975, a limit or an offset that is not an integer and a text of more than 1024 characters are refused as an invalid form body",
         async () => {
-          const discord = patient(target.discord)
+          const discord = patient(target().discord)
 
-          await expect(
-            discord.searchMessages({ limit: 26 })
-          ).rejects.toMatchObject(REFUSED)
-          await expect(
-            discord.searchMessages({ offset: 9976 })
-          ).rejects.toMatchObject(REFUSED)
-          await expect(
-            discord.searchMessages({ content: "a".repeat(1025) })
-          ).rejects.toMatchObject(REFUSED)
+          for (const query of [
+            { limit: 26 },
+            { offset: 9976 },
+            { limit: 2.5 },
+            { offset: 1.5 },
+            { limit: Number.NaN },
+            { offset: Number.NaN },
+            { content: "a".repeat(1025) },
+          ]) {
+            await expect(
+              discord.searchMessages(query),
+              JSON.stringify(query).slice(0, 40)
+            ).rejects.toMatchObject(REFUSED)
+          }
         },
         SEARCH_TEST_TIMEOUT_MS
       )
 
       test("a channel that does not exist is refused as Missing Access", async () => {
         await expect(
-          patient(target.discord).searchMessages({
+          patient(target().discord).searchMessages({
             channel_id: [NO_CHANNEL_ID],
           })
         ).rejects.toMatchObject({

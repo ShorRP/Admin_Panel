@@ -774,6 +774,8 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     return this.answer("searchMessages", (): MessageSearchResult => {
       const route = ROUTES.guildMessagesSearch
       if (
+        !Number.isInteger(limit) ||
+        !Number.isInteger(offset) ||
         limit < 1 ||
         limit > DEFAULT_SEARCH_LIMIT ||
         offset < 0 ||
