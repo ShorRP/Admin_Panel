@@ -13,6 +13,7 @@ import type {
   MemberChanges,
   MembersQuery,
   MessageBody,
+  MessageSearchQuery,
   MessagesQuery,
 } from "./discord-api"
 import { DiscordError, type HttpMethod } from "./discord-error"
@@ -117,6 +118,20 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
       method: "GET",
       route: ROUTES.guildChannels,
       answer: () => api.listChannels(),
+    },
+    {
+      method: "GET",
+      route: ROUTES.guildMessagesSearch,
+      answer: async (request) => {
+        const { total_results, messages } = await api.searchMessages(
+          searchQuery(new URL(request.url).searchParams)
+        )
+        return {
+          doing_deep_historical_index: false,
+          total_results,
+          messages: messages.map((message) => [message]),
+        }
+      },
     },
     {
       method: "GET",
@@ -322,6 +337,43 @@ function messagesQuery(search: URLSearchParams) {
   }
   if (limit !== null) {
     query.limit = Number(limit)
+  }
+  return query
+}
+
+function searchQuery(search: URLSearchParams) {
+  const query: MessageSearchQuery = {}
+  const content = search.get("content")
+  const channelIds = search.getAll("channel_id")
+  const authorIds = search.getAll("author_id")
+  const minId = search.get("min_id")
+  const maxId = search.get("max_id")
+  const limit = search.get("limit")
+  const offset = search.get("offset")
+  const sortOrder = search.get("sort_order")
+  if (content !== null) {
+    query.content = content
+  }
+  if (channelIds.length > 0) {
+    query.channel_id = channelIds
+  }
+  if (authorIds.length > 0) {
+    query.author_id = authorIds
+  }
+  if (minId !== null) {
+    query.min_id = minId
+  }
+  if (maxId !== null) {
+    query.max_id = maxId
+  }
+  if (limit !== null) {
+    query.limit = Number(limit)
+  }
+  if (offset !== null) {
+    query.offset = Number(offset)
+  }
+  if (sortOrder === "asc" || sortOrder === "desc") {
+    query.sort_order = sortOrder
   }
   return query
 }

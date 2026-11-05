@@ -391,6 +391,183 @@ test("listMessages reads the messages of a channel before a message, up to its l
   })
 })
 
+const FOUND_MESSAGE = {
+  id: "666666666666666660",
+  channel_id: "444444444444444444",
+  content: "Un motif",
+  author: MEMBER.user,
+  embeds: [],
+}
+
+const OTHER_FOUND_MESSAGE = { ...FOUND_MESSAGE, id: "666666666666666661" }
+
+function searchAnswer(total: number, ...messages: object[]) {
+  return Response.json({
+    doing_deep_historical_index: false,
+    total_results: total,
+    messages: messages.map((message) => [{ ...message, hit: true }]),
+  })
+}
+
+function indexNotReady(retryAfter: number) {
+  return Response.json(
+    {
+      message: "Index not yet available. Try again later",
+      code: 110000,
+      documents_indexed: 0,
+      retry_after: retryAfter,
+    },
+    { status: 202 }
+  )
+}
+
+test("searchMessages sends each filter to the search of the Discord server, a list once per value, and gives the messages found one after the other", async () => {
+  const { fetch, requests } = answering(
+    searchAnswer(30, FOUND_MESSAGE, OTHER_FOUND_MESSAGE)
+  )
+
+  const result = await restDiscordApi(ENV, fetch).searchMessages({
+    content: "motif résolu",
+    channel_id: ["444444444444444444", "444444444444444445"],
+    author_id: ["555555555555555555"],
+    min_id: "666666666666666650",
+    max_id: "666666666666666670",
+    limit: 2,
+    offset: 4,
+    sort_order: "asc",
+  })
+
+  expect(result.total_results).toBe(30)
+  expect(result.messages.map(({ id }) => id)).toEqual([
+    FOUND_MESSAGE.id,
+    OTHER_FOUND_MESSAGE.id,
+  ])
+  const [request] = requests
+  expect(request?.method).toBe("GET")
+  const url = new URL(request?.url ?? "")
+  expect(url.origin + url.pathname).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/messages/search`
+  )
+  expect(
+    [...url.searchParams].toSorted(([left], [right]) =>
+      left.localeCompare(right)
+    )
+  ).toEqual([
+    ["author_id", "555555555555555555"],
+    ["channel_id", "444444444444444444"],
+    ["channel_id", "444444444444444445"],
+    ["content", "motif résolu"],
+    ["limit", "2"],
+    ["max_id", "666666666666666670"],
+    ["min_id", "666666666666666650"],
+    ["offset", "4"],
+    ["sort_order", "asc"],
+  ])
+  expect(request?.headers.get("Authorization")).toBe("Bot a-bot-token")
+})
+
+test("searchMessages sends only the filters it is given", async () => {
+  const { fetch, requests } = answering(searchAnswer(0))
+
+  const result = await restDiscordApi(ENV, fetch).searchMessages({})
+
+  expect(result).toEqual({ total_results: 0, messages: [] })
+  expect(new URL(requests[0]?.url ?? "").search).toBe("")
+})
+
+test("searchMessages fails with the route's pattern and Discord's code when Discord refuses", async () => {
+  const { fetch } = answering(
+    Response.json({ message: "Missing Access", code: 50001 }, { status: 403 })
+  )
+
+  await expect(
+    restDiscordApi(ENV, fetch).searchMessages({})
+  ).rejects.toMatchObject({
+    method: "GET",
+    route: "/guilds/{guild.id}/messages/search",
+    status: 403,
+    code: 50001,
+    unavailable: false,
+  })
+})
+
+test("a search the index of Discord cannot answer yet is retried once, after its delay, and then read", async () => {
+  const { fetch, requests } = answering(
+    indexNotReady(0.005),
+    searchAnswer(1, FOUND_MESSAGE)
+  )
+
+  const result = await restDiscordApi(ENV, fetch).searchMessages({})
+
+  expect(result.messages.map(({ id }) => id)).toEqual([FOUND_MESSAGE.id])
+  expect(requests).toHaveLength(2)
+})
+
+test("a search retried after a delay of 0 waits a short while first", async () => {
+  const { fetch, requests } = answering(
+    indexNotReady(0),
+    searchAnswer(1, FOUND_MESSAGE)
+  )
+  const started = Date.now()
+
+  await restDiscordApi(ENV, fetch).searchMessages({})
+
+  expect(requests).toHaveLength(2)
+  expect(Date.now() - started).toBeGreaterThanOrEqual(200)
+})
+
+test("a search the index cannot answer after its retry is Discord unavailable, with Discord's code and delay", async () => {
+  const { fetch, requests } = answering(
+    indexNotReady(0.005),
+    indexNotReady(0.005)
+  )
+
+  const error = await failureOf(restDiscordApi(ENV, fetch).searchMessages({}))
+
+  expect(error).toBeInstanceOf(DiscordError)
+  expect(error).toMatchObject({
+    method: "GET",
+    route: "/guilds/{guild.id}/messages/search",
+    status: 202,
+    code: 110000,
+    retryAfter: 0.005,
+    unavailable: true,
+  })
+  expect(requests).toHaveLength(2)
+})
+
+test("a search the index cannot answer for more than 2 s is Discord unavailable, and is not retried", async () => {
+  const { fetch, requests } = answering(
+    indexNotReady(30),
+    searchAnswer(1, FOUND_MESSAGE)
+  )
+
+  const error = await failureOf(restDiscordApi(ENV, fetch).searchMessages({}))
+
+  expect(error).toMatchObject({
+    status: 202,
+    retryAfter: 30,
+    unavailable: true,
+  })
+  expect(requests).toHaveLength(1)
+})
+
+test("a search that Discord rate limits for 4 s is Discord unavailable, and is not retried", async () => {
+  const { fetch, requests } = answering(
+    rateLimited(4.4),
+    searchAnswer(1, FOUND_MESSAGE)
+  )
+
+  const error = await failureOf(restDiscordApi(ENV, fetch).searchMessages({}))
+
+  expect(error).toMatchObject({
+    status: 429,
+    retryAfter: 4.4,
+    unavailable: true,
+  })
+  expect(requests).toHaveLength(1)
+})
+
 test("listRoles reads the Discord server's roles", async () => {
   const { fetch, requests } = answering(Response.json([]))
 

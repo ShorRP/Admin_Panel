@@ -22,7 +22,7 @@ const USER_AGENT = "DiscordBot (https://github.com/ShorRP/Admin_Panel, 0.0.0)"
 
 const TIMEOUT_MS = 10_000
 
-const MAX_RETRY_AFTER_S = 2
+export const MAX_RETRY_AFTER_S = 2
 
 type ErrorBody = {
   code?: unknown
@@ -36,9 +36,16 @@ export async function requestDiscordJson<T>(
   fetch: Fetch,
   request: DiscordRequest
 ): Promise<T> {
+  return (await requestDiscordAnswer<T>(fetch, request)).body
+}
+
+export async function requestDiscordAnswer<T>(
+  fetch: Fetch,
+  request: DiscordRequest
+): Promise<{ status: number; body: T }> {
   const response = await requestDiscord(fetch, request)
   try {
-    return await readJson<T>(response)
+    return { status: response.status, body: await readJson<T>(response) }
   } catch (error) {
     throw new DiscordError({
       method: request.method,
