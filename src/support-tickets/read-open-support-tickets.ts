@@ -6,6 +6,7 @@ import {
   type Snowflake,
 } from "discord-api-types/v10"
 
+import { compareIds } from "@/discord/compare-ids"
 import type {
   ChannelMessage,
   DiscordApi,
@@ -203,9 +204,4 @@ async function lookUpPeople(
     }
   )
   return people
-}
-
-function compareIds(left: Snowflake, right: Snowflake) {
-  const difference = BigInt(left) - BigInt(right)
-  return difference < BigInt(0) ? -1 : difference > BigInt(0) ? 1 : 0
 }

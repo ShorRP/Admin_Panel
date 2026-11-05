@@ -124,7 +124,7 @@ _Avoid_: ticket (alone), which also names an issue of the tracker; support chann
 
 **Tickets category**:
 The category of the Discord server where the Bot creates the channel of each support ticket, « ・TICKETS PRIVÉS ・ » on Shor. A support ticket is in progress while its channel is in it.
-_Avoid_: tickets folder, ticket category
+_Avoid_: tickets folder
 
 **Ticket archive**:
 The record of a closed support ticket: who opened it, its request kind, when it opened and closed, who closed it and why, with no conversation. The Bot posts it in the archives channel before the support ticket is deleted.

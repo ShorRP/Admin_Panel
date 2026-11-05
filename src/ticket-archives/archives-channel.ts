@@ -6,6 +6,6 @@ export function configuredArchivesChannelId() {
   return parseTicketArchivesEnv(process.env).archivesChannelId
 }
 
-export function configuredTicketCategoryId() {
-  return parseTicketArchivesEnv(process.env).ticketCategoryId
+export function configuredTicketsCategoryId() {
+  return parseTicketArchivesEnv(process.env).ticketsCategoryId
 }

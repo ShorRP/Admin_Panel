@@ -20,12 +20,12 @@ test("the archives channel's variable gives its ID, and the tickets category's i
     })
   ).toEqual({
     archivesChannelId: "1562505523490848881",
-    ticketCategoryId: "1559574907426439229",
+    ticketsCategoryId: "1559574907426439229",
   })
 })
 
 test("an archives channel and a tickets category left unset or empty are not configured", () => {
-  const notConfigured = { archivesChannelId: null, ticketCategoryId: null }
+  const notConfigured = { archivesChannelId: null, ticketsCategoryId: null }
 
   expect(parseTicketArchivesEnv({})).toEqual(notConfigured)
   expect(
@@ -41,7 +41,7 @@ test("a tickets category alone configures it and leaves the archives channel uns
     parseTicketArchivesEnv({ TICKET_CATEGORY_ID: "1559574907426439229" })
   ).toEqual({
     archivesChannelId: null,
-    ticketCategoryId: "1559574907426439229",
+    ticketsCategoryId: "1559574907426439229",
   })
 })
 

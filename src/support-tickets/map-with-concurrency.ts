@@ -3,12 +3,11 @@ export async function mapWithConcurrency<Item, Result>(
   limit: number,
   run: (item: Item) => Promise<Result>
 ): Promise<Result[]> {
-  const results: Result[] = new Array<Result>(items.length)
-  let next = 0
+  const results = new Array<Result>(items.length)
+  const pending = items.entries()
   async function worker() {
-    while (next < items.length) {
-      const index = next++
-      results[index] = await run(items[index] as Item)
+    for (const [index, item] of pending) {
+      results[index] = await run(item)
     }
   }
   await Promise.all(

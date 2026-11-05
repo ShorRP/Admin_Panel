@@ -50,5 +50,5 @@ export function messageExtract(
   const characters = Array.from(text)
   return characters.length <= MAX_LENGTH
     ? text
-    : `${characters.slice(0, MAX_LENGTH).join("")}…`
+    : `${characters.slice(0, MAX_LENGTH - 1).join("")}…`
 }

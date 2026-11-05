@@ -11,7 +11,7 @@ import { readOpenSupportTickets } from "@/support-tickets/read-open-support-tick
 import { SupportTicketsSection } from "@/support-tickets/support-tickets-section"
 import {
   configuredArchivesChannelId,
-  configuredTicketCategoryId,
+  configuredTicketsCategoryId,
 } from "@/ticket-archives/archives-channel"
 import { readTicketArchivePage } from "@/ticket-archives/read-ticket-archive-page"
 import { SupportTicketArchives } from "@/ticket-archives/support-ticket-archives"
@@ -39,7 +39,7 @@ export default function SupportTicketsPage({
           className="max-w-160"
         >
           Les tickets encore ouverts que tu vois sur Discord, puis les archives
-          des tickets fermés : leur type de demande, qui les a ouverts et
+          des tickets fermés : leur type de demande, qui les a ouverts et
           fermés, quand, et pourquoi.
         </PageHeader>
         <OrnamentRule leadingLine />
@@ -76,7 +76,7 @@ async function OpenSupportTicketsFromDiscord({ staff }: { staff: Staff }) {
       read={await readOpenSupportTickets(
         discord,
         staffMember,
-        configuredTicketCategoryId()
+        configuredTicketsCategoryId()
       )}
       opensModeration={staffMember.opensModeration}
     />

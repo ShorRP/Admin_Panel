@@ -56,13 +56,14 @@ test("a custom emoji is written as its name between colons, and @everyone and @h
   expect(extractOf("@everyone et @here")).toBe("@everyone et @here")
 })
 
-test("a text of 160 characters stays whole, and a longer one is cut at 160 with an ellipsis", () => {
+test("a text of 160 characters stays whole, and a longer one is cut so that it holds 160 characters, its ellipsis the last", () => {
   expect(extractOf("a".repeat(160))).toBe("a".repeat(160))
-  expect(extractOf("a".repeat(161))).toBe(`${"a".repeat(160)}…`)
+  expect(extractOf("a".repeat(161))).toBe(`${"a".repeat(159)}…`)
+  expect(Array.from(extractOf("a".repeat(500)))).toHaveLength(160)
 })
 
 test("the cut counts characters, not UTF-16 units, so that an emoji is never split", () => {
-  expect(extractOf("🔧".repeat(161))).toBe(`${"🔧".repeat(160)}…`)
+  expect(extractOf("🔧".repeat(161))).toBe(`${"🔧".repeat(159)}…`)
 })
 
 test("the description of the embeds of a bot's message follows its content, where the embeds of a member's message are left out", () => {

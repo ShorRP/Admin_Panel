@@ -14,7 +14,7 @@ const TICKET_ARCHIVES_ENV = z
   })
   .transform((env) => ({
     archivesChannelId: env.TICKET_ARCHIVES_CHANNEL_ID ?? null,
-    ticketCategoryId: env.TICKET_CATEGORY_ID ?? null,
+    ticketsCategoryId: env.TICKET_CATEGORY_ID ?? null,
   }))
 
 type Env = Record<string, string | undefined>
