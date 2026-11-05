@@ -115,6 +115,11 @@ export function httpAdapter(api: DiscordApi, oauth: DiscordOAuth): Fetch {
     },
     {
       method: "GET",
+      route: ROUTES.guildChannels,
+      answer: () => api.listChannels(),
+    },
+    {
+      method: "GET",
       route: ROUTES.autoModerationRules,
       answer: () => api.listAutoModerationRules(),
     },

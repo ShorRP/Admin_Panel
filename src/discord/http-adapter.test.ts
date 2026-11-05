@@ -1,5 +1,7 @@
 import {
   AuditLogEvent,
+  ChannelType,
+  OverwriteType,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
 } from "discord-api-types/v10"
@@ -9,7 +11,7 @@ import { restDiscordApi } from "./discord-api"
 import { describeDiscordApiContract } from "./discord-api-contract"
 import { DiscordError } from "./discord-error"
 import { restDiscordOAuth } from "./discord-oauth"
-import { FakeDiscord } from "./fake-discord"
+import { FakeDiscord, type FakeChannel } from "./fake-discord"
 import { httpAdapter } from "./http-adapter"
 import { ROUTES } from "./routes"
 
@@ -22,6 +24,26 @@ const MEMBER = { id: "222222222222222224", username: "member" }
 const ABSENT = { id: "222222222222222227", username: "absent" }
 
 const PANEL_ROLE = { id: "333333333333333333", name: "Shor Panel", position: 1 }
+
+const CATEGORY: FakeChannel = {
+  id: "555555555555555560",
+  type: ChannelType.GuildCategory,
+  name: "Salons",
+}
+
+const PRIVATE_CHANNEL: FakeChannel = {
+  id: "555555555555555561",
+  name: "privé",
+  parent_id: CATEGORY.id,
+  permission_overwrites: [
+    {
+      id: PANEL_ROLE.id,
+      type: OverwriteType.Role,
+      allow: String(PermissionFlagsBits.ViewChannel),
+      deny: "0",
+    },
+  ],
+}
 
 function apiOver(fake: FakeDiscord) {
   return restDiscordApi(
@@ -49,6 +71,7 @@ describeDiscordApiContract("The real DiscordApi over the HTTP adapter", () => ({
       applicationRoles: [PANEL_ROLE.id],
       members: [{ user: OWNER }, { user: MEMBER }],
       users: [OUTSIDER, ABSENT],
+      channels: [CATEGORY, PRIVATE_CHANNEL],
     })
   ),
   outsider: OUTSIDER.id,

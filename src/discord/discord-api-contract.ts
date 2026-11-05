@@ -5,6 +5,7 @@ import {
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
   ChannelType,
+  OverwriteType,
   RESTJSONErrorCodes,
   type APIAuditLogEntry,
   type RESTPostAPIAutoModerationRuleJSONBody,
@@ -20,6 +21,8 @@ export const CONTRACT_RULE_PREFIX = "Contract "
 const NO_ACCOUNT_ID = "100000000000000000"
 
 const NO_CHANNEL_ID = "100000000000000000"
+
+const BITFIELD = /^\d+$/
 
 export type ContractTarget = {
   discord: DiscordApi
@@ -171,6 +174,7 @@ function patient(discord: DiscordApi): DiscordApi {
     getBan: (userId) => patiently(() => discord.getBan(userId)),
     listBans: (query) => patiently(() => discord.listBans(query)),
     listRoles: () => patiently(() => discord.listRoles()),
+    listChannels: () => patiently(() => discord.listChannels()),
   }
 }
 
@@ -604,6 +608,47 @@ export function describeDiscordApiContract(
         expect(Number.isInteger(color), name).toBe(true)
         expect(color, name).toBeGreaterThanOrEqual(0)
         expect(color, name).toBeLessThanOrEqual(0xffffff)
+      }
+    })
+
+    test("every role of the Discord server carries its permissions as a bitfield string, @everyone's included, whether listed or read with the Discord server", async () => {
+      const { discord } = connected()
+
+      const listed = await discord.listRoles()
+      const { roles } = await discord.getGuild()
+
+      for (const role of [...listed, ...roles]) {
+        expect(role.permissions, role.name).toMatch(BITFIELD)
+      }
+      expect(roles.map(({ id }) => id).toSorted()).toEqual(
+        listed.map(({ id }) => id).toSorted()
+      )
+    })
+
+    test("the channels of the Discord server are listed with their type, their name, their parent category and their permission overwrites, whose permissions are bitfield strings", async () => {
+      const { discord } = connected()
+
+      const channels = await discord.listChannels()
+
+      expect(channels.length).toBeGreaterThan(0)
+      const categoryIds = channels
+        .filter(({ type }) => type === ChannelType.GuildCategory)
+        .map(({ id }) => id)
+      expect(categoryIds.length).toBeGreaterThan(0)
+      for (const channel of channels) {
+        const { id, name, parent_id, permission_overwrites } = channel
+        expect(Number.isInteger(channel.type), id).toBe(true)
+        expect(typeof name, id).toBe("string")
+        if (parent_id !== null) {
+          expect(categoryIds, id).toContain(parent_id)
+        }
+        for (const overwrite of permission_overwrites) {
+          expect([OverwriteType.Role, OverwriteType.Member], id).toContain(
+            overwrite.type
+          )
+          expect(overwrite.allow, id).toMatch(BITFIELD)
+          expect(overwrite.deny, id).toMatch(BITFIELD)
+        }
       }
     })
 

@@ -2,13 +2,16 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  ChannelType,
+  OverwriteType,
+  PermissionFlagsBits,
   RESTJSONErrorCodes,
   type RESTPostAPIAutoModerationRuleJSONBody,
 } from "discord-api-types/v10"
 import { expect, test } from "vitest"
 
 import { describeDiscordApiContract } from "./discord-api-contract"
-import { FakeDiscord } from "./fake-discord"
+import { FakeDiscord, type FakeChannel } from "./fake-discord"
 
 const OUTSIDER = { id: "222222222222222222", username: "outsider" }
 
@@ -20,6 +23,26 @@ const ABSENT = { id: "222222222222222227", username: "absent" }
 
 const PANEL_ROLE = { id: "333333333333333333", name: "Shor Panel", position: 1 }
 
+const CATEGORY: FakeChannel = {
+  id: "555555555555555560",
+  type: ChannelType.GuildCategory,
+  name: "Salons",
+}
+
+const PRIVATE_CHANNEL: FakeChannel = {
+  id: "555555555555555561",
+  name: "privé",
+  parent_id: CATEGORY.id,
+  permission_overwrites: [
+    {
+      id: PANEL_ROLE.id,
+      type: OverwriteType.Role,
+      allow: String(PermissionFlagsBits.ViewChannel),
+      deny: "0",
+    },
+  ],
+}
+
 describeDiscordApiContract("The fake Discord", () => ({
   discord: new FakeDiscord({
     ownerId: OWNER.id,
@@ -27,6 +50,7 @@ describeDiscordApiContract("The fake Discord", () => ({
     applicationRoles: [PANEL_ROLE.id],
     members: [{ user: OWNER }, { user: MEMBER }],
     users: [OUTSIDER, ABSENT],
+    channels: [CATEGORY, PRIVATE_CHANNEL],
   }),
   outsider: OUTSIDER.id,
   member: MEMBER.id,
@@ -205,4 +229,49 @@ test("the application posts an embed to a channel the fake was given, and it is 
       ({ author, embeds }) => [author.id, embeds]
     )
   ).toEqual([[discord.applicationUser.id, [{ title: "Archive" }]]])
+})
+
+test("the fake lists a channel given by its ID alone as a text channel with no parent and no overwrite, and one given in full as it was given", async () => {
+  const discord = new FakeDiscord({
+    channels: [ARCHIVES_CHANNEL_ID, CATEGORY, PRIVATE_CHANNEL],
+  })
+
+  const channels = await discord.listChannels()
+
+  expect(channels).toEqual([
+    {
+      id: ARCHIVES_CHANNEL_ID,
+      type: ChannelType.GuildText,
+      name: "channel",
+      parent_id: null,
+      permission_overwrites: [],
+    },
+    {
+      id: CATEGORY.id,
+      type: ChannelType.GuildCategory,
+      name: "Salons",
+      parent_id: null,
+      permission_overwrites: [],
+    },
+    { ...PRIVATE_CHANNEL, type: ChannelType.GuildText },
+  ])
+  expect(await discord.listMessages(PRIVATE_CHANNEL.id, { limit: 1 })).toEqual(
+    []
+  )
+})
+
+test("a role the state gives for the Discord server's ID is the Discord server's @everyone, the only role of that ID, and with none the fake gives @everyone no permission", async () => {
+  const everyone = {
+    id: new FakeDiscord().guildId,
+    name: "@everyone",
+    permissions: String(PermissionFlagsBits.ViewChannel),
+  }
+
+  const roles = await new FakeDiscord({ roles: [everyone] }).listRoles()
+  const unset = await new FakeDiscord().listRoles()
+
+  expect(roles).toHaveLength(1)
+  expect(roles[0]).toMatchObject(everyone)
+  expect(unset).toHaveLength(1)
+  expect(unset[0]).toMatchObject({ name: "@everyone", permissions: "0" })
 })
