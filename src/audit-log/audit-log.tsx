@@ -1,8 +1,4 @@
-import Link from "next/link"
-import { cn } from "cn"
 import {
-  ArrowLeft,
-  ArrowRight,
   Ban,
   ExternalLink,
   ShieldBan,
@@ -15,29 +11,19 @@ import {
 import { recordHrefForModerator } from "@/records/record-href"
 import { SanctionChangeSummary } from "@/sanctions/sanction-change-summary"
 import { AccountLink } from "@/ui/account-link"
-import { buttonVariants } from "@/ui/button"
-import { EmptyListFrame } from "@/ui/empty-list-frame"
-import { FILTERS_CLASSES } from "@/ui/filter-layout"
+import { LogDay } from "@/ui/log-day"
+import { LogEmpty } from "@/ui/log-empty"
+import { LogFrame } from "@/ui/log-frame"
+import { LOG_ROW_AUTHOR_CLASSES } from "@/ui/log-layout"
+import { LogPagination } from "@/ui/log-pagination"
+import { LogRow } from "@/ui/log-row"
 import { MemberAvatar } from "@/ui/member-avatar"
-import { ParisTime } from "@/ui/paris-time"
 import { TextLink } from "@/ui/text-link"
 import { AuditLogFilterFold } from "./audit-log-filter-fold"
 import { AuditLogFilterForm } from "./audit-log-filter-form"
-import { hasFilter, type AuditLogFilters } from "./audit-log-filters"
+import { hasFilter, NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
-import {
-  CHANGE_BODY_CLASSES,
-  CHANGE_ICON_TILE_CLASSES,
-  CHANGE_ROW_CLASSES,
-  CHANGE_STAFF_MEMBER_CLASSES,
-  CHANGE_TIME_CLASSES,
-  DAY_CHANGES_CLASSES,
-  DAY_HEADER_CLASSES,
-  PAGINATION_CLASSES,
-  PAGINATION_LINK_CLASSES,
-} from "./audit-log-layout"
-import { AuditLogTypeFilter, ResetLink } from "./audit-log-type-filter"
-import { ParisDay } from "./paris-day"
+import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type {
   AuditLogChange,
   AuditLogDay,
@@ -68,14 +54,20 @@ export function AuditLog({
   const filters = { type, author, account }
   const oldest = days.at(-1)?.changes.at(-1)
   return (
-    <div className="flex flex-col gap-7">
-      <div className={FILTERS_CLASSES}>
-        <AuditLogTypeFilter filters={filters} />
-        <AuditLogFilterForm key={JSON.stringify(filters)} filters={filters} />
-        <AuditLogFilterFold filters={filters} />
-      </div>
+    <LogFrame
+      filters={
+        <>
+          <AuditLogTypeFilter filters={filters} />
+          <AuditLogFilterForm key={JSON.stringify(filters)} filters={filters} />
+          <AuditLogFilterFold filters={filters} />
+        </>
+      }
+    >
       {days.length === 0 ? (
-        <NoChange filters={filters} before={before} />
+        <LogEmpty
+          message={noChangeMessage(filters, before)}
+          resetHref={hasFilter(filters) ? auditLogHref(NO_FILTER) : null}
+        />
       ) : (
         days.map((day) => (
           <ChangesOfDay
@@ -85,64 +77,15 @@ export function AuditLog({
           />
         ))
       )}
-      {(oldest !== undefined || before !== null || older !== null) && (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          {oldest !== undefined && (
-            <p className="text-xs text-muted-foreground">
-              Jusqu’au <ParisDay date={oldest.date} dateStyle="medium" />
-            </p>
-          )}
-          {(before !== null || older !== null) && (
-            <nav
-              aria-label="Pages du journal d’audit"
-              className={PAGINATION_CLASSES}
-            >
-              {before !== null && (
-                <Link
-                  href={auditLogHref(filters)}
-                  prefetch={false}
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    PAGINATION_LINK_CLASSES
-                  )}
-                >
-                  <ArrowLeft aria-hidden data-icon="inline-start" />
-                  Revenir aux plus récents
-                </Link>
-              )}
-              {older !== null && (
-                <Link
-                  href={auditLogHref({ ...filters, before: older })}
-                  prefetch={false}
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    PAGINATION_LINK_CLASSES
-                  )}
-                >
-                  <ArrowRight aria-hidden data-icon="inline-start" />
-                  Plus anciens
-                </Link>
-              )}
-            </nav>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function NoChange({
-  filters,
-  before,
-}: {
-  filters: AuditLogFilters
-  before: AuditLogPage["before"]
-}) {
-  return (
-    <EmptyListFrame className="flex flex-col items-center gap-3">
-      <p>{noChangeMessage(filters, before)}</p>
-      {hasFilter(filters) && <ResetLink />}
-    </EmptyListFrame>
+      <LogPagination
+        label="Pages du journal d’audit"
+        oldest={oldest?.date ?? null}
+        newestHref={before === null ? null : auditLogHref(filters)}
+        olderHref={
+          older === null ? null : auditLogHref({ ...filters, before: older })
+        }
+      />
+    </LogFrame>
   )
 }
 
@@ -169,23 +112,15 @@ function ChangesOfDay({
   opensModeration: boolean
 }) {
   return (
-    <section className="flex flex-col gap-2.5">
-      <div className={DAY_HEADER_CLASSES}>
-        <h2 className="font-heading text-lg leading-[1.2] font-medium">
-          <ParisDay date={date} dateStyle="full" />
-        </h2>
-        <span aria-hidden className="h-px flex-1 bg-border" />
-      </div>
-      <ol className={DAY_CHANGES_CLASSES}>
-        {changes.map((change) => (
-          <ChangeRow
-            key={change.id}
-            change={change}
-            opensModeration={opensModeration}
-          />
-        ))}
-      </ol>
-    </section>
+    <LogDay date={date}>
+      {changes.map((change) => (
+        <ChangeRow
+          key={change.id}
+          change={change}
+          opensModeration={opensModeration}
+        />
+      ))}
+    </LogDay>
   )
 }
 
@@ -196,48 +131,44 @@ function ChangeRow({
   change: AuditLogChange
   opensModeration: boolean
 }) {
+  const { Icon, color } = CHANGE_ICONS[iconKindOf(change)]
   return (
-    <li className={CHANGE_ROW_CLASSES}>
-      <span
-        className={cn(
-          CHANGE_TIME_CLASSES,
-          "font-mono text-xs text-muted-foreground"
-        )}
-      >
-        <ParisTime date={change.date} timeOnly />
-      </span>
-      <ChangeIcon kind={iconKindOf(change)} />
-      <div className={CHANGE_BODY_CLASSES}>
-        {change.kind === "rule" ? (
-          <p className="font-medium text-pretty wrap-anywhere">
-            {change.description}
-          </p>
-        ) : (
-          <SanctionChangeDescription
-            change={change}
-            opensModeration={opensModeration}
-          />
-        )}
-      </div>
-      <AccountLink
-        href={recordHrefForModerator(change.memberId, opensModeration)}
-        className={CHANGE_STAFF_MEMBER_CLASSES}
-      >
-        {change.kind !== "automatic-timeout" && (
-          <MemberAvatar
-            name={change.memberName}
-            avatarUrl={change.avatarUrl}
-            size="sm"
-          />
-        )}
-        <p
-          title={change.memberName}
-          className="min-w-0 truncate text-[0.8125rem] text-muted-foreground group-hover/account-link:text-foreground group-hover/account-link:underline group-focus-visible/account-link:underline"
+    <LogRow
+      date={change.date}
+      Icon={Icon}
+      iconClassName={color}
+      trailing={
+        <AccountLink
+          href={recordHrefForModerator(change.memberId, opensModeration)}
+          className={LOG_ROW_AUTHOR_CLASSES}
         >
-          {change.memberName}
+          {change.kind !== "automatic-timeout" && (
+            <MemberAvatar
+              name={change.memberName}
+              avatarUrl={change.avatarUrl}
+              size="sm"
+            />
+          )}
+          <p
+            title={change.memberName}
+            className="min-w-0 truncate text-[0.8125rem] text-muted-foreground group-hover/account-link:text-foreground group-hover/account-link:underline group-focus-visible/account-link:underline"
+          >
+            {change.memberName}
+          </p>
+        </AccountLink>
+      }
+    >
+      {change.kind === "rule" ? (
+        <p className="font-medium text-pretty wrap-anywhere">
+          {change.description}
         </p>
-      </AccountLink>
-    </li>
+      ) : (
+        <SanctionChangeDescription
+          change={change}
+          opensModeration={opensModeration}
+        />
+      )}
+    </LogRow>
   )
 }
 
@@ -250,15 +181,6 @@ function iconKindOf(change: AuditLogChange): ChangeIconKind {
     case "sanction-change":
       return change.sanctionChange.kind
   }
-}
-
-function ChangeIcon({ kind }: { kind: ChangeIconKind }) {
-  const { Icon, color } = CHANGE_ICONS[kind]
-  return (
-    <span aria-hidden className={cn(CHANGE_ICON_TILE_CLASSES, color)}>
-      <Icon className="size-3.75" />
-    </span>
-  )
 }
 
 function SanctionChangeDescription({

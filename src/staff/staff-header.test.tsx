@@ -178,14 +178,19 @@ test("the sidebar's ornament, between the link to the panel and the sections, is
   }).toEqual({ found: true, hidden: true, text: "" })
 })
 
-test("a staff member who cannot open the moderation section sees the sections under « Administration » and « Support », and no « Modération » at all", async () => {
+test("a staff member who cannot open the moderation section sees the sections under « Administration », « Journaux » and « Support », and no « Modération » at all", async () => {
   const { sidebar } = await render("/blocked-words")
 
   expect(groups(sidebar)).toEqual([
     {
       title: "Administration",
       titlesItsList: true,
-      sections: ["Mots interdits", "Journal d’audit"],
+      sections: ["Mots interdits"],
+    },
+    {
+      title: "Journaux",
+      titlesItsList: true,
+      sections: ["Journal d’audit"],
     },
     {
       title: "Support",
@@ -196,14 +201,19 @@ test("a staff member who cannot open the moderation section sees the sections un
   expect(textOf(sidebar)).not.toContain("Modération")
 })
 
-test("a staff member who opens the moderation section also sees « Modération », between « Administration » and « Support », under a title of its own", async () => {
+test("a staff member who opens the moderation section also sees « Modération », between « Journaux » and « Support », under a title of its own", async () => {
   const { sidebar } = await render("/blocked-words", { opensModeration: true })
 
   expect(groups(sidebar)).toEqual([
     {
       title: "Administration",
       titlesItsList: true,
-      sections: ["Mots interdits", "Journal d’audit"],
+      sections: ["Mots interdits"],
+    },
+    {
+      title: "Journaux",
+      titlesItsList: true,
+      sections: ["Journal d’audit"],
     },
     { title: "Modération", titlesItsList: true, sections: ["Modération"] },
     {
@@ -396,8 +406,8 @@ test("a rule, hidden from assistive technologies, separates each of the sidebar'
   })
   const { sidebar: administering } = await render("/blocked-words")
 
-  expect(rules(moderating)).toHaveLength(2)
-  expect(rules(administering)).toHaveLength(1)
+  expect(rules(moderating)).toHaveLength(3)
+  expect(rules(administering)).toHaveLength(2)
 })
 
 test("the sidebar's link to the privacy policy shows a lock before its name, hidden from assistive technologies, and repeats the name in a title, for the rail", async () => {

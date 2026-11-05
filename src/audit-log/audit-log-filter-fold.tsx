@@ -1,6 +1,6 @@
-import { FilterChips, type FilterChip } from "@/ui/filter-chips"
-import { FILTER_FOLD_CLASSES, SHEET_FIELD_CLASSES } from "@/ui/filter-layout"
-import { FilterSheet } from "@/ui/filter-sheet"
+import type { FilterChip } from "@/ui/filter-chips"
+import { FilterFold } from "@/ui/filter-fold"
+import { SHEET_FIELD_CLASSES } from "@/ui/filter-layout"
 import {
   AUDIT_LOG_FILTER_FIELDS,
   AuditLogFilterFields,
@@ -24,24 +24,21 @@ export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
     }
   )
   return (
-    <div className={FILTER_FOLD_CLASSES}>
-      <FilterSheet
-        label="Auteur et compte"
-        activeCount={chips.length}
-        action="/audit-log"
-        hiddenFields={
-          filters.type === null ? [] : [{ name: "type", value: filters.type }]
-        }
-        resetHref={auditLogHref(NO_FILTER)}
-        submitLabel="Filtrer"
-      >
-        <AuditLogFilterFields
-          filters={filters}
-          idPrefix="audit-log-sheet"
-          className={SHEET_FIELD_CLASSES}
-        />
-      </FilterSheet>
-      <FilterChips chips={chips} />
-    </div>
+    <FilterFold
+      label="Auteur et compte"
+      chips={chips}
+      action="/audit-log"
+      hiddenFields={
+        filters.type === null ? [] : [{ name: "type", value: filters.type }]
+      }
+      resetHref={auditLogHref(NO_FILTER)}
+      submitLabel="Filtrer"
+    >
+      <AuditLogFilterFields
+        filters={filters}
+        idPrefix="audit-log-sheet"
+        className={SHEET_FIELD_CLASSES}
+      />
+    </FilterFold>
   )
 }

@@ -1,104 +1,14 @@
-import { cn } from "cn"
-
-import {
-  FILTER_PILL_LIST_CLASSES,
-  FILTER_PILL_SIZE_CLASSES,
-  FILTER_PILLS_CLASSES,
-  FILTERS_CLASSES,
-} from "@/ui/filter-layout"
-import { Skeleton } from "@/ui/skeleton"
+import { LogSkeleton } from "@/ui/log-skeleton"
 import { AuditLogFilterFormSkeleton } from "./audit-log-filter-form-skeleton"
-import {
-  CHANGE_BODY_CLASSES,
-  CHANGE_ICON_TILE_CLASSES,
-  CHANGE_ROW_CLASSES,
-  CHANGE_STAFF_MEMBER_CLASSES,
-  CHANGE_TIME_CLASSES,
-  DAY_CHANGES_CLASSES,
-  DAY_HEADER_CLASSES,
-} from "./audit-log-layout"
-
-const DAYS = [
-  {
-    headingWidth: "w-44",
-    changes: [
-      { titleWidth: "w-44", sanction: false },
-      { titleWidth: "w-64", sanction: true },
-    ],
-  },
-  {
-    headingWidth: "w-40",
-    changes: [
-      { titleWidth: "w-36", sanction: true },
-      { titleWidth: "w-52", sanction: false },
-      { titleWidth: "w-40", sanction: false },
-    ],
-  },
-] as const
 
 const TYPE_LINK_WIDTHS = ["w-13", "w-29", "w-24", "w-24.5", "w-29.5"] as const
 
 export function AuditLogSkeleton() {
   return (
-    <div role="status" className="flex flex-col gap-7">
-      <span className="sr-only">Chargement du journal d’audit…</span>
-      <div className={FILTERS_CLASSES}>
-        <div className={FILTER_PILLS_CLASSES}>
-          <div className={FILTER_PILL_LIST_CLASSES}>
-            {TYPE_LINK_WIDTHS.map((width) => (
-              <Skeleton
-                key={width}
-                className={cn(
-                  FILTER_PILL_SIZE_CLASSES,
-                  "motion-reduce:animate-none",
-                  width
-                )}
-              />
-            ))}
-          </div>
-        </div>
-        <AuditLogFilterFormSkeleton />
-      </div>
-      {DAYS.map(({ headingWidth, changes }) => (
-        <div key={headingWidth} className="flex flex-col gap-2.5">
-          <div className={DAY_HEADER_CLASSES}>
-            <Skeleton
-              className={cn("h-5.5 motion-reduce:animate-none", headingWidth)}
-            />
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <div className={DAY_CHANGES_CLASSES}>
-            {changes.map(({ titleWidth, sanction }) => (
-              <div key={titleWidth} className={CHANGE_ROW_CLASSES}>
-                <div className={CHANGE_TIME_CLASSES}>
-                  <Skeleton className="h-3.5 w-10 motion-reduce:animate-none" />
-                </div>
-                <Skeleton
-                  className={cn(
-                    CHANGE_ICON_TILE_CLASSES,
-                    "motion-reduce:animate-none"
-                  )}
-                />
-                <div className={CHANGE_BODY_CLASSES}>
-                  <Skeleton
-                    className={cn(
-                      "h-4 max-w-full motion-reduce:animate-none",
-                      titleWidth
-                    )}
-                  />
-                  {sanction && (
-                    <Skeleton className="mt-1 h-3.5 w-full max-w-80 motion-reduce:animate-none" />
-                  )}
-                </div>
-                <div className={CHANGE_STAFF_MEMBER_CLASSES}>
-                  <Skeleton className="size-6 shrink-0 rounded-full motion-reduce:animate-none" />
-                  <Skeleton className="h-3.5 w-16 motion-reduce:animate-none" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
+    <LogSkeleton
+      loading="Chargement du journal d’audit…"
+      pillWidths={TYPE_LINK_WIDTHS}
+      form={<AuditLogFilterFormSkeleton />}
+    />
   )
 }

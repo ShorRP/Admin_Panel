@@ -22,6 +22,7 @@ import {
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
+import { parisDayOf } from "@/ui/paris-day"
 import {
   actionChangeEntryOf,
   capitalized,
@@ -41,7 +42,6 @@ import {
   authorOf,
   type EntryAttribution,
 } from "./entry-attribution"
-import { parisDayOf } from "./paris-day"
 
 export type AuditLogChange = {
   id: Snowflake
