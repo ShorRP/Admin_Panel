@@ -605,8 +605,7 @@ test.describe("tickets in progress", () => {
         method: "GET",
         route: ROUTES.guildChannels,
         status: 503,
-      }),
-      2
+      })
     )
 
     await page.goto("/support-tickets")

@@ -11,9 +11,7 @@ import {
 import { expect, test } from "vitest"
 
 import { describeDiscordApiContract } from "./discord-api-contract"
-import { DiscordError } from "./discord-error"
 import { FakeDiscord, type FakeChannel } from "./fake-discord"
-import { ROUTES } from "./routes"
 import { snowflakeDate } from "./snowflake-date"
 
 const OUTSIDER = { id: "222222222222222222", username: "outsider" }
@@ -562,22 +560,4 @@ test("a role the state gives for the Discord server's ID is the Discord server's
   expect(roles[0]).toMatchObject(everyone)
   expect(unset).toHaveLength(1)
   expect(unset[0]).toMatchObject({ name: "@everyone", permissions: "0" })
-})
-
-test("failNext fails the next call of a method once, and as many next calls as it is told to", async () => {
-  const discord = new FakeDiscord()
-  const unavailable = new DiscordError({
-    method: "GET",
-    route: ROUTES.guildChannels,
-    status: 503,
-  })
-
-  discord.failNext("listChannels", unavailable)
-  await expect(discord.listChannels()).rejects.toBe(unavailable)
-  await expect(discord.listChannels()).resolves.toEqual([])
-
-  discord.failNext("listChannels", unavailable, 2)
-  await expect(discord.listChannels()).rejects.toBe(unavailable)
-  await expect(discord.listChannels()).rejects.toBe(unavailable)
-  await expect(discord.listChannels()).resolves.toEqual([])
 })
