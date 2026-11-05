@@ -50,9 +50,9 @@ test("the privacy policy opens on the public pages' overline, its heading, what 
       "Panel du staff · Skyrim Roleplay",
       "Politique de confidentialité",
       "Ce que le panel du staff de Shor lit, garde et écrit sur les comptes Discord, pourquoi, combien de temps, qui le voit, et comment demander à le corriger ou à l’effacer.",
-      "Mise à jour le 5 nov. 2026.",
+      "Mise à jour le 6 nov. 2026.",
     ],
-    updated: ["2026-11-05", "5 nov. 2026"],
+    updated: ["2026-11-06", "6 nov. 2026"],
     rule: true,
   })
 })
@@ -101,7 +101,26 @@ test("the privacy policy says the panel reads from Discord, at each page, what i
   expect(text).toMatch(/« Server Members Intent »/)
   expect(text).toMatch(/l’historique du navigateur les garde/)
   expect(text).toMatch(
-    /celles de la liste des comptes, du journal d’audit et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
+    /celles de la liste des comptes, du journal d’audit, du journal du jeu et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
+  )
+})
+
+test("the privacy policy says the panel reads the game log, for the staff who view its channel on Discord, from the game server's webhook alone, and keeps none of it", () => {
+  const text = sectionText("Ce que le panel lit sans le garder")
+
+  expect(text).toMatch(
+    /pour le staff qui voit le salon du journal du jeu sur Discord, la page du journal du jeu/
+  )
+  expect(text).toMatch(/parmi les messages de ce webhook seul/)
+  expect(text).toMatch(
+    /le nom du personnage et le numéro de son compte de jeu, la cible, le motif et le lieu de l’événement/
+  )
+  expect(text).toMatch(/les mots et la période que le staff a choisis/)
+  expect(text).toMatch(
+    /tant qu’un membre du staff n’a pas supprimé leur message/
+  )
+  expect(sectionText("Qui le voit")).toMatch(
+    /le journal du jeu, que voit seul le staff qui voit son salon sur Discord/
   )
 })
 

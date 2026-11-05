@@ -10,6 +10,7 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import {
   Ban,
+  Gamepad2,
   Gavel,
   Menu,
   ScrollText,
@@ -73,6 +74,12 @@ const AUDIT_LOG = {
   Icon: ScrollText,
 }
 
+const GAME_LOG = {
+  href: "/game-log",
+  name: "Journal du jeu",
+  Icon: Gamepad2,
+}
+
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
 const SUPPORT_TICKETS = {
@@ -116,12 +123,14 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  viewsGameLog,
   ownRecord,
   blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  viewsGameLog: Promise<boolean>
   ownRecord: Promise<MemberRecord | null>
   blockedWordCount: ReactNode
 }) {
@@ -130,6 +139,7 @@ export function StaffHeader({
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
   ]
   const logs = [withCurrent(AUDIT_LOG, currentPath)]
+  const gameLog = withCurrent(GAME_LOG, currentPath)
   const moderation = withCurrent(MODERATION, currentPath)
   const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)
   return (
@@ -148,6 +158,8 @@ export function StaffHeader({
           place="sidebar"
           administration={administration}
           logs={logs}
+          gameLog={gameLog}
+          viewsGameLog={viewsGameLog}
           moderation={moderation}
           supportTickets={supportTickets}
           opensModeration={opensModeration}
@@ -203,6 +215,8 @@ export function StaffHeader({
                   place="menu"
                   administration={administration}
                   logs={logs}
+                  gameLog={gameLog}
+                  viewsGameLog={viewsGameLog}
                   moderation={moderation}
                   supportTickets={supportTickets}
                   opensModeration={opensModeration}
@@ -409,6 +423,8 @@ function SectionNav({
   place,
   administration,
   logs,
+  gameLog,
+  viewsGameLog,
   moderation,
   supportTickets,
   opensModeration,
@@ -418,6 +434,8 @@ function SectionNav({
   place: "sidebar" | "menu"
   administration: Section[]
   logs: Section[]
+  gameLog: Section
+  viewsGameLog: Promise<boolean>
   moderation: Section
   supportTickets: Section
   opensModeration: Promise<boolean>
@@ -439,6 +457,11 @@ function SectionNav({
         {logs.map((section) => (
           <SectionLink key={section.href} section={section} />
         ))}
+        <Suspense fallback={null}>
+          <SectionLinkWhen shown={viewsGameLog}>
+            <SectionLink section={gameLog} />
+          </SectionLinkWhen>
+        </Suspense>
       </SectionGroup>
       <Suspense fallback={null}>
         <ModerationAndSupportGroups
@@ -451,6 +474,16 @@ function SectionNav({
       </Suspense>
     </nav>
   )
+}
+
+function SectionLinkWhen({
+  shown,
+  children,
+}: {
+  shown: Promise<boolean>
+  children: ReactNode
+}) {
+  return use(shown) ? children : null
 }
 
 function SectionGroup({

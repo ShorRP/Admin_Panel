@@ -401,7 +401,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     { user: APIUser; codeChallenge: string }
   >()
   private readonly tokens = new Map<string, APIUser>()
-  private readonly failures = new Map<FailingMethod, DiscordError>()
+  private readonly failures = new Map<
+    FailingMethod,
+    { error: DiscordError; remaining: number }
+  >()
 
   constructor(state: FakeDiscordState = {}) {
     this.ownerId = state.ownerId ?? DEFAULT_OWNER_ID
@@ -464,8 +467,8 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       : { ...message, content: "", embeds: [] }
   }
 
-  failNext(method: FailingMethod, error: DiscordError) {
-    this.failures.set(method, error)
+  failNext(method: FailingMethod, error: DiscordError, times = 1) {
+    this.failures.set(method, { error, remaining: times })
   }
 
   removeMemberRole(userId: Snowflake, roleId: Snowflake) {
@@ -1060,8 +1063,12 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     return new Promise<T>((resolve) => {
       const failure = this.failures.get(method)
       if (failure !== undefined) {
-        this.failures.delete(method)
-        throw failure
+        if (failure.remaining > 1) {
+          failure.remaining -= 1
+        } else {
+          this.failures.delete(method)
+        }
+        throw failure.error
       }
       resolve(structuredClone(run()))
     })
