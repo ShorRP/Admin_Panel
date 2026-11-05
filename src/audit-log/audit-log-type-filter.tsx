@@ -1,5 +1,4 @@
 import { FilterPills } from "@/ui/filter-pills"
-import { TextLink } from "@/ui/text-link"
 import { hasFilter, NO_FILTER, type AuditLogFilters } from "./audit-log-filters"
 import { auditLogHref } from "./audit-log-href"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
@@ -27,13 +26,5 @@ export function AuditLogTypeFilter({ filters }: { filters: AuditLogFilters }) {
       }))}
       resetHref={hasFilter(filters) ? auditLogHref(NO_FILTER) : null}
     />
-  )
-}
-
-export function ResetLink() {
-  return (
-    <TextLink href={auditLogHref(NO_FILTER)} className="text-[0.8125rem]">
-      Réinitialiser
-    </TextLink>
   )
 }

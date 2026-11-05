@@ -126,10 +126,10 @@ export function StaffHeader({
   blockedWordCount: ReactNode
 }) {
   const linkTo = { currentPath, ownRecord }
-  const sections = [
+  const administration = [
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
-    withCurrent(AUDIT_LOG, currentPath),
   ]
+  const logs = [withCurrent(AUDIT_LOG, currentPath)]
   const moderation = withCurrent(MODERATION, currentPath)
   const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)
   return (
@@ -146,7 +146,8 @@ export function StaffHeader({
         <RailOrnament />
         <SectionNav
           place="sidebar"
-          sections={sections}
+          administration={administration}
+          logs={logs}
           moderation={moderation}
           supportTickets={supportTickets}
           opensModeration={opensModeration}
@@ -200,7 +201,8 @@ export function StaffHeader({
               <SheetBody className="flex flex-col gap-4 px-0">
                 <SectionNav
                   place="menu"
-                  sections={sections}
+                  administration={administration}
+                  logs={logs}
                   moderation={moderation}
                   supportTickets={supportTickets}
                   opensModeration={opensModeration}
@@ -405,7 +407,8 @@ function RailOrnament() {
 
 function SectionNav({
   place,
-  sections,
+  administration,
+  logs,
   moderation,
   supportTickets,
   opensModeration,
@@ -413,7 +416,8 @@ function SectionNav({
   className,
 }: {
   place: "sidebar" | "menu"
-  sections: Section[]
+  administration: Section[]
+  logs: Section[]
   moderation: Section
   supportTickets: Section
   opensModeration: Promise<boolean>
@@ -427,7 +431,12 @@ function SectionNav({
         title="Administration"
         place={place}
       >
-        {sections.map((section) => (
+        {administration.map((section) => (
+          <SectionLink key={section.href} section={section} />
+        ))}
+      </SectionGroup>
+      <SectionGroup id={`${place}-logs`} title="Journaux" place={place} ruled>
+        {logs.map((section) => (
           <SectionLink key={section.href} section={section} />
         ))}
       </SectionGroup>

@@ -92,6 +92,14 @@ const FILTER_SHEETS = [
 
 const MIN_TARGET_PX = 44
 
+const RAIL_RULE = {
+  hidden: "true",
+  width: 24,
+  height: 1,
+  belowThePreviousGroup: true,
+  aboveTheNextLink: true,
+}
+
 const TARGET_SELECTOR =
   "a[href], button, input:not([type=hidden]):not([type=radio]):not([type=checkbox]), select, textarea, summary, [role=tab], label:has(> input[type=radio]), label:has(> input[type=checkbox])"
 
@@ -370,6 +378,7 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   const bar = page.getByRole("banner", { includeHidden: true })
   const menu = page.getByRole("dialog", { name: "Menu" })
   const administration = aside.getByText("Administration", { exact: true })
+  const logs = aside.getByText("Journaux", { exact: true })
   const ACCESSIBLE_NAMES = [
     "Mots interdits 2 mots",
     "Journal d’audit",
@@ -385,6 +394,37 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
       }
     })
   }
+  function groupRules() {
+    return aside
+      .getByRole("navigation", { name: "Sections du panel" })
+      .evaluate((nav) =>
+        Object.fromEntries(
+          Array.from(nav.children).flatMap((group, index, groups) => {
+            const title = group.querySelector("p")?.textContent
+            const rule = group.firstElementChild
+            const before = groups[index - 1]?.querySelector("li:last-child a")
+            const after = group.querySelector("li a")
+            if (index === 0 || !title || !rule || !before || !after) {
+              return []
+            }
+            const { width, height, top, bottom } = rule.getBoundingClientRect()
+            return [
+              [
+                title,
+                {
+                  hidden: rule.getAttribute("aria-hidden"),
+                  width,
+                  height,
+                  belowThePreviousGroup:
+                    top >= before.getBoundingClientRect().bottom,
+                  aboveTheNextLink: bottom <= after.getBoundingClientRect().top,
+                },
+              ],
+            ]
+          })
+        )
+      )
+  }
   async function expectNamed(root: Locator) {
     const sections = root.getByRole("navigation", { name: "Sections du panel" })
     for (const name of ACCESSIBLE_NAMES) {
@@ -392,6 +432,11 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
         sections.getByRole("link", { name, exact: true })
       ).toBeVisible()
     }
+    await expect(
+      sections
+        .getByRole("list", { name: "Journaux" })
+        .getByRole("link", { name: "Journal d’audit", exact: true })
+    ).toBeVisible()
     await expect(
       root.getByRole("link", { name: "aldis", exact: true })
     ).toBeVisible()
@@ -436,6 +481,15 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   await expect(aside.getByTitle("aldis · Staff · Modération")).toBeVisible()
   expect(await smallTargets(page, "aside")).toEqual([])
   expect((await boxOf(administration)).width).toBe(1)
+  expect((await boxOf(logs)).width).toBe(1)
+  expect(
+    await groupRules(),
+    "a 24 px rule, hidden from assistive technologies, between each group and the one before it"
+  ).toEqual({
+    Journaux: RAIL_RULE,
+    Modération: RAIL_RULE,
+    Support: RAIL_RULE,
+  })
   const count = await aside
     .getByRole("link", { name: ACCESSIBLE_NAMES[0], exact: true })
     .getByText("2", { exact: true })
@@ -491,6 +545,20 @@ test("the navigation is a bar below md, a 64 px rail from md and a 252 px sideba
   expect((await aside.boundingBox())?.width).toBe(252)
   await expectNamed(aside)
   expect((await boxOf(administration)).width).toBeGreaterThan(20)
+  expect((await boxOf(logs)).width).toBeGreaterThan(20)
+  expect(
+    Object.fromEntries(
+      Object.entries(await groupRules()).map(([title, { width, height }]) => [
+        title,
+        { width, height },
+      ])
+    ),
+    "the rules of the rail are gone from the sidebar"
+  ).toEqual({
+    Journaux: { width: 0, height: 0 },
+    Modération: { width: 0, height: 0 },
+    Support: { width: 0, height: 0 },
+  })
 })
 
 test("the bar, the rail, the sidebar and the page keep clear of the notch and the home indicator of the screen", async ({

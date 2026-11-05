@@ -31,7 +31,17 @@ test("a staff member moves between sections through the sidebar, which marks the
   await expect(auditLog).not.toHaveAttribute("aria-current")
   await expect(page.getByRole("banner", { includeHidden: true })).toBeHidden()
   await expect(
-    sections.getByRole("list", { name: "Administration" })
+    sections
+      .getByRole("list", { name: "Administration" })
+      .getByRole("link", { name: "Mots interdits" })
+  ).toBeVisible()
+  await expect(
+    sections.getByRole("list", { name: "Administration" }).getByRole("link")
+  ).toHaveCount(1)
+  await expect(
+    sections
+      .getByRole("list", { name: "Journaux" })
+      .getByRole("link", { name: "Journal d’audit" })
   ).toBeVisible()
 
   await auditLog.click()
@@ -224,7 +234,14 @@ test.describe("on a 360 px screen", () => {
     await expect(auditLog).not.toHaveAttribute("aria-current")
     await expect(menu).toContainText("aldis")
     await expect(
-      sections.getByRole("list", { name: "Administration" })
+      sections
+        .getByRole("list", { name: "Administration" })
+        .getByRole("link", { name: "Mots interdits" })
+    ).toBeVisible()
+    await expect(
+      sections
+        .getByRole("list", { name: "Journaux" })
+        .getByRole("link", { name: "Journal d’audit" })
     ).toBeVisible()
     await checkAccessibility()
 

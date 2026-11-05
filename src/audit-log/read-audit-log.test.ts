@@ -14,8 +14,8 @@ import { FakeDiscord, type FakeDiscordState } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { changeTimeout } from "@/sanctions/change-timeout"
 import { findStaffMember, type StaffMember } from "@/staff/staff-member"
+import { parisDayOf } from "@/ui/paris-day"
 import { auditLogReason } from "./audit-log-reason"
-import { parisDayOf } from "./paris-day"
 import {
   readAuditLog,
   type AuditLogChange,

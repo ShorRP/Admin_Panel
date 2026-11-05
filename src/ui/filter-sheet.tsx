@@ -5,6 +5,7 @@ import { cn } from "cn"
 import { ListFilter, SlidersHorizontal } from "lucide-react"
 
 import { Button, buttonVariants } from "@/ui/button"
+import { HiddenFields, type HiddenField } from "@/ui/hidden-fields"
 import {
   Sheet,
   SheetBody,
@@ -18,7 +19,7 @@ import {
 
 export type FilterSheetFormProps = {
   action: string
-  hiddenFields: { name: string; value: string }[]
+  hiddenFields: HiddenField[]
   resetHref: string
   submitLabel: string
   children: ReactNode
@@ -120,9 +121,7 @@ export function FilterSheetForm({
       prefetch={false}
       className="flex min-h-0 flex-1 flex-col gap-4"
     >
-      {hiddenFields.map(({ name, value }) => (
-        <input key={name} type="hidden" name={name} value={value} />
-      ))}
+      <HiddenFields fields={hiddenFields} />
       <SheetBody className="flex flex-col gap-4">{children}</SheetBody>
       <SheetFooter className="grid grid-cols-2 gap-2">
         <SheetClose

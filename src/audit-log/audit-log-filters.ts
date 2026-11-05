@@ -2,6 +2,7 @@ import type { Snowflake } from "discord-api-types/v10"
 import { z } from "zod"
 
 import { accountIdOf } from "@/records/account-id"
+import type { HiddenField } from "@/ui/hidden-fields"
 import { CHANGE_TYPES, type ChangeType } from "./change-type"
 
 export type AuditLogFilters = {
@@ -32,6 +33,10 @@ export function auditLogFiltersOf(searchParams: {
     author: SEARCHED_TEXT.parse(searchParams.author),
     account: SEARCHED_TEXT.parse(searchParams.account),
   }
+}
+
+export function hiddenFieldsOf({ type }: AuditLogFilters): HiddenField[] {
+  return type === null ? [] : [{ name: "type", value: type }]
 }
 
 export function hasFilter({ type, author, account }: AuditLogFilters) {
