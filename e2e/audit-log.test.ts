@@ -1,4 +1,5 @@
 import {
+  AuditLogEvent,
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
@@ -7,6 +8,7 @@ import {
 import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
+import { firstSnowflakeAt } from "@/discord/snowflake-date"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { dialogTransitions } from "./dialog-opening"
 import { expect, test, type Locator, type Page } from "./fixtures"
@@ -289,14 +291,31 @@ function inAnHour() {
   return new Date(Date.now() + 3_600_000).toISOString()
 }
 
-const FILTERED_ADDRESS = /\/audit-log\?type=timeouts&author=aldis&account=lyra$/
+function parisDayIn(days: number) {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris" }).format(
+    new Date(Date.now() + days * 86_400_000)
+  )
+}
+
+function written(day: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(day))
+}
+
+const DAY_BEFORE = parisDayIn(-1)
+
+const DAY_AFTER = parisDayIn(1)
+
+const FILTERED_ADDRESS = `/audit-log?type=timeouts&author=aldis&account=lyra&text=insultes&from=${DAY_BEFORE}&to=${DAY_AFTER}`
 
 const TOUCH_TARGET_PX = 44
 
 test.describe("on a 360 px screen", () => {
   test.use({ viewport: { width: 360, height: 760 }, hasTouch: true })
 
-  test("the author and the account fold behind a button that opens a sheet docked to the bottom, which sends the address of the inline form, each filter set is a chip that removes it, and a staff member logs out with the button, the chips and the pills in view, and no page is prefetched", async ({
+  test("the author, the account, the text and the period fold behind a button that opens a sheet docked to the bottom, which sends the address of the inline form, each filter set is a chip that removes it, and a staff member logs out with the button, the chips and the pills in view, and no page is prefetched", async ({
     page,
     logIn,
     discord,
@@ -312,11 +331,14 @@ test.describe("on a 360 px screen", () => {
     const typeFilter = page.getByRole("navigation", {
       name: "Filtrer par type",
     })
-    const fold = page.getByRole("button", { name: /^Auteur et compte/ })
-    const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+    const fold = page.getByRole("button", { name: /^Filtres/ })
+    const sheet = page.getByRole("dialog", { name: "Filtres" })
     const chips = page.getByRole("list", { name: "Filtres actifs" })
     const author = sheet.getByLabel("Auteur")
     const account = sheet.getByLabel("Compte", { exact: true })
+    const text = sheet.getByLabel("Texte")
+    const from = sheet.getByLabel("Du", { exact: true })
+    const to = sheet.getByLabel("Au", { exact: true })
     const changes = page.locator("ol").getByRole("listitem")
     const menu = page.getByRole("dialog", { name: "Menu" })
 
@@ -324,7 +346,7 @@ test.describe("on a 360 px screen", () => {
     await page.goto("/audit-log")
     await expect(page.getByLabel("Auteur")).toBeHidden()
     await expect(page.getByRole("button", { name: "Filtrer" })).toHaveCount(0)
-    await expect(fold).toHaveAccessibleName("Auteur et compte")
+    await expect(fold).toHaveAccessibleName("Filtres")
     await expect(chips).toHaveCount(0)
     const [button, main] = await Promise.all([
       fold.boundingBox(),
@@ -362,8 +384,18 @@ test.describe("on a 360 px screen", () => {
     await expect(account).toHaveValue("")
     await checkAccessibility()
 
+    await expect(text).toHaveValue("")
+    await expect(from).toHaveAttribute("type", "date")
+    await expect(from).toHaveValue("")
+    await expect(to).toHaveValue("")
+    for (const field of [author, account, text, from, to]) {
+      expect((await field.boundingBox())?.height).toBe(TOUCH_TARGET_PX)
+    }
     await author.fill("aldis")
     await account.fill("lyra")
+    await text.fill("insultes")
+    await from.fill(DAY_BEFORE)
+    await to.fill(DAY_AFTER)
     await sheet.getByRole("button", { name: "Filtrer" }).click()
     await expect(sheet).toBeHidden()
     await expect(page).toHaveURL(FILTERED_ADDRESS)
@@ -371,15 +403,19 @@ test.describe("on a 360 px screen", () => {
       "type",
       "author",
       "account",
+      "text",
+      "from",
+      "to",
     ])
     await expect(changes).toHaveCount(1)
-    await expect(fold).toHaveAccessibleName(
-      /^Auteur et compte\s?2 filtres actifs$/
-    )
+    await expect(fold).toHaveAccessibleName(/^Filtres\s?5 filtres actifs$/)
     const removers = chips.getByRole("link")
     await expect(removers).toHaveText([
       "Retirer le filtre Auteur : aldis",
       "Retirer le filtre Compte : lyra",
+      "Retirer le filtre Texte : insultes",
+      `Retirer le filtre Du : ${written(DAY_BEFORE)}`,
+      `Retirer le filtre Au : ${written(DAY_AFTER)}`,
     ])
     await expect(removers.first()).toHaveAccessibleName(
       "Retirer le filtre Auteur : aldis"
@@ -389,15 +425,29 @@ test.describe("on a 360 px screen", () => {
     }
     await checkAccessibility()
 
+    await removers.nth(2).click()
+    await expect(page).toHaveURL(
+      `/audit-log?type=timeouts&author=aldis&account=lyra&from=${DAY_BEFORE}&to=${DAY_AFTER}`
+    )
+    await expect(removers).toHaveCount(4)
+    await expect(fold).toHaveAccessibleName(/^Filtres\s?4 filtres actifs$/)
+    await removers.last().click()
+    await expect(removers).toHaveCount(3)
+    await removers.last().click()
+    await expect(page).toHaveURL(
+      "/audit-log?type=timeouts&author=aldis&account=lyra"
+    )
+    await expect(removers).toHaveCount(2)
     await removers.first().click()
     await expect(page).toHaveURL(/\/audit-log\?type=timeouts&account=lyra$/)
     await expect(removers).toHaveText(["Retirer le filtre Compte : lyra"])
-    await expect(fold).toHaveAccessibleName(
-      /^Auteur et compte\s?1 filtre actif$/
-    )
+    await expect(fold).toHaveAccessibleName(/^Filtres\s?1 filtre actif$/)
     await fold.click()
     await expect(author).toHaveValue("")
     await expect(account).toHaveValue("lyra")
+    await expect(text).toHaveValue("")
+    await expect(from).toHaveValue("")
+    await expect(to).toHaveValue("")
     await sheet.getByRole("link", { name: "Réinitialiser" }).click()
     await expect(sheet).toBeHidden()
     await expect(page).toHaveURL("/audit-log")
@@ -407,9 +457,9 @@ test.describe("on a 360 px screen", () => {
     ).toHaveAttribute("aria-current", "true")
     await checkAccessibility()
 
-    await page.goto(`/audit-log?type=timeouts&author=aldis&account=lyra`)
+    await page.goto(FILTERED_ADDRESS)
     await page.waitForLoadState()
-    await expect(removers).toHaveCount(2)
+    await expect(removers).toHaveCount(5)
     const inView = [
       ...(await typeFilter.getByRole("link").all()),
       page.getByRole("link", { name: "Réinitialiser" }),
@@ -440,8 +490,8 @@ test.describe("on a 360 px screen", () => {
     page,
     logIn,
   }) => {
-    const fold = page.getByRole("button", { name: /^Auteur et compte/ })
-    const sheet = page.getByRole("dialog", { name: "Auteur et compte" })
+    const fold = page.getByRole("button", { name: /^Filtres/ })
+    const sheet = page.getByRole("dialog", { name: "Filtres" })
 
     await logIn(ALDIS)
     await page.goto("/audit-log")
@@ -513,7 +563,7 @@ test.describe("on a 360 px screen", () => {
 test.describe("on a 768 px screen", () => {
   test.use({ viewport: { width: 768, height: 1024 } })
 
-  test("the author and the account stay in the page's form, with no button and no chip, and send the address of the sheet", async ({
+  test("the author, the account, the text and the period stay in the page's form, with no button and no chip, and send the address of the sheet", async ({
     page,
     logIn,
     discord,
@@ -531,19 +581,70 @@ test.describe("on a 768 px screen", () => {
 
     await logIn(ALDIS)
     await page.goto("/audit-log?type=timeouts")
-    await expect(
-      page.getByRole("button", { name: /^Auteur et compte/ })
-    ).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /^Filtres/ })).toHaveCount(0)
     for (const pill of await typeFilter.getByRole("link").all()) {
       expect((await pill.boundingBox())?.height).toBe(TOUCH_TARGET_PX)
     }
     await page.getByLabel("Auteur").fill("aldis")
     await page.getByLabel("Compte", { exact: true }).fill("lyra")
+    await page.getByLabel("Texte").fill("insultes")
+    await page.getByLabel("Du", { exact: true }).fill(DAY_BEFORE)
+    await page.getByLabel("Au", { exact: true }).fill(DAY_AFTER)
     await page.getByRole("button", { name: "Filtrer" }).click()
     await expect(page).toHaveURL(FILTERED_ADDRESS)
     await expect(
       page.getByRole("list", { name: "Filtres actifs" })
     ).toHaveCount(0)
+    await expect(page.getByLabel("Texte")).toHaveValue("insultes")
+    await checkAccessibility()
+  })
+})
+
+test.describe("on a 1,024 px screen", () => {
+  test.use({ viewport: { width: 1024, height: 768 } })
+
+  test("the fields of the page's form sit in view, in lines of the page's column, and the form sends the same address", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    discord.modifyMemberAs(
+      ALDIS.id,
+      LYRA.id,
+      { communication_disabled_until: inAnHour() },
+      "Insultes répétées"
+    )
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log?type=timeouts")
+    await expect(page.getByRole("button", { name: /^Filtres/ })).toHaveCount(0)
+    const fields = [
+      page.getByLabel("Auteur"),
+      page.getByLabel("Compte", { exact: true }),
+      page.getByLabel("Texte"),
+      page.getByLabel("Du", { exact: true }),
+      page.getByLabel("Au", { exact: true }),
+    ]
+    const main = await page.getByRole("main").boundingBox()
+    for (const field of fields) {
+      await expect(field).toBeInViewport()
+      const box = await field.boundingBox()
+      expect(box?.x).toBeGreaterThanOrEqual(main?.x ?? 0)
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+        (main?.x ?? 0) + (main?.width ?? 0)
+      )
+    }
+    await fields[0]?.fill("aldis")
+    await fields[1]?.fill("lyra")
+    await fields[2]?.fill("insultes")
+    await fields[3]?.fill(DAY_BEFORE)
+    await fields[4]?.fill(DAY_AFTER)
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect(page).toHaveURL(FILTERED_ADDRESS)
+    await expect(
+      page.getByRole("listitem").filter({ hasText: "Insultes" })
+    ).toBeVisible()
     await checkAccessibility()
   })
 })
@@ -803,6 +904,9 @@ test.describe("for a staff member who moderates", () => {
       reset,
       page.getByLabel("Auteur"),
       page.getByLabel("Compte", { exact: true }),
+      page.getByLabel("Texte"),
+      page.getByLabel("Du", { exact: true }),
+      page.getByLabel("Au", { exact: true }),
       page.getByRole("button", { name: "Filtrer" }),
       account,
       author,
@@ -908,7 +1012,9 @@ test.describe("with changes of several types", () => {
 const TORVALD = { id: "1400000000000000004", username: "torvald" }
 
 function searchParamsOf(page: Page) {
-  return Object.fromEntries(new URL(page.url()).searchParams)
+  return Object.fromEntries(
+    [...new URL(page.url()).searchParams].filter(([, value]) => value !== "")
+  )
 }
 
 test.describe("filtered by an author and an account", () => {
@@ -1065,6 +1171,135 @@ test.describe("filtered by an author and an account", () => {
       typeFilter.getByRole("link", { name: "Tout", exact: true })
     ).toHaveAttribute("aria-current", "true")
     await expect(changes).toHaveCount(50)
+    await checkAccessibility()
+  })
+})
+
+function kickedDaysAgo(days: number, reason: string) {
+  const moment = new Date(Date.now() - days * 86_400_000)
+  return {
+    id: firstSnowflakeAt(moment) ?? "0",
+    action_type: AuditLogEvent.MemberKick,
+    user_id: BRYN.id,
+    target_id: LYRA.id,
+    reason,
+  }
+}
+
+test.describe("filtered by a period and a text", () => {
+  test.use({
+    discordState: {
+      members: [
+        { user: ALDIS, roles: [STAFF_ROLE_ID] },
+        { user: BRYN },
+        { user: LYRA },
+      ],
+      auditLogEntries: [
+        kickedDaysAgo(0.01, "Spam d’aujourd’hui"),
+        kickedDaysAgo(10, "Spam ancien"),
+        kickedDaysAgo(30, "Provocations"),
+      ],
+    },
+  })
+
+  test("a staff member keeps the changes whose reason holds a text, whatever its case, then those of a period of days, reads that only 45 days are read when the period starts earlier, that a period outside them or reversed matches nothing, and that an invalid bound counts as absent", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const changes = page.locator("ol").getByRole("listitem")
+    const text = page.getByLabel("Texte")
+    const from = page.getByLabel("Du", { exact: true })
+    const to = page.getByLabel("Au", { exact: true })
+    const note = page.getByText("Seuls les 45 derniers jours sont lus", {
+      exact: false,
+    })
+    const reset = page.getByRole("link", { name: "Réinitialiser" })
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(changes).toHaveCount(3)
+    await checkAccessibility()
+
+    await text.fill("SPAM")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect.poll(() => searchParamsOf(page)).toEqual({ text: "SPAM" })
+    await expect(changes).toHaveCount(2)
+    await expect(
+      changes.filter({ hasText: "Motif : Spam ancien" })
+    ).toBeVisible()
+    await expect(text).toHaveValue("SPAM")
+    await checkAccessibility()
+
+    await from.fill(parisDayIn(-12))
+    await to.fill(parisDayIn(-8))
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => searchParamsOf(page))
+      .toEqual({
+        text: "SPAM",
+        from: parisDayIn(-12),
+        to: parisDayIn(-8),
+      })
+    await expect(changes).toHaveCount(1)
+    await expect(changes).toContainText("Motif : Spam ancien")
+    await expect(from).toHaveValue(parisDayIn(-12))
+    await expect(to).toHaveValue(parisDayIn(-8))
+    await expect(note).toHaveCount(0)
+    await checkAccessibility()
+
+    await page.goto("/audit-log?from=2020-01-01")
+    await expect(changes).toHaveCount(3)
+    await expect(note).toBeVisible()
+    await checkAccessibility()
+
+    await page.goto("/audit-log?from=2020-01-01&text=introuvable")
+    await expect(changes).toHaveCount(0)
+    await expect(note).toBeVisible()
+    await expect(
+      page.getByText(
+        "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
+      )
+    ).toBeVisible()
+    await checkAccessibility()
+
+    await page.goto("/audit-log?to=2020-12-31")
+    await expect(changes).toHaveCount(0)
+    await expect(
+      page.getByText(
+        "Cette période n’est pas dans les 45 derniers jours, les seuls que le journal d’audit de Discord garde."
+      )
+    ).toBeVisible()
+    await expect(note).toHaveCount(0)
+    await expect(reset.first()).toBeVisible()
+    await checkAccessibility()
+
+    await page.goto(`/audit-log?from=${parisDayIn(1)}`)
+    await expect(changes).toHaveCount(0)
+    await expect(
+      page.getByText("Cette période n’est pas dans les 45 derniers jours", {
+        exact: false,
+      })
+    ).toBeVisible()
+
+    await page.goto(`/audit-log?from=${parisDayIn(-1)}&to=${parisDayIn(-5)}`)
+    await expect(changes).toHaveCount(0)
+    await expect(
+      page.getByText(
+        "Le premier jour de la période est après son dernier jour",
+        {
+          exact: false,
+        }
+      )
+    ).toBeVisible()
+    await checkAccessibility()
+
+    await page.goto("/audit-log?from=2026-02-30&to=hier&text=%20%20")
+    await expect(changes).toHaveCount(3)
+    await expect(from).toHaveValue("")
+    await expect(to).toHaveValue("")
+    await expect(text).toHaveValue("")
+    await expect(reset).toHaveCount(0)
     await checkAccessibility()
   })
 })

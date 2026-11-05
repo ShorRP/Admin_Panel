@@ -482,3 +482,57 @@ test("a page of 50 changes that all are changes of action shows each once, its c
     []
   )
 })
+
+class FakeDiscordSlowAfterCreate extends FakeDiscord {
+  override async createAutoModerationRule(
+    ...call: Parameters<FakeDiscord["createAutoModerationRule"]>
+  ) {
+    const rule = await super.createAutoModerationRule(...call)
+    vi.setSystemTime(new Date(Date.now() + 4000))
+    return rule
+  }
+}
+
+async function discordWhereAChangeStraddlesParisMidnight() {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  const discord = new FakeDiscordSlowAfterCreate({
+    members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
+  })
+  const moderator = await moderatorOn(discord)
+  vi.setSystemTime(new Date("2026-10-15T10:00:00.000Z"))
+  await addBlockedWord(discord, moderator, form("foo"))
+  vi.setSystemTime(new Date("2026-10-20T21:59:58.000Z"))
+  await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    changing("foo", "timeout-1d")
+  )
+  vi.setSystemTime(new Date("2026-10-28T14:00:00.000Z"))
+  return discord
+}
+
+test("a change whose two writes fall on either side of Paris midnight shows once, joined, under the day of its first write, whichever edge of a period the midnight is", async () => {
+  const discord = await discordWhereAChangeStraddlesParisMidnight()
+
+  const theDayOfTheFirstWrite = await readAuditLog(discord, {
+    from: "2026-10-20",
+    to: "2026-10-20",
+  })
+  const theDayOfTheSecond = await readAuditLog(discord, {
+    from: "2026-10-21",
+    to: "2026-10-21",
+  })
+  const upToTheFirstWrite = await readAuditLog(discord, {
+    from: "2026-10-16",
+    to: "2026-10-20",
+  })
+  const fromTheSecondWrite = await readAuditLog(discord, { from: "2026-10-21" })
+
+  expect(descriptions(theDayOfTheFirstWrite)).toEqual([fromBlockToDay("foo")])
+  expect(descriptions(theDayOfTheSecond)).toEqual([])
+  expect(descriptions(upToTheFirstWrite)).toEqual([fromBlockToDay("foo")])
+  expect(descriptions(fromTheSecondWrite)).toEqual([])
+})

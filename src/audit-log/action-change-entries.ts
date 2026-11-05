@@ -8,7 +8,7 @@ import {
 } from "@/blocked-words/blocked-word-reason"
 import type { AccountIdentity } from "./audit-log-filters"
 
-const JOINING_WINDOW_MS = 60_000
+export const JOINING_WINDOW_MS = 60_000
 
 export type ActionChangeEntry = {
   side: "entering" | "leaving"

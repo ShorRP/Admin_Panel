@@ -17,6 +17,7 @@ import type { SanctionChange } from "@/sanctions/sanction-events"
 import { AuditLog } from "./audit-log"
 import { AuditLogFilterFold } from "./audit-log-filter-fold"
 import { AuditLogFilterForm } from "./audit-log-filter-form"
+import { NO_FILTER } from "./audit-log-filters"
 import { AuditLogTypeFilter } from "./audit-log-type-filter"
 import type { AuditLogChange, AuditLogPage } from "./read-audit-log"
 
@@ -93,16 +94,21 @@ function renderWithFilters(
   opensModeration = false
 ) {
   const wholePage: AuditLogPage = {
-    type: null,
-    author: null,
-    account: null,
+    ...NO_FILTER,
     days: [],
     before: null,
     older: null,
+    periodReach: "within",
     ...page,
   }
-  const { type, author, account } = wholePage
-  const filters = { type, author, account }
+  const filters = {
+    type: wholePage.type,
+    author: wholePage.author,
+    account: wholePage.account,
+    from: wholePage.from,
+    to: wholePage.to,
+    text: wholePage.text,
+  }
   return {
     html: withoutGeneratedIds(
       renderToStaticMarkup(
@@ -585,6 +591,92 @@ test.each([
     expect(days(html)).toEqual([])
   }
 )
+
+test.each([
+  [{ text: "spam" }],
+  [{ from: "2026-10-05" }],
+  [{ to: "2026-10-31" }],
+  [{ type: "kicks", from: "2026-10-05", to: "2026-10-31", text: "spam" }],
+] as const)(
+  "an empty page filtered by a text or a period, %j, says that no change matches these filters in the last 45 days, and offers « Réinitialiser »",
+  (filters) => {
+    const html = render(filters)
+
+    expect(text(html)).toBe(
+      "Aucun changement ne correspond à ces filtres ces 45 derniers jours.Réinitialiser"
+    )
+    expect(links(html).map(({ href }) => href)).toEqual(["/audit-log"])
+  }
+)
+
+test("an empty page of a period outside the last 45 days says so, and offers « Réinitialiser »", () => {
+  const html = render({ to: "2026-01-31", periodReach: "outside-retention" })
+
+  expect(text(html)).toBe(
+    "Cette période n’est pas dans les 45 derniers jours, les seuls que le journal d’audit de Discord garde.Réinitialiser"
+  )
+  expect(links(html).map(({ href }) => href)).toEqual(["/audit-log"])
+})
+
+test("an empty page of a period that ends before it starts says so, and offers « Réinitialiser »", () => {
+  const html = render({
+    from: "2026-10-22",
+    to: "2026-10-21",
+    periodReach: "reversed",
+  })
+
+  expect(text(html)).toBe(
+    "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre.Réinitialiser"
+  )
+})
+
+const STARTS_BEFORE =
+  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
+
+test("a period that starts before the oldest day Discord keeps says that only the last 45 days are read, on a page of changes as on an empty one", () => {
+  const full = render({
+    from: "2026-01-01",
+    periodReach: "starts-before-retention",
+    days: [{ date: ADDITION.date, changes: [ADDITION] }],
+  })
+  const empty = render({
+    from: "2026-01-01",
+    periodReach: "starts-before-retention",
+  })
+
+  expect(text(full)).toContain(STARTS_BEFORE)
+  expect(days(full)).toHaveLength(1)
+  expect(text(empty)).toBe(
+    `${STARTS_BEFORE}Aucun changement ne correspond à ces filtres ces 45 derniers jours.Réinitialiser`
+  )
+})
+
+test("a period within the last 45 days says nothing of them", () => {
+  expect(
+    text(
+      render({
+        from: "2026-10-20",
+        days: [{ date: ADDITION.date, changes: [ADDITION] }],
+      })
+    )
+  ).not.toContain("45")
+})
+
+test("the pagination keeps the text and the period", () => {
+  const html = render({
+    text: "spam",
+    from: "2026-10-05",
+    to: "2026-10-31",
+    before: "1563530499194880001",
+    older: "1563530499194880000",
+    days: [{ date: ADDITION.date, changes: [ADDITION] }],
+  })
+
+  expect(links(html).map(({ href }) => href)).toEqual([
+    "/audit-log?text=spam&from=2026-10-05&to=2026-10-31",
+    "/audit-log?text=spam&from=2026-10-05&to=2026-10-31&before=1563530499194880000",
+  ])
+})
 
 test("an empty page filtered by a type alone keeps saying that no change is of that type", () => {
   expect(text(render({ type: "kicks" }))).toBe(

@@ -47,7 +47,10 @@ const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
 const STAFF_PAGES = [
   { path: "/blocked-words", fixme: false },
   { path: "/audit-log", fixme: false },
-  { path: "/audit-log?type=blocked-words&author=aldis", fixme: false },
+  {
+    path: "/audit-log?type=blocked-words&author=aldis&text=foo&from=2026-10-01",
+    fixme: false,
+  },
   { path: "/records", fixme: false },
   { path: "/records?standing=members&sort=joined-recent", fixme: false },
   { path: `/records/${BRYNJA.id}`, fixme: false },
@@ -69,8 +72,8 @@ const PUBLIC_PAGES = [
 const FILTER_SHEETS = [
   {
     owner: "the audit log's",
-    path: "/audit-log?type=blocked-words&author=aldis",
-    name: "Auteur et compte",
+    path: "/audit-log?type=blocked-words&author=aldis&text=foo&from=2026-10-01",
+    name: "Filtres",
     field: "Auteur",
     value: "aldis",
   },
