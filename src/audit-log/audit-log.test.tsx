@@ -626,12 +626,12 @@ test("an empty page of a period that ends before it starts says so, and offers �
   })
 
   expect(text(html)).toBe(
-    "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre.Réinitialiser"
+    "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre.Réinitialiser"
   )
 })
 
 const STARTS_BEFORE =
-  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
+  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
 
 test("a period that starts before the oldest day Discord keeps says that only the last 45 days are read, on a page of changes as on an empty one", () => {
   const full = render({

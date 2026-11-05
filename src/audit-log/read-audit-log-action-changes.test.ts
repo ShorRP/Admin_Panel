@@ -215,6 +215,58 @@ test("a change cut after its first write shows as the word's addition to its new
   ])
 })
 
+test("a text finds a word that changed action by the line that shows it, « passe de » for the two entries joined, and never by an addition or a removal that the unfiltered log does not show", async () => {
+  const discord = discordWithModerator()
+  const moderator = await moderatorOn(discord)
+  await addBlockedWord(discord, moderator, form("foo"))
+  await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    changing("foo", "timeout-1d")
+  )
+
+  const lines = async (text: string) =>
+    descriptions(await readAuditLog(discord, { text }))
+
+  expect(await lines("passe")).toEqual([fromBlockToDay("foo")])
+  expect(await lines("exclusion 1 jour")).toEqual([fromBlockToDay("foo")])
+  expect(await lines("foo")).toEqual([fromBlockToDay("foo"), added("foo")])
+  expect(await lines("ajout")).toEqual([added("foo")])
+  expect(await lines("retrait")).toEqual([])
+})
+
+test("a text finds the entry of a cut change that stands alone by the addition it shows, and not by the change it was written as", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(new Date("2026-10-28T14:00:00.000Z"))
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  const discord = discordWithModerator()
+  const moderator = await moderatorOn(discord)
+  await addBlockedWord(discord, moderator, form("foo"))
+  await addBlockedWord(discord, moderator, form("bar", "timeout-1d"))
+  discord.failModifyAfter(1)
+  await changeActionOfBlockedWord(
+    discord,
+    moderator,
+    changing("foo", "timeout-1d")
+  )
+
+  const lines = async (text: string) =>
+    descriptions(await readAuditLog(discord, { text }))
+
+  expect(await lines("foo")).toEqual([
+    added("foo", "Exclusion 1 jour"),
+    added("foo"),
+  ])
+  expect(await lines("ajout")).toEqual([
+    added("foo", "Exclusion 1 jour"),
+    added("bar", "Exclusion 1 jour"),
+    added("foo"),
+  ])
+  expect(await lines("passe")).toEqual([])
+})
+
 for (const { rule, older } of [
   { rule: "that the change creates", older: [] },
   {

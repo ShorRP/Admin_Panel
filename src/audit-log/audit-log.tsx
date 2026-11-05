@@ -44,7 +44,7 @@ const CHANGE_ICONS = {
 type ChangeIconKind = keyof typeof CHANGE_ICONS
 
 const STARTS_BEFORE_RETENTION =
-  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
+  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
 
 export function AuditLog({
   page,
@@ -97,7 +97,7 @@ export function AuditLog({
 }
 
 function noChangeMessage(
-  { type, ...searched }: AuditLogFilters,
+  filters: AuditLogFilters,
   before: AuditLogPage["before"],
   periodReach: AuditLogPage["periodReach"]
 ) {
@@ -105,15 +105,15 @@ function noChangeMessage(
     return "Aucun changement plus ancien."
   }
   if (periodReach === "reversed") {
-    return "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre."
+    return "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre."
   }
   if (periodReach === "outside-retention") {
     return "Cette période n’est pas dans les 45 derniers jours, les seuls que le journal d’audit de Discord garde."
   }
-  if (Object.values(searched).some((value) => value !== null)) {
+  if (hasFilter({ ...filters, type: null })) {
     return "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
   }
-  return type === null
+  return filters.type === null
     ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
     : "Aucun changement de ce type ces 45 derniers jours."
 }

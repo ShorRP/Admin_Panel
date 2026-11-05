@@ -21,6 +21,10 @@ import { resize, settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
+const RECENT_DAY = new Date(Date.now() - 10 * 86_400_000)
+  .toISOString()
+  .slice(0, 10)
+
 const BRYNJA = { id: "1400000000000000002", username: "brynja" }
 
 const CORVUS = { id: "1400000000000000004", username: "corvus" }
@@ -48,7 +52,7 @@ const STAFF_PAGES = [
   { path: "/blocked-words", fixme: false },
   { path: "/audit-log", fixme: false },
   {
-    path: "/audit-log?type=blocked-words&author=aldis&text=foo&from=2026-10-01",
+    path: `/audit-log?type=blocked-words&author=aldis&text=foo&from=${RECENT_DAY}`,
     fixme: false,
   },
   { path: "/records", fixme: false },
@@ -72,7 +76,7 @@ const PUBLIC_PAGES = [
 const FILTER_SHEETS = [
   {
     owner: "the audit log's",
-    path: "/audit-log?type=blocked-words&author=aldis&text=foo&from=2026-10-01",
+    path: `/audit-log?type=blocked-words&author=aldis&text=foo&from=${RECENT_DAY}`,
     name: "Filtres",
     field: "Auteur",
     value: "aldis",

@@ -80,7 +80,6 @@ type FoundChange = {
   author: AccountIdentity
   account: AccountIdentity | null
   change: WithoutAuthorLookup<AuditLogChange>
-  shownTexts: readonly string[]
   actionChange?: ActionChangeEntry
 }
 
@@ -156,9 +155,8 @@ export async function readAuditLog(
   for (const reader of readers) {
     found.push(...(await changesOfEvent(discord, reader, cursor, retains)))
   }
-  const inPeriod = periodMatcher(filters)
   const joined = joinActionChanges(found, withDescription).filter(
-    ({ change }) => inPeriod(change.date)
+    lineRetainerOf(filters)
   )
   const pageChanges = joined.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
@@ -189,14 +187,35 @@ function retainerOf({ author, account, text, from, to }: AuditLogFilters) {
   const accountMatches = identityMatcher(account)
   const textMatches = textMatcher(text)
   const inPeriod = periodMatcher({ from, to })
-  const halfInPeriod = periodMatcher({ from, to }, JOINING_WINDOW_MS)
+  const inPeriodWithJoinTolerance = periodMatcher(
+    { from, to },
+    JOINING_WINDOW_MS
+  )
   return (found: FoundChange) =>
     authorMatches(found.author) &&
     accountMatches(found.account) &&
-    textMatches(found.shownTexts) &&
-    (found.actionChange === undefined ? inPeriod : halfInPeriod)(
+    textMatches(found.actionChange?.mayShowAs ?? shownTextsOf(found.change)) &&
+    (found.actionChange === undefined ? inPeriod : inPeriodWithJoinTolerance)(
       found.change.date
     )
+}
+
+function lineRetainerOf({ text, from, to }: AuditLogFilters) {
+  const textMatches = textMatcher(text)
+  const inPeriod = periodMatcher({ from, to })
+  return ({ change }: FoundChange) =>
+    inPeriod(change.date) && textMatches(shownTextsOf(change))
+}
+
+function shownTextsOf(change: FoundChange["change"]): string[] {
+  switch (change.kind) {
+    case "rule":
+      return change.madeInDiscord ? [] : [change.description]
+    case "sanction-change":
+      return change.reason === null ? [] : [change.reason]
+    case "automatic-timeout":
+      return change.ruleName === null ? [] : [change.ruleName]
+  }
 }
 
 function eventsOf(type: ChangeType | null, account: string | null) {
@@ -337,21 +356,8 @@ function ruleChangeOf(
       madeInDiscord: attribution.kind === "discord",
       description: describedRuleChange(attribution, actionChange),
     },
-    shownTexts: ruleTextsOf(attribution, actionChange),
     ...(actionChange !== null && { actionChange }),
   }
-}
-
-function ruleTextsOf(
-  attribution: EntryAttribution,
-  actionChange: ActionChangeEntry | null
-) {
-  if (attribution.kind === "discord") {
-    return []
-  }
-  return actionChange === null
-    ? [attribution.reason]
-    : [actionChange.reason, actionChange.alone]
 }
 
 function withDescription(found: FoundChange, description: string) {
@@ -393,7 +399,6 @@ function sanctionChangeOf(
       account: namedAccountOf(account),
       reason: attribution.reason,
     },
-    shownTexts: attribution.reason === null ? [] : [attribution.reason],
   }
 }
 
@@ -405,7 +410,6 @@ function automaticTimeoutOf(
     return null
   }
   const account = targetedAccountOf(entry.target_id, users)
-  const ruleName = automaticTimeoutRuleNameOf(entry)
   return {
     author: AUTO_MODERATION_AUTHOR,
     account,
@@ -413,9 +417,8 @@ function automaticTimeoutOf(
       kind: "automatic-timeout",
       ...momentOf(entry, { memberName: AUTO_MODERATION_NAME }),
       account: namedAccountOf(account),
-      ruleName,
+      ruleName: automaticTimeoutRuleNameOf(entry),
     },
-    shownTexts: ruleName === null ? [] : [ruleName],
   }
 }
 
