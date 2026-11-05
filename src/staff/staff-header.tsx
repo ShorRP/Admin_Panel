@@ -8,7 +8,14 @@ import {
 import Link from "next/link"
 import { cva } from "class-variance-authority"
 import { cn } from "cn"
-import { Ban, Gavel, Menu, ScrollText, type LucideIcon } from "lucide-react"
+import {
+  Ban,
+  Gavel,
+  Menu,
+  ScrollText,
+  Ticket,
+  type LucideIcon,
+} from "lucide-react"
 
 import { AccountLink } from "@/ui/account-link"
 import { Button } from "@/ui/button"
@@ -68,6 +75,12 @@ const AUDIT_LOG = {
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
+const SUPPORT_TICKETS = {
+  href: "/support-tickets",
+  name: "Tickets de support",
+  Icon: Ticket,
+}
+
 const sectionLinkVariants = cva(
   "group/section relative flex items-center gap-2.5 rounded-sm px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground",
   {
@@ -118,6 +131,7 @@ export function StaffHeader({
     withCurrent(AUDIT_LOG, currentPath),
   ]
   const moderation = withCurrent(MODERATION, currentPath)
+  const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)
   return (
     <>
       <aside
@@ -134,6 +148,7 @@ export function StaffHeader({
           place="sidebar"
           sections={sections}
           moderation={moderation}
+          supportTickets={supportTickets}
           opensModeration={opensModeration}
           SectionLink={SidebarSectionLink}
           className="flex flex-1 flex-col gap-5.5 overflow-y-auto px-3 py-5 max-lg:gap-3 max-lg:overflow-visible max-lg:py-4 max-lg:pr-2 max-lg:pl-2.5"
@@ -187,6 +202,7 @@ export function StaffHeader({
                   place="menu"
                   sections={sections}
                   moderation={moderation}
+                  supportTickets={supportTickets}
                   opensModeration={opensModeration}
                   SectionLink={MenuSectionLink}
                   className="flex flex-col gap-5.5 px-3"
@@ -230,14 +246,36 @@ function withCurrent(
   }
 }
 
-function ShownWhen({
-  shown,
-  children,
+function ModerationAndSupportGroups({
+  place,
+  moderation,
+  supportTickets,
+  opensModeration,
+  SectionLink,
 }: {
-  shown: Promise<boolean>
-  children: ReactNode
+  place: "sidebar" | "menu"
+  moderation: Section
+  supportTickets: Section
+  opensModeration: Promise<boolean>
+  SectionLink: SectionLinkComponent
 }) {
-  return use(shown) ? children : null
+  return (
+    <>
+      {use(opensModeration) && (
+        <SectionGroup
+          id={`${place}-moderation`}
+          title="Modération"
+          place={place}
+          ruled
+        >
+          <SectionLink section={moderation} />
+        </SectionGroup>
+      )}
+      <SectionGroup id={`${place}-support`} title="Support" place={place} ruled>
+        <SectionLink section={supportTickets} />
+      </SectionGroup>
+    </>
+  )
 }
 
 function MemberLink({
@@ -369,6 +407,7 @@ function SectionNav({
   place,
   sections,
   moderation,
+  supportTickets,
   opensModeration,
   SectionLink,
   className,
@@ -376,6 +415,7 @@ function SectionNav({
   place: "sidebar" | "menu"
   sections: Section[]
   moderation: Section
+  supportTickets: Section
   opensModeration: Promise<boolean>
   SectionLink: SectionLinkComponent
   className: string
@@ -392,16 +432,13 @@ function SectionNav({
         ))}
       </SectionGroup>
       <Suspense fallback={null}>
-        <ShownWhen shown={opensModeration}>
-          <SectionGroup
-            id={`${place}-moderation`}
-            title="Modération"
-            place={place}
-            ruled
-          >
-            <SectionLink section={moderation} />
-          </SectionGroup>
-        </ShownWhen>
+        <ModerationAndSupportGroups
+          place={place}
+          moderation={moderation}
+          supportTickets={supportTickets}
+          opensModeration={opensModeration}
+          SectionLink={SectionLink}
+        />
       </Suspense>
     </nav>
   )

@@ -9,6 +9,7 @@ import {
   Moon,
   ScrollText,
   Sun,
+  Ticket,
 } from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { prerender } from "react-dom/static"
@@ -127,6 +128,7 @@ test("the sidebar links to the panel, then to each section, then to the privacy 
     { text: "Shor Panel du staff", href: "/" },
     { text: "Mots interdits", href: "/blocked-words" },
     { text: "Journal d’audit", href: "/audit-log" },
+    { text: "Tickets de support", href: "/support-tickets" },
     { text: "Confidentialité", href: "/privacy" },
   ])
 })
@@ -176,7 +178,7 @@ test("the sidebar's ornament, between the link to the panel and the sections, is
   }).toEqual({ found: true, hidden: true, text: "" })
 })
 
-test("a staff member who cannot open the moderation section sees the sections under « Administration », and no « Modération » at all", async () => {
+test("a staff member who cannot open the moderation section sees the sections under « Administration » and « Support », and no « Modération » at all", async () => {
   const { sidebar } = await render("/blocked-words")
 
   expect(groups(sidebar)).toEqual([
@@ -185,11 +187,16 @@ test("a staff member who cannot open the moderation section sees the sections un
       titlesItsList: true,
       sections: ["Mots interdits", "Journal d’audit"],
     },
+    {
+      title: "Support",
+      titlesItsList: true,
+      sections: ["Tickets de support"],
+    },
   ])
   expect(textOf(sidebar)).not.toContain("Modération")
 })
 
-test("a staff member who opens the moderation section also sees « Modération », last, under a title of its own", async () => {
+test("a staff member who opens the moderation section also sees « Modération », between « Administration » and « Support », under a title of its own", async () => {
   const { sidebar } = await render("/blocked-words", { opensModeration: true })
 
   expect(groups(sidebar)).toEqual([
@@ -199,6 +206,11 @@ test("a staff member who opens the moderation section also sees « Modération �
       sections: ["Mots interdits", "Journal d’audit"],
     },
     { title: "Modération", titlesItsList: true, sections: ["Modération"] },
+    {
+      title: "Support",
+      titlesItsList: true,
+      sections: ["Tickets de support"],
+    },
   ])
 })
 
@@ -219,6 +231,10 @@ test("each section's link shows its icon before its name, hidden from assistive 
     {
       text: "Modération",
       image: { drawing: drawing(<Gavel />), hidden: true },
+    },
+    {
+      text: "Tickets de support",
+      image: { drawing: drawing(<Ticket />), hidden: true },
     },
   ])
 })
@@ -249,6 +265,7 @@ test("the blocked words' link shows the count it is given after the section's na
       { countAfterName: true, count: true },
       { countAfterName: false, count: false },
       { countAfterName: false, count: false },
+      { countAfterName: false, count: false },
     ])
   }
 })
@@ -260,6 +277,18 @@ test('the current section\'s link alone carries aria-current="page"', async () =
   expect(await currentLinks("/audit-log")).toEqual([
     { text: "Journal d’audit", href: "/audit-log", current: "page" },
   ])
+})
+
+test("the support tickets' section is current on its page and on every page of its archives, and on no other", async () => {
+  const support = {
+    text: "Tickets de support",
+    href: "/support-tickets",
+    current: "page",
+  }
+
+  expect(await currentLinks("/support-tickets")).toEqual([support])
+  expect(await currentLinks("/support-tickets/archives")).toEqual([support])
+  expect(await currentLinks("/support-ticketsx")).toEqual([])
 })
 
 test("a path outside every section marks no link current", async () => {
@@ -353,10 +382,11 @@ test("each of the sidebar's section links repeats its name in a title, for the r
     { text: "Mots interdits", title: "Mots interdits" },
     { text: "Journal d’audit", title: "Journal d’audit" },
     { text: "Modération", title: "Modération" },
+    { text: "Tickets de support", title: "Tickets de support" },
   ])
 })
 
-test("a rule, hidden from assistive technologies, separates the sidebar's two groups for the rail, and there is none for a staff member with one group", async () => {
+test("a rule, hidden from assistive technologies, separates each of the sidebar's groups from the one before it for the rail", async () => {
   const rules = (html: string) =>
     Array.from(
       navOf(html).matchAll(/<span aria-hidden="true" class="[^"]*"><\/span>/g)
@@ -366,8 +396,8 @@ test("a rule, hidden from assistive technologies, separates the sidebar's two gr
   })
   const { sidebar: administering } = await render("/blocked-words")
 
-  expect(rules(moderating)).toHaveLength(1)
-  expect(rules(administering)).toHaveLength(0)
+  expect(rules(moderating)).toHaveLength(2)
+  expect(rules(administering)).toHaveLength(1)
 })
 
 test("the sidebar's link to the privacy policy shows a lock before its name, hidden from assistive technologies, and repeats the name in a title, for the rail", async () => {

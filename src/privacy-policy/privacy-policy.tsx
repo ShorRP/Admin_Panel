@@ -84,12 +84,14 @@ export function PrivacyPolicy() {
             </li>
             <li>
               pour le staff qui modère, sur la fiche d’un compte, les tickets de
-              support qu’il a ouverts : le Bot de Shor poste dans un salon
-              réservé au staff l’archive de chaque ticket fermé, et le panel y
-              lit le type de demande, les dates d’ouverture et de fermeture, le
-              nom de la personne qui l’a fermé et le motif de la fermeture, sans
-              aucune conversation. Cette archive reste dans ce salon, sur
-              Discord, tant qu’un membre du staff n’a pas supprimé son message.
+              support qu’il a ouverts, et pour tout le staff, sur la page des
+              tickets de support, ceux de tous les comptes : le Bot de Shor
+              poste dans un salon réservé au staff l’archive de chaque ticket
+              fermé, et le panel y lit le nom de la personne qui l’a ouvert, le
+              type de demande, les dates d’ouverture et de fermeture, le nom de
+              la personne qui l’a fermé et le motif de la fermeture, sans aucune
+              conversation. Cette archive reste dans ce salon, sur Discord, tant
+              qu’un membre du staff n’a pas supprimé son message.
             </li>
           </PolicyList>
           <p>
@@ -147,8 +149,9 @@ export function PrivacyPolicy() {
           <p>
             Le panel ne s’ouvre qu’au staff de Shor, après une connexion avec
             Discord, et vérifie à chaque page que le membre a toujours le rôle
-            staff. Tout le staff voit le journal d’audit ; seul le staff qui
-            modère voit la liste des comptes et leurs fiches.
+            staff. Tout le staff voit le journal d’audit et les archives des
+            tickets de support ; seul le staff qui modère voit la liste des
+            comptes et leurs fiches.
           </p>
         </PolicySection>
         <PolicySection title="Qui d’autre y touche">

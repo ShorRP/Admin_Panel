@@ -18,6 +18,11 @@ const PAGES = [
       "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.",
   },
   {
+    path: "/support-tickets",
+    loading: ["Chargement des archives de tickets…"],
+    content: "Aucune archive de ticket à afficher.",
+  },
+  {
     path: `/records/${LYRA.id}`,
     loading: ["Chargement de la fiche…"],
     content: "Aucune sanction ni levée dans l’historique.",
