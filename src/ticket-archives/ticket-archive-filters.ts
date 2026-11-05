@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { REQUEST_KIND_KEYS, type RequestKindKey } from "./request-kinds"
 
-export const MAX_SEARCHED_TEXT_LENGTH = 1024
+const MAX_SEARCHED_TEXT_LENGTH = 1024
 
 const FIRST_YEAR = 2015
 
@@ -71,14 +71,16 @@ const SORT = z.literal("oldest").nullable().catch(null)
 export function ticketArchiveFiltersOf(
   searchParams: TicketArchiveSearchParams
 ): TicketArchiveFilters {
+  const from = DAY.parse(searchParams.from)
+  const to = DAY.parse(searchParams.to)
   return {
     kind: KIND.parse(searchParams.kind),
     opener: ACCOUNT_TEXT.parse(searchParams.opener),
     closer: ACCOUNT_TEXT.parse(searchParams.closer),
     reason: REASON.parse(searchParams.reason),
-    from: DAY.parse(searchParams.from),
-    to: DAY.parse(searchParams.to),
-    on: ON.parse(searchParams.on),
+    from,
+    to,
+    on: from === null && to === null ? null : ON.parse(searchParams.on),
     sort: SORT.parse(searchParams.sort),
   }
 }
@@ -87,18 +89,10 @@ export function hasFilter(filters: TicketArchiveFilters) {
   return Object.values(filters).some((value) => value !== null)
 }
 
-export function isOpenedPeriod({
-  on,
-  from,
-  to,
-}: Pick<TicketArchiveFilters, "on" | "from" | "to">) {
-  return on === "opened" && (from !== null || to !== null)
-}
-
 export function readsOldestFirst(
-  filters: Pick<TicketArchiveFilters, "on" | "from" | "to" | "sort">
+  filters: Pick<TicketArchiveFilters, "on" | "sort">
 ) {
-  return isOpenedPeriod(filters) || filters.sort === "oldest"
+  return filters.on === "opened" || filters.sort === "oldest"
 }
 
 function isCalendarDay(day: string) {

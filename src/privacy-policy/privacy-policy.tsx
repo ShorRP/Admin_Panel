@@ -107,9 +107,10 @@ export function PrivacyPolicy() {
           </p>
           <p>
             L’adresse d’une fiche contient l’ID du compte, et celles de la liste
-            des comptes et du journal d’audit, le texte cherché, un nom, un ID
-            ou une mention, et les filtres choisis : l’historique du navigateur
-            les garde, comme toute adresse.
+            des comptes, du journal d’audit et des tickets de support, le texte
+            cherché, un nom, un ID ou une mention, les mots d’un motif, et les
+            filtres choisis : l’historique du navigateur les garde, comme toute
+            adresse.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel écrit dans Discord">

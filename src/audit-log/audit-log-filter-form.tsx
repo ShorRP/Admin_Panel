@@ -2,9 +2,10 @@ import Form from "next/form"
 import { ListFilter } from "lucide-react"
 
 import { Button } from "@/ui/button"
+import { FILTER_FORM_CLASSES } from "@/ui/filter-layout"
 import { AuditLogFilterFields } from "./audit-log-filter-field"
 import type { AuditLogFilters } from "./audit-log-filters"
-import { FILTER_FIELD_CLASSES, FILTER_FORM_CLASSES } from "./audit-log-layout"
+import { FILTER_FIELD_CLASSES } from "./audit-log-layout"
 
 export function AuditLogFilterForm({ filters }: { filters: AuditLogFilters }) {
   return (

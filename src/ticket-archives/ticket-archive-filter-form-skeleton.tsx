@@ -1,10 +1,11 @@
 import { cn } from "cn"
 
-import { Skeleton } from "@/ui/skeleton"
 import {
-  FILTER_FIELD_CLASSES,
+  FILTER_CONTROL_HEIGHT_CLASSES,
   FILTER_FORM_CLASSES,
-} from "./ticket-archive-filter-layout"
+} from "@/ui/filter-layout"
+import { Skeleton } from "@/ui/skeleton"
+import { FILTER_FIELD_CLASSES } from "./ticket-archive-filter-layout"
 
 const LABELS = [
   { field: "opener", width: "w-16" },
@@ -19,17 +20,32 @@ const LABELS = [
 export function TicketArchiveFilterFormSkeleton() {
   return (
     <>
-      <Skeleton className="h-8 w-full motion-reduce:animate-none md:hidden touch:h-11" />
+      <Skeleton
+        className={cn(
+          FILTER_CONTROL_HEIGHT_CLASSES,
+          "w-full motion-reduce:animate-none md:hidden"
+        )}
+      />
       <div className={FILTER_FORM_CLASSES}>
         {LABELS.map(({ field, width }) => (
           <div key={field} className={FILTER_FIELD_CLASSES}>
             <Skeleton
               className={cn("h-3.5 motion-reduce:animate-none", width)}
             />
-            <Skeleton className="h-8 w-full motion-reduce:animate-none touch:h-11" />
+            <Skeleton
+              className={cn(
+                FILTER_CONTROL_HEIGHT_CLASSES,
+                "w-full motion-reduce:animate-none"
+              )}
+            />
           </div>
         ))}
-        <Skeleton className="h-8 w-22 motion-reduce:animate-none touch:h-11" />
+        <Skeleton
+          className={cn(
+            FILTER_CONTROL_HEIGHT_CLASSES,
+            "w-22 motion-reduce:animate-none"
+          )}
+        />
       </div>
     </>
   )

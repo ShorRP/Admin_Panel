@@ -141,14 +141,8 @@ test("the kind chosen is kept in a hidden field, and none is sent without one", 
   expect(render({})).not.toContain('name="kind"')
 })
 
-test("the form is hidden under 768 px, where the sheet takes its place, and sends with « Filtrer »", () => {
-  const html = render({})
-
-  expect(attribute(/<form[^>]*>/.exec(html)?.[0] ?? "", "class")).toContain(
-    "hidden"
+test("the form sends with « Filtrer »", () => {
+  expect(render({})).toMatch(
+    /<button[^>]*type="submit"[^>]*>.*Filtrer<\/button>/
   )
-  expect(attribute(/<form[^>]*>/.exec(html)?.[0] ?? "", "class")).toContain(
-    "md:flex"
-  )
-  expect(html).toMatch(/<button[^>]*type="submit"[^>]*>.*Filtrer<\/button>/)
 })

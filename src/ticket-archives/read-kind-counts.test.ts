@@ -8,7 +8,6 @@ import { archiveMessage } from "./archive-message"
 import { readKindCounts } from "./read-kind-counts"
 import { readTicketArchivePage } from "./read-ticket-archive-page"
 import type { TicketArchiveSearchParams } from "./ticket-archive-filters"
-import type { KindCountsSource } from "./ticket-archive-page"
 
 const CHANNEL_ID = "1562505523490848881"
 
@@ -40,15 +39,11 @@ function serverWith(...messages: FakeChannelMessage[][]) {
   })
 }
 
-async function sourceOf(
+async function pageOf(
   discord: FakeDiscord,
   searchParams: TicketArchiveSearchParams = {}
 ) {
-  const read = await readTicketArchivePage(discord, CHANNEL_ID, searchParams)
-  if (read.kind !== "page") {
-    throw new Error("The archives are not configured.")
-  }
-  return read.kindCounts
+  return await readTicketArchivePage(discord, CHANNEL_ID, searchParams)
 }
 
 class FailingCounts extends FakeDiscord {
@@ -75,6 +70,14 @@ const UNAVAILABLE = new DiscordError({
   retryAfter: 4.4,
 })
 
+const MISSING_PERMISSION = new DiscordError({
+  method: "GET",
+  route: "/guilds/{guild.id}/messages/search",
+  status: 403,
+  code: RESTJSONErrorCodes.MissingAccess,
+  discordMessage: "Missing Access",
+})
+
 test("each kind counts the archives of that kind, whatever the other kinds and the archives of no kind", async () => {
   const discord = serverWith(
     archives(KINDS.technical, 3),
@@ -83,7 +86,7 @@ test("each kind counts the archives of that kind, whatever the other kinds and t
     archives("Inconnu", 4)
   )
 
-  expect(await readKindCounts(discord, await sourceOf(discord))).toEqual({
+  expect(await readKindCounts(discord, await pageOf(discord))).toEqual({
     "technical-issue": 3,
     "player-report": 2,
     "rp-request": 1,
@@ -100,7 +103,7 @@ test("the kind counts keep to the period asked for, by the day an archive was se
 
   const counts = await readKindCounts(
     discord,
-    await sourceOf(discord, { from: "2026-10-10", to: "2026-10-31" })
+    await pageOf(discord, { from: "2026-10-10", to: "2026-10-31" })
   )
 
   expect(counts).toMatchObject({ "technical-issue": 3, "player-report": 1 })
@@ -111,14 +114,17 @@ test("under a kind, that kind's count is the total already read, and the others 
     archives(KINDS.technical, 2),
     archives(KINDS.rp, 5)
   )
-  const source = await sourceOf(discord, { kind: "technical-issue" })
-  if (source.kind !== "to-search") {
+  const page = await pageOf(discord, { kind: "technical-issue" })
+  if (page.kind !== "page" || page.kindCounts.kind !== "to-search") {
     throw new Error("The counts are to be searched.")
   }
 
   const counts = await readKindCounts(discord, {
-    ...source,
-    chosen: { key: "technical-issue", total: 99 },
+    ...page,
+    kindCounts: {
+      ...page.kindCounts,
+      chosen: { key: "technical-issue", total: 99 },
+    },
   })
 
   expect(counts).toEqual({
@@ -129,18 +135,28 @@ test("under a kind, that kind's count is the total already read, and the others 
   })
 })
 
-test("counts known from a window are given as they are, with no search", async () => {
-  const source: KindCountsSource = {
-    kind: "known",
-    counts: {
-      "technical-issue": 1,
-      "player-report": 2,
-      "rp-request": 3,
-      "other-request": 4,
-    },
-  }
+test("the counts of a window are given as they are, with no search", async () => {
+  const discord = serverWith(
+    archives(KINDS.technical, 2),
+    archives(KINDS.report, 1)
+  )
+  const page = await pageOf(discord, { opener: ALDIS.id })
+  const searchesAfterTheList = new FailingCounts(MISSING_PERMISSION, {
+    channels: [CHANNEL_ID],
+  })
 
-  expect(await readKindCounts(new FakeDiscord(), source)).toEqual(source.counts)
+  expect(await readKindCounts(searchesAfterTheList, page)).toEqual({
+    "technical-issue": 2,
+    "player-report": 1,
+    "rp-request": 0,
+    "other-request": 0,
+  })
+})
+
+test("an archives channel that is not configured has no counts", async () => {
+  expect(
+    await readKindCounts(new FakeDiscord(), { kind: "unconfigured" })
+  ).toBeNull()
 })
 
 test("Discord unavailable gives no counts rather than failing the page", async () => {
@@ -149,7 +165,18 @@ test("Discord unavailable gives no counts rather than failing the page", async (
     channelMessages: archives(KINDS.technical, 2),
   })
 
-  expect(await readKindCounts(discord, await sourceOf(discord))).toBeNull()
+  expect(await readKindCounts(discord, await pageOf(discord))).toBeNull()
+})
+
+test("a Discord error that is no unavailability is a panel error, and is thrown so that it alerts", async () => {
+  const discord = new FailingCounts(MISSING_PERMISSION, {
+    channels: [CHANNEL_ID],
+    channelMessages: archives(KINDS.technical, 2),
+  })
+
+  await expect(readKindCounts(discord, await pageOf(discord))).rejects.toBe(
+    MISSING_PERMISSION
+  )
 })
 
 test("an error that is not Discord's is thrown", async () => {
@@ -159,7 +186,5 @@ test("an error that is not Discord's is thrown", async () => {
     channelMessages: archives(KINDS.technical, 2),
   })
 
-  await expect(readKindCounts(discord, await sourceOf(discord))).rejects.toBe(
-    bug
-  )
+  await expect(readKindCounts(discord, await pageOf(discord))).rejects.toBe(bug)
 })

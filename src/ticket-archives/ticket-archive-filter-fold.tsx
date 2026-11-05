@@ -1,13 +1,10 @@
 import { FilterChips } from "@/ui/filter-chips"
+import { FILTER_FOLD_CLASSES, SHEET_FIELD_CLASSES } from "@/ui/filter-layout"
 import { FilterSheet } from "@/ui/filter-sheet"
 import {
   ticketArchiveChipsOf,
   TicketArchiveFilterFields,
 } from "./ticket-archive-filter-fields"
-import {
-  FILTER_FOLD_CLASSES,
-  SHEET_FIELD_CLASSES,
-} from "./ticket-archive-filter-layout"
 import { NO_FILTERS, type TicketArchiveFilters } from "./ticket-archive-filters"
 import { ticketArchivesHref } from "./ticket-archives-href"
 

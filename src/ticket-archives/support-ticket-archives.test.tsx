@@ -82,11 +82,13 @@ function pageOf(
   }
 }
 
+const NEVER = new Promise<KindCounts | null>(() => undefined)
+
 function render(read: TicketArchivePage, opensModeration = false) {
   return renderToStaticMarkup(
     <SupportTicketArchives
       read={read}
-      counts={null}
+      counts={NEVER}
       opensModeration={opensModeration}
     />
   )
@@ -350,7 +352,7 @@ test("the pills are shown at once, with no number, while the counts are not know
   ])
 })
 
-test("the counts, once they come, join the pills of the kinds, and not « Tout »", async () => {
+test("the counts, once they come, join the pills of the kinds, and not « Tout »", async () => {
   const html = await prerendered(pageOf(), COUNTS)
 
   expect(pills(html)).toEqual([

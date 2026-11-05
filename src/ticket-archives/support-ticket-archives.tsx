@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { recordHrefForModerator } from "@/records/record-href"
 import { AccountLink } from "@/ui/account-link"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
+import { FILTERS_CLASSES } from "@/ui/filter-layout"
 import { frenchNumber } from "@/ui/french-number"
 import { Overline } from "@/ui/overline"
 import { Pagination } from "@/ui/pagination"
@@ -17,7 +18,6 @@ import {
 } from "./support-ticket-archives-layout"
 import { TicketArchiveFilterFold } from "./ticket-archive-filter-fold"
 import { TicketArchiveFilterForm } from "./ticket-archive-filter-form"
-import { FILTERS_CLASSES } from "./ticket-archive-filter-layout"
 import {
   hasFilter,
   NO_FILTERS,
@@ -47,7 +47,7 @@ export function SupportTicketArchives({
   opensModeration,
 }: {
   read: TicketArchivePage
-  counts: Promise<KindCounts | null> | null
+  counts: Promise<KindCounts | null>
   opensModeration: boolean
 }) {
   if (read.kind === "unconfigured") {
@@ -66,17 +66,13 @@ export function SupportTicketArchives({
         <Suspense
           fallback={<TicketArchiveKindFilter filters={filters} counts={null} />}
         >
-          {counts === null ? (
-            <TicketArchiveKindFilter filters={filters} counts={null} />
-          ) : (
-            <TicketArchiveKindFilterWithCounts
-              filters={filters}
-              counts={counts}
-            />
-          )}
+          <TicketArchiveKindFilterWithCounts
+            filters={filters}
+            counts={counts}
+          />
         </Suspense>
         <TicketArchiveFilterForm
-          key={JSON.stringify(filters)}
+          key={ticketArchivesHref(filters, 1)}
           filters={filters}
         />
         <TicketArchiveFilterFold filters={filters} />

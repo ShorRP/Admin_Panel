@@ -213,6 +213,40 @@ test("a reason keeps the archives whose reason holds every word of the text, wha
   ).toEqual([])
 })
 
+test("a reason finds its words wherever they sit in the reason, however far apart", async () => {
+  const messages = [
+    archive("un deux trois quatre cinq six sept"),
+    archive("cinq puis un"),
+    archive("un seul"),
+  ]
+
+  const read = await pageOf(serverWith(messages), { reason: "un cinq" })
+
+  expect(reasonsOf(read)).toEqual([
+    "cinq puis un",
+    "un deux trois quatre cinq six sept",
+  ])
+  expect(read.complete).toBe(true)
+})
+
+test("a reason typed with an apostrophe is searched as Discord holds the word, whole: l’ouverture finds l’ouverture", async () => {
+  const messages = [
+    archive("Le joueur a été averti pour l’ouverture du ticket"),
+    archive("Une ouverture sans apostrophe"),
+  ]
+
+  const read = await pageOf(serverWith(messages), {
+    reason: "l’ouverture",
+  })
+
+  expect(reasonsOf(read)).toEqual([
+    "Le joueur a été averti pour l’ouverture du ticket",
+  ])
+  expect(
+    reasonsOf(await pageOf(serverWith(messages), { reason: "ouverture" }))
+  ).toEqual(["Une ouverture sans apostrophe"])
+})
+
 test("a reason is searched in the reason alone: a word of the archive's other fields, or of its other texts, is no match", async () => {
   const messages = [
     archive("Résolu", { openerId: ALDIS.id }),
@@ -287,6 +321,41 @@ test("the kind counts of a window are the archives of each kind that pass every 
       "other-request": 0,
     },
   })
+})
+
+const ONE_OF_EACH_KIND = [
+  TECHNICAL,
+  REPORT,
+  "🎭 Demande RP",
+  "❓ Autre demande",
+].map((kind, index) =>
+  archive(`Archive ${index}`, {
+    kind,
+    openedAt: new Date("2026-11-01T10:00:00Z"),
+    closedAt: new Date("2026-11-02T10:00:00Z"),
+    sentAt: new Date(`2026-11-02T10:00:0${index}Z`),
+  })
+)
+
+const EACH_KIND_ONCE = {
+  "technical-issue": 1,
+  "player-report": 1,
+  "rp-request": 1,
+  "other-request": 1,
+}
+
+test("the kind counts of a period on the opening count every kind, whichever kind the pill chose", async () => {
+  const period = { on: "opened", from: "2026-11-01", to: "2026-11-01" }
+
+  const chosen = await pageOf(serverWith(ONE_OF_EACH_KIND), {
+    ...period,
+    kind: "technical-issue",
+  })
+  const all = await pageOf(serverWith(ONE_OF_EACH_KIND), period)
+
+  expect(reasonsOf(chosen)).toEqual(["Archive 0"])
+  expect(chosen.kindCounts).toEqual({ kind: "known", counts: EACH_KIND_ONCE })
+  expect(all.kindCounts).toEqual({ kind: "known", counts: EACH_KIND_ONCE })
 })
 
 const OPENED = {

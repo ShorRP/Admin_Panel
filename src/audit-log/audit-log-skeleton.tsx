@@ -1,5 +1,11 @@
 import { cn } from "cn"
 
+import {
+  FILTER_PILL_LIST_CLASSES,
+  FILTER_PILL_SIZE_CLASSES,
+  FILTER_PILLS_CLASSES,
+  FILTERS_CLASSES,
+} from "@/ui/filter-layout"
 import { Skeleton } from "@/ui/skeleton"
 import { AuditLogFilterFormSkeleton } from "./audit-log-filter-form-skeleton"
 import {
@@ -10,9 +16,6 @@ import {
   CHANGE_TIME_CLASSES,
   DAY_CHANGES_CLASSES,
   DAY_HEADER_CLASSES,
-  FILTERS_CLASSES,
-  TYPE_FILTER_CLASSES,
-  TYPE_LINKS_CLASSES,
 } from "./audit-log-layout"
 
 const DAYS = [
@@ -40,13 +43,14 @@ export function AuditLogSkeleton() {
     <div role="status" className="flex flex-col gap-7">
       <span className="sr-only">Chargement du journal d’audit…</span>
       <div className={FILTERS_CLASSES}>
-        <div className={TYPE_FILTER_CLASSES}>
-          <div className={TYPE_LINKS_CLASSES}>
+        <div className={FILTER_PILLS_CLASSES}>
+          <div className={FILTER_PILL_LIST_CLASSES}>
             {TYPE_LINK_WIDTHS.map((width) => (
               <Skeleton
                 key={width}
                 className={cn(
-                  "h-7.5 rounded-full motion-reduce:animate-none touch:h-11",
+                  FILTER_PILL_SIZE_CLASSES,
+                  "motion-reduce:animate-none",
                   width
                 )}
               />

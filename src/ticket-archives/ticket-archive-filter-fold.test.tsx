@@ -24,7 +24,7 @@ function chips(html: string) {
   )
 }
 
-test("with no filter set, the button is « Filtres » and counts none, and no chip shows", () => {
+test("with no filter set, the button is « Filtres » and counts none, and no chip shows", () => {
   const html = renderFold({})
 
   expect(html).toMatch(/<button[^>]*>.*Filtres<\/button>/)
@@ -88,8 +88,4 @@ test("each filter set shows as a chip, a link to the archives without that filte
       name: "Retirer le filtre Ordre : Plus anciennes d’abord",
     },
   ])
-})
-
-test("the fold is for the screens under 768 px", () => {
-  expect(renderFold({})).toMatch(/^<div class="[^"]*\bmd:hidden\b/)
 })

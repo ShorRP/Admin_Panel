@@ -138,7 +138,7 @@ const MAX_SEARCH_TEXT_LENGTH = 1024
 
 const SEARCH_SLOP = 2
 
-const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+/gu
+const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]+(?:’[\p{L}\p{N}]+)*/gu
 
 const DISCORD_EPOCH = BigInt(1420070400000)
 

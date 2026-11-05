@@ -7,7 +7,6 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { readServedPage } from "./read-served-page"
 import { readWindowPage } from "./read-window-page"
 import {
-  isOpenedPeriod,
   ticketArchiveFiltersOf,
   type TicketArchiveFilters,
   type TicketArchiveSearchParams,
@@ -49,6 +48,6 @@ function needsWindow(filters: TicketArchiveFilters) {
     filters.opener !== null ||
     filters.closer !== null ||
     filters.reason !== null ||
-    isOpenedPeriod(filters)
+    filters.on === "opened"
   )
 }

@@ -2,11 +2,12 @@ import Form from "next/form"
 import { ListFilter } from "lucide-react"
 
 import { Button } from "@/ui/button"
-import { TicketArchiveFilterFields } from "./ticket-archive-filter-fields"
 import {
-  FILTER_FIELD_CLASSES,
+  FILTER_CONTROL_HEIGHT_CLASSES,
   FILTER_FORM_CLASSES,
-} from "./ticket-archive-filter-layout"
+} from "@/ui/filter-layout"
+import { TicketArchiveFilterFields } from "./ticket-archive-filter-fields"
+import { FILTER_FIELD_CLASSES } from "./ticket-archive-filter-layout"
 import type { TicketArchiveFilters } from "./ticket-archive-filters"
 
 export function TicketArchiveFilterForm({
@@ -28,7 +29,7 @@ export function TicketArchiveFilterForm({
         idPrefix="archives"
         className={FILTER_FIELD_CLASSES}
       />
-      <Button type="submit">
+      <Button type="submit" className={FILTER_CONTROL_HEIGHT_CLASSES}>
         <ListFilter aria-hidden data-icon="inline-start" />
         Filtrer
       </Button>

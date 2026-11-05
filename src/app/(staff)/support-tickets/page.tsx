@@ -57,9 +57,7 @@ async function SupportTicketArchivesFromDiscord({
   return (
     <SupportTicketArchives
       read={read}
-      counts={
-        read.kind === "page" ? readKindCounts(discord, read.kindCounts) : null
-      }
+      counts={readKindCounts(discord, read)}
       opensModeration={staffMember.opensModeration}
     />
   )

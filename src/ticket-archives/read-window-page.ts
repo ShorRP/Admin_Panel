@@ -3,8 +3,8 @@ import "server-only"
 import type { Snowflake } from "discord-api-types/v10"
 
 import { parisDayAfter, parisDayStart, periodBounds } from "./period-bounds"
-import { holdsWords } from "./reason-words"
-import { REQUEST_KINDS, requestKindKeyOf } from "./request-kinds"
+import { holdsWords, longestTermOf } from "./reason-words"
+import { requestKindKeyOf } from "./request-kinds"
 import { resolveAccounts, type ResolvedAccount } from "./resolve-accounts"
 import {
   ARCHIVES_PER_PAGE,
@@ -12,7 +12,6 @@ import {
 } from "./search-ticket-archives"
 import type { TicketArchive } from "./ticket-archive"
 import {
-  isOpenedPeriod,
   readsOldestFirst,
   type TicketArchiveFilters,
 } from "./ticket-archive-filters"
@@ -87,7 +86,7 @@ async function readCandidates(
   const text = servedText(filters, ids)
   const oldestFirst = readsOldestFirst(filters)
   const period = periodBounds(
-    isOpenedPeriod(filters) ? { from: filters.from, to: null } : filters
+    filters.on === "opened" ? { from: filters.from, to: null } : filters
   )
   const candidates = new Map<Snowflake, TicketArchive>()
   let discordTotal = 0
@@ -156,8 +155,7 @@ function servedText(filters: TicketArchiveFilters, ids: AccountIds) {
   return (
     ids.openerId ??
     ids.closerId ??
-    filters.reason ??
-    (filters.kind === null ? undefined : REQUEST_KINDS[filters.kind].emoji)
+    (filters.reason === null ? undefined : longestTermOf(filters.reason))
   )
 }
 
@@ -192,7 +190,7 @@ function matches(
     (filters.opener === null || archive.openerId === openerId) &&
     (filters.closer === null || archive.closerId === closerId) &&
     (filters.reason === null || holdsWords(archive.reason, filters.reason)) &&
-    (!isOpenedPeriod(filters) || openedWithin(archive.openedAt, filters))
+    (filters.on !== "opened" || openedWithin(archive.openedAt, filters))
   )
 }
 

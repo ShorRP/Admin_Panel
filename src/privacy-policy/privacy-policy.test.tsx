@@ -100,6 +100,9 @@ test("the privacy policy says the panel reads from Discord, at each page, what i
   expect(text).toMatch(/la fiche d’un compte/)
   expect(text).toMatch(/« Server Members Intent »/)
   expect(text).toMatch(/l’historique du navigateur les garde/)
+  expect(text).toMatch(
+    /celles de la liste des comptes, du journal d’audit et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
+  )
 })
 
 test("the privacy policy says the panel reads, for the staff who moderate, the archives of the support tickets an account opened from the archives channel, with no conversation, and that they stay in Discord until a staff member deletes their message", () => {

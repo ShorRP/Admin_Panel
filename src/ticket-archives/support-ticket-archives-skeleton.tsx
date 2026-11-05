@@ -1,5 +1,11 @@
 import { cn } from "cn"
 
+import {
+  FILTER_PILL_LIST_CLASSES,
+  FILTER_PILL_SIZE_CLASSES,
+  FILTER_PILLS_CLASSES,
+  FILTERS_CLASSES,
+} from "@/ui/filter-layout"
 import { Skeleton } from "@/ui/skeleton"
 import {
   SUPPORT_TICKET_ARCHIVES_CLASSES,
@@ -8,11 +14,6 @@ import {
   SUPPORT_TICKET_EVENTS_CLASSES,
 } from "./support-ticket-archives-layout"
 import { TicketArchiveFilterFormSkeleton } from "./ticket-archive-filter-form-skeleton"
-import {
-  FILTERS_CLASSES,
-  KIND_FILTER_CLASSES,
-  KIND_LINKS_CLASSES,
-} from "./ticket-archive-filter-layout"
 import { TICKET_ARCHIVE_ENTRIES_CLASSES } from "./ticket-archive-layout"
 
 const ENTRY_WIDTHS = ["w-44", "w-36", "w-52"] as const
@@ -24,13 +25,14 @@ export function SupportTicketArchivesSkeleton() {
     <div role="status" className={SUPPORT_TICKET_ARCHIVES_LAYOUT_CLASSES}>
       <span className="sr-only">Chargement des archives de tickets…</span>
       <div className={FILTERS_CLASSES}>
-        <div className={KIND_FILTER_CLASSES}>
-          <div className={KIND_LINKS_CLASSES}>
+        <div className={FILTER_PILLS_CLASSES}>
+          <div className={FILTER_PILL_LIST_CLASSES}>
             {KIND_LINK_WIDTHS.map((width, index) => (
               <Skeleton
                 key={`${width}-${index}`}
                 className={cn(
-                  "h-7.5 rounded-full motion-reduce:animate-none touch:h-11",
+                  FILTER_PILL_SIZE_CLASSES,
+                  "motion-reduce:animate-none",
                   width
                 )}
               />

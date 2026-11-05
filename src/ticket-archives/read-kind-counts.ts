@@ -4,12 +4,16 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { DiscordError } from "@/discord/discord-error"
 import { REQUEST_KINDS, type RequestKindKey } from "./request-kinds"
 import { searchTicketArchives } from "./search-ticket-archives"
-import type { KindCounts, KindCountsSource } from "./ticket-archive-page"
+import type { KindCounts, TicketArchivePage } from "./ticket-archive-page"
 
 export async function readKindCounts(
   discord: DiscordApi,
-  source: KindCountsSource
+  page: TicketArchivePage
 ): Promise<KindCounts | null> {
+  if (page.kind === "unconfigured") {
+    return null
+  }
+  const source = page.kindCounts
   if (source.kind === "known") {
     return source.counts
   }
@@ -40,7 +44,7 @@ export async function readKindCounts(
       "other-request": other,
     }
   } catch (error) {
-    if (error instanceof DiscordError) {
+    if (error instanceof DiscordError && error.unavailable) {
       return null
     }
     throw error

@@ -1,17 +1,10 @@
-import Link from "next/link"
-import { cva } from "class-variance-authority"
-
+import { FilterPills } from "@/ui/filter-pills"
 import { frenchNumber } from "@/ui/french-number"
-import { TextLink } from "@/ui/text-link"
 import {
   REQUEST_KIND_KEYS,
   REQUEST_KINDS,
   type RequestKindKey,
 } from "./request-kinds"
-import {
-  KIND_FILTER_CLASSES,
-  KIND_LINKS_CLASSES,
-} from "./ticket-archive-filter-layout"
 import {
   hasFilter,
   NO_FILTERS,
@@ -28,19 +21,6 @@ const KIND_LINKS: { key: RequestKindKey | null; label: string }[] = [
   })),
 ]
 
-const kindLinkVariants = cva(
-  "inline-flex h-7.5 items-center gap-1.5 rounded-full border px-3.25 text-[0.8125rem] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 touch:h-11",
-  {
-    variants: {
-      current: {
-        true: "border-primary bg-primary text-primary-foreground",
-        false:
-          "border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-      },
-    },
-  }
-)
-
 export function TicketArchiveKindFilter({
   filters,
   counts,
@@ -49,35 +29,19 @@ export function TicketArchiveKindFilter({
   counts: KindCounts | null
 }) {
   return (
-    <div className={KIND_FILTER_CLASSES}>
-      <nav aria-label="Filtrer par type de demande">
-        <ul className={KIND_LINKS_CLASSES}>
-          {KIND_LINKS.map(({ key, label }) => (
-            <li key={label}>
-              <Link
-                href={ticketArchivesHref({ ...filters, kind: key }, 1)}
-                prefetch={false}
-                aria-current={key === filters.kind ? "true" : undefined}
-                className={kindLinkVariants({ current: key === filters.kind })}
-              >
-                {label}
-                {key !== null && counts !== null && (
-                  <KindCount count={counts[key]} />
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      {hasFilter(filters) && (
-        <TextLink
-          href={ticketArchivesHref(NO_FILTERS, 1)}
-          className="text-[0.8125rem]"
-        >
-          Réinitialiser
-        </TextLink>
-      )}
-    </div>
+    <FilterPills
+      label="Filtrer par type de demande"
+      pills={KIND_LINKS.map(({ key, label }) => ({
+        label,
+        href: ticketArchivesHref({ ...filters, kind: key }, 1),
+        current: key === filters.kind,
+        badge:
+          key !== null && counts !== null ? (
+            <KindCount count={counts[key]} />
+          ) : null,
+      }))}
+      resetHref={hasFilter(filters) ? ticketArchivesHref(NO_FILTERS, 1) : null}
+    />
   )
 }
 

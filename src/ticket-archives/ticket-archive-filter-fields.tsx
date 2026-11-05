@@ -1,4 +1,5 @@
 import type { FilterChip } from "@/ui/filter-chips"
+import { FILTER_CONTROL_HEIGHT_CLASSES } from "@/ui/filter-layout"
 import { Input } from "@/ui/input"
 import { Label } from "@/ui/label"
 import { NativeSelect, NativeSelectOption } from "@/ui/native-select"
@@ -94,6 +95,7 @@ export function TicketArchiveFilterFields({
             name={field.name}
             type={field.type === "day" ? "date" : "text"}
             defaultValue={value}
+            className={FILTER_CONTROL_HEIGHT_CLASSES}
             {...(field.type === "text"
               ? { placeholder: field.placeholder, autoComplete: "off" }
               : {})}

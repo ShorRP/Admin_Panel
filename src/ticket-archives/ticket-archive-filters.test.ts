@@ -44,7 +44,7 @@ test("each filter alone makes the filters set", () => {
     { reason: "bug" },
     { from: "2026-10-05" },
     { to: "2026-10-05" },
-    { on: "opened" },
+    { on: "opened", from: "2026-10-05" },
     { sort: "oldest" },
   ]) {
     expect(hasFilter(ticketArchiveFiltersOf(searchParams))).toBe(true)
@@ -83,6 +83,14 @@ for (const [name, searchParams] of INVALID) {
     expect(ticketArchiveFiltersOf(searchParams)).toEqual(NO_FILTERS)
   })
 }
+
+test("a period on the opening with no day is no filter: it is absent, and the filters are not set", () => {
+  expect(ticketArchiveFiltersOf({ on: "opened" })).toEqual(NO_FILTERS)
+  expect(hasFilter(ticketArchiveFiltersOf({ on: "opened" }))).toBe(false)
+  expect(ticketArchiveFiltersOf({ on: "opened", to: "2026-10-05" }).on).toBe(
+    "opened"
+  )
+})
 
 test("a valid filter survives an invalid one beside it", () => {
   expect(
