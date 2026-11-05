@@ -1,12 +1,9 @@
 import { z } from "zod"
 
+import { dayParamOf } from "@/ui/filter-params"
 import { REQUEST_KIND_KEYS, type RequestKindKey } from "./request-kinds"
 
 const MAX_SEARCHED_TEXT_LENGTH = 1024
-
-const FIRST_YEAR = 2015
-
-const LAST_YEAR = 2099
 
 const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]/u
 
@@ -57,13 +54,6 @@ const REASON = z
   .nullable()
   .catch(null)
 
-const DAY = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine(isCalendarDay)
-  .nullable()
-  .catch(null)
-
 const ON = z.literal("opened").nullable().catch(null)
 
 const SORT = z.literal("oldest").nullable().catch(null)
@@ -71,8 +61,8 @@ const SORT = z.literal("oldest").nullable().catch(null)
 export function ticketArchiveFiltersOf(
   searchParams: TicketArchiveSearchParams
 ): TicketArchiveFilters {
-  const from = DAY.parse(searchParams.from)
-  const to = DAY.parse(searchParams.to)
+  const from = dayParamOf(searchParams.from)
+  const to = dayParamOf(searchParams.to)
   return {
     kind: KIND.parse(searchParams.kind),
     opener: ACCOUNT_TEXT.parse(searchParams.opener),
@@ -93,23 +83,4 @@ export function readsOldestFirst(
   filters: Pick<TicketArchiveFilters, "on" | "sort">
 ) {
   return filters.on === "opened" || filters.sort === "oldest"
-}
-
-function isCalendarDay(day: string) {
-  const [year, month, date] = day.split("-").map(Number)
-  if (
-    year === undefined ||
-    month === undefined ||
-    date === undefined ||
-    year < FIRST_YEAR ||
-    year > LAST_YEAR
-  ) {
-    return false
-  }
-  const moment = new Date(Date.UTC(year, month - 1, date))
-  return (
-    moment.getUTCFullYear() === year &&
-    moment.getUTCMonth() === month - 1 &&
-    moment.getUTCDate() === date
-  )
 }

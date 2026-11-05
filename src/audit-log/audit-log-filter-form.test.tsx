@@ -35,29 +35,38 @@ function labels(html: string) {
   )
 }
 
-test("the form sends its author and its account to /audit-log, by GET, each under its own label, holding what was searched", () => {
-  const html = render({ author: "bryn", account: "<@1400000000000000003>" })
+test("the form sends its author, its account, its text and its period to /audit-log, by GET, each under its own label, holding what was searched", () => {
+  const html = render({
+    author: "bryn",
+    account: "<@1400000000000000003>",
+    text: "spam",
+    from: "2026-10-05",
+    to: "2026-10-31",
+  })
   const form = /<form[^>]*>/.exec(html)?.[0] ?? ""
-  const [author, account] = fields(html)
+  const inputs = fields(html)
 
   expect(attribute(form, "action")).toBe("/audit-log")
   expect(attribute(form, "method")).toBeUndefined()
-  expect(fields(html)).toHaveLength(2)
-  expect(author).toMatchObject({ name: "author", value: "bryn" })
-  expect(account).toMatchObject({
-    name: "account",
-    value: "&lt;@1400000000000000003&gt;",
-  })
-  expect(labels(html)).toEqual([
-    { htmlFor: author?.id, text: "Auteur" },
-    { htmlFor: account?.id, text: "Compte" },
+  expect(inputs.map(({ name, value }) => ({ name, value }))).toEqual([
+    { name: "author", value: "bryn" },
+    { name: "account", value: "&lt;@1400000000000000003&gt;" },
+    { name: "text", value: "spam" },
+    { name: "from", value: "2026-10-05" },
+    { name: "to", value: "2026-10-31" },
   ])
+  expect(labels(html)).toEqual(
+    ["Auteur", "Compte", "Texte", "Du", "Au"].map((text, index) => ({
+      htmlFor: inputs[index]?.id,
+      text,
+    }))
+  )
 })
 
 test("with nothing searched, the fields are empty, and they ask for no browser validation", () => {
   const html = render({})
 
-  expect(fields(html).map(({ value }) => value)).toEqual(["", ""])
+  expect(fields(html).map(({ value }) => value)).toEqual(Array(5).fill(""))
   expect(html).not.toMatch(/\s(required|maxLength|pattern)=/)
 })
 
@@ -68,7 +77,7 @@ test("the type chosen goes with the form in a hidden field, and no type, in none
     value: "kicks",
     id: undefined,
   })
-  expect(fields(render({ type: "kicks" }))).toHaveLength(3)
+  expect(fields(render({ type: "kicks" }))).toHaveLength(6)
   expect(fields(render({})).map(({ type }) => type)).not.toContain("hidden")
 })
 
@@ -77,19 +86,28 @@ test("the form carries no page cursor, so that sending it leads back to the newe
     fields(render({ type: "bans", author: "bryn", account: "lyra" })).map(
       ({ name }) => name
     )
-  ).toEqual(["type", "author", "account"])
+  ).toEqual(["type", "author", "account", "text", "from", "to"])
 })
 
-test("the fields suggest what they take, a name, an ID or a mention", () => {
-  const placeholders = Array.from(
+test("the fields suggest what they take, a name, an ID or a mention, a word or a motif, and the days are date fields", () => {
+  const inputs = Array.from(
     render({}).matchAll(/<input[^>]*>/g),
-    ([input = ""]) => attribute(input, "placeholder")
+    ([input = ""]) => ({
+      type: attribute(input, "type"),
+      placeholder: attribute(input, "placeholder"),
+    })
   )
 
-  expect(placeholders).toEqual(["Nom, ID ou mention", "Nom, ID ou mention"])
+  expect(inputs).toEqual([
+    { type: "text", placeholder: "Nom, ID ou mention" },
+    { type: "text", placeholder: "Nom, ID ou mention" },
+    { type: "text", placeholder: "Mot ou motif" },
+    { type: "date", placeholder: undefined },
+    { type: "date", placeholder: undefined },
+  ])
 })
 
-test("the form's button reads « Filtrer », after a hidden filter icon", () => {
+test("the form's button reads « Filtrer », after a hidden filter icon", () => {
   const [, iconAttributes = "", iconDrawing, text] =
     /<button[^>]*type="submit"[^>]*><svg([^>]*)>(.*?)<\/svg>(.*?)<\/button>/.exec(
       render({})

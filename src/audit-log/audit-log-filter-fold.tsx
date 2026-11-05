@@ -1,4 +1,4 @@
-import type { FilterChip } from "@/ui/filter-chips"
+import { filterChipsOf } from "@/ui/filter-fields"
 import { FilterFold } from "@/ui/filter-fold"
 import { SHEET_FIELD_CLASSES } from "@/ui/filter-layout"
 import {
@@ -13,24 +13,12 @@ import {
 import { auditLogHref } from "./audit-log-href"
 
 export function AuditLogFilterFold({ filters }: { filters: AuditLogFilters }) {
-  const chips: FilterChip[] = AUDIT_LOG_FILTER_FIELDS.flatMap(
-    ({ name, label }) => {
-      const value = filters[name]
-      return value === null
-        ? []
-        : [
-            {
-              name: label,
-              value,
-              href: auditLogHref({ ...filters, [name]: null }),
-            },
-          ]
-    }
-  )
   return (
     <FilterFold
-      label="Auteur et compte"
-      chips={chips}
+      label="Filtres"
+      chips={filterChipsOf(AUDIT_LOG_FILTER_FIELDS, filters, (name) =>
+        auditLogHref({ ...filters, [name]: null })
+      )}
       action="/audit-log"
       hiddenFields={hiddenFieldsOf(filters)}
       resetHref={auditLogHref(NO_FILTER)}

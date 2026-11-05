@@ -43,6 +43,9 @@ const CHANGE_ICONS = {
 
 type ChangeIconKind = keyof typeof CHANGE_ICONS
 
+const STARTS_BEFORE_RETENTION =
+  "Seuls les 45 derniers jours sont lus : Discord ne garde pas le journal d’audit plus longtemps, et la période commence avant."
+
 export function AuditLog({
   page,
   opensModeration,
@@ -50,8 +53,7 @@ export function AuditLog({
   page: AuditLogPage
   opensModeration: boolean
 }) {
-  const { type, author, account, days, before, older } = page
-  const filters = { type, author, account }
+  const { days, before, older, periodReach, ...filters } = page
   const oldest = days.at(-1)?.changes.at(-1)
   return (
     <LogFrame
@@ -63,9 +65,14 @@ export function AuditLog({
         </>
       }
     >
+      {periodReach === "starts-before-retention" && (
+        <p className="text-sm text-pretty text-muted-foreground">
+          {STARTS_BEFORE_RETENTION}
+        </p>
+      )}
       {days.length === 0 ? (
         <LogEmpty
-          message={noChangeMessage(filters, before)}
+          message={noChangeMessage(filters, before, periodReach)}
           resetHref={hasFilter(filters) ? auditLogHref(NO_FILTER) : null}
         />
       ) : (
@@ -90,16 +97,23 @@ export function AuditLog({
 }
 
 function noChangeMessage(
-  { type, author, account }: AuditLogFilters,
-  before: AuditLogPage["before"]
+  filters: AuditLogFilters,
+  before: AuditLogPage["before"],
+  periodReach: AuditLogPage["periodReach"]
 ) {
   if (before !== null) {
     return "Aucun changement plus ancien."
   }
-  if (author !== null || account !== null) {
+  if (periodReach === "reversed") {
+    return "Le premier jour de la période est après son dernier jour : aucun changement ne peut y correspondre."
+  }
+  if (periodReach === "outside-retention") {
+    return "Cette période n’est pas dans les 45 derniers jours, les seuls que le journal d’audit de Discord garde."
+  }
+  if (hasFilter({ ...filters, type: null })) {
     return "Aucun changement ne correspond à ces filtres ces 45 derniers jours."
   }
-  return type === null
+  return filters.type === null
     ? "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours."
     : "Aucun changement de ce type ces 45 derniers jours."
 }
