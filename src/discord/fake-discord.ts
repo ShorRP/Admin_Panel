@@ -13,6 +13,7 @@ import {
   type APIAutoModerationRuleTriggerMetadata,
   type APIBan,
   type APIEmbed,
+  type APIGuildChannel,
   type APIGuildMember,
   type APIRole,
   type APIUser,
@@ -31,6 +32,7 @@ import type {
   DiscordApi,
   DmChannel,
   Guild,
+  GuildChannel,
   MemberChanges,
   MembersQuery,
   Message,
@@ -61,6 +63,14 @@ export type FakeBan = {
 
 export type FakeRole = Pick<APIRole, "id" | "name"> & Partial<APIRole>
 
+export type FakeChannel = Pick<APIGuildChannel, "id"> &
+  Partial<
+    Pick<
+      APIGuildChannel,
+      "type" | "name" | "parent_id" | "permission_overwrites"
+    >
+  >
+
 export type FakeChannelMessage = {
   channelId: Snowflake
   authorId?: Snowflake
@@ -77,7 +87,7 @@ export type FakeDiscordState = {
   roles?: FakeRole[]
   autoModerationRules?: APIAutoModerationRule[]
   auditLogEntries?: APIAuditLogEntry[]
-  channels?: Snowflake[]
+  channels?: (Snowflake | FakeChannel)[]
   channelMessages?: FakeChannelMessage[]
 }
 
@@ -162,6 +172,17 @@ function apiRole(role: FakeRole): APIRole {
     mentionable: false,
     flags: NO_ROLE_FLAGS,
     ...role,
+  }
+}
+
+function apiChannel(channel: Snowflake | FakeChannel): GuildChannel {
+  const given = typeof channel === "string" ? { id: channel } : channel
+  return {
+    type: ChannelType.GuildText,
+    name: "channel",
+    parent_id: null,
+    permission_overwrites: [],
+    ...given,
   }
 }
 
@@ -312,6 +333,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     { recipientId: Snowflake; messages: ChannelMessage[] }
   >()
   private readonly channels = new Map<Snowflake, ChannelMessage[]>()
+  private readonly guildChannels: GuildChannel[]
   private readonly users = new Map<Snowflake, APIUser>()
   private readonly bans = new Map<Snowflake, APIBan>()
   private readonly deletedMessageSeconds = new Map<Snowflake, number>()
@@ -347,14 +369,16 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
         reason: ban.reason ?? null,
       })
     }
+    const everyone = state.roles?.find(({ id }) => id === this.guildId)
     this.roles = [
-      { id: this.guildId, name: "@everyone" },
-      ...(state.roles ?? []),
+      everyone ?? { id: this.guildId, name: "@everyone" },
+      ...(state.roles ?? []).filter(({ id }) => id !== this.guildId),
     ].map(apiRole)
     this.rules = structuredClone(state.autoModerationRules ?? [])
     this.entries = structuredClone(state.auditLogEntries ?? [])
-    for (const channelId of state.channels ?? []) {
-      this.channels.set(channelId, [])
+    this.guildChannels = (state.channels ?? []).map(apiChannel)
+    for (const { id } of this.guildChannels) {
+      this.channels.set(id, [])
     }
     for (const message of state.channelMessages ?? []) {
       const messages = this.channels.get(message.channelId) ?? []
@@ -763,6 +787,10 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
 
   listRoles() {
     return this.answer("listRoles", () => this.roles)
+  }
+
+  listChannels() {
+    return this.answer("listChannels", () => this.guildChannels)
   }
 
   authorizationUrl(state: string, codeVerifier: string) {

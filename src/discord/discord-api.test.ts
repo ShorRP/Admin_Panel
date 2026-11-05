@@ -401,6 +401,32 @@ test("listRoles reads the Discord server's roles", async () => {
   )
 })
 
+test("listChannels reads the Discord server's channels with the panel's application token", async () => {
+  const { fetch, requests } = answering(Response.json([]))
+
+  expect(await restDiscordApi(ENV, fetch).listChannels()).toEqual([])
+  expect(requests[0]?.method).toBe("GET")
+  expect(requests[0]?.url).toBe(
+    `https://discord.com/api/v10/guilds/${GUILD_ID}/channels`
+  )
+  expect(requests[0]?.headers.get("Authorization")).toBe("Bot a-bot-token")
+})
+
+test("listChannels fails with the route's pattern and Discord's code when Discord refuses", async () => {
+  const { fetch } = answering(
+    Response.json({ message: "Missing Access", code: 50001 }, { status: 403 })
+  )
+
+  await expect(restDiscordApi(ENV, fetch).listChannels()).rejects.toMatchObject(
+    {
+      method: "GET",
+      route: "/guilds/{guild.id}/channels",
+      status: 403,
+      code: 50001,
+    }
+  )
+})
+
 test("removeMember kicks the member with its reason, URL-encoded, and takes Discord's empty answer", async () => {
   const { fetch, requests } = answering(new Response(null, { status: 204 }))
 

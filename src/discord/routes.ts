@@ -5,6 +5,7 @@ export const ROUTES = {
   guildBans: "/guilds/{guild.id}/bans",
   guildBan: "/guilds/{guild.id}/bans/{user.id}",
   guildRoles: "/guilds/{guild.id}/roles",
+  guildChannels: "/guilds/{guild.id}/channels",
   autoModerationRules: "/guilds/{guild.id}/auto-moderation/rules",
   autoModerationRule:
     "/guilds/{guild.id}/auto-moderation/rules/{auto_moderation_rule.id}",

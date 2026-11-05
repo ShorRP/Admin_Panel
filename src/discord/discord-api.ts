@@ -7,6 +7,7 @@ import {
   type APIBan,
   type APIDMChannel,
   type APIGuild,
+  type APIGuildChannel,
   type APIGuildMember,
   type APIMessage,
   type APIRole,
@@ -69,6 +70,7 @@ export type DiscordApi = {
   getBan(userId: Snowflake): Promise<APIBan | null>
   listBans(query: BansQuery): Promise<APIBan[]>
   listRoles(): Promise<APIRole[]>
+  listChannels(): Promise<GuildChannel[]>
 }
 
 export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
@@ -76,6 +78,13 @@ export type BansQuery = Pick<RESTGetAPIGuildBansQuery, "after" | "limit">
 export type MembersQuery = Pick<RESTGetAPIGuildMembersQuery, "after" | "limit">
 
 export type Guild = Pick<APIGuild, "id" | "owner_id" | "roles">
+
+export type GuildChannel = Required<
+  Pick<
+    APIGuildChannel,
+    "id" | "type" | "name" | "parent_id" | "permission_overwrites"
+  >
+>
 
 export type MemberChanges = Pick<
   RESTPatchAPIGuildMemberJSONBody,
@@ -323,6 +332,13 @@ export function restDiscordApi(env: DiscordApiEnv, fetch: Fetch): DiscordApi {
       return await call<APIRole[]>({
         method: "GET",
         route: ROUTES.guildRoles,
+      })
+    },
+
+    async listChannels() {
+      return await call<GuildChannel[]>({
+        method: "GET",
+        route: ROUTES.guildChannels,
       })
     },
   }
