@@ -367,6 +367,8 @@ test("on a 360 px screen, the menu leads to the game log, whose filters fold beh
   await expect(page).toHaveURL("/game-log?from=2026-11-04&to=2026-11-04")
   await expect(lines).toHaveCount(2)
   await chips.getByRole("link").first().click()
+  await expect(page).toHaveURL("/game-log?to=2026-11-04")
+  await expect(chips.getByRole("link")).toHaveCount(1)
   await chips.getByRole("link").first().click()
   await expect(page).toHaveURL("/game-log")
   await expect(lines).toHaveCount(25)
