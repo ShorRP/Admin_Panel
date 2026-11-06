@@ -1,10 +1,9 @@
 import { z } from "zod"
 
 import { MAX_SEARCHED_TEXT_LENGTH } from "@/discord/message-search-limits"
+import { hasWord } from "@/discord/search-words"
 import { dayParamOf } from "@/ui/filter-params"
 import { REQUEST_KIND_KEYS, type RequestKindKey } from "./request-kinds"
-
-const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]/u
 
 export type TicketArchiveFilters = {
   kind: RequestKindKey | null
@@ -49,7 +48,7 @@ const REASON = z
   .trim()
   .min(1)
   .max(MAX_SEARCHED_TEXT_LENGTH)
-  .refine((text) => WORD.test(text))
+  .refine(hasWord)
   .nullable()
   .catch(null)
 

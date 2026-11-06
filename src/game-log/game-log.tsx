@@ -1,30 +1,27 @@
-import type { ReactNode } from "react"
-import { cn } from "cn"
 import {
   CircleHelp,
-  ExternalLink,
   Gamepad2,
   ShieldCheck,
   UserRound,
   type LucideIcon,
 } from "lucide-react"
 
+import { discordMessageUrl } from "@/discord/message-url"
+import { DiscordMessageLink } from "@/ui/discord-message-link"
 import { LogDay } from "@/ui/log-day"
+import { LogDetail, LogRawFields, LogTitle } from "@/ui/log-detail"
 import { LogEmpty } from "@/ui/log-empty"
 import { LogFrame } from "@/ui/log-frame"
 import { LogPagination } from "@/ui/log-pagination"
 import { LogRow } from "@/ui/log-row"
-import { TEXT_LINK_CLASSES } from "@/ui/text-link"
 import { GameLogFilterFold } from "./game-log-filter-fold"
 import { GameLogFilterForm } from "./game-log-filter-form"
 import { hasFilter, NO_FILTERS } from "./game-log-filters"
 import { gameLogHref } from "./game-log-href"
-import { GAME_LOG_TRAILING_CLASSES } from "./game-log-layout"
 import { GameLogNotConfigured } from "./game-log-not-configured"
 import type {
   GameLogEntry,
   GameLogEvent,
-  GameLogRawField,
   GameLogRawLine,
 } from "./parse-game-log-message"
 import type { GameLogPage } from "./read-game-log"
@@ -34,10 +31,6 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   administration: ShieldCheck,
   personnages: UserRound,
 }
-
-const DETAIL_CLASSES = cn(
-  "text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground"
-)
 
 export function GameLog({
   read,
@@ -118,15 +111,13 @@ function GameLogRow({
       Icon={Icon}
       tileClassName="text-muted-foreground"
       trailing={
-        <a
-          href={`https://discord.com/channels/${guildId}/${entry.channelId}/${entry.messageId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(TEXT_LINK_CLASSES, GAME_LOG_TRAILING_CLASSES)}
-        >
-          Voir dans Discord
-          <ExternalLink aria-hidden className="size-3.5 shrink-0" />
-        </a>
+        <DiscordMessageLink
+          href={discordMessageUrl({
+            guildId,
+            channelId: entry.channelId,
+            messageId: entry.messageId,
+          })}
+        />
       }
     >
       {entry.kind === "event" ? (
@@ -163,15 +154,17 @@ function EventLines({
   ].filter((part) => part !== null)
   return (
     <>
-      <p className="font-medium text-pretty wrap-anywhere">
+      <LogTitle>
         {category} ·{" "}
         <span className="font-mono text-[0.8125rem]">{action}</span>
-      </p>
-      <Detail>{who.join(" · ")}</Detail>
-      <Detail>{about.join(" · ")}</Detail>
-      <Detail>{place === null ? "" : `Lieu : ${place}`}</Detail>
-      <Detail>{eventId === null ? "" : `Identifiant : ${eventId}`}</Detail>
-      <RawFieldLines fields={extra} />
+      </LogTitle>
+      <LogDetail>{who.join(" · ")}</LogDetail>
+      <LogDetail>{about.join(" · ")}</LogDetail>
+      <LogDetail>{place === null ? "" : `Lieu : ${place}`}</LogDetail>
+      <LogDetail>
+        {eventId === null ? "" : `Identifiant : ${eventId}`}
+      </LogDetail>
+      <LogRawFields fields={extra} />
     </>
   )
 }
@@ -179,26 +172,8 @@ function EventLines({
 function RawLines({ line: { title, fields } }: { line: GameLogRawLine }) {
   return (
     <>
-      <p className="font-medium text-pretty wrap-anywhere">
-        {title ?? "Message sans titre"}
-      </p>
-      <RawFieldLines fields={fields} />
+      <LogTitle>{title ?? "Message sans titre"}</LogTitle>
+      <LogRawFields fields={fields} />
     </>
   )
-}
-
-function RawFieldLines({ fields }: { fields: GameLogRawField[] }) {
-  return (
-    <>
-      {fields.map(({ name, value }, index) => (
-        <Detail key={index}>
-          {name === null ? value : `${name} : ${value}`}
-        </Detail>
-      ))}
-    </>
-  )
-}
-
-function Detail({ children }: { children: ReactNode }) {
-  return children === "" ? null : <p className={DETAIL_CLASSES}>{children}</p>
 }

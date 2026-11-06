@@ -10,6 +10,10 @@ export const FILTER_PILL_LIST_CLASSES = cn("flex flex-wrap gap-1.5")
 
 export const FILTER_PILL_SIZE_CLASSES = cn("h-7.5 rounded-full touch:h-11")
 
+export const FILTER_FIELD_CLASSES = cn(
+  "flex min-w-0 flex-1 basis-44 flex-col gap-2 md:max-w-60"
+)
+
 export const FILTER_CONTROL_HEIGHT_CLASSES = cn("h-8 touch:h-11")
 
 export const FILTER_FORM_CLASSES = cn(

@@ -3,14 +3,13 @@ import "server-only"
 import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
-import { accountNames } from "./account-names"
+import { MAX_SEARCHES } from "@/discord/message-search-limits"
+import { accountNames } from "@/records/account-names"
 import {
   ARCHIVES_PER_PAGE,
   searchTicketArchives,
 } from "./search-ticket-archives"
 import type { TicketArchive } from "./ticket-archive"
-
-const MAX_SEARCHES = 4
 
 export const MAX_CITING_ARCHIVES_READ = MAX_SEARCHES * ARCHIVES_PER_PAGE
 

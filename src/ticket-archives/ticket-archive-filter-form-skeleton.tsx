@@ -2,10 +2,10 @@ import { cn } from "cn"
 
 import {
   FILTER_CONTROL_HEIGHT_CLASSES,
+  FILTER_FIELD_CLASSES,
   FILTER_FORM_CLASSES,
 } from "@/ui/filter-layout"
 import { Skeleton } from "@/ui/skeleton"
-import { FILTER_FIELD_CLASSES } from "./ticket-archive-filter-layout"
 
 const LABELS = [
   { field: "opener", width: "w-16" },

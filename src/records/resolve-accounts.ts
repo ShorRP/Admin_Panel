@@ -3,9 +3,9 @@ import "server-only"
 import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
-import { lowerCaseNames } from "@/records/account-candidate"
-import { accountIdOf } from "@/records/account-id"
-import { readAllBans, readAllMembers } from "@/records/read-all-accounts"
+import { lowerCaseNames } from "./account-candidate"
+import { accountIdOf } from "./account-id"
+import { readAllBans, readAllMembers } from "./read-all-accounts"
 
 export type ResolvedAccount =
   { kind: "account"; id: Snowflake } | { kind: "none" } | { kind: "several" }

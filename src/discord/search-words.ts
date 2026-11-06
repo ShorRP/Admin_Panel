@@ -6,10 +6,14 @@ export function wordsOf(text: string) {
   return text.toLowerCase().match(WORD) ?? []
 }
 
+export function hasWord(text: string) {
+  return HAS_WORD.test(text)
+}
+
 export function longestTermOf(text: string) {
   return text
     .split(/\s+/)
-    .filter((term) => HAS_WORD.test(term))
+    .filter(hasWord)
     .toSorted((left, right) => right.length - left.length)[0]
 }
 

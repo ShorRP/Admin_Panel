@@ -10,6 +10,7 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import {
   Ban,
+  Bot,
   Gamepad2,
   Gavel,
   Menu,
@@ -81,6 +82,12 @@ const GAME_LOG = {
   Icon: Gamepad2,
 }
 
+const BOT_LOG = {
+  href: "/bot-log",
+  name: "Journal du Bot",
+  Icon: Bot,
+}
+
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
 
 const SUPPORT_TICKETS = {
@@ -125,6 +132,7 @@ export function StaffHeader({
   member,
   opensModeration,
   viewsGameLog,
+  viewsBotLog,
   ownRecord,
   blockedWordCount,
 }: {
@@ -132,6 +140,7 @@ export function StaffHeader({
   member: ReactNode
   opensModeration: Promise<boolean>
   viewsGameLog: Promise<boolean>
+  viewsBotLog: Promise<boolean>
   ownRecord: Promise<MemberRecord | null>
   blockedWordCount: ReactNode
 }) {
@@ -142,6 +151,7 @@ export function StaffHeader({
   const logs = [
     withCurrent(AUDIT_LOG, currentPath),
     withCurrent({ ...GAME_LOG, shown: viewsGameLog }, currentPath),
+    withCurrent({ ...BOT_LOG, shown: viewsBotLog }, currentPath),
   ]
   const moderation = withCurrent(MODERATION, currentPath)
   const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)

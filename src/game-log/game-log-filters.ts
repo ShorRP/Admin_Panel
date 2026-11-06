@@ -35,7 +35,3 @@ export function cursorOf(searchParams: GameLogSearchParams): Snowflake | null {
 export function hasFilter({ text, from, to }: GameLogFilters) {
   return text !== null || from !== null || to !== null
 }
-
-export function isReversed({ from, to }: GameLogFilters) {
-  return from !== null && to !== null && from > to
-}
