@@ -1,0 +1,21 @@
+{
+  "rules-membre-role-given": {
+    "title": "Règlement · Rôle Membre donné",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Membre",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Rôle",
+        "value": "<@&1400000000000000010> (`1400000000000000010`)",
+        "inline": true
+      },
+      { "name": "Déclencheur", "value": "Réaction ✅", "inline": true }
+    ]
+  }
+}
