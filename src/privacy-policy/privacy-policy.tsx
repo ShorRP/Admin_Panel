@@ -125,6 +125,20 @@ export function PrivacyPolicy() {
               sur Discord, tant qu’un membre du staff n’a pas supprimé leur
               message.
             </li>
+            <li>
+              pour le staff qui voit le salon du Journal du Bot sur Discord, la
+              page du Journal du Bot : le Bot y poste ce qu’il fait de lui-même,
+              et le panel y lit, parmi les messages de l’application seule,
+              l’heure de chaque ligne, sa famille et son action, ses champs,
+              c’est-à-dire les comptes concernés, dont il cherche le nom sur
+              Discord, les rôles et les salons, et, pour la fermeture d’un
+              ticket, le motif que le membre a saisi, ou, pour une ligne qui ne
+              suit pas le format, ses textes tels que le Bot les a écrits. Le
+              panel envoie à la recherche de messages de Discord les mots, la
+              période, et l’ID du compte ou du salon que le staff a choisis. Ces
+              lignes restent dans ce salon, sur Discord, tant qu’un membre du
+              staff n’a pas supprimé leur message.
+            </li>
           </PolicyList>
           <p>
             Pour lire tous les membres, l’application du panel a, sur Discord,
@@ -134,10 +148,10 @@ export function PrivacyPolicy() {
           </p>
           <p>
             L’adresse d’une fiche contient l’ID du compte, et celles de la liste
-            des comptes, du journal d’audit, du journal du jeu et des tickets de
-            support, le texte cherché, un nom, un ID ou une mention, les mots
-            d’un motif, et les filtres choisis : l’historique du navigateur les
-            garde, comme toute adresse.
+            des comptes, du journal d’audit, du journal du jeu, du Journal du
+            Bot et des tickets de support, le texte cherché, un nom, un ID ou
+            une mention, les mots d’un motif, et les filtres choisis :
+            l’historique du navigateur les garde, comme toute adresse.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel écrit dans Discord">
@@ -184,9 +198,9 @@ export function PrivacyPolicy() {
             Discord, et vérifie à chaque page que le membre a toujours le rôle
             staff. Tout le staff voit le journal d’audit et les archives des
             tickets de support, ainsi que les tickets en cours dont il voit le
-            salon sur Discord, et le journal du jeu, que voit seul le staff qui
-            voit son salon sur Discord ; seul le staff qui modère voit la liste
-            des comptes et leurs fiches.
+            salon sur Discord, et le journal du jeu et le Journal du Bot, que
+            voit seul le staff qui voit leur salon sur Discord ; seul le staff
+            qui modère voit la liste des comptes et leurs fiches.
           </p>
         </PolicySection>
         <PolicySection title="Qui d’autre y touche">

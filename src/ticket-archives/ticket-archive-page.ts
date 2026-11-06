@@ -3,8 +3,9 @@ import "server-only"
 import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
+import { MAX_SEARCHES } from "@/discord/message-search-limits"
 import type { PeriodBounds } from "@/discord/period-bounds"
-import { accountNames } from "./account-names"
+import { accountNames } from "@/records/account-names"
 import type { RequestKindKey } from "./request-kinds"
 import { ARCHIVES_PER_PAGE } from "./search-ticket-archives"
 import type { TicketArchive } from "./ticket-archive"
@@ -12,13 +13,11 @@ import type { TicketArchiveFilters } from "./ticket-archive-filters"
 
 const MAX_SEARCH_OFFSET = 9975
 
-export const WINDOW_SEARCHES = 4
-
 export const MAX_PAGE = MAX_SEARCH_OFFSET / ARCHIVES_PER_PAGE + 1
 
 export const MAX_ARCHIVES_READ = MAX_PAGE * ARCHIVES_PER_PAGE
 
-export const WINDOW_SIZE = WINDOW_SEARCHES * ARCHIVES_PER_PAGE
+export const WINDOW_SIZE = MAX_SEARCHES * ARCHIVES_PER_PAGE
 
 type ArchiveAccount = { id: Snowflake; name: string | null }
 

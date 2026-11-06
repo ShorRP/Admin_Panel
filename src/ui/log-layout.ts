@@ -33,3 +33,13 @@ export const LOG_PAGINATION_CLASSES = cn(
 export const LOG_PAGINATION_LINK_CLASSES = cn(
   "max-sm:min-w-0 max-sm:flex-1 max-sm:text-center max-sm:whitespace-normal"
 )
+
+export const LOG_TITLE_CLASSES = cn("font-medium text-pretty wrap-anywhere")
+
+export const LOG_DETAIL_CLASSES = cn(
+  "text-[0.8125rem] text-pretty wrap-anywhere text-muted-foreground"
+)
+
+export const LOG_TRAILING_LINK_CLASSES = cn(
+  "ml-auto flex w-fit max-w-full items-center gap-1.5 text-[0.8125rem] touch:min-h-11"
+)
