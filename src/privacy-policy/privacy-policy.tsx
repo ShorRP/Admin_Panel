@@ -120,10 +120,12 @@ export function PrivacyPolicy() {
               jeu, la cible, le motif et le lieu de l’événement, son
               identifiant, ou, pour une ligne qui ne suit pas le format, son
               titre et ses champs tels que le webhook les a écrits. Le panel
-              envoie à la recherche de messages de Discord les mots et la
-              période que le staff a choisis. Ces lignes restent dans ce salon,
-              sur Discord, tant qu’un membre du staff n’a pas supprimé leur
-              message.
+              envoie à la recherche de messages de Discord un seul des mots que
+              le staff a choisis, tel que le numéro d’un compte de jeu, le nom
+              d’un personnage ou un mot du texte, ainsi que la période, et
+              vérifie lui-même les autres filtres sur les messages qu’elle
+              renvoie. Ces lignes restent dans ce salon, sur Discord, tant qu’un
+              membre du staff n’a pas supprimé leur message.
             </li>
             <li>
               pour le staff qui voit le salon du Journal du Bot sur Discord, la

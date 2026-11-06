@@ -9,6 +9,13 @@ test("the game log's skeleton shows the filters' form as bars, with no field to 
   expect(html).not.toMatch(/<(form|input|button|label|a)[\s>]/)
 })
 
+test("the game log's skeleton draws a bar for each of the three pills and each of the ten fields", () => {
+  const html = renderToStaticMarkup(<GameLogSkeleton />)
+
+  expect(html.match(/\sh-7\.5\s/g)).toHaveLength(3)
+  expect(html.match(/\sbasis-44\s/g)).toHaveLength(10)
+})
+
 test("the game log's skeleton is a status that says, to assistive technologies alone, that it is loading", () => {
   const html = renderToStaticMarkup(<GameLogSkeleton />)
 

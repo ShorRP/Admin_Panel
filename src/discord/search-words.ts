@@ -10,6 +10,10 @@ export function hasWord(text: string) {
   return HAS_WORD.test(text)
 }
 
+export function withAWord(text: string | null) {
+  return text !== null && hasWord(text) ? text : null
+}
+
 export function longestTermOf(text: string) {
   return text
     .split(/\s+/)

@@ -115,7 +115,9 @@ test("the privacy policy says the panel reads the game log, for the staff who vi
   expect(text).toMatch(
     /le nom du personnage et le numéro de son compte de jeu, la cible, le motif et le lieu de l’événement/
   )
-  expect(text).toMatch(/les mots et la période que le staff a choisis/)
+  expect(text).toMatch(
+    /un seul des mots que le staff a choisis, tel que le numéro d’un compte de jeu, le nom d’un personnage ou un mot du texte, ainsi que la période, et vérifie lui-même les autres filtres/
+  )
   expect(text).toMatch(
     /tant qu’un membre du staff n’a pas supprimé leur message/
   )
