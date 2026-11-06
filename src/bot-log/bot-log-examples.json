@@ -17,5 +17,100 @@
       },
       { "name": "Déclencheur", "value": "Réaction ✅", "inline": true }
     ]
+  },
+  "voice-channels-channel-created": {
+    "title": "Vocaux · Vocal créé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Propriétaire",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000020> (`1400000000000000020`)",
+        "inline": true
+      }
+    ]
+  },
+  "voice-channels-channel-deleted": {
+    "title": "Vocaux · Vocal supprimé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Propriétaire",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000020> (`1400000000000000020`)",
+        "inline": true
+      }
+    ]
+  },
+  "voice-channels-focus-mode-on": {
+    "title": "Vocaux · Focus Mode activé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Propriétaire",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000020> (`1400000000000000020`)",
+        "inline": true
+      }
+    ]
+  },
+  "voice-channels-focus-mode-off": {
+    "title": "Vocaux · Focus Mode désactivé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Propriétaire",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000020> (`1400000000000000020`)",
+        "inline": true
+      }
+    ]
+  },
+  "voice-channels-member-expelled": {
+    "title": "Vocaux · Membre expulsé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Propriétaire",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000020> (`1400000000000000020`)",
+        "inline": true
+      },
+      {
+        "name": "Membre expulsé",
+        "value": "<@1400000000000000002> (`1400000000000000002`)",
+        "inline": true
+      }
+    ]
   }
 }
