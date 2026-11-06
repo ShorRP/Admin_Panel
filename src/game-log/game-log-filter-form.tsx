@@ -1,7 +1,7 @@
 import { FilterForm } from "@/ui/filter-form"
+import { FILTER_FIELD_CLASSES } from "@/ui/filter-layout"
 import { GameLogFilterFields } from "./game-log-filter-fields"
 import type { GameLogFilters } from "./game-log-filters"
-import { FILTER_FIELD_CLASSES } from "./game-log-layout"
 
 export function GameLogFilterForm({ filters }: { filters: GameLogFilters }) {
   return (

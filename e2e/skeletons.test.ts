@@ -1,5 +1,7 @@
+import { botLogChannel } from "@/bot-log/bot-log-message"
 import { gameLogChannel } from "@/game-log/game-log-message"
 import {
+  BOT_LOG_CHANNEL_ID,
   GAME_LOG_CHANNEL_ID,
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
@@ -26,6 +28,11 @@ const PAGES = [
     path: "/game-log",
     loading: ["Chargement du journal du jeu…"],
     content: "Aucune ligne dans le journal du jeu pour l’instant.",
+  },
+  {
+    path: "/bot-log",
+    loading: ["Chargement du Journal du Bot…"],
+    content: "Aucune ligne dans le Journal du Bot pour l’instant.",
   },
   {
     path: "/support-tickets",
@@ -63,6 +70,10 @@ test.use({
     channels: [
       gameLogChannel({
         id: GAME_LOG_CHANNEL_ID,
+        viewerRoleIds: [STAFF_ROLE_ID],
+      }),
+      botLogChannel({
+        id: BOT_LOG_CHANNEL_ID,
         viewerRoleIds: [STAFF_ROLE_ID],
       }),
     ],

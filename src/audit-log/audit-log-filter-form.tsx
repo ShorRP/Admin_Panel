@@ -1,7 +1,7 @@
 import { FilterForm } from "@/ui/filter-form"
+import { FILTER_FIELD_CLASSES } from "@/ui/filter-layout"
 import { AuditLogFilterFields } from "./audit-log-filter-field"
 import { hiddenFieldsOf, type AuditLogFilters } from "./audit-log-filters"
-import { FILTER_FIELD_CLASSES } from "./audit-log-layout"
 
 export function AuditLogFilterForm({ filters }: { filters: AuditLogFilters }) {
   return (

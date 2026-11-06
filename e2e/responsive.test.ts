@@ -1,5 +1,6 @@
 import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
+import { botLogChannel, botLogMessage } from "@/bot-log/bot-log-message"
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
 import { gameLogChannel, gameLogMessage } from "@/game-log/game-log-message"
@@ -12,6 +13,7 @@ import { archiveMessage } from "@/ticket-archives/archive-message"
 import {
   ARCHIVES_CHANNEL_ID,
   BAN_ROLE_ID,
+  BOT_LOG_CHANNEL_ID,
   GAME_LOG_CHANNEL_ID,
   GAME_LOG_WEBHOOK_ID,
   MODERATION_ROLE_ID,
@@ -63,6 +65,11 @@ const STAFF_PAGES = [
   { path: `/records/${BRYNJA.id}`, fixme: false },
   { path: "/game-log", fixme: false },
   { path: "/game-log?text=heal&from=2026-11-04&to=2026-11-04", fixme: false },
+  { path: "/bot-log", fixme: false },
+  {
+    path: `/bot-log?family=tickets&action=ferm%C3%A9&account=${BRYNJA.id}&text=r%C3%A9solu&from=2026-11-04&to=2026-11-04`,
+    fixme: false,
+  },
   { path: "/support-tickets", fixme: false },
   { path: "/support-tickets?page=2", fixme: false },
   {
@@ -92,6 +99,13 @@ const FILTER_SHEETS = [
     name: "Filtres",
     field: "Texte",
     value: "heal",
+  },
+  {
+    owner: "the Bot log's",
+    path: `/bot-log?family=tickets&action=ferm%C3%A9&account=${BRYNJA.id}&text=r%C3%A9solu&from=2026-11-04&to=2026-11-04`,
+    name: "Filtres",
+    field: "Action",
+    value: "fermé",
   },
   {
     owner: "the list of accounts'",
@@ -140,6 +154,10 @@ test.use({
         id: GAME_LOG_CHANNEL_ID,
         viewerRoleIds: [STAFF_ROLE_ID],
       }),
+      botLogChannel({
+        id: BOT_LOG_CHANNEL_ID,
+        viewerRoleIds: [STAFF_ROLE_ID],
+      }),
       supportTicketChannel({
         id: WALL_OF_TEXT_TICKET_ID,
         categoryId: TICKET_CATEGORY_ID,
@@ -175,6 +193,32 @@ test.use({
       {
         channelId: GAME_LOG_CHANNEL_ID,
         authorId: GAME_LOG_WEBHOOK_ID,
+        sentAt: new Date("2026-11-03T22:30:00Z"),
+        embeds: [
+          {
+            title: "z".repeat(150),
+            fields: [{ name: "Durée", value: "w".repeat(200) }],
+          },
+        ],
+      },
+      botLogMessage({
+        example: "tickets-ticket-closed",
+        channelId: BOT_LOG_CHANNEL_ID,
+        sentAt: new Date("2026-11-04T09:12:00Z"),
+        ids: {
+          "1400000000000000001": BRYNJA.id,
+          "1400000000000000002": ALDIS.id,
+        },
+        fields: { Motif: "x".repeat(300) },
+      }),
+      botLogMessage({
+        example: "rules-membre-role-given",
+        channelId: BOT_LOG_CHANNEL_ID,
+        sentAt: new Date("2026-11-04T08:30:00Z"),
+        ids: { "1400000000000000001": BRYNJA.id },
+      }),
+      {
+        channelId: BOT_LOG_CHANNEL_ID,
         sentAt: new Date("2026-11-03T22:30:00Z"),
         embeds: [
           {

@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react"
 import {
   Ban,
+  Bot,
   Gamepad2,
   Gavel,
   Lock,
@@ -90,12 +91,14 @@ async function render(
     member = "aldis",
     opensModeration = false,
     viewsGameLog = false,
+    viewsBotLog = false,
     ownRecord = null,
     blockedWordCount = null,
   }: {
     member?: string
     opensModeration?: boolean
     viewsGameLog?: boolean
+    viewsBotLog?: boolean
     ownRecord?: { href: string; name: string } | null
     blockedWordCount?: ReactNode
   } = {}
@@ -106,6 +109,7 @@ async function render(
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
       viewsGameLog={Promise.resolve(viewsGameLog)}
+      viewsBotLog={Promise.resolve(viewsBotLog)}
       ownRecord={Promise.resolve(ownRecord)}
       blockedWordCount={blockedWordCount}
     />,
@@ -263,6 +267,46 @@ test("the game log's link shows a gamepad hidden from assistive technologies, an
       .filter(({ current }) => current !== undefined)
       .map(({ text }) => text)
   ).toEqual(["Journal d’audit"])
+})
+
+test("a staff member who views the Bot log's channel finds « Journal du Bot » last under « Journaux », and no one else does", async () => {
+  const viewer = await render("/blocked-words", {
+    viewsGameLog: true,
+    viewsBotLog: true,
+  })
+  const others = await render("/blocked-words", { viewsGameLog: true })
+
+  expect(
+    groups(viewer.sidebar).map(({ title, sections }) => ({ title, sections }))
+  ).toContainEqual({
+    title: "Journaux",
+    sections: ["Journal d’audit", "Journal du jeu", "Journal du Bot"],
+  })
+  expect(links(viewer.sidebar)).toContainEqual(
+    expect.objectContaining({ text: "Journal du Bot", href: "/bot-log" })
+  )
+  expect(textOf(others.sidebar)).not.toContain("Journal du Bot")
+})
+
+test("the Bot log's link shows a bot hidden from assistive technologies, and is current on its page alone", async () => {
+  const { sidebar } = await render("/bot-log", { viewsBotLog: true })
+
+  expect(
+    links(navOf(sidebar))
+      .filter(({ text }) => text === "Journal du Bot")
+      .map(({ image, current, title }) => ({ image, current, title }))
+  ).toEqual([
+    {
+      image: { drawing: drawing(<Bot />), hidden: true },
+      current: "page",
+      title: "Journal du Bot",
+    },
+  ])
+  expect(
+    links(navOf((await render("/game-log", { viewsBotLog: true })).sidebar))
+      .filter(({ current }) => current !== undefined)
+      .map(({ text }) => text)
+  ).toEqual([])
 })
 
 test("each section's link shows its icon before its name, hidden from assistive technologies", async () => {

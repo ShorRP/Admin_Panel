@@ -2,15 +2,19 @@ import "server-only"
 
 import type { Snowflake } from "discord-api-types/v10"
 
+import { MAX_SEARCHES } from "@/discord/message-search-limits"
 import { periodBounds } from "@/discord/period-bounds"
+import { holdsWords, longestTermOf } from "@/discord/search-words"
+import {
+  resolveAccounts,
+  type ResolvedAccount,
+} from "@/records/resolve-accounts"
 import {
   parisDayAfter,
   parisDayStart,
   parisPeriodOf,
 } from "@/ui/paris-day-bounds"
-import { holdsWords, longestTermOf } from "./reason-words"
 import { requestKindKeyOf } from "./request-kinds"
-import { resolveAccounts, type ResolvedAccount } from "./resolve-accounts"
 import {
   ARCHIVES_PER_PAGE,
   searchTicketArchives,
@@ -22,7 +26,6 @@ import {
 } from "./ticket-archive-filters"
 import {
   pagedArchives,
-  WINDOW_SEARCHES,
   WINDOW_SIZE,
   type AccountNotice,
   type ArchivesPage,
@@ -97,7 +100,7 @@ async function readCandidates(
   )
   const candidates = new Map<Snowflake, TicketArchive>()
   let discordTotal = 0
-  for (let search = 0; search < WINDOW_SEARCHES; search++) {
+  for (let search = 0; search < MAX_SEARCHES; search++) {
     const offset = search * ARCHIVES_PER_PAGE
     const found = await searchTicketArchives(
       discord,

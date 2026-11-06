@@ -3,9 +3,9 @@ import { connection } from "next/server"
 
 import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { readBlockedWordCount } from "@/blocked-words/read-blocked-word-count"
+import { configuredBotLog } from "@/bot-log/configured-bot-log"
 import { createDiscordApi } from "@/discord/discord-api"
 import { configuredGameLog } from "@/game-log/configured-game-log"
-import { viewsGameLogOnceRead } from "@/game-log/views-game-log-once-read"
 import { ownRecordOnceRead } from "@/records/own-record"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
@@ -13,6 +13,7 @@ import { StaffMemberIdentity } from "@/staff/staff-member-identity"
 import { StaffMemberIdentitySkeleton } from "@/staff/staff-member-identity-skeleton"
 import { staffRoleLabel } from "@/staff/staff-role-label"
 import { StatefulStaffHeader } from "@/staff/stateful-staff-header"
+import { viewsChannelOnceRead } from "@/staff/views-channel-once-read"
 import { Toaster } from "@/ui/toast"
 
 export default function StaffLayout({ children }: { children: ReactNode }) {
@@ -27,7 +28,8 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
             </Suspense>
           }
           opensModeration={opensModerationOnceRead(staffMember)}
-          viewsGameLog={currentViewsGameLog(staffMember)}
+          viewsGameLog={currentViewsLog(configuredGameLog, staffMember)}
+          viewsBotLog={currentViewsLog(configuredBotLog, staffMember)}
           ownRecord={ownRecordOnceRead(staffMember)}
           blockedWordCount={
             <Suspense fallback={null}>
@@ -49,11 +51,14 @@ async function currentStaffMember() {
   return await requireStaffMember(createDiscordApi())
 }
 
-async function currentViewsGameLog(staffMember: Promise<StaffMember>) {
+async function currentViewsLog(
+  configuredLog: () => { channelId: string } | null,
+  staffMember: Promise<StaffMember>
+) {
   await connection()
-  return await viewsGameLogOnceRead(
+  return await viewsChannelOnceRead(
     createDiscordApi(),
-    configuredGameLog(),
+    configuredLog(),
     staffMember
   )
 }

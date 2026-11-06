@@ -4,10 +4,10 @@ import { ListFilter } from "lucide-react"
 import { Button } from "@/ui/button"
 import {
   FILTER_CONTROL_HEIGHT_CLASSES,
+  FILTER_FIELD_CLASSES,
   FILTER_FORM_CLASSES,
 } from "@/ui/filter-layout"
 import { TicketArchiveFilterFields } from "./ticket-archive-filter-fields"
-import { FILTER_FIELD_CLASSES } from "./ticket-archive-filter-layout"
 import type { TicketArchiveFilters } from "./ticket-archive-filters"
 
 export function TicketArchiveFilterForm({

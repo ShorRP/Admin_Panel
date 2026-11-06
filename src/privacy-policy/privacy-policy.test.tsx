@@ -101,7 +101,7 @@ test("the privacy policy says the panel reads from Discord, at each page, what i
   expect(text).toMatch(/« Server Members Intent »/)
   expect(text).toMatch(/l’historique du navigateur les garde/)
   expect(text).toMatch(
-    /celles de la liste des comptes, du journal d’audit, du journal du jeu et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
+    /celles de la liste des comptes, du journal d’audit, du journal du jeu, du Journal du Bot et des tickets de support, le texte cherché, un nom, un ID ou une mention, les mots d’un motif/
   )
 })
 
@@ -120,7 +120,25 @@ test("the privacy policy says the panel reads the game log, for the staff who vi
     /tant qu’un membre du staff n’a pas supprimé leur message/
   )
   expect(sectionText("Qui le voit")).toMatch(
-    /le journal du jeu, que voit seul le staff qui voit son salon sur Discord/
+    /le journal du jeu et le Journal du Bot, que voit seul le staff qui voit leur salon sur Discord/
+  )
+})
+
+test("the privacy policy says the panel reads the Bot log, for the staff who view its channel on Discord, from the application's messages alone, and keeps none of it", () => {
+  const text = sectionText("Ce que le panel lit sans le garder")
+
+  expect(text).toMatch(
+    /pour le staff qui voit le salon du Journal du Bot sur Discord, la page du Journal du Bot/
+  )
+  expect(text).toMatch(/parmi les messages de l’application seule/)
+  expect(text).toMatch(
+    /les comptes concernés, dont il cherche le nom sur Discord, les rôles et les salons, et, pour la fermeture d’un ticket, le motif que le membre a saisi/
+  )
+  expect(text).toMatch(
+    /les mots, la période, et l’ID du compte ou du salon que le staff a choisis/
+  )
+  expect(sectionText("Qui le voit")).toMatch(
+    /le journal du jeu et le Journal du Bot, que voit seul le staff qui voit leur salon sur Discord/
   )
 })
 

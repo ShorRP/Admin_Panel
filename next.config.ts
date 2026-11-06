@@ -1,5 +1,6 @@
 import type { NextConfig } from "next"
 
+import { parseBotLogEnv } from "@/bot-log/env"
 import {
   parseDiscordApiEnv,
   parseDiscordOAuthEnv,
@@ -13,6 +14,7 @@ import { parseTicketArchivesEnv } from "@/ticket-archives/env"
 const { testProxy } = parseTestProxyEnv(process.env)
 
 if (process.env.VERCEL) {
+  parseBotLogEnv(process.env)
   parseDiscordApiEnv(process.env)
   parseDiscordOAuthEnv(process.env)
   parseGameLogEnv(process.env)

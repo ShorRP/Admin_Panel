@@ -51,7 +51,7 @@ export default defineConfig([
             },
             {
               regex:
-                "(^|/)(answering-fetch|discord-api-contract|archive-message|support-ticket-channel|game-log-message)$",
+                "(^|/)(answering-fetch|discord-api-contract|archive-message|support-ticket-channel|game-log-message|bot-log-message)$",
               message: "Only test files import the tests' helpers.",
             },
           ],

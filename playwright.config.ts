@@ -18,6 +18,8 @@ export const GAME_LOG_CHANNEL_ID = "1300000000000000050"
 
 export const GAME_LOG_WEBHOOK_ID = "1300000000000000051"
 
+export const BOT_LOG_CHANNEL_ID = "1300000000000000052"
+
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
@@ -43,6 +45,7 @@ export default defineConfig({
       TICKET_CATEGORY_ID,
       GAME_LOG_CHANNEL_ID,
       GAME_LOG_WEBHOOK_ID,
+      BOT_LOG_CHANNEL_ID,
       SESSION_SECRET: "e2e-session-secret-of-32-chars-x",
     },
   },

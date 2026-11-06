@@ -8,18 +8,18 @@ import { expect, test } from "vitest"
 import { DiscordError } from "@/discord/discord-error"
 import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
-import { findStaffMember } from "@/staff/staff-member"
-import { viewsGameLogOnceRead } from "./views-game-log-once-read"
+import { findStaffMember } from "./staff-member"
+import { viewsChannelOnceRead } from "./views-channel-once-read"
 
 const GUILD_ID = new FakeDiscord().guildId
 
 const STAFF_ROLE_ID = "1300000000000000000"
 
-const GAME_LOG_ROLE_ID = "1300000000000000001"
+const VIEWER_ROLE_ID = "1300000000000000001"
 
 const CHANNEL_ID = "1568022814483685377"
 
-const CONFIG = { channelId: CHANNEL_ID, webhookId: "1568023050346307647" }
+const CONFIG = { channelId: CHANNEL_ID }
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -32,10 +32,10 @@ function serverWithMembers() {
     roles: [
       { id: GUILD_ID, name: "@everyone", permissions: "0" },
       { id: STAFF_ROLE_ID, name: "Staff" },
-      { id: GAME_LOG_ROLE_ID, name: "Développeurs" },
+      { id: VIEWER_ROLE_ID, name: "Développeurs" },
     ],
     members: [
-      { user: ALDIS, roles: [STAFF_ROLE_ID, GAME_LOG_ROLE_ID] },
+      { user: ALDIS, roles: [STAFF_ROLE_ID, VIEWER_ROLE_ID] },
       { user: BRYNJA, roles: [STAFF_ROLE_ID] },
     ],
     channels: [
@@ -44,7 +44,7 @@ function serverWithMembers() {
         permission_overwrites: [
           { id: GUILD_ID, type: OverwriteType.Role, allow: "0", deny: VIEW },
           {
-            id: GAME_LOG_ROLE_ID,
+            id: VIEWER_ROLE_ID,
             type: OverwriteType.Role,
             allow: VIEW,
             deny: "0",
@@ -70,23 +70,23 @@ async function staffMemberOn(
   return staffMember
 }
 
-test("a staff member who views the channel on Discord views the game log", async () => {
+test("a staff member who views the channel on Discord views it", async () => {
   const discord = serverWithMembers()
 
   expect(
-    await viewsGameLogOnceRead(discord, CONFIG, staffMemberOn(discord, ALDIS))
+    await viewsChannelOnceRead(discord, CONFIG, staffMemberOn(discord, ALDIS))
   ).toBe(true)
 })
 
-test("a staff member who does not view the channel on Discord does not view the game log", async () => {
+test("a staff member who does not view the channel on Discord does not view it", async () => {
   const discord = serverWithMembers()
 
   expect(
-    await viewsGameLogOnceRead(discord, CONFIG, staffMemberOn(discord, BRYNJA))
+    await viewsChannelOnceRead(discord, CONFIG, staffMemberOn(discord, BRYNJA))
   ).toBe(false)
 })
 
-test("nobody views a game log that is not configured, and Discord is not asked", async () => {
+test("nobody views a channel that is not configured, and Discord is not asked", async () => {
   const discord = serverWithMembers()
   const staffMember = await staffMemberOn(discord, ALDIS)
   discord.failNext(
@@ -99,16 +99,16 @@ test("nobody views a game log that is not configured, and Discord is not asked",
   )
 
   expect(
-    await viewsGameLogOnceRead(discord, null, Promise.resolve(staffMember))
+    await viewsChannelOnceRead(discord, null, Promise.resolve(staffMember))
   ).toBe(false)
   await expect(discord.listChannels()).rejects.toBeInstanceOf(DiscordError)
 })
 
-test("a staff check that failed gives no link", async () => {
+test("a staff check that failed gives no view", async () => {
   const discord = serverWithMembers()
 
   expect(
-    await viewsGameLogOnceRead(
+    await viewsChannelOnceRead(
       discord,
       CONFIG,
       Promise.reject(new Error("redirect"))
@@ -116,7 +116,7 @@ test("a staff check that failed gives no link", async () => {
   ).toBe(false)
 })
 
-test("Discord unavailable while the channel is read gives no link rather than an error", async () => {
+test("Discord unavailable while the channel is read gives no view rather than an error", async () => {
   const discord = serverWithMembers()
   const staffMember = await staffMemberOn(discord, ALDIS)
   discord.failNext(
@@ -129,7 +129,7 @@ test("Discord unavailable while the channel is read gives no link rather than an
   )
 
   expect(
-    await viewsGameLogOnceRead(discord, CONFIG, Promise.resolve(staffMember))
+    await viewsChannelOnceRead(discord, CONFIG, Promise.resolve(staffMember))
   ).toBe(false)
 })
 
@@ -145,6 +145,6 @@ test("anything but a Discord error is thrown, so that a panel error is not hidde
   const staffMember = await staffMemberOn(discord, ALDIS)
 
   await expect(
-    viewsGameLogOnceRead(discord, CONFIG, Promise.resolve(staffMember))
+    viewsChannelOnceRead(discord, CONFIG, Promise.resolve(staffMember))
   ).rejects.toThrow("bug")
 })

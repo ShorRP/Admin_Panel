@@ -1,9 +1,14 @@
 import type { APIEmbed, Snowflake } from "discord-api-types/v10"
 
 import type { ChannelMessage } from "@/discord/discord-api"
+import {
+  contentTextsOf,
+  mainEmbedOf,
+  rawMessageOf,
+  titledEmbedTextsOf,
+} from "@/discord/message-texts"
 import { snowflakeDate } from "@/discord/snowflake-date"
-
-export type GameLogRawField = { name: string | null; value: string }
+import type { LogRawField } from "@/ui/log-detail"
 
 type LineOrigin = { messageId: Snowflake; channelId: Snowflake; date: Date }
 
@@ -17,13 +22,13 @@ export type GameLogEvent = LineOrigin & {
   reason: string | null
   place: string | null
   eventId: string | null
-  extra: GameLogRawField[]
+  extra: LogRawField[]
 }
 
 export type GameLogRawLine = LineOrigin & {
   kind: "raw"
   title: string | null
-  fields: GameLogRawField[]
+  fields: LogRawField[]
 }
 
 export type GameLogEntry = GameLogEvent | GameLogRawLine
@@ -46,31 +51,12 @@ export function parseGameLogMessage(message: ChannelMessage): GameLogEntry {
     channelId: message.channel_id,
     date: snowflakeDate(message.id),
   }
-  const embed =
-    message.embeds.find(({ title }) => title !== undefined) ?? message.embeds[0]
-  if (embed === undefined) {
-    const content = message.content.trim()
-    return {
-      kind: "raw",
-      ...origin,
-      title: content === "" ? null : content,
-      fields: [],
-    }
+  const embed = mainEmbedOf(message)
+  const title = embed === undefined ? null : TITLE.exec(embed.title ?? "")
+  if (embed === undefined || title === null) {
+    return { kind: "raw", ...origin, ...rawMessageOf(message) }
   }
   const others = message.embeds.filter((candidate) => candidate !== embed)
-  const title = TITLE.exec(embed.title ?? "")
-  if (title === null) {
-    return {
-      kind: "raw",
-      ...origin,
-      title: embed.title ?? null,
-      fields: [
-        ...contentFieldOf(message.content),
-        ...textsOf(embed),
-        ...others.flatMap(withTitle),
-      ],
-    }
-  }
   return {
     kind: "event",
     ...origin,
@@ -85,7 +71,7 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
   const fields = embed.fields ?? []
   const authorName = embed.author?.name
   const claimedLines = new Set<number>()
-  const fieldsLeft = fields.map(({ name, value }): GameLogRawField[] => [
+  const fieldsLeft = fields.map(({ name, value }): LogRawField[] => [
     { name, value },
   ])
 
@@ -110,7 +96,7 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     if (identify(first, plain(name))) {
       fieldsLeft[index] = rest
         .filter((line) => line.trim() !== "")
-        .map((line): GameLogRawField => ({ name: null, value: line }))
+        .map((line): LogRawField => ({ name: null, value: line }))
     } else if (identify(name)) {
       fieldsLeft[index] = []
     }
@@ -142,7 +128,7 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     return found !== null && take(found[1] ?? "", found[2] ?? "")
   }
   const unreadFields = fieldsLeft.map((left) => {
-    const unread: GameLogRawField[] = []
+    const unread: LogRawField[] = []
     for (const piece of left) {
       const taken =
         piece.name === null
@@ -169,7 +155,7 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     place: labelled.get("lieu") ?? null,
     eventId,
     extra: [
-      ...contentFieldOf(content),
+      ...contentTextsOf(content),
       ...(authorName === undefined || authorClaimed
         ? []
         : [{ name: null, value: authorName }]),
@@ -182,35 +168,9 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
       ...(embed.footer === undefined || eventId !== null
         ? []
         : [{ name: null, value: embed.footer.text }]),
-      ...others.flatMap(withTitle),
+      ...others.flatMap(titledEmbedTextsOf),
     ],
   }
-}
-
-function contentFieldOf(content: string): GameLogRawField[] {
-  return content.trim() === "" ? [] : [{ name: null, value: content }]
-}
-
-function textsOf(embed: APIEmbed): GameLogRawField[] {
-  return [
-    ...(embed.author === undefined
-      ? []
-      : [{ name: null, value: embed.author.name }]),
-    ...(embed.description === undefined
-      ? []
-      : [{ name: null, value: embed.description }]),
-    ...(embed.fields ?? []).map(({ name, value }) => ({ name, value })),
-    ...(embed.footer === undefined
-      ? []
-      : [{ name: null, value: embed.footer.text }]),
-  ]
-}
-
-function withTitle(embed: APIEmbed): GameLogRawField[] {
-  return [
-    ...(embed.title === undefined ? [] : [{ name: null, value: embed.title }]),
-    ...textsOf(embed),
-  ]
 }
 
 function plain(text: string) {
