@@ -85,12 +85,14 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
   const fields = embed.fields ?? []
   const authorName = embed.author?.name
   const claimedLines = new Set<number>()
-  const claimedFields = new Set<number>()
+  const fieldsLeft = fields.map(({ name, value }): GameLogRawField[] => [
+    { name, value },
+  ])
 
   let character: string | null = null
   let gameAccount: string | null = null
   let identified = false
-  const identify = (text: string | undefined) => {
+  const identify = (text: string | undefined, named: string | null = null) => {
     if (identified || text === undefined) {
       return false
     }
@@ -98,47 +100,62 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     if (found === null) {
       return false
     }
-    character = plain(found[1] ?? "")
+    character = plain(found[1] ?? "") ?? named
     gameAccount = found[2] ?? null
     identified = true
     return true
   }
+  fields.forEach(({ name, value }, index) => {
+    const [first = "", ...rest] = value.split(/\r?\n/)
+    if (identify(first, plain(name))) {
+      fieldsLeft[index] = rest
+        .filter((line) => line.trim() !== "")
+        .map((line): GameLogRawField => ({ name: null, value: line }))
+    } else if (identify(name)) {
+      fieldsLeft[index] = []
+    }
+  })
   const authorClaimed = identify(authorName)
   lines.forEach((line, index) => {
     if (identify(line)) {
       claimedLines.add(index)
     }
   })
-  fields.forEach(({ name, value }, index) => {
-    if (identify(name) || identify(value)) {
-      claimedFields.add(index)
-    }
-  })
 
   const labelled = new Map<string, string>()
   const take = (label: string, value: string) => {
     const key = labelOf(label)
-    if (key === undefined || !LABELS.has(key)) {
-      return false
-    }
     const text = plain(value)
-    if (text === null) {
-      return true
-    }
-    if (labelled.has(key)) {
+    if (
+      key === undefined ||
+      !LABELS.has(key) ||
+      text === null ||
+      labelled.has(key)
+    ) {
       return false
     }
     labelled.set(key, text)
     return true
   }
-  fields.forEach(({ name, value }, index) => {
-    if (!claimedFields.has(index) && take(name, value)) {
-      claimedFields.add(index)
+  const takeLine = (line: string) => {
+    const found = LABELLED_LINE.exec(line)
+    return found !== null && take(found[1] ?? "", found[2] ?? "")
+  }
+  const unreadFields = fieldsLeft.map((left) => {
+    const unread: GameLogRawField[] = []
+    for (const piece of left) {
+      const taken =
+        piece.name === null
+          ? takeLine(piece.value)
+          : take(piece.name, piece.value)
+      if (!taken) {
+        unread.push(piece)
+      }
     }
+    return unread
   })
   lines.forEach((line, index) => {
-    const found = claimedLines.has(index) ? null : LABELLED_LINE.exec(line)
-    if (found !== null && take(found[1] ?? "", found[2] ?? "")) {
+    if (!claimedLines.has(index) && takeLine(line)) {
       claimedLines.add(index)
     }
   })
@@ -161,9 +178,7 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
           ? []
           : [{ name: null, value: line }]
       ),
-      ...fields.flatMap(({ name, value }, index) =>
-        claimedFields.has(index) ? [] : [{ name, value }]
-      ),
+      ...unreadFields.flat(),
       ...(embed.footer === undefined || eventId !== null
         ? []
         : [{ name: null, value: embed.footer.text }]),

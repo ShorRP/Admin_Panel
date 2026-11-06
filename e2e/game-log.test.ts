@@ -56,6 +56,7 @@ test.use({
         action: "character:disconnect",
         character: "Lyra",
         account: "2094594321",
+        target: null,
         reason: "Déconnexion",
       }),
       {
@@ -157,6 +158,7 @@ test("a staff member who views the channel on Discord finds the game log under �
   const disconnect = lines.filter({ hasText: "character:disconnect" })
   await expect(disconnect).toContainText("Lyra · compte 2094594321")
   await expect(disconnect).toContainText("Motif : Déconnexion")
+  await expect(disconnect).not.toContainText("Cible")
 
   const raw = lines.filter({ hasText: "Serveur redémarré" })
   await expect(raw).toContainText("Redémarrage planifié")

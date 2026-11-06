@@ -45,6 +45,186 @@ test("a line in the game server's format gives its category, action, character, 
   })
 })
 
+test("a line in the script's format gives its character from the field's name, its game account and its target from the field's two lines, and leaves nothing raw", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Administration · administration:heal",
+        fields: [
+          {
+            name: "Merida",
+            value: "compte 2094594320\nCible : 4278190515",
+          },
+          { name: "Lieu", value: "3c:Skyrim.esm · -82079, 4766, -4803" },
+        ],
+        footer: { text: "Shor · 189b92f6" },
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    category: "Administration",
+    action: "administration:heal",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: "4278190515",
+    reason: null,
+    place: "3c:Skyrim.esm · -82079, 4766, -4803",
+    eventId: "189b92f6",
+    extra: [],
+  })
+})
+
+test("a line in the script's format without a target gives its character and its game account, and no target", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Personnages · déconnexion",
+        fields: [
+          { name: "Merida", value: "compte 2094594320" },
+          { name: "Lieu", value: "3c:Skyrim.esm · -83126, 6397, -4418" },
+        ],
+        footer: { text: "Shor · e7f5107a" },
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    category: "Personnages",
+    action: "déconnexion",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: null,
+    place: "3c:Skyrim.esm · -83126, 6397, -4418",
+    eventId: "e7f5107a",
+    extra: [],
+  })
+})
+
+test.each([
+  "administration:workshop:create",
+  "administration:heal",
+  "déconnexion",
+])("the action %s is kept whole", (action) => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: `Administration · ${action}`,
+        fields: [{ name: "Merida", value: "compte 2094594320" }],
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({ kind: "event", action })
+})
+
+test("a label whose value is empty once the markup is stripped stays raw, in the character's field as in a field of its own", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Administration · administration:heal",
+        fields: [
+          { name: "Merida", value: "compte 2094594320\nCible : **" },
+          { name: "Lieu", value: "``" },
+        ],
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: null,
+    place: null,
+    extra: [
+      { name: null, value: "Cible : **" },
+      { name: "Lieu", value: "``" },
+    ],
+  })
+})
+
+test.each([
+  [
+    "the author's name",
+    { author: { name: "Lyra · compte 2094594321" } },
+    { name: null, value: "Lyra · compte 2094594321" },
+  ],
+  [
+    "a line of the description",
+    { description: "Lyra · compte 2094594321" },
+    { name: null, value: "Lyra · compte 2094594321" },
+  ],
+])(
+  "the character's field is read whatever %s holds beside it, which stays raw",
+  (_, beside, left) => {
+    const entry = parseGameLogMessage(
+      messageOf([
+        {
+          title: "Administration · administration:heal",
+          ...beside,
+          fields: [
+            { name: "Merida", value: "compte 2094594320\nCible : 4278190515" },
+          ],
+        },
+      ])
+    )
+
+    expect(entry).toMatchObject({
+      kind: "event",
+      character: "Merida",
+      gameAccount: "2094594320",
+      target: "4278190515",
+      extra: [left],
+    })
+  }
+)
+
+test("a line of the character's field that the parser does not know stays raw, beside the target it reads", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Administration · administration:heal",
+        fields: [
+          {
+            name: "Merida",
+            value: "compte 2094594320\nCible : 4278190515\nNote libre",
+          },
+        ],
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: "4278190515",
+    extra: [{ name: null, value: "Note libre" }],
+  })
+})
+
+test("a field named after a label that holds the game account is the character's, and not a label", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Personnages · déconnexion",
+        fields: [{ name: "Lieu", value: "compte 2094594320" }],
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    character: "Lieu",
+    gameAccount: "2094594320",
+    place: null,
+    extra: [],
+  })
+})
+
 test("a line takes its date from its message's ID", () => {
   const entry = parseGameLogMessage(messageOf([gameLogEmbed()]))
 
