@@ -62,6 +62,7 @@ test.each([
   ["a cell of over 8 digits", { cell: "123456789" }],
   ["a cell with its plugin", { cell: "3c:Skyrim.esm" }],
   ["an empty plugin", { plugin: "" }],
+  ["a plugin with no letter or digit in it", { plugin: ".-" }],
   ["a plugin of over 100 characters", { plugin: "a".repeat(101) }],
   ["a reason with no word in it", { reason: "…" }],
   ["a reason of over 1,024 characters", { reason: "a".repeat(1025) }],
@@ -73,11 +74,9 @@ test.each([
   expect(gameLogFiltersOf(searchParams)).toEqual(NO_FILTERS)
 })
 
-test("a game account loses its leading zeros, so that Discord is asked for the number the game server writes", () => {
-  expect(gameLogFiltersOf({ account: " 002094594320 " }).account).toBe(
-    "2094594320"
-  )
-  expect(gameLogFiltersOf({ account: "000" }).account).toBe("0")
+test("a game account is kept as typed, its zeros included, since it is compared and asked of Discord as the game server writes it", () => {
+  expect(gameLogFiltersOf({ account: " 0042 " }).account).toBe("0042")
+  expect(gameLogFiltersOf({ account: "000" }).account).toBe("000")
 })
 
 test("a cell is kept as it was typed, with its prefix", () => {

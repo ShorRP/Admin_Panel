@@ -144,7 +144,28 @@ test("a scan stops after the most searches a view may make, and says it was cut,
   expect(result.older).not.toBeNull()
 })
 
-test("a scan reads from a cursor, and asks Discord nothing when the period leaves no ID between its bounds", async () => {
+test("a scan reads under its cursor alone, and the older page continues from the last message kept without repeating or skipping one", async () => {
+  const discord = discordWith(
+    Array.from({ length: 40 }, (_, index) => message(index, "alpha"))
+  )
+
+  const first = await scan(discord, keepWord("alpha"))
+  const second = await scan(discord, keepWord("alpha"), {
+    before: first.older,
+  })
+
+  expect(first.entries).toHaveLength(SEARCH_PAGE_SIZE)
+  expect(second.entries).toHaveLength(40 - SEARCH_PAGE_SIZE)
+  expect(
+    second.entries.every(
+      ({ messageId }) => BigInt(messageId) < BigInt(first.older ?? "0")
+    )
+  ).toBe(true)
+  expect(discord.searches.at(-1)?.max_id).toBe(first.older)
+  expect(second.older).toBeNull()
+})
+
+test("a scan asks Discord nothing when the period ends before it starts", async () => {
   const discord = discordWith([message(0, "alpha")])
 
   const result = await scan(discord, keepWord("alpha"), {

@@ -61,7 +61,6 @@ const GAME_ACCOUNT = z
   .string()
   .trim()
   .regex(/^\d{1,20}$/)
-  .transform((digits) => digits.replace(/^0+(?=\d)/, ""))
   .nullable()
   .catch(null)
 
@@ -75,7 +74,7 @@ export function gameLogFiltersOf(
     account: GAME_ACCOUNT.parse(searchParams.account),
     target: wordsParamOf(searchParams.target, MAX_NAME_LENGTH),
     cell: cellParamOf(searchParams.cell),
-    plugin: textParamOf(searchParams.plugin, MAX_NAME_LENGTH),
+    plugin: wordsParamOf(searchParams.plugin, MAX_NAME_LENGTH),
     reason: wordsParamOf(searchParams.reason, MAX_SEARCHED_TEXT_LENGTH),
     text: wordsParamOf(searchParams.text, MAX_SEARCHED_TEXT_LENGTH),
     from: dayParamOf(searchParams.from),

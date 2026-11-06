@@ -4,7 +4,6 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { ChannelMessage, DiscordApi } from "@/discord/discord-api"
 import { messageTextsOf } from "@/discord/message-texts"
-import { searchBounds } from "@/discord/period-bounds"
 import { scanMessages } from "@/discord/scan-messages"
 import { holdsWords, longestTermOf } from "@/discord/search-words"
 import { groupByParisDay, type DayGroup } from "@/ui/group-by-paris-day"
@@ -43,16 +42,12 @@ export async function readGameLog(
 ): Promise<GameLogPage> {
   const filters = gameLogFiltersOf(searchParams)
   const before = cursorOf(searchParams)
-  const period = parisPeriodOf(filters)
-  if (searchBounds(period, before) === null) {
-    return { ...filters, days: [], before, older: null, cut: false }
-  }
   const context = { channelId, webhookId, filters }
   const { entries, older, cut } = await scanMessages(discord, {
     channelId,
     authorId: webhookId,
     served: servedTermOf(filters),
-    period,
+    period: parisPeriodOf(filters),
     before,
     keep: (message) => keptEntry(context, message),
   })

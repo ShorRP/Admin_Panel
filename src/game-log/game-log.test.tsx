@@ -1,3 +1,10 @@
+import {
+  CircleHelp,
+  Gamepad2,
+  ShieldCheck,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
@@ -101,6 +108,29 @@ test("a line in format shows its time, its category and action, its character an
   expect(textOf(row)).toContain("Lieu : 3c:Skyrim.esm · 3816, -5303, -5681")
   expect(textOf(row)).toContain("Identifiant : 189b92f6")
   expect(textOf(row)).not.toContain("Motif")
+})
+
+function tileDrawing(Icon: LucideIcon) {
+  return /<svg[^>]*>(.*)<\/svg>/.exec(renderToStaticMarkup(<Icon />))?.[1]
+}
+
+function tileOf(entry: GameLogDay["entries"][number]) {
+  const [row = ""] = rowsOf(
+    render({ days: [{ date: entry.date, entries: [entry] }] })
+  )
+  return /<span[^>]*aria-hidden="true"[^>]*><svg[^>]*>(.*?)<\/svg><\/span>/.exec(
+    row
+  )?.[1]
+}
+
+test("a line's tile draws the icon of its category, whatever the case of its title, the generic one for any other category and the unknown one for a raw line", () => {
+  expect(tileOf(HEAL)).toBe(tileDrawing(ShieldCheck))
+  expect(tileOf({ ...HEAL, category: "ADMINISTRATION" })).toBe(
+    tileDrawing(ShieldCheck)
+  )
+  expect(tileOf(DISCONNECT)).toBe(tileDrawing(UserRound))
+  expect(tileOf({ ...HEAL, category: "Serveur" })).toBe(tileDrawing(Gamepad2))
+  expect(tileOf(RAW)).toBe(tileDrawing(CircleHelp))
 })
 
 test("a line with a reason shows it beside the target, and one without character shows its game account alone", () => {

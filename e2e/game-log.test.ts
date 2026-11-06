@@ -360,7 +360,7 @@ test("an action, a character, a game account, a target, a cell, a plugin and a r
   await filter.click()
   await expect.poll(query).toMatchObject({ target: "4278190080" })
   await expect(lines).toHaveCount(1)
-  await expect(lines).toContainText("Cible : 4278190080")
+  await expect(lines).toContainText("Cible : 4278190080")
   await checkAccessibility()
 
   await page.getByLabel("Cible").fill("")
@@ -387,7 +387,7 @@ test("an action, a character, a game account, a target, a cell, a plugin and a r
   await filter.click()
   await expect.poll(query).toMatchObject({ reason: "atelier" })
   await expect(lines).toHaveCount(1)
-  await expect(lines).toContainText("Motif : Atelier de test")
+  await expect(lines).toContainText("Motif : Atelier de test")
   await checkAccessibility()
 
   await page.getByLabel("Motif").fill("introuvable")
@@ -574,15 +574,15 @@ test("on a 360 px screen, the menu leads to the game log, whose filters fold beh
   await expect(lines).toContainText("character:disconnect")
   await expect(fold).toHaveAccessibleName(/^Filtres\s?9 filtres actifs$/)
   await expect(chips.getByRole("link")).toHaveText([
-    "Retirer le filtre Action : disconnect",
-    "Retirer le filtre Personnage : lyra",
-    "Retirer le filtre Compte de jeu : 2094594321",
-    "Retirer le filtre Cellule : 3c",
-    "Retirer le filtre Plugin : skyrim",
-    "Retirer le filtre Motif : déconnexion",
-    "Retirer le filtre Texte : lyra",
-    "Retirer le filtre Du : 4 nov. 2026",
-    "Retirer le filtre Au : 4 nov. 2026",
+    "Retirer le filtre Action : disconnect",
+    "Retirer le filtre Personnage : lyra",
+    "Retirer le filtre Compte de jeu : 2094594321",
+    "Retirer le filtre Cellule : 3c",
+    "Retirer le filtre Plugin : skyrim",
+    "Retirer le filtre Motif : déconnexion",
+    "Retirer le filtre Texte : lyra",
+    "Retirer le filtre Du : 4 nov. 2026",
+    "Retirer le filtre Au : 4 nov. 2026",
   ])
   for (const chip of await chips.getByRole("link").all()) {
     expect((await chip.boundingBox())?.height).toBe(44)

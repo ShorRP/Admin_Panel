@@ -1,10 +1,4 @@
-import {
-  CircleHelp,
-  Gamepad2,
-  ShieldCheck,
-  UserRound,
-  type LucideIcon,
-} from "lucide-react"
+import { CircleHelp, Gamepad2 } from "lucide-react"
 
 import { MAX_SEARCHES, SEARCH_PAGE_SIZE } from "@/discord/message-search-limits"
 import { discordMessageUrl } from "@/discord/message-url"
@@ -16,6 +10,7 @@ import { LogEmpty } from "@/ui/log-empty"
 import { LogFrame } from "@/ui/log-frame"
 import { LogPagination } from "@/ui/log-pagination"
 import { LogRow } from "@/ui/log-row"
+import { categoryKeyOf, GAME_LOG_CATEGORIES } from "./game-log-categories"
 import { GameLogCategoryFilter } from "./game-log-category-filter"
 import { GameLogFilterFold } from "./game-log-filter-fold"
 import { GameLogFilterForm } from "./game-log-filter-form"
@@ -36,11 +31,6 @@ import type { GameLogPage } from "./read-game-log"
 import type { GameLogRead } from "./read-game-log-for-staff"
 
 const READ_MESSAGES = MAX_SEARCHES * SEARCH_PAGE_SIZE
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  administration: ShieldCheck,
-  personnages: UserRound,
-}
 
 export function GameLog({
   read,
@@ -112,6 +102,14 @@ function noLineMessage({
     : "Aucune ligne dans le journal du jeu pour l’instant."
 }
 
+function iconOf(entry: GameLogEntry) {
+  if (entry.kind === "raw") {
+    return CircleHelp
+  }
+  const category = categoryKeyOf(entry.category)
+  return category === null ? Gamepad2 : GAME_LOG_CATEGORIES[category].icon
+}
+
 function GameLogRow({
   entry,
   guildId,
@@ -119,14 +117,10 @@ function GameLogRow({
   entry: GameLogEntry
   guildId: string
 }) {
-  const Icon =
-    entry.kind === "event"
-      ? (CATEGORY_ICONS[entry.category.toLowerCase()] ?? Gamepad2)
-      : CircleHelp
   return (
     <LogRow
       date={entry.date}
-      Icon={Icon}
+      Icon={iconOf(entry)}
       tileClassName="text-muted-foreground"
       trailing={
         <DiscordMessageLink

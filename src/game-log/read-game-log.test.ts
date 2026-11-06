@@ -521,6 +521,20 @@ test("a game account keeps the lines of that number alone, and Discord is asked 
   expect(await filteredHashes({ account: "2094594321" })).toEqual(["00000002"])
 })
 
+test("a game account is compared as the game server writes it, zeros included, and Discord is asked for it as typed", async () => {
+  const discord = discordWith([
+    gameLogLine("2026-11-03T08:00:00Z", "00000042", { account: "0042" }),
+    gameLogLine("2026-11-03T09:00:00Z", "00000043", { account: "42" }),
+  ])
+
+  const padded = await readGameLog(discord, CONFIG, { account: "0042" })
+  const plain = await readGameLog(discord, CONFIG, { account: "42" })
+
+  expect(hashesOf(padded)).toEqual(["00000042"])
+  expect(hashesOf(plain)).toEqual(["00000043"])
+  expect(discord.searches.map(({ content }) => content)).toEqual(["0042", "42"])
+})
+
 test("a target keeps the lines whose target holds every word typed, and drops the lines with none", async () => {
   const discord = discordWith(FILTERED_LINES)
 
