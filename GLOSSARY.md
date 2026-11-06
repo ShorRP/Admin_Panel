@@ -32,6 +32,14 @@ _Avoid_: user (alone), player
 An account that Discord flags as a bot, whoever runs it: Shor's Discord application, which the Bot and the Admin Panel share, or the bot of a service. Shor's is one of them, not the only one.
 _Avoid_: bot (alone, which names Shor's Bot), application account
 
+**Game account**:
+The number the game server gives a player's account on Shor, which the game log writes beside a character, as `compte 2094594320`. Not an Account, which is a Discord account: nothing yet ties the two (`docs/agents/open-questions.md`).
+_Avoid_: account (alone), player account
+
+**Character**:
+The person a player plays on Shor, whom the game log names beside their game account.
+_Avoid_: player (alone, which names the person behind the screen), profile
+
 **Staff**:
 The members of Shor's team who moderate and administer the community.
 _Avoid_: admins, mods (each names a level within the staff, not the staff as a whole)

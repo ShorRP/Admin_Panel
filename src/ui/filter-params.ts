@@ -11,8 +11,20 @@ const DAY = z
   .nullable()
   .catch(null)
 
+const LARGEST_SNOWFLAKE = BigInt("18446744073709551615")
+
+const CURSOR = z
+  .string()
+  .refine((id) => /^\d{17,20}$/.test(id) && BigInt(id) <= LARGEST_SNOWFLAKE)
+  .nullable()
+  .catch(null)
+
 export function dayParamOf(value: unknown): string | null {
   return DAY.parse(value)
+}
+
+export function cursorParamOf(value: unknown): string | null {
+  return CURSOR.parse(value)
 }
 
 export function textParamOf(value: unknown, maxLength: number): string | null {

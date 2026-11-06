@@ -22,6 +22,15 @@ import { Skeleton } from "@/ui/skeleton"
 
 const AUTHOR_CLASSES = cn("flex min-w-0 flex-row-reverse items-center gap-2")
 
+function AuthorSkeleton() {
+  return (
+    <div className={AUTHOR_CLASSES}>
+      <Skeleton className="size-6 shrink-0 rounded-full motion-reduce:animate-none" />
+      <Skeleton className="h-3.5 w-16 motion-reduce:animate-none" />
+    </div>
+  )
+}
+
 const DAYS = [
   {
     headingWidth: "w-44",
@@ -44,29 +53,33 @@ export function LogSkeleton({
   loading,
   pillWidths,
   form,
+  trailing = <AuthorSkeleton />,
 }: {
   loading: string
   pillWidths: readonly string[]
   form: ReactNode
+  trailing?: ReactNode
 }) {
   return (
     <div role="status" className={LOG_FRAME_CLASSES}>
       <span className="sr-only">{loading}</span>
       <div className={FILTERS_CLASSES}>
-        <div className={FILTER_PILLS_CLASSES}>
-          <div className={FILTER_PILL_LIST_CLASSES}>
-            {pillWidths.map((width) => (
-              <Skeleton
-                key={width}
-                className={cn(
-                  FILTER_PILL_SIZE_CLASSES,
-                  "motion-reduce:animate-none",
-                  width
-                )}
-              />
-            ))}
+        {pillWidths.length > 0 && (
+          <div className={FILTER_PILLS_CLASSES}>
+            <div className={FILTER_PILL_LIST_CLASSES}>
+              {pillWidths.map((width) => (
+                <Skeleton
+                  key={width}
+                  className={cn(
+                    FILTER_PILL_SIZE_CLASSES,
+                    "motion-reduce:animate-none",
+                    width
+                  )}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         {form}
       </div>
       {DAYS.map(({ headingWidth, lines }) => (
@@ -100,12 +113,7 @@ export function LogSkeleton({
                     <Skeleton className="mt-1 h-3.5 w-full max-w-80 motion-reduce:animate-none" />
                   )}
                 </div>
-                <div className={LOG_ROW_TRAILING_CLASSES}>
-                  <div className={AUTHOR_CLASSES}>
-                    <Skeleton className="size-6 shrink-0 rounded-full motion-reduce:animate-none" />
-                    <Skeleton className="h-3.5 w-16 motion-reduce:animate-none" />
-                  </div>
-                </div>
+                <div className={LOG_ROW_TRAILING_CLASSES}>{trailing}</div>
               </div>
             ))}
           </div>

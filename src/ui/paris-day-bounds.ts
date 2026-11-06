@@ -24,6 +24,19 @@ export function parisDayAfter(day: string) {
   return parisDayStart(next.toISOString().slice(0, 10))
 }
 
+export function parisPeriodOf({
+  from,
+  to,
+}: {
+  from: string | null
+  to: string | null
+}) {
+  return {
+    start: from === null ? null : parisDayStart(from),
+    end: to === null ? null : parisDayAfter(to),
+  }
+}
+
 function parisOffsetAt(instant: number) {
   const parts = Object.fromEntries(
     WALL_CLOCK.formatToParts(new Date(instant)).map(({ type, value }) => [

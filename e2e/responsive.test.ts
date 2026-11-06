@@ -2,6 +2,7 @@ import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import { DiscordError } from "@/discord/discord-error"
 import { ROUTES } from "@/discord/routes"
+import { gameLogChannel, gameLogMessage } from "@/game-log/game-log-message"
 import { BAN_MESSAGE_DELETIONS } from "@/sanctions/ban-message-deletions"
 import {
   channelIdAt,
@@ -11,6 +12,8 @@ import { archiveMessage } from "@/ticket-archives/archive-message"
 import {
   ARCHIVES_CHANNEL_ID,
   BAN_ROLE_ID,
+  GAME_LOG_CHANNEL_ID,
+  GAME_LOG_WEBHOOK_ID,
   MODERATION_ROLE_ID,
   STAFF_ROLE_ID,
   TICKET_CATEGORY_ID,
@@ -58,6 +61,8 @@ const STAFF_PAGES = [
   { path: "/records", fixme: false },
   { path: "/records?standing=members&sort=joined-recent", fixme: false },
   { path: `/records/${BRYNJA.id}`, fixme: false },
+  { path: "/game-log", fixme: false },
+  { path: "/game-log?text=heal&from=2026-11-04&to=2026-11-04", fixme: false },
   { path: "/support-tickets", fixme: false },
   { path: "/support-tickets?page=2", fixme: false },
   {
@@ -80,6 +85,13 @@ const FILTER_SHEETS = [
     name: "Filtres",
     field: "Auteur",
     value: "aldis",
+  },
+  {
+    owner: "the game log's",
+    path: "/game-log?text=heal&from=2026-11-04&to=2026-11-04",
+    name: "Filtres",
+    field: "Texte",
+    value: "heal",
   },
   {
     owner: "the list of accounts'",
@@ -124,6 +136,10 @@ test.use({
     ],
     bans: [{ user: CORVUS }],
     channels: [
+      gameLogChannel({
+        id: GAME_LOG_CHANNEL_ID,
+        viewerRoleIds: [STAFF_ROLE_ID],
+      }),
       supportTicketChannel({
         id: WALL_OF_TEXT_TICKET_ID,
         categoryId: TICKET_CATEGORY_ID,
@@ -140,6 +156,33 @@ test.use({
       }),
     ],
     channelMessages: [
+      gameLogMessage({
+        channelId: GAME_LOG_CHANNEL_ID,
+        webhookId: GAME_LOG_WEBHOOK_ID,
+        sentAt: new Date("2026-11-04T09:12:00Z"),
+      }),
+      gameLogMessage({
+        channelId: GAME_LOG_CHANNEL_ID,
+        webhookId: GAME_LOG_WEBHOOK_ID,
+        sentAt: new Date("2026-11-04T08:30:00Z"),
+        category: "Personnages",
+        action: "character:disconnect",
+        character: "C".repeat(80),
+        reason: "x".repeat(300),
+        place: "y".repeat(120),
+        hash: "0a1b2c3d",
+      }),
+      {
+        channelId: GAME_LOG_CHANNEL_ID,
+        authorId: GAME_LOG_WEBHOOK_ID,
+        sentAt: new Date("2026-11-03T22:30:00Z"),
+        embeds: [
+          {
+            title: "z".repeat(150),
+            fields: [{ name: "Durée", value: "w".repeat(200) }],
+          },
+        ],
+      },
       {
         channelId: WALL_OF_TEXT_TICKET_ID,
         authorId: ALDIS.id,

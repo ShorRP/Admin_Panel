@@ -2,8 +2,12 @@ import "server-only"
 
 import type { Snowflake } from "discord-api-types/v10"
 
-import { parisDayAfter, parisDayStart } from "@/ui/paris-day-bounds"
-import { periodBounds } from "./period-bounds"
+import { periodBounds } from "@/discord/period-bounds"
+import {
+  parisDayAfter,
+  parisDayStart,
+  parisPeriodOf,
+} from "@/ui/paris-day-bounds"
 import { holdsWords, longestTermOf } from "./reason-words"
 import { requestKindKeyOf } from "./request-kinds"
 import { resolveAccounts, type ResolvedAccount } from "./resolve-accounts"
@@ -87,7 +91,9 @@ async function readCandidates(
   const text = servedText(filters, ids)
   const oldestFirst = readsOldestFirst(filters)
   const period = periodBounds(
-    filters.on === "opened" ? { from: filters.from, to: null } : filters
+    parisPeriodOf(
+      filters.on === "opened" ? { from: filters.from, to: null } : filters
+    )
   )
   const candidates = new Map<Snowflake, TicketArchive>()
   let discordTotal = 0

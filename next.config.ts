@@ -5,6 +5,7 @@ import {
   parseDiscordOAuthEnv,
   parseTestProxyEnv,
 } from "@/discord/env"
+import { parseGameLogEnv } from "@/game-log/env"
 import { parseMonitoringEnv } from "@/monitoring/env"
 import { parseStaffEnv } from "@/staff/env"
 import { parseTicketArchivesEnv } from "@/ticket-archives/env"
@@ -14,6 +15,7 @@ const { testProxy } = parseTestProxyEnv(process.env)
 if (process.env.VERCEL) {
   parseDiscordApiEnv(process.env)
   parseDiscordOAuthEnv(process.env)
+  parseGameLogEnv(process.env)
   parseMonitoringEnv(process.env)
   parseStaffEnv(process.env)
   parseTicketArchivesEnv(process.env)

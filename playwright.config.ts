@@ -14,6 +14,10 @@ export const ARCHIVES_CHANNEL_ID = "1300000000000000040"
 
 export const TICKET_CATEGORY_ID = "1300000000000000041"
 
+export const GAME_LOG_CHANNEL_ID = "1300000000000000050"
+
+export const GAME_LOG_WEBHOOK_ID = "1300000000000000051"
+
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
@@ -37,6 +41,8 @@ export default defineConfig({
       BAN_ROLE_IDS: BAN_ROLE_ID,
       TICKET_ARCHIVES_CHANNEL_ID: ARCHIVES_CHANNEL_ID,
       TICKET_CATEGORY_ID,
+      GAME_LOG_CHANNEL_ID,
+      GAME_LOG_WEBHOOK_ID,
       SESSION_SECRET: "e2e-session-secret-of-32-chars-x",
     },
   },

@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react"
 import {
   Ban,
+  Gamepad2,
   Gavel,
   Lock,
   LogOut,
@@ -88,11 +89,13 @@ async function render(
   {
     member = "aldis",
     opensModeration = false,
+    viewsGameLog = false,
     ownRecord = null,
     blockedWordCount = null,
   }: {
     member?: string
     opensModeration?: boolean
+    viewsGameLog?: boolean
     ownRecord?: { href: string; name: string } | null
     blockedWordCount?: ReactNode
   } = {}
@@ -102,6 +105,7 @@ async function render(
       currentPath={currentPath}
       member={member}
       opensModeration={Promise.resolve(opensModeration)}
+      viewsGameLog={Promise.resolve(viewsGameLog)}
       ownRecord={Promise.resolve(ownRecord)}
       blockedWordCount={blockedWordCount}
     />,
@@ -222,6 +226,43 @@ test("a staff member who opens the moderation section also sees « Modération �
       sections: ["Tickets de support"],
     },
   ])
+})
+
+test("a staff member who views the game log's channel finds « Journal du jeu » after « Journal d’audit » under « Journaux », and no one else does", async () => {
+  const viewer = await render("/blocked-words", { viewsGameLog: true })
+  const others = await render("/blocked-words")
+
+  expect(
+    groups(viewer.sidebar).map(({ title, sections }) => ({ title, sections }))
+  ).toContainEqual({
+    title: "Journaux",
+    sections: ["Journal d’audit", "Journal du jeu"],
+  })
+  expect(links(viewer.sidebar)).toContainEqual(
+    expect.objectContaining({ text: "Journal du jeu", href: "/game-log" })
+  )
+  expect(textOf(others.sidebar)).not.toContain("Journal du jeu")
+})
+
+test("the game log's link shows a gamepad hidden from assistive technologies, and is current on its page alone", async () => {
+  const { sidebar } = await render("/game-log", { viewsGameLog: true })
+
+  expect(
+    links(navOf(sidebar))
+      .filter(({ text }) => text === "Journal du jeu")
+      .map(({ image, current, title }) => ({ image, current, title }))
+  ).toEqual([
+    {
+      image: { drawing: drawing(<Gamepad2 />), hidden: true },
+      current: "page",
+      title: "Journal du jeu",
+    },
+  ])
+  expect(
+    links(navOf((await render("/audit-log", { viewsGameLog: true })).sidebar))
+      .filter(({ current }) => current !== undefined)
+      .map(({ text }) => text)
+  ).toEqual(["Journal d’audit"])
 })
 
 test("each section's link shows its icon before its name, hidden from assistive technologies", async () => {

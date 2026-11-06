@@ -1,6 +1,29 @@
 import { expect, test } from "vitest"
 
-import { parisDayAfter, parisDayStart } from "@/ui/paris-day-bounds"
+import {
+  parisDayAfter,
+  parisDayStart,
+  parisPeriodOf,
+} from "@/ui/paris-day-bounds"
+
+test("a period runs from the start of its first Paris day to the start of the day after its last, and a missing day leaves that side open", () => {
+  expect(parisPeriodOf({ from: null, to: null })).toEqual({
+    start: null,
+    end: null,
+  })
+  expect(parisPeriodOf({ from: "2026-10-05", to: null })).toEqual({
+    start: new Date("2026-10-04T22:00:00Z"),
+    end: null,
+  })
+  expect(parisPeriodOf({ from: null, to: "2026-10-31" })).toEqual({
+    start: null,
+    end: new Date("2026-10-31T23:00:00Z"),
+  })
+  expect(parisPeriodOf({ from: "2026-10-24", to: "2026-10-25" })).toEqual({
+    start: new Date("2026-10-23T22:00:00Z"),
+    end: new Date("2026-10-25T23:00:00Z"),
+  })
+})
 
 test("a Paris day starts at midnight in Paris, whatever the offset that day", () => {
   expect(parisDayStart("2026-01-15")).toEqual(new Date("2026-01-14T23:00:00Z"))

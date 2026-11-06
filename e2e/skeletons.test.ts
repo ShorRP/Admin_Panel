@@ -1,4 +1,9 @@
-import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
+import { gameLogChannel } from "@/game-log/game-log-message"
+import {
+  GAME_LOG_CHANNEL_ID,
+  MODERATION_ROLE_ID,
+  STAFF_ROLE_ID,
+} from "../playwright.config"
 import { expect, test } from "./fixtures"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
@@ -16,6 +21,11 @@ const PAGES = [
     loading: ["Chargement du journal d’audit…"],
     content:
       "Aucun changement des mots interdits, aucune sanction ni levée ces 45 derniers jours.",
+  },
+  {
+    path: "/game-log",
+    loading: ["Chargement du journal du jeu…"],
+    content: "Aucune ligne dans le journal du jeu pour l’instant.",
   },
   {
     path: "/support-tickets",
@@ -49,6 +59,12 @@ test.use({
     members: [
       { user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] },
       { user: LYRA },
+    ],
+    channels: [
+      gameLogChannel({
+        id: GAME_LOG_CHANNEL_ID,
+        viewerRoleIds: [STAFF_ROLE_ID],
+      }),
     ],
   },
 })

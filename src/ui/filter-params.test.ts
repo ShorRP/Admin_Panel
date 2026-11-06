@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 
-import { dayParamOf, textParamOf } from "@/ui/filter-params"
+import { cursorParamOf, dayParamOf, textParamOf } from "@/ui/filter-params"
 
 test.each([
   ["2026-10-05", "2026-10-05"],
@@ -47,4 +47,27 @@ test.each([
 test("a text of the maximum length is read, and one character more counts as absent", () => {
   expect(textParamOf("a".repeat(100), 100)).toBe("a".repeat(100))
   expect(textParamOf("a".repeat(101), 100)).toBeNull()
+})
+
+test.each([
+  ["a snowflake of 17 digits", "12345678901234567"],
+  ["a snowflake of 19 digits", "1568100000000000000"],
+  ["the largest ID Discord can mint", "18446744073709551615"],
+])("%s is a cursor", (_, value) => {
+  expect(cursorParamOf(value)).toBe(value)
+})
+
+test.each([
+  ["absent", undefined],
+  ["empty", ""],
+  ["a word", "hier"],
+  ["16 digits", "1234567890123456"],
+  ["21 digits", "123456789012345678901"],
+  ["an ID past 64 bits", "18446744073709551616"],
+  ["a signed number", "-1568100000000000000"],
+  ["given twice", ["1568100000000000000", "1568100000000000001"]],
+  ["a number", 1568100000000000000],
+  ["null", null],
+])("%s is no cursor", (_, value) => {
+  expect(cursorParamOf(value)).toBeNull()
 })

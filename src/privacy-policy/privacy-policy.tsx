@@ -4,7 +4,7 @@ import { PublicPageFrame } from "@/staff/public-page-frame"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { PageHeader } from "@/ui/page-header"
 
-const LAST_UPDATED = "2026-11-05"
+const LAST_UPDATED = "2026-11-06"
 
 const lastUpdatedDay = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",
@@ -109,7 +109,21 @@ export function PrivacyPolicy() {
               que seuls voient la personne qui l’a ouvert et le staff de ce type
               de demande, et n’en garde rien : la conversation reste dans le
               salon du ticket, sur Discord, jusqu’à la suppression de ce salon à
-              la fermeture du ticket.
+              la fermeture du ticket ;
+            </li>
+            <li>
+              pour le staff qui voit le salon du journal du jeu sur Discord, la
+              page du journal du jeu : le serveur de jeu y poste, par un
+              webhook, ce qui se passe sur Shor, et le panel y lit, parmi les
+              messages de ce webhook seul, l’heure de chaque ligne, sa catégorie
+              et son action, le nom du personnage et le numéro de son compte de
+              jeu, la cible, le motif et le lieu de l’événement, son
+              identifiant, ou, pour une ligne qui ne suit pas le format, son
+              titre et ses champs tels que le webhook les a écrits. Le panel
+              envoie à la recherche de messages de Discord les mots et la
+              période que le staff a choisis. Ces lignes restent dans ce salon,
+              sur Discord, tant qu’un membre du staff n’a pas supprimé leur
+              message.
             </li>
           </PolicyList>
           <p>
@@ -120,10 +134,10 @@ export function PrivacyPolicy() {
           </p>
           <p>
             L’adresse d’une fiche contient l’ID du compte, et celles de la liste
-            des comptes, du journal d’audit et des tickets de support, le texte
-            cherché, un nom, un ID ou une mention, les mots d’un motif, et les
-            filtres choisis : l’historique du navigateur les garde, comme toute
-            adresse.
+            des comptes, du journal d’audit, du journal du jeu et des tickets de
+            support, le texte cherché, un nom, un ID ou une mention, les mots
+            d’un motif, et les filtres choisis : l’historique du navigateur les
+            garde, comme toute adresse.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel écrit dans Discord">
@@ -170,8 +184,9 @@ export function PrivacyPolicy() {
             Discord, et vérifie à chaque page que le membre a toujours le rôle
             staff. Tout le staff voit le journal d’audit et les archives des
             tickets de support, ainsi que les tickets en cours dont il voit le
-            salon sur Discord ; seul le staff qui modère voit la liste des
-            comptes et leurs fiches.
+            salon sur Discord, et le journal du jeu, que voit seul le staff qui
+            voit son salon sur Discord ; seul le staff qui modère voit la liste
+            des comptes et leurs fiches.
           </p>
         </PolicySection>
         <PolicySection title="Qui d’autre y touche">

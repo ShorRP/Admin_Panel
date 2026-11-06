@@ -1,9 +1,8 @@
 import { z } from "zod"
 
+import { MAX_SEARCHED_TEXT_LENGTH } from "@/discord/message-search-limits"
 import { dayParamOf } from "@/ui/filter-params"
 import { REQUEST_KIND_KEYS, type RequestKindKey } from "./request-kinds"
-
-const MAX_SEARCHED_TEXT_LENGTH = 1024
 
 const WORD = /[\p{L}\p{N}\p{Extended_Pictographic}]/u
 

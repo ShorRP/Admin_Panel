@@ -4,6 +4,8 @@ import { connection } from "next/server"
 import { BlockedWordCountBadge } from "@/blocked-words/blocked-word-count-badge"
 import { readBlockedWordCount } from "@/blocked-words/read-blocked-word-count"
 import { createDiscordApi } from "@/discord/discord-api"
+import { configuredGameLog } from "@/game-log/configured-game-log"
+import { viewsGameLogOnceRead } from "@/game-log/views-game-log-once-read"
 import { ownRecordOnceRead } from "@/records/own-record"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import { opensModerationOnceRead, type StaffMember } from "@/staff/staff-member"
@@ -25,6 +27,7 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
             </Suspense>
           }
           opensModeration={opensModerationOnceRead(staffMember)}
+          viewsGameLog={currentViewsGameLog(staffMember)}
           ownRecord={ownRecordOnceRead(staffMember)}
           blockedWordCount={
             <Suspense fallback={null}>
@@ -44,6 +47,15 @@ export default function StaffLayout({ children }: { children: ReactNode }) {
 async function currentStaffMember() {
   await connection()
   return await requireStaffMember(createDiscordApi())
+}
+
+async function currentViewsGameLog(staffMember: Promise<StaffMember>) {
+  await connection()
+  return await viewsGameLogOnceRead(
+    createDiscordApi(),
+    configuredGameLog(),
+    staffMember
+  )
 }
 
 async function CurrentBlockedWordCount({

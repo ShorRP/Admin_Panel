@@ -39,6 +39,33 @@ test("the skeleton draws a bar for each pill width it is given, before the form 
   )
 })
 
+test("a skeleton given no pill width draws no row of pills before the form", () => {
+  const html = render([])
+  const beforeForm = html.slice(0, html.indexOf('id="form-skeleton"'))
+
+  expect(bars(beforeForm)).toBe(0)
+  expect(beforeForm).not.toContain("justify-between")
+})
+
+test("a skeleton given a trailing cell draws it in place of the staff member's avatar and name in each row", () => {
+  const withAuthor = renderToStaticMarkup(
+    <LogSkeleton loading="Chargement…" pillWidths={[]} form={null} />
+  )
+  const withTrailing = renderToStaticMarkup(
+    <LogSkeleton
+      loading="Chargement…"
+      pillWidths={[]}
+      form={null}
+      trailing={<i data-trailing="" />}
+    />
+  )
+
+  expect(withAuthor).not.toContain("data-trailing")
+  expect(withAuthor).toContain("rounded-full")
+  expect(withTrailing.match(/data-trailing/g)).toHaveLength(5)
+  expect(withTrailing).not.toContain("rounded-full")
+})
+
 test("the skeleton holds nothing to type in, press or follow", () => {
   expect(render()).not.toMatch(/<(h2|form|input|button|label|a)[\s>]/)
 })

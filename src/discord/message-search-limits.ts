@@ -1,0 +1,1 @@
+export const MAX_SEARCHED_TEXT_LENGTH = 1024

@@ -10,6 +10,7 @@ import { cva } from "class-variance-authority"
 import { cn } from "cn"
 import {
   Ban,
+  Gamepad2,
   Gavel,
   Menu,
   ScrollText,
@@ -43,6 +44,7 @@ type Section = {
   name: string
   Icon: LucideIcon
   badge?: ReactNode
+  shown?: Promise<boolean>
   current: "page" | undefined
 }
 
@@ -71,6 +73,12 @@ const AUDIT_LOG = {
   href: "/audit-log",
   name: "Journal d’audit",
   Icon: ScrollText,
+}
+
+const GAME_LOG = {
+  href: "/game-log",
+  name: "Journal du jeu",
+  Icon: Gamepad2,
 }
 
 const MODERATION = { href: "/records", name: "Modération", Icon: Gavel }
@@ -116,12 +124,14 @@ export function StaffHeader({
   currentPath,
   member,
   opensModeration,
+  viewsGameLog,
   ownRecord,
   blockedWordCount,
 }: {
   currentPath: string
   member: ReactNode
   opensModeration: Promise<boolean>
+  viewsGameLog: Promise<boolean>
   ownRecord: Promise<MemberRecord | null>
   blockedWordCount: ReactNode
 }) {
@@ -129,7 +139,10 @@ export function StaffHeader({
   const administration = [
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
   ]
-  const logs = [withCurrent(AUDIT_LOG, currentPath)]
+  const logs = [
+    withCurrent(AUDIT_LOG, currentPath),
+    withCurrent({ ...GAME_LOG, shown: viewsGameLog }, currentPath),
+  ]
   const moderation = withCurrent(MODERATION, currentPath)
   const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)
   return (
@@ -437,7 +450,11 @@ function SectionNav({
       </SectionGroup>
       <SectionGroup id={`${place}-logs`} title="Journaux" place={place} ruled>
         {logs.map((section) => (
-          <SectionLink key={section.href} section={section} />
+          <ListedSectionLink
+            key={section.href}
+            section={section}
+            SectionLink={SectionLink}
+          />
         ))}
       </SectionGroup>
       <Suspense fallback={null}>
@@ -451,6 +468,35 @@ function SectionNav({
       </Suspense>
     </nav>
   )
+}
+
+function ListedSectionLink({
+  section,
+  SectionLink,
+}: {
+  section: Section
+  SectionLink: SectionLinkComponent
+}) {
+  const { shown } = section
+  return shown === undefined ? (
+    <SectionLink section={section} />
+  ) : (
+    <Suspense fallback={null}>
+      <SectionLinkWhen shown={shown}>
+        <SectionLink section={section} />
+      </SectionLinkWhen>
+    </Suspense>
+  )
+}
+
+function SectionLinkWhen({
+  shown,
+  children,
+}: {
+  shown: Promise<boolean>
+  children: ReactNode
+}) {
+  return use(shown) ? children : null
 }
 
 function SectionGroup({
