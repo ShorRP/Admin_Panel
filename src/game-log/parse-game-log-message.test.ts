@@ -185,3 +185,76 @@ test("a content that comes beside an embed is kept among the raw fields", () => 
     fields: [{ name: null, value: "@here regardez" }],
   })
 })
+
+test("a line wholly in format leaves nothing over", () => {
+  expect(parseGameLogMessage(messageOf([gameLogEmbed()]))).toMatchObject({
+    kind: "event",
+    extra: [],
+  })
+})
+
+test("what a line in format holds beyond what the parser reads shows raw with the event, in the order Discord shows it, so that no text is lost", () => {
+  const entry = parseGameLogMessage(
+    messageOf(
+      [
+        {
+          title: "Administration · administration:heal",
+          author: { name: "Serveur de jeu" },
+          description:
+            "Merida · compte 2094594320\nUne remarque libre\nExtra: zzz",
+          fields: [
+            { name: "Cible", value: "4278190080" },
+            { name: "Extra", value: "yyy" },
+            { name: "Cible", value: "9999" },
+          ],
+          footer: { text: "Pied libre" },
+        },
+        { title: "Autre embed", description: "Son texte" },
+      ],
+      "Le contenu du message"
+    )
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: "4278190080",
+    eventId: null,
+    extra: [
+      { name: null, value: "Le contenu du message" },
+      { name: null, value: "Serveur de jeu" },
+      { name: null, value: "Une remarque libre" },
+      { name: null, value: "Extra: zzz" },
+      { name: "Extra", value: "yyy" },
+      { name: "Cible", value: "9999" },
+      { name: null, value: "Pied libre" },
+      { name: null, value: "Autre embed" },
+      { name: null, value: "Son texte" },
+    ],
+  })
+})
+
+test("a line out of format keeps the author's name and the text of the other embeds among its raw fields", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Serveur redémarré",
+        author: { name: "Serveur de jeu" },
+        fields: [{ name: "Durée", value: "12 s" }],
+      },
+      { title: "Second", fields: [{ name: "Raison", value: "Mise à jour" }] },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "raw",
+    title: "Serveur redémarré",
+    fields: [
+      { name: null, value: "Serveur de jeu" },
+      { name: "Durée", value: "12 s" },
+      { name: null, value: "Second" },
+      { name: "Raison", value: "Mise à jour" },
+    ],
+  })
+})

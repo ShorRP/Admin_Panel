@@ -6,7 +6,6 @@ import {
   type APIUser,
   type Snowflake,
 } from "discord-api-types/v10"
-import { z } from "zod"
 
 import type { BlockedWordAction } from "@/blocked-words/blocked-word-action"
 import { panelRulesOf } from "@/blocked-words/panel-rule"
@@ -22,6 +21,7 @@ import {
   STAFF_SANCTION_EVENTS,
   type SanctionChange,
 } from "@/sanctions/sanction-events"
+import { cursorParamOf } from "@/ui/filter-params"
 import { parisDayOf } from "@/ui/paris-day"
 import {
   actionChangeEntryOf,
@@ -124,14 +124,6 @@ const CHANGES_PER_PAGE = 50
 
 const ENTRIES_PER_RULE_CHANGE = 2
 
-const LARGEST_SNOWFLAKE = BigInt("18446744073709551615")
-
-const CURSOR = z
-  .string()
-  .refine((id) => /^\d{17,20}$/.test(id) && BigInt(id) <= LARGEST_SNOWFLAKE)
-  .nullable()
-  .catch(null)
-
 export async function readAuditLog(
   discord: DiscordApi,
   searchParams: {
@@ -144,7 +136,7 @@ export async function readAuditLog(
     text?: unknown
   }
 ): Promise<AuditLogPage> {
-  const cursor = CURSOR.parse(searchParams.before)
+  const cursor = cursorParamOf(searchParams.before)
   const filters = auditLogFiltersOf(searchParams)
   const periodReach = periodReachOf(filters, new Date())
   const retains = retainerOf(filters)

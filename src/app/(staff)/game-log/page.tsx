@@ -1,16 +1,13 @@
 import type { Metadata } from "next"
+import { notFound } from "next/navigation"
 import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
 import { configuredGameLog } from "@/game-log/configured-game-log"
 import { GameLog } from "@/game-log/game-log"
-import { GameLogNotConfigured } from "@/game-log/game-log-not-configured"
 import { GameLogSkeleton } from "@/game-log/game-log-skeleton"
-import { readGameLog } from "@/game-log/read-game-log"
-import {
-  requireChannelAccess,
-  requireStaffMember,
-} from "@/staff/require-staff-member"
+import { readGameLogForStaff } from "@/game-log/read-game-log-for-staff"
+import { requireStaffMember } from "@/staff/require-staff-member"
 import { LogPage } from "@/ui/log-page"
 
 export const metadata: Metadata = { title: "Journal du jeu" }
@@ -33,16 +30,15 @@ async function GameLogFromDiscord({
 }: Pick<PageProps<"/game-log">, "searchParams">) {
   await connection()
   const discord = createDiscordApi()
-  const gameLog = configuredGameLog()
-  if (gameLog === null) {
-    await requireStaffMember(discord)
-    return <GameLogNotConfigured />
-  }
-  await requireChannelAccess(discord, gameLog.channelId)
-  return (
-    <GameLog
-      page={await readGameLog(discord, gameLog, await searchParams)}
-      guildId={discord.guildId}
-    />
+  const staffMember = await requireStaffMember(discord)
+  const read = await readGameLogForStaff(
+    discord,
+    staffMember,
+    configuredGameLog(),
+    await searchParams
   )
+  if (read.kind === "hidden") {
+    notFound()
+  }
+  return <GameLog read={read} guildId={discord.guildId} />
 }

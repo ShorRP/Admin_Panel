@@ -6,6 +6,7 @@ import { compareIds } from "@/discord/compare-ids"
 import type { DiscordApi } from "@/discord/discord-api"
 import { periodBounds } from "@/discord/period-bounds"
 import { parisDayOf } from "@/ui/paris-day"
+import { parisPeriodOf } from "@/ui/paris-day-bounds"
 import {
   cursorOf,
   gameLogFiltersOf,
@@ -46,7 +47,7 @@ export async function readGameLog(
   if (nothingBetween) {
     return { ...filters, days: [], before, older: null }
   }
-  const { total_results, messages } = await discord.searchMessages({
+  const { messages } = await discord.searchMessages({
     channel_id: [channelId],
     author_id: [webhookId],
     ...(filters.text === null ? {} : { content: filters.text }),
@@ -71,14 +72,14 @@ export async function readGameLog(
     ),
     before,
     older:
-      total_results > ENTRIES_PER_PAGE
+      messages.length >= ENTRIES_PER_PAGE
         ? (newestFirst.at(-1)?.id ?? null)
         : null,
   }
 }
 
 function boundsOf(filters: GameLogFilters, before: Snowflake | null) {
-  const { minId, maxId: periodEnd } = periodBounds(filters)
+  const { minId, maxId: periodEnd } = periodBounds(parisPeriodOf(filters))
   const maxId =
     before === null ||
     (periodEnd !== undefined && compareIds(periodEnd, before) <= 0)

@@ -17,6 +17,7 @@ export type GameLogEvent = LineOrigin & {
   reason: string | null
   place: string | null
   eventId: string | null
+  extra: GameLogRawField[]
 }
 
 export type GameLogRawLine = LineOrigin & {
@@ -37,6 +38,8 @@ const FOOTER_IDENTIFIER = /·\s*([^\s·]+)\s*$/
 
 const MARKUP = /^[*`\s]+|[*`\s]+$/g
 
+const LABELS = new Set(["cible", "motif", "lieu"])
+
 export function parseGameLogMessage(message: ChannelMessage): GameLogEntry {
   const origin = {
     messageId: message.id,
@@ -54,34 +57,130 @@ export function parseGameLogMessage(message: ChannelMessage): GameLogEntry {
       fields: [],
     }
   }
+  const others = message.embeds.filter((candidate) => candidate !== embed)
   const title = TITLE.exec(embed.title ?? "")
   if (title === null) {
     return {
       kind: "raw",
       ...origin,
       title: embed.title ?? null,
-      fields: rawFieldsOf(message.content, embed),
+      fields: [
+        ...contentFieldOf(message.content),
+        ...textsOf(embed),
+        ...others.flatMap(withTitle),
+      ],
     }
   }
-  const labelled = labelledValuesOf(embed)
-  const identity = characterAndAccountOf(embed)
   return {
     kind: "event",
     ...origin,
     category: (title[1] ?? "").trim(),
     action: (title[2] ?? "").trim(),
-    character: identity.character,
-    gameAccount: identity.gameAccount,
-    target: labelled.get("cible") ?? null,
-    reason: labelled.get("motif") ?? null,
-    place: labelled.get("lieu") ?? null,
-    eventId: identifierOf(embed.footer?.text),
+    ...readEvent(message.content, embed, others),
   }
 }
 
-function rawFieldsOf(content: string, embed: APIEmbed): GameLogRawField[] {
+function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
+  const lines = (embed.description ?? "").split(/\r?\n/)
+  const fields = embed.fields ?? []
+  const authorName = embed.author?.name
+  const claimedLines = new Set<number>()
+  const claimedFields = new Set<number>()
+
+  let character: string | null = null
+  let gameAccount: string | null = null
+  let identified = false
+  const identify = (text: string | undefined) => {
+    if (identified || text === undefined) {
+      return false
+    }
+    const found = CHARACTER_AND_ACCOUNT.exec(plain(text) ?? "")
+    if (found === null) {
+      return false
+    }
+    character = plain(found[1] ?? "")
+    gameAccount = found[2] ?? null
+    identified = true
+    return true
+  }
+  const authorClaimed = identify(authorName)
+  lines.forEach((line, index) => {
+    if (identify(line)) {
+      claimedLines.add(index)
+    }
+  })
+  fields.forEach(({ name, value }, index) => {
+    if (identify(name) || identify(value)) {
+      claimedFields.add(index)
+    }
+  })
+
+  const labelled = new Map<string, string>()
+  const take = (label: string, value: string) => {
+    const key = labelOf(label)
+    if (key === undefined || !LABELS.has(key)) {
+      return false
+    }
+    const text = plain(value)
+    if (text === null) {
+      return true
+    }
+    if (labelled.has(key)) {
+      return false
+    }
+    labelled.set(key, text)
+    return true
+  }
+  fields.forEach(({ name, value }, index) => {
+    if (!claimedFields.has(index) && take(name, value)) {
+      claimedFields.add(index)
+    }
+  })
+  lines.forEach((line, index) => {
+    const found = claimedLines.has(index) ? null : LABELLED_LINE.exec(line)
+    if (found !== null && take(found[1] ?? "", found[2] ?? "")) {
+      claimedLines.add(index)
+    }
+  })
+
+  const eventId = identifierOf(embed.footer?.text)
+  return {
+    character,
+    gameAccount,
+    target: labelled.get("cible") ?? null,
+    reason: labelled.get("motif") ?? null,
+    place: labelled.get("lieu") ?? null,
+    eventId,
+    extra: [
+      ...contentFieldOf(content),
+      ...(authorName === undefined || authorClaimed
+        ? []
+        : [{ name: null, value: authorName }]),
+      ...lines.flatMap((line, index) =>
+        claimedLines.has(index) || line.trim() === ""
+          ? []
+          : [{ name: null, value: line }]
+      ),
+      ...fields.flatMap(({ name, value }, index) =>
+        claimedFields.has(index) ? [] : [{ name, value }]
+      ),
+      ...(embed.footer === undefined || eventId !== null
+        ? []
+        : [{ name: null, value: embed.footer.text }]),
+      ...others.flatMap(withTitle),
+    ],
+  }
+}
+
+function contentFieldOf(content: string): GameLogRawField[] {
+  return content.trim() === "" ? [] : [{ name: null, value: content }]
+}
+
+function textsOf(embed: APIEmbed): GameLogRawField[] {
   return [
-    ...(content.trim() === "" ? [] : [{ name: null, value: content }]),
+    ...(embed.author === undefined
+      ? []
+      : [{ name: null, value: embed.author.name }]),
     ...(embed.description === undefined
       ? []
       : [{ name: null, value: embed.description }]),
@@ -92,52 +191,20 @@ function rawFieldsOf(content: string, embed: APIEmbed): GameLogRawField[] {
   ]
 }
 
+function withTitle(embed: APIEmbed): GameLogRawField[] {
+  return [
+    ...(embed.title === undefined ? [] : [{ name: null, value: embed.title }]),
+    ...textsOf(embed),
+  ]
+}
+
 function plain(text: string) {
   const stripped = text.replace(MARKUP, "")
   return stripped === "" ? null : stripped
 }
 
-function descriptionLinesOf({ description }: APIEmbed) {
-  return (description ?? "").split(/\r?\n/)
-}
-
-function labelledValuesOf(embed: APIEmbed) {
-  const values = new Map<string, string>()
-  const add = (label: string, value: string) => {
-    const key = plain(label)?.toLowerCase().replace(/\s*:$/, "")
-    const text = plain(value)
-    if (key !== undefined && text !== null && !values.has(key)) {
-      values.set(key, text)
-    }
-  }
-  for (const { name, value } of embed.fields ?? []) {
-    add(name, value)
-  }
-  for (const line of descriptionLinesOf(embed)) {
-    const labelled = LABELLED_LINE.exec(line)
-    if (labelled !== null) {
-      add(labelled[1] ?? "", labelled[2] ?? "")
-    }
-  }
-  return values
-}
-
-function characterAndAccountOf(embed: APIEmbed) {
-  const candidates = [
-    embed.author?.name,
-    ...descriptionLinesOf(embed),
-    ...(embed.fields ?? []).flatMap(({ name, value }) => [name, value]),
-  ]
-  for (const candidate of candidates) {
-    const found = CHARACTER_AND_ACCOUNT.exec(plain(candidate ?? "") ?? "")
-    if (found !== null) {
-      return {
-        character: plain(found[1] ?? ""),
-        gameAccount: found[2] ?? null,
-      }
-    }
-  }
-  return { character: null, gameAccount: null }
+function labelOf(label: string) {
+  return plain(label)?.toLowerCase().replace(/\s*:$/, "")
 }
 
 function identifierOf(footer: string | undefined) {

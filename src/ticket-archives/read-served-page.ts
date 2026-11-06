@@ -1,6 +1,7 @@
 import "server-only"
 
 import { periodBounds } from "@/discord/period-bounds"
+import { parisPeriodOf } from "@/ui/paris-day-bounds"
 import { REQUEST_KINDS, requestKindKeyOf } from "./request-kinds"
 import {
   ARCHIVES_PER_PAGE,
@@ -21,7 +22,7 @@ export async function readServedPage({
   filters,
   requested,
 }: ReadContext): Promise<ArchivesPage> {
-  const period = periodBounds(filters)
+  const period = periodBounds(parisPeriodOf(filters))
   const search = (page: number) =>
     searchTicketArchives(
       discord,

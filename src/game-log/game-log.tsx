@@ -20,12 +20,15 @@ import { GameLogFilterForm } from "./game-log-filter-form"
 import { hasFilter, NO_FILTERS } from "./game-log-filters"
 import { gameLogHref } from "./game-log-href"
 import { GAME_LOG_TRAILING_CLASSES } from "./game-log-layout"
+import { GameLogNotConfigured } from "./game-log-not-configured"
 import type {
   GameLogEntry,
   GameLogEvent,
+  GameLogRawField,
   GameLogRawLine,
 } from "./parse-game-log-message"
 import type { GameLogPage } from "./read-game-log"
+import type { GameLogRead } from "./read-game-log-for-staff"
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   administration: ShieldCheck,
@@ -37,12 +40,16 @@ const DETAIL_CLASSES = cn(
 )
 
 export function GameLog({
-  page,
+  read,
   guildId,
 }: {
-  page: GameLogPage
+  read: Exclude<GameLogRead, { kind: "hidden" }>
   guildId: string
 }) {
+  if (read.kind === "unconfigured") {
+    return <GameLogNotConfigured />
+  }
+  const page = read
   const { days, before, older } = page
   const filters = { text: page.text, from: page.from, to: page.to }
   const oldest = days.at(-1)?.entries.at(-1)
@@ -141,6 +148,7 @@ function EventLines({
     reason,
     place,
     eventId,
+    extra,
   },
 }: {
   event: GameLogEvent
@@ -163,6 +171,7 @@ function EventLines({
       <Detail>{about.join(" · ")}</Detail>
       <Detail>{place === null ? "" : `Lieu : ${place}`}</Detail>
       <Detail>{eventId === null ? "" : `Identifiant : ${eventId}`}</Detail>
+      <RawFieldLines fields={extra} />
     </>
   )
 }
@@ -173,6 +182,14 @@ function RawLines({ line: { title, fields } }: { line: GameLogRawLine }) {
       <p className="font-medium text-pretty wrap-anywhere">
         {title ?? "Message sans titre"}
       </p>
+      <RawFieldLines fields={fields} />
+    </>
+  )
+}
+
+function RawFieldLines({ fields }: { fields: GameLogRawField[] }) {
+  return (
+    <>
       {fields.map(({ name, value }, index) => (
         <Detail key={index}>
           {name === null ? value : `${name} : ${value}`}

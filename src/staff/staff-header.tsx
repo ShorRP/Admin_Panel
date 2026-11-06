@@ -44,6 +44,7 @@ type Section = {
   name: string
   Icon: LucideIcon
   badge?: ReactNode
+  shown?: Promise<boolean>
   current: "page" | undefined
 }
 
@@ -138,8 +139,10 @@ export function StaffHeader({
   const administration = [
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
   ]
-  const logs = [withCurrent(AUDIT_LOG, currentPath)]
-  const gameLog = withCurrent(GAME_LOG, currentPath)
+  const logs = [
+    withCurrent(AUDIT_LOG, currentPath),
+    withCurrent({ ...GAME_LOG, shown: viewsGameLog }, currentPath),
+  ]
   const moderation = withCurrent(MODERATION, currentPath)
   const supportTickets = withCurrent(SUPPORT_TICKETS, currentPath)
   return (
@@ -158,8 +161,6 @@ export function StaffHeader({
           place="sidebar"
           administration={administration}
           logs={logs}
-          gameLog={gameLog}
-          viewsGameLog={viewsGameLog}
           moderation={moderation}
           supportTickets={supportTickets}
           opensModeration={opensModeration}
@@ -215,8 +216,6 @@ export function StaffHeader({
                   place="menu"
                   administration={administration}
                   logs={logs}
-                  gameLog={gameLog}
-                  viewsGameLog={viewsGameLog}
                   moderation={moderation}
                   supportTickets={supportTickets}
                   opensModeration={opensModeration}
@@ -423,8 +422,6 @@ function SectionNav({
   place,
   administration,
   logs,
-  gameLog,
-  viewsGameLog,
   moderation,
   supportTickets,
   opensModeration,
@@ -434,8 +431,6 @@ function SectionNav({
   place: "sidebar" | "menu"
   administration: Section[]
   logs: Section[]
-  gameLog: Section
-  viewsGameLog: Promise<boolean>
   moderation: Section
   supportTickets: Section
   opensModeration: Promise<boolean>
@@ -455,13 +450,12 @@ function SectionNav({
       </SectionGroup>
       <SectionGroup id={`${place}-logs`} title="Journaux" place={place} ruled>
         {logs.map((section) => (
-          <SectionLink key={section.href} section={section} />
+          <ListedSectionLink
+            key={section.href}
+            section={section}
+            SectionLink={SectionLink}
+          />
         ))}
-        <Suspense fallback={null}>
-          <SectionLinkWhen shown={viewsGameLog}>
-            <SectionLink section={gameLog} />
-          </SectionLinkWhen>
-        </Suspense>
       </SectionGroup>
       <Suspense fallback={null}>
         <ModerationAndSupportGroups
@@ -473,6 +467,25 @@ function SectionNav({
         />
       </Suspense>
     </nav>
+  )
+}
+
+function ListedSectionLink({
+  section,
+  SectionLink,
+}: {
+  section: Section
+  SectionLink: SectionLinkComponent
+}) {
+  const { shown } = section
+  return shown === undefined ? (
+    <SectionLink section={section} />
+  ) : (
+    <Suspense fallback={null}>
+      <SectionLinkWhen shown={shown}>
+        <SectionLink section={section} />
+      </SectionLinkWhen>
+    </Suspense>
   )
 }
 

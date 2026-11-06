@@ -151,10 +151,19 @@ test("a text finds the lines whose words it holds, wherever they sit in the embe
   )
 })
 
-test("a text with no word in it counts as absent", async () => {
+test("a text with no word in it is sent as it is, and finds nothing, as Discord's search does", async () => {
   const discord = discordWith([gameLogLine("2026-11-03T08:00:00Z", "11111111")])
 
   const page = await readGameLog(discord, CONFIG, { text: "§§ !!" })
+
+  expect(page.text).toBe("§§ !!")
+  expect(page.days).toEqual([])
+})
+
+test("a text of more than 1,024 characters counts as absent", async () => {
+  const discord = discordWith([gameLogLine("2026-11-03T08:00:00Z", "11111111")])
+
+  const page = await readGameLog(discord, CONFIG, { text: "a".repeat(1025) })
 
   expect(page.text).toBeNull()
   expect(hashesOf(page)).toEqual(["11111111"])
@@ -295,9 +304,29 @@ test("a page holds 25 lines and leads to the older ones by the ID of its last, w
   )
 })
 
-test("a page of exactly 25 lines leads nowhere older", async () => {
+test("a full page of 25 lines may have older ones, which Discord was not shown to count under a bound, so it leads to them and the older page then holds none", async () => {
   const discord = discordWith(
     Array.from({ length: 25 }, (_, index) =>
+      gameLogLine(
+        new Date(Date.UTC(2026, 10, 3, 8, index)).toISOString(),
+        index.toString(16).padStart(8, "0")
+      )
+    )
+  )
+
+  const first = await readGameLog(discord, CONFIG, {})
+  const second = await readGameLog(discord, CONFIG, {
+    before: first.older ?? undefined,
+  })
+
+  expect(first.older).toBe(first.days.at(-1)?.entries.at(-1)?.messageId)
+  expect(second.days).toEqual([])
+  expect(second.older).toBeNull()
+})
+
+test("a page of fewer than 25 lines leads nowhere older", async () => {
+  const discord = discordWith(
+    Array.from({ length: 24 }, (_, index) =>
       gameLogLine(
         new Date(Date.UTC(2026, 10, 3, 8, index)).toISOString(),
         index.toString(16).padStart(8, "0")

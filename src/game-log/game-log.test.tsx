@@ -21,6 +21,7 @@ const HEAL: GameLogDay["entries"][number] = {
   reason: null,
   place: "3c:Skyrim.esm · 3816, -5303, -5681",
   eventId: "189b92f6",
+  extra: [],
 }
 
 const DISCONNECT: GameLogDay["entries"][number] = {
@@ -36,6 +37,7 @@ const DISCONNECT: GameLogDay["entries"][number] = {
   reason: "Déconnexion",
   place: null,
   eventId: null,
+  extra: [],
 }
 
 const RAW: GameLogDay["entries"][number] = {
@@ -61,9 +63,19 @@ function render(page: Partial<GameLogPage>) {
     ...page,
   }
   return renderToStaticMarkup(
-    <GameLog page={wholePage} guildId={GUILD_ID} />
+    <GameLog read={{ kind: "page", ...wholePage }} guildId={GUILD_ID} />
   ).replace(/\s(?:id|aria-controls)="[^"]*"/g, "")
 }
+
+test("a game log left out of the configuration shows its message in place of a page", () => {
+  const html = renderToStaticMarkup(
+    <GameLog read={{ kind: "unconfigured" }} guildId={GUILD_ID} />
+  )
+
+  expect(textOf(html)).toBe(
+    "Le journal du jeu n’est pas configuré pour ce serveur Discord."
+  )
+})
 
 function textOf(html: string) {
   return html.replace(/<[^>]*>/g, "")
@@ -103,6 +115,30 @@ test("a line with a reason shows it beside the target, and one without character
   expect(textOf(row)).not.toContain("Cible")
   expect(textOf(row)).not.toContain("Lieu")
   expect(textOf(row)).not.toContain("Identifiant")
+})
+
+test("what a line in format holds beyond what the page reads shows raw under the event, a field as its name and its value", () => {
+  const html = render({
+    days: [
+      {
+        date: HEAL.date,
+        entries: [
+          {
+            ...HEAL,
+            extra: [
+              { name: null, value: "Une remarque libre" },
+              { name: "Extra", value: "zzz" },
+            ],
+          },
+        ],
+      },
+    ],
+  })
+
+  const [row = ""] = rowsOf(html)
+  expect(textOf(row)).toContain("Identifiant : 189b92f6")
+  expect(textOf(row)).toContain("Une remarque libre")
+  expect(textOf(row)).toContain("Extra : zzz")
 })
 
 test("a line's game account is a number, not a link", () => {
