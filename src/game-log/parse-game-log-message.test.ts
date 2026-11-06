@@ -104,10 +104,10 @@ test("a line in the script's format without a target gives its character and its
 })
 
 test.each([
-  ["administration:workshop:create", "administration:workshop:create"],
-  ["administration:heal", "administration:heal"],
-  ["déconnexion", "déconnexion"],
-])("the action %s is kept whole", (action, expected) => {
+  "administration:workshop:create",
+  "administration:heal",
+  "déconnexion",
+])("the action %s is kept whole", (action) => {
   const entry = parseGameLogMessage(
     messageOf([
       {
@@ -117,8 +117,70 @@ test.each([
     ])
   )
 
-  expect(entry).toMatchObject({ kind: "event", action: expected })
+  expect(entry).toMatchObject({ kind: "event", action })
 })
+
+test("a label whose value is empty once the markup is stripped stays raw, in the character's field as in a field of its own", () => {
+  const entry = parseGameLogMessage(
+    messageOf([
+      {
+        title: "Administration · administration:heal",
+        fields: [
+          { name: "Merida", value: "compte 2094594320\nCible : **" },
+          { name: "Lieu", value: "``" },
+        ],
+      },
+    ])
+  )
+
+  expect(entry).toMatchObject({
+    kind: "event",
+    character: "Merida",
+    gameAccount: "2094594320",
+    target: null,
+    place: null,
+    extra: [
+      { name: null, value: "Cible : **" },
+      { name: "Lieu", value: "``" },
+    ],
+  })
+})
+
+test.each([
+  [
+    "the author's name",
+    { author: { name: "Lyra · compte 2094594321" } },
+    { name: null, value: "Lyra · compte 2094594321" },
+  ],
+  [
+    "a line of the description",
+    { description: "Lyra · compte 2094594321" },
+    { name: null, value: "Lyra · compte 2094594321" },
+  ],
+])(
+  "the character's field is read whatever %s holds beside it, which stays raw",
+  (_, beside, left) => {
+    const entry = parseGameLogMessage(
+      messageOf([
+        {
+          title: "Administration · administration:heal",
+          ...beside,
+          fields: [
+            { name: "Merida", value: "compte 2094594320\nCible : 4278190515" },
+          ],
+        },
+      ])
+    )
+
+    expect(entry).toMatchObject({
+      kind: "event",
+      character: "Merida",
+      gameAccount: "2094594320",
+      target: "4278190515",
+      extra: [left],
+    })
+  }
+)
 
 test("a line of the character's field that the parser does not know stays raw, beside the target it reads", () => {
   const entry = parseGameLogMessage(
