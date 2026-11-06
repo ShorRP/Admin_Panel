@@ -27,15 +27,23 @@ import {
   actionChangeEntryOf,
   capitalized,
   joinActionChanges,
+  JOINING_WINDOW_MS,
   type ActionChangeEntry,
 } from "./action-change-entries"
 import {
   auditLogFiltersOf,
   identityMatcher,
+  textMatcher,
   type AccountIdentity,
   type AuditLogFilters,
 } from "./audit-log-filters"
 import { auditLogPages } from "./audit-log-pages"
+import {
+  periodMatcher,
+  periodReachOf,
+  readsNothing,
+  type PeriodReach,
+} from "./audit-log-period"
 import type { ChangeType } from "./change-type"
 import {
   attributionOf,
@@ -89,6 +97,7 @@ export type AuditLogPage = AuditLogFilters & {
   days: AuditLogDay[]
   before: Snowflake | null
   older: Snowflake | null
+  periodReach: PeriodReach
 }
 
 const AUTO_MOD_RULE_EVENTS = [
@@ -130,16 +139,25 @@ export async function readAuditLog(
     type?: unknown
     author?: unknown
     account?: unknown
+    from?: unknown
+    to?: unknown
+    text?: unknown
   }
 ): Promise<AuditLogPage> {
   const cursor = CURSOR.parse(searchParams.before)
   const filters = auditLogFiltersOf(searchParams)
+  const periodReach = periodReachOf(filters, new Date())
   const retains = retainerOf(filters)
+  const readers = readsNothing(periodReach)
+    ? []
+    : await eventReadersOf(discord, filters)
   const found: FoundChange[] = []
-  for (const reader of await eventReadersOf(discord, filters)) {
+  for (const reader of readers) {
     found.push(...(await changesOfEvent(discord, reader, cursor, retains)))
   }
-  const joined = joinActionChanges(found, withDescription)
+  const joined = joinActionChanges(found, withDescription).filter(
+    lineRetainerOf(filters)
+  )
   const pageChanges = joined.toSorted(newestFirst).slice(0, CHANGES_PER_PAGE)
   const avatarUrls = await avatarUrlsByMemberId(
     discord,
@@ -160,14 +178,44 @@ export async function readAuditLog(
       joined.length > CHANGES_PER_PAGE
         ? (pageChanges.at(-1)?.change.id ?? null)
         : null,
+    periodReach,
   }
 }
 
-function retainerOf({ author, account }: AuditLogFilters) {
+function retainerOf({ author, account, text, from, to }: AuditLogFilters) {
   const authorMatches = identityMatcher(author)
   const accountMatches = identityMatcher(account)
+  const textMatches = textMatcher(text)
+  const inPeriod = periodMatcher({ from, to })
+  const inPeriodWithJoinTolerance = periodMatcher(
+    { from, to },
+    JOINING_WINDOW_MS
+  )
   return (found: FoundChange) =>
-    authorMatches(found.author) && accountMatches(found.account)
+    authorMatches(found.author) &&
+    accountMatches(found.account) &&
+    textMatches(found.actionChange?.mayShowAs ?? shownTextsOf(found.change)) &&
+    (found.actionChange === undefined ? inPeriod : inPeriodWithJoinTolerance)(
+      found.change.date
+    )
+}
+
+function lineRetainerOf({ text, from, to }: AuditLogFilters) {
+  const textMatches = textMatcher(text)
+  const inPeriod = periodMatcher({ from, to })
+  return ({ change }: FoundChange) =>
+    inPeriod(change.date) && textMatches(shownTextsOf(change))
+}
+
+function shownTextsOf(change: FoundChange["change"]): string[] {
+  switch (change.kind) {
+    case "rule":
+      return change.madeInDiscord ? [] : [change.description]
+    case "sanction-change":
+      return change.reason === null ? [] : [change.reason]
+    case "automatic-timeout":
+      return change.ruleName === null ? [] : [change.ruleName]
+  }
 }
 
 function eventsOf(type: ChangeType | null, account: string | null) {

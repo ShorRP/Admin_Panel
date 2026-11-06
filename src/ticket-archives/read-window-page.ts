@@ -2,7 +2,8 @@ import "server-only"
 
 import type { Snowflake } from "discord-api-types/v10"
 
-import { parisDayAfter, parisDayStart, periodBounds } from "./period-bounds"
+import { parisDayAfter, parisDayStart } from "@/ui/paris-day-bounds"
+import { periodBounds } from "./period-bounds"
 import { holdsWords, longestTermOf } from "./reason-words"
 import { requestKindKeyOf } from "./request-kinds"
 import { resolveAccounts, type ResolvedAccount } from "./resolve-accounts"

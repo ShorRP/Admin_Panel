@@ -1,11 +1,30 @@
-import { Input } from "@/ui/input"
-import { Label } from "@/ui/label"
+import {
+  FilterFields,
+  PERIOD_FIELDS,
+  searchTextField,
+  type FilterFieldSpec,
+} from "@/ui/filter-fields"
 import type { AuditLogFilters } from "./audit-log-filters"
 
-export const AUDIT_LOG_FILTER_FIELDS = [
-  { name: "author", label: "Auteur" },
-  { name: "account", label: "Compte" },
-] as const
+export type AuditLogFieldName = Exclude<keyof AuditLogFilters, "type">
+
+export const AUDIT_LOG_FILTER_FIELDS: readonly FilterFieldSpec<AuditLogFieldName>[] =
+  [
+    {
+      name: "author",
+      label: "Auteur",
+      type: "text",
+      placeholder: "Nom, ID ou mention",
+    },
+    {
+      name: "account",
+      label: "Compte",
+      type: "text",
+      placeholder: "Nom, ID ou mention",
+    },
+    searchTextField("Mot ou motif"),
+    ...PERIOD_FIELDS,
+  ]
 
 export function AuditLogFilterFields({
   filters,
@@ -16,16 +35,12 @@ export function AuditLogFilterFields({
   idPrefix: string
   className: string
 }) {
-  return AUDIT_LOG_FILTER_FIELDS.map(({ name, label }) => (
-    <div key={name} className={className}>
-      <Label htmlFor={`${idPrefix}-${name}`}>{label}</Label>
-      <Input
-        id={`${idPrefix}-${name}`}
-        name={name}
-        defaultValue={filters[name] ?? ""}
-        placeholder="Nom, ID ou mention"
-        autoComplete="off"
-      />
-    </div>
-  ))
+  return (
+    <FilterFields
+      fields={AUDIT_LOG_FILTER_FIELDS}
+      values={filters}
+      idPrefix={idPrefix}
+      className={className}
+    />
+  )
 }

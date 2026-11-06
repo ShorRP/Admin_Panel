@@ -8,12 +8,13 @@ import {
 } from "@/blocked-words/blocked-word-reason"
 import type { AccountIdentity } from "./audit-log-filters"
 
-const JOINING_WINDOW_MS = 60_000
+export const JOINING_WINDOW_MS = 60_000
 
 export type ActionChangeEntry = {
   side: "entering" | "leaving"
   reason: string
   alone: string
+  mayShowAs: readonly string[]
 }
 
 type Joinable = {
@@ -36,19 +37,14 @@ export function actionChangeEntryOf(
   if (change === null) {
     return null
   }
+  const addition = capitalized(additionReason(change.word, change.to))
+  const removal = capitalized(removalReason(change.word, change.from))
+  const mayShowAs = [reason, addition, removal]
   if (ruleAction.id === change.to.id) {
-    return {
-      side: "entering",
-      reason,
-      alone: capitalized(additionReason(change.word, change.to)),
-    }
+    return { side: "entering", reason, alone: addition, mayShowAs }
   }
   if (ruleAction.id === change.from.id) {
-    return {
-      side: "leaving",
-      reason,
-      alone: capitalized(removalReason(change.word, change.from)),
-    }
+    return { side: "leaving", reason, alone: removal, mayShowAs }
   }
   return null
 }

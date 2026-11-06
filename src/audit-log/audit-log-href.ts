@@ -2,21 +2,25 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { AuditLogFilters } from "./audit-log-filters"
 
+const FILTER_NAMES = [
+  "type",
+  "author",
+  "account",
+  "text",
+  "from",
+  "to",
+] as const
+
 export function auditLogHref({
-  type,
-  author,
-  account,
   before = null,
+  ...filters
 }: AuditLogFilters & { before?: Snowflake | null }) {
   const params = new URLSearchParams()
-  if (type !== null) {
-    params.set("type", type)
-  }
-  if (author !== null) {
-    params.set("author", author)
-  }
-  if (account !== null) {
-    params.set("account", account)
+  for (const name of FILTER_NAMES) {
+    const value = filters[name]
+    if (value !== null) {
+      params.set(name, value)
+    }
   }
   if (before !== null) {
     params.set("before", before)
