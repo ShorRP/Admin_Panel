@@ -1,22 +1,25 @@
-import {
-  CircleHelp,
-  Gamepad2,
-  ShieldCheck,
-  UserRound,
-  type LucideIcon,
-} from "lucide-react"
+import { CircleHelp, Gamepad2 } from "lucide-react"
 
+import { MAX_SEARCHES, SEARCH_PAGE_SIZE } from "@/discord/message-search-limits"
 import { discordMessageUrl } from "@/discord/message-url"
 import { DiscordMessageLink } from "@/ui/discord-message-link"
+import { cutEmptySentence, LogCutNote } from "@/ui/log-cut"
 import { LogDay } from "@/ui/log-day"
 import { LogDetail, LogRawFields, LogTitle } from "@/ui/log-detail"
 import { LogEmpty } from "@/ui/log-empty"
 import { LogFrame } from "@/ui/log-frame"
 import { LogPagination } from "@/ui/log-pagination"
 import { LogRow } from "@/ui/log-row"
+import { categoryKeyOf, GAME_LOG_CATEGORIES } from "./game-log-categories"
+import { GameLogCategoryFilter } from "./game-log-category-filter"
 import { GameLogFilterFold } from "./game-log-filter-fold"
 import { GameLogFilterForm } from "./game-log-filter-form"
-import { hasFilter, NO_FILTERS } from "./game-log-filters"
+import {
+  filtersOfPage,
+  hasFilter,
+  NO_FILTERS,
+  type GameLogFilters,
+} from "./game-log-filters"
 import { gameLogHref } from "./game-log-href"
 import { GameLogNotConfigured } from "./game-log-not-configured"
 import type {
@@ -27,10 +30,7 @@ import type {
 import type { GameLogPage } from "./read-game-log"
 import type { GameLogRead } from "./read-game-log-for-staff"
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  administration: ShieldCheck,
-  personnages: UserRound,
-}
+const READ_MESSAGES = MAX_SEARCHES * SEARCH_PAGE_SIZE
 
 export function GameLog({
   read,
@@ -42,14 +42,14 @@ export function GameLog({
   if (read.kind === "unconfigured") {
     return <GameLogNotConfigured />
   }
-  const page = read
-  const { days, before, older } = page
-  const filters = { text: page.text, from: page.from, to: page.to }
+  const { days, before, older, cut } = read
+  const filters = filtersOfPage(read)
   const oldest = days.at(-1)?.entries.at(-1)
   return (
     <LogFrame
       filters={
         <>
+          <GameLogCategoryFilter filters={filters} />
           <GameLogFilterForm key={JSON.stringify(filters)} filters={filters} />
           <GameLogFilterFold filters={filters} />
         </>
@@ -57,7 +57,7 @@ export function GameLog({
     >
       {days.length === 0 ? (
         <LogEmpty
-          message={noLineMessage(page)}
+          message={noLineMessage({ before, cut, filters })}
           resetHref={hasFilter(filters) ? gameLogHref(NO_FILTERS) : null}
         />
       ) : (
@@ -73,6 +73,7 @@ export function GameLog({
           </LogDay>
         ))
       )}
+      {cut && days.length > 0 && <LogCutNote readMessages={READ_MESSAGES} />}
       <LogPagination
         label="Pages du journal du jeu"
         oldest={oldest?.date ?? null}
@@ -85,13 +86,28 @@ export function GameLog({
   )
 }
 
-function noLineMessage({ text, from, to, before }: GameLogPage) {
+function noLineMessage({
+  before,
+  cut,
+  filters,
+}: Pick<GameLogPage, "before" | "cut"> & { filters: GameLogFilters }) {
+  if (cut) {
+    return cutEmptySentence(READ_MESSAGES)
+  }
   if (before !== null) {
     return "Aucune ligne plus ancienne."
   }
-  return hasFilter({ text, from, to })
+  return hasFilter(filters)
     ? "Aucune ligne du journal du jeu ne correspond à ces filtres."
     : "Aucune ligne dans le journal du jeu pour l’instant."
+}
+
+function iconOf(entry: GameLogEntry) {
+  if (entry.kind === "raw") {
+    return CircleHelp
+  }
+  const category = categoryKeyOf(entry.category)
+  return category === null ? Gamepad2 : GAME_LOG_CATEGORIES[category].icon
 }
 
 function GameLogRow({
@@ -101,14 +117,10 @@ function GameLogRow({
   entry: GameLogEntry
   guildId: string
 }) {
-  const Icon =
-    entry.kind === "event"
-      ? (CATEGORY_ICONS[entry.category.toLowerCase()] ?? Gamepad2)
-      : CircleHelp
   return (
     <LogRow
       date={entry.date}
-      Icon={Icon}
+      Icon={iconOf(entry)}
       tileClassName="text-muted-foreground"
       trailing={
         <DiscordMessageLink

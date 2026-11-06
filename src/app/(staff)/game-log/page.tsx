@@ -17,7 +17,7 @@ export default function GameLogPage({ searchParams }: PageProps<"/game-log">) {
     <LogPage
       overline="Serveur de jeu · Heures de Paris"
       title="Journal du jeu"
-      description="Ce que le serveur de jeu poste sur Discord : les commandes d’administration, les personnages et leurs comptes de jeu. Cherche un mot ou limite le journal à une période."
+      description="Ce que le serveur de jeu poste sur Discord : les commandes d’administration, les personnages et leurs comptes de jeu. Filtre par catégorie, action, personnage, compte de jeu, cible, lieu ou motif, cherche un mot, ou limite le journal à une période."
       skeleton={<GameLogSkeleton />}
     >
       <GameLogFromDiscord searchParams={searchParams} />

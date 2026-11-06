@@ -2,16 +2,15 @@ import "server-only"
 
 import type { Snowflake } from "discord-api-types/v10"
 
-import { compareIds } from "@/discord/compare-ids"
 import type {
   ChannelMessage,
   DiscordApi,
   Guild,
   GuildChannel,
 } from "@/discord/discord-api"
-import { MAX_SEARCHES, SEARCH_PAGE_SIZE } from "@/discord/message-search-limits"
 import { messageTextsOf } from "@/discord/message-texts"
-import { searchBounds, type PeriodBounds } from "@/discord/period-bounds"
+import { searchBounds } from "@/discord/period-bounds"
+import { scanMessages } from "@/discord/scan-messages"
 import { holdsWords, longestTermOf } from "@/discord/search-words"
 import { accountNames } from "@/records/account-names"
 import { resolveAccounts } from "@/records/resolve-accounts"
@@ -55,14 +54,11 @@ export type BotLogPage = BotLogFilters & {
 
 type FilterIds = { accountId: Snowflake | null; channelId: Snowflake | null }
 
-type Scan = {
-  discord: DiscordApi
+type KeepContext = {
   channelId: Snowflake
   applicationId: Snowflake
   filters: BotLogFilters
   ids: FilterIds
-  served: string | undefined
-  before: Snowflake | null
 }
 
 export async function readBotLog(
@@ -89,14 +85,14 @@ export async function readBotLog(
     return { ...nothing, notice: resolved.notice }
   }
   const { id: applicationId } = await discord.getApplicationUser()
-  const { entries, older, cut } = await scan({
-    discord,
+  const context = { channelId, applicationId, filters, ids: resolved.ids }
+  const { entries, older, cut } = await scanMessages(discord, {
     channelId,
-    applicationId,
-    filters,
-    ids: resolved.ids,
+    authorId: applicationId,
     served: servedTermOf(filters, resolved.ids),
+    period: parisPeriodOf(filters),
     before,
+    keep: (message) => keptEntry(context, message),
   })
   return {
     ...nothing,
@@ -159,60 +155,8 @@ function servedTermOf(
   )
 }
 
-async function scan(context: Scan) {
-  const { discord, channelId, applicationId, filters, served } = context
-  const period = parisPeriodOf(filters)
-  const entries: BotLogEntry[] = []
-  let cursor = context.before
-  for (let search = 0; search < MAX_SEARCHES; search++) {
-    const bounds = searchBounds(period, cursor)
-    if (bounds === null) {
-      return { entries, older: null, cut: false }
-    }
-    const { messages } = await discord.searchMessages(
-      queryOf(channelId, applicationId, served, bounds)
-    )
-    const newestFirst = messages.toSorted((left, right) =>
-      compareIds(right.id, left.id)
-    )
-    for (const message of newestFirst) {
-      const entry = keptEntry(context, message)
-      if (entry === null) {
-        continue
-      }
-      entries.push(entry)
-      if (entries.length === SEARCH_PAGE_SIZE) {
-        return { entries, older: entry.messageId, cut: false }
-      }
-    }
-    if (messages.length < SEARCH_PAGE_SIZE) {
-      return { entries, older: null, cut: false }
-    }
-    cursor = newestFirst.at(-1)?.id ?? cursor
-  }
-  return { entries, older: cursor, cut: true }
-}
-
-function queryOf(
-  channelId: Snowflake,
-  applicationId: Snowflake,
-  served: string | undefined,
-  { minId, maxId }: PeriodBounds
-) {
-  return {
-    channel_id: [channelId],
-    author_id: [applicationId],
-    ...(served === undefined ? {} : { content: served }),
-    ...(minId === undefined ? {} : { min_id: minId }),
-    ...(maxId === undefined ? {} : { max_id: maxId }),
-    sort_order: "desc" as const,
-    limit: SEARCH_PAGE_SIZE,
-    offset: 0,
-  }
-}
-
 function keptEntry(
-  { channelId, applicationId, filters, ids }: Scan,
+  { channelId, applicationId, filters, ids }: KeepContext,
   message: ChannelMessage
 ) {
   if (message.author.id !== applicationId || message.channel_id !== channelId) {

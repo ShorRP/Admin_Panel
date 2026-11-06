@@ -13,7 +13,7 @@ import { MAX_SEARCHES, SEARCH_PAGE_SIZE } from "@/discord/message-search-limits"
 import { discordMessageUrl } from "@/discord/message-url"
 import { recordHrefForModerator } from "@/records/record-href"
 import { DiscordMessageLink } from "@/ui/discord-message-link"
-import { frenchNumber } from "@/ui/french-number"
+import { cutEmptySentence, LogCutNote } from "@/ui/log-cut"
 import { LogDay } from "@/ui/log-day"
 import { LogDetail, LogRawFields, LogTitle } from "@/ui/log-detail"
 import { LogEmpty } from "@/ui/log-empty"
@@ -37,6 +37,8 @@ import type {
 } from "./parse-bot-log-message"
 import type { BotLogNotice, BotLogPage } from "./read-bot-log"
 import type { BotLogRead } from "./read-bot-log-for-staff"
+
+const READ_MESSAGES = MAX_SEARCHES * SEARCH_PAGE_SIZE
 
 const FAMILY_ICONS: Record<BotLogFamilyKey, LucideIcon> = {
   rules: BookOpenCheck,
@@ -102,9 +104,7 @@ export function BotLog({
           </LogDay>
         ))
       )}
-      {cut && days.length > 0 && (
-        <p className="text-xs text-muted-foreground">{cutSentence()}</p>
-      )}
+      {cut && days.length > 0 && <LogCutNote readMessages={READ_MESSAGES} />}
       <LogPagination
         label="Pages du Journal du Bot"
         oldest={oldest?.date ?? null}
@@ -117,14 +117,6 @@ export function BotLog({
   )
 }
 
-function readMessageCount() {
-  return frenchNumber(MAX_SEARCHES * SEARCH_PAGE_SIZE)
-}
-
-function cutSentence() {
-  return `Les ${readMessageCount()} messages suivants du salon ont été lus, ce qui ne remplit pas la page : « Plus anciens » continue la lecture.`
-}
-
 function noLineMessage({
   notice,
   before,
@@ -135,7 +127,7 @@ function noLineMessage({
     return noticeSentence(notice)
   }
   if (cut) {
-    return `Aucune ligne ne correspond aux filtres parmi les ${readMessageCount()} messages suivants du salon : « Plus anciens » continue la lecture.`
+    return cutEmptySentence(READ_MESSAGES)
   }
   if (before !== null) {
     return "Aucune ligne plus ancienne."

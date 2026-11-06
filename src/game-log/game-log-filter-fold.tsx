@@ -6,7 +6,7 @@ import {
   GameLogFilterFields,
 } from "./game-log-filter-fields"
 import { NO_FILTERS, type GameLogFilters } from "./game-log-filters"
-import { gameLogHref } from "./game-log-href"
+import { gameLogHref, hiddenFieldsOf } from "./game-log-href"
 
 export function GameLogFilterFold({ filters }: { filters: GameLogFilters }) {
   return (
@@ -16,7 +16,7 @@ export function GameLogFilterFold({ filters }: { filters: GameLogFilters }) {
         gameLogHref({ ...filters, [name]: null })
       )}
       action="/game-log"
-      hiddenFields={[]}
+      hiddenFields={hiddenFieldsOf(filters)}
       resetHref={gameLogHref(NO_FILTERS)}
       submitLabel="Filtrer"
     >

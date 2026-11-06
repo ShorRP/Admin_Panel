@@ -59,6 +59,14 @@ test.use({
         target: null,
         reason: "Déconnexion",
       }),
+      line("2026-11-04T09:00:00Z", "0b0b0b0b", {
+        action: "administration:workshop:create",
+        character: "Lyra",
+        account: "2094594321",
+        target: null,
+        reason: "Atelier de test",
+        place: "1a2b:Shor-City.esp · 4, 5, 6",
+      }),
       {
         channelId: GAME_LOG_CHANNEL_ID,
         authorId: GAME_LOG_WEBHOOK_ID,
@@ -81,7 +89,13 @@ test.use({
         line(
           new Date(Date.UTC(2026, 9, 30, 10, index)).toISOString(),
           `f${index.toString(16).padStart(7, "0")}`,
-          { character: "Filler", action: "administration:fill" }
+          {
+            character: "Filler",
+            action: "administration:fill",
+            account: "1",
+            target: null,
+            place: "2f:Fillers.esp · 0, 0, 0",
+          }
         )
       ),
     ],
@@ -187,7 +201,7 @@ test("the older lines come through « Plus anciens », by the ID of the last lin
   await expect(page).toHaveURL(
     /^http:\/\/localhost:3100\/game-log\?before=\d+$/
   )
-  await expect(lines).toHaveCount(3)
+  await expect(lines).toHaveCount(4)
   await expect(page.getByText(/^Jusqu’au /)).toBeVisible()
   await expect(page.getByRole("link", { name: "Plus anciens" })).toHaveCount(0)
   await checkAccessibility()
@@ -204,13 +218,14 @@ test("a text finds the lines whose words it holds, in the address, and a text th
 }) => {
   const lines = page.getByRole("main").locator("ol").getByRole("listitem")
   const text = page.getByLabel("Texte")
+  const query = () => Object.fromEntries(new URL(page.url()).searchParams)
 
   await logIn(ALDIS)
   await page.goto("/game-log")
   await page.waitForLoadState()
   await text.fill("disconnect")
   await page.getByRole("button", { name: "Filtrer" }).click()
-  await expect(page).toHaveURL("/game-log?text=disconnect&from=&to=")
+  await expect.poll(query).toMatchObject({ text: "disconnect" })
   await expect(lines).toHaveCount(1)
   await expect(lines).toContainText("Lyra")
   await expect(text).toHaveValue("disconnect")
@@ -218,16 +233,171 @@ test("a text finds the lines whose words it holds, in the address, and a text th
 
   await text.fill("introuvable")
   await page.getByRole("button", { name: "Filtrer" }).click()
-  await expect(page).toHaveURL("/game-log?text=introuvable&from=&to=")
+  await expect.poll(query).toMatchObject({ text: "introuvable" })
   await expect(
     page.getByText(
       "Aucune ligne du journal du jeu ne correspond à ces filtres."
     )
   ).toBeVisible()
-  await page.getByRole("link", { name: "Réinitialiser" }).click()
+  await page.getByRole("link", { name: "Réinitialiser" }).first().click()
   await expect(page).toHaveURL("/game-log")
   await expect(lines).toHaveCount(25)
   await expect(text).toHaveValue("")
+})
+
+test("a category chosen in the pills keeps the lines of that category, in the address, and the form keeps it", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const lines = page.getByRole("main").locator("ol").getByRole("listitem")
+  const pills = page.getByRole("navigation", {
+    name: "Filtrer par catégorie",
+  })
+  const query = () => Object.fromEntries(new URL(page.url()).searchParams)
+
+  await logIn(ALDIS)
+  await page.goto("/game-log")
+  await page.waitForLoadState()
+  await expect(pills.getByRole("link")).toHaveText([
+    "Tout",
+    "Administration",
+    "Personnages",
+  ])
+  await expect(pills.getByRole("link", { name: "Tout" })).toHaveAttribute(
+    "aria-current",
+    "true"
+  )
+
+  await pills.getByRole("link", { name: "Personnages" }).click()
+  await expect(page).toHaveURL("/game-log?category=characters")
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("Personnages · character:disconnect")
+  await expect(
+    pills.getByRole("link", { name: "Personnages" })
+  ).toHaveAttribute("aria-current", "true")
+  await checkAccessibility()
+
+  await page.getByLabel("Personnage").fill("lyra")
+  await page.getByRole("button", { name: "Filtrer" }).click()
+  await expect
+    .poll(query)
+    .toMatchObject({ category: "characters", character: "lyra" })
+  await expect(lines).toHaveCount(1)
+
+  await pills.getByRole("link", { name: "Administration" }).click()
+  await expect(page).toHaveURL(
+    "/game-log?category=administration&character=lyra"
+  )
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("administration:workshop:create")
+  await expect(page.getByLabel("Personnage")).toHaveValue("lyra")
+
+  await pills.getByRole("link", { name: "Tout" }).click()
+  await expect(page).toHaveURL("/game-log?character=lyra")
+  await expect(lines).toHaveCount(2)
+
+  await page.getByRole("link", { name: "Réinitialiser" }).first().click()
+  await expect(page).toHaveURL("/game-log")
+  await expect(lines).toHaveCount(25)
+  await expect(page.getByLabel("Personnage")).toHaveValue("")
+})
+
+test("an action, a character, a game account, a target, a cell, a plugin and a reason each keep the lines they find, in the address, and the form holds what was searched", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const lines = page.getByRole("main").locator("ol").getByRole("listitem")
+  const filter = page.getByRole("button", { name: "Filtrer" })
+  const query = () => Object.fromEntries(new URL(page.url()).searchParams)
+  const noLine = page.getByText(
+    "Aucune ligne du journal du jeu ne correspond à ces filtres."
+  )
+
+  await logIn(ALDIS)
+  await page.goto("/game-log")
+  await page.waitForLoadState()
+
+  await page.getByLabel("Action").fill("heal")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ action: "heal" })
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("administration:heal")
+  await expect(page.getByLabel("Action")).toHaveValue("heal")
+  await checkAccessibility()
+
+  await page.getByLabel("Action").fill("hea")
+  await filter.click()
+  await expect(noLine).toBeVisible()
+
+  await page.getByLabel("Action").fill("workshop create")
+  await filter.click()
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("administration:workshop:create")
+
+  await page.getByLabel("Action").fill("")
+  await page.getByLabel("Personnage").fill("merida")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ character: "merida" })
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("Merida · compte 2094594320")
+
+  await page.getByLabel("Personnage").fill("")
+  await page.getByLabel("Compte de jeu").fill("2094594321")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ account: "2094594321" })
+  await expect(lines).toHaveCount(2)
+  await expect(lines.first()).toContainText("Lyra · compte 2094594321")
+
+  await page.getByLabel("Compte de jeu").fill("abc")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ account: "abc" })
+  await expect(lines).toHaveCount(25)
+  await expect(page.getByLabel("Compte de jeu")).toHaveValue("")
+
+  await page.getByLabel("Cible").fill("4278190080")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ target: "4278190080" })
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("Cible : 4278190080")
+  await checkAccessibility()
+
+  await page.getByLabel("Cible").fill("")
+  await page.getByLabel("Cellule").fill("3c")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ cell: "3c" })
+  await expect(lines).toHaveCount(2)
+  await expect(lines.first()).toContainText("3c:Skyrim.esm")
+
+  await page.getByLabel("Cellule").fill("")
+  await page.getByLabel("Plugin").fill("shor-city")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ plugin: "shor-city" })
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("1a2b:Shor-City.esp")
+
+  await page.getByLabel("Cellule").fill("3c")
+  await filter.click()
+  await expect(noLine).toBeVisible()
+
+  await page.getByLabel("Cellule").fill("")
+  await page.getByLabel("Plugin").fill("")
+  await page.getByLabel("Motif").fill("atelier")
+  await filter.click()
+  await expect.poll(query).toMatchObject({ reason: "atelier" })
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("Motif : Atelier de test")
+  await checkAccessibility()
+
+  await page.getByLabel("Motif").fill("introuvable")
+  await filter.click()
+  await expect(noLine).toBeVisible()
+  await expect(page.getByLabel("Motif")).toHaveValue("introuvable")
+  await page.getByRole("link", { name: "Réinitialiser" }).first().click()
+  await expect(page).toHaveURL("/game-log")
+  await expect(lines).toHaveCount(25)
+  await expect(page.getByLabel("Motif")).toHaveValue("")
 })
 
 test("a period keeps the lines of its days of Paris, in the address, with a text beside it, and a period that ends before it starts reads nothing", async ({
@@ -239,6 +409,7 @@ test("a period keeps the lines of its days of Paris, in the address, with a text
   const from = page.getByLabel("Du", { exact: true })
   const to = page.getByLabel("Au", { exact: true })
   const filter = page.getByRole("button", { name: "Filtrer" })
+  const query = () => Object.fromEntries(new URL(page.url()).searchParams)
 
   await logIn(ALDIS)
   await page.goto("/game-log")
@@ -246,7 +417,9 @@ test("a period keeps the lines of its days of Paris, in the address, with a text
   await from.fill("2026-11-03")
   await to.fill("2026-11-03")
   await filter.click()
-  await expect(page).toHaveURL("/game-log?text=&from=2026-11-03&to=2026-11-03")
+  await expect
+    .poll(query)
+    .toMatchObject({ from: "2026-11-03", to: "2026-11-03" })
   await expect(lines).toHaveCount(1)
   await expect(lines).toContainText("Serveur redémarré")
   await expect(from).toHaveValue("2026-11-03")
@@ -257,18 +430,18 @@ test("a period keeps the lines of its days of Paris, in the address, with a text
   await to.fill("2026-11-04")
   await page.getByLabel("Texte").fill("heal")
   await filter.click()
-  await expect(page).toHaveURL(
-    "/game-log?text=heal&from=2026-11-04&to=2026-11-04"
-  )
+  await expect
+    .poll(query)
+    .toMatchObject({ text: "heal", from: "2026-11-04", to: "2026-11-04" })
   await expect(lines).toHaveCount(1)
   await expect(lines).toContainText("administration:heal")
 
   await from.fill("2026-11-05")
   await to.fill("2026-11-04")
   await filter.click()
-  await expect(page).toHaveURL(
-    "/game-log?text=heal&from=2026-11-05&to=2026-11-04"
-  )
+  await expect
+    .poll(query)
+    .toMatchObject({ text: "heal", from: "2026-11-05", to: "2026-11-04" })
   await expect(
     page.getByText(
       "Aucune ligne du journal du jeu ne correspond à ces filtres."
@@ -304,21 +477,34 @@ test("a staff member who does not view the channel on Discord has no link, and t
   await checkAccessibility()
 })
 
-test("a staff member logs out from the game log with its pagination and its form in view, and no page is prefetched", async ({
+test("a staff member logs out from the game log with its pills, its pagination and its form in view, and no page is prefetched", async ({
   page,
   logIn,
   prefetchedPaths,
 }) => {
   await page.setViewportSize({ width: 1280, height: 6000 })
   await logIn(ALDIS)
-  await page.goto("/game-log")
+  await page.goto("/game-log?character=filler")
   await page.waitForLoadState()
+  const pills = page
+    .getByRole("navigation", { name: "Filtrer par catégorie" })
+    .getByRole("link")
+  const reset = page.getByRole("link", { name: "Réinitialiser" })
   const older = page.getByRole("link", { name: "Plus anciens" })
   const filter = page.getByRole("button", { name: "Filtrer" })
   await expect(older).toBeInViewport()
   await expect(filter).toBeInViewport()
+  await expect(pills.first()).toBeInViewport()
+  await expect(pills.last()).toBeInViewport()
+  await expect(reset).toBeInViewport()
 
-  await logOutWithScriptsHeld(page, [older, filter])
+  await logOutWithScriptsHeld(page, [
+    pills.first(),
+    pills.last(),
+    reset,
+    older,
+    filter,
+  ])
 
   expect(prefetchedPaths).toEqual([])
 })
@@ -346,32 +532,68 @@ test("on a 360 px screen, the menu leads to the game log, whose filters fold beh
   await expect(chips).toHaveCount(0)
   await checkAccessibility()
 
+  const pills = page
+    .getByRole("navigation", { name: "Filtrer par catégorie" })
+    .getByRole("link")
+  await expect(pills).toHaveText(["Tout", "Administration", "Personnages"])
+  for (const pill of await pills.all()) {
+    expect((await pill.boundingBox())?.height).toBe(44)
+  }
+  await pills.filter({ hasText: "Personnages" }).click()
+  await expect(page).toHaveURL("/game-log?category=characters")
+  await expect(lines).toHaveCount(1)
+
   await fold.click()
   await expect(sheet).toBeVisible()
-  await sheet.getByLabel("Texte").fill("heal")
+  await sheet.getByLabel("Action").fill("disconnect")
+  await sheet.getByLabel("Personnage").fill("lyra")
+  await sheet.getByLabel("Compte de jeu").fill("2094594321")
+  await sheet.getByLabel("Cellule").fill("3c")
+  await sheet.getByLabel("Plugin").fill("skyrim")
+  await sheet.getByLabel("Motif").fill("déconnexion")
+  await sheet.getByLabel("Texte").fill("lyra")
   await sheet.getByLabel("Du", { exact: true }).fill("2026-11-04")
   await sheet.getByLabel("Au", { exact: true }).fill("2026-11-04")
   await sheet.getByRole("button", { name: "Filtrer" }).click()
   await expect(sheet).toBeHidden()
-  await expect(page).toHaveURL(
-    "/game-log?text=heal&from=2026-11-04&to=2026-11-04"
-  )
+  await expect
+    .poll(() => Object.fromEntries(new URL(page.url()).searchParams))
+    .toMatchObject({
+      category: "characters",
+      action: "disconnect",
+      character: "lyra",
+      account: "2094594321",
+      cell: "3c",
+      plugin: "skyrim",
+      reason: "déconnexion",
+      text: "lyra",
+      from: "2026-11-04",
+      to: "2026-11-04",
+    })
   await expect(lines).toHaveCount(1)
-  await expect(fold).toHaveAccessibleName(/^Filtres\s?3 filtres actifs$/)
+  await expect(lines).toContainText("character:disconnect")
+  await expect(fold).toHaveAccessibleName(/^Filtres\s?9 filtres actifs$/)
   await expect(chips.getByRole("link")).toHaveText([
-    "Retirer le filtre Texte : heal",
+    "Retirer le filtre Action : disconnect",
+    "Retirer le filtre Personnage : lyra",
+    "Retirer le filtre Compte de jeu : 2094594321",
+    "Retirer le filtre Cellule : 3c",
+    "Retirer le filtre Plugin : skyrim",
+    "Retirer le filtre Motif : déconnexion",
+    "Retirer le filtre Texte : lyra",
     "Retirer le filtre Du : 4 nov. 2026",
     "Retirer le filtre Au : 4 nov. 2026",
   ])
+  for (const chip of await chips.getByRole("link").all()) {
+    expect((await chip.boundingBox())?.height).toBe(44)
+  }
   await checkAccessibility()
 
   await chips.getByRole("link").first().click()
-  await expect(page).toHaveURL("/game-log?from=2026-11-04&to=2026-11-04")
-  await expect(lines).toHaveCount(2)
-  await chips.getByRole("link").first().click()
-  await expect(page).toHaveURL("/game-log?to=2026-11-04")
-  await expect(chips.getByRole("link")).toHaveCount(1)
-  await chips.getByRole("link").first().click()
+  await expect(chips.getByRole("link")).toHaveCount(8)
+  await expect(page).toHaveURL(/category=characters/)
+  await expect(page).not.toHaveURL(/action=/)
+  await page.getByRole("link", { name: "Réinitialiser" }).first().click()
   await expect(page).toHaveURL("/game-log")
   await expect(lines).toHaveCount(25)
 })
@@ -416,4 +638,136 @@ test("Discord being unavailable while the log is read shows the error page, with
   ).toBeVisible()
   await expect(main.locator("ol").getByRole("listitem")).toHaveCount(25)
   await checkAccessibility()
+})
+
+const TEN_FIELDS = [
+  "Action",
+  "Personnage",
+  "Compte de jeu",
+  "Cible",
+  "Cellule",
+  "Plugin",
+  "Motif",
+  "Texte",
+  "Du",
+  "Au",
+] as const
+
+test.describe("on a 768 px screen", () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test("the rail stands at the left, the ten fields stay in the page's form with no button and no chip, the pills are 44 px high, and the form sends the address of the sheet", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    const pills = page
+      .getByRole("navigation", { name: "Filtrer par catégorie" })
+      .getByRole("link")
+
+    await logIn(ALDIS)
+    await page.goto("/game-log?category=characters")
+    await page.waitForLoadState()
+    expect((await page.getByRole("complementary").boundingBox())?.width).toBe(
+      64
+    )
+    await expect(page.getByRole("button", { name: /^Filtres/ })).toHaveCount(0)
+    await expect(
+      page.getByRole("list", { name: "Filtres actifs" })
+    ).toHaveCount(0)
+    for (const pill of await pills.all()) {
+      expect((await pill.boundingBox())?.height).toBe(44)
+    }
+    for (const label of TEN_FIELDS) {
+      await expect(page.getByLabel(label, { exact: true })).toBeVisible()
+    }
+    await page.getByLabel("Action").fill("disconnect")
+    await page.getByLabel("Personnage").fill("lyra")
+    await page.getByLabel("Compte de jeu").fill("2094594321")
+    await page.getByLabel("Cellule").fill("3c")
+    await page.getByLabel("Plugin").fill("skyrim")
+    await page.getByLabel("Motif").fill("déconnexion")
+    await page.getByLabel("Texte").fill("lyra")
+    await page.getByLabel("Du", { exact: true }).fill("2026-11-04")
+    await page.getByLabel("Au", { exact: true }).fill("2026-11-04")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => Object.fromEntries(new URL(page.url()).searchParams))
+      .toEqual({
+        category: "characters",
+        action: "disconnect",
+        character: "lyra",
+        account: "2094594321",
+        target: "",
+        cell: "3c",
+        plugin: "skyrim",
+        reason: "déconnexion",
+        text: "lyra",
+        from: "2026-11-04",
+        to: "2026-11-04",
+      })
+    await expect(
+      page.getByRole("main").locator("ol").getByRole("listitem")
+    ).toHaveCount(1)
+    await checkAccessibility()
+  })
+})
+
+test.describe("on a 1,024 px screen", () => {
+  test.use({ viewport: { width: 1024, height: 768 } })
+
+  test("the sidebar stands at the left, the fields of the page's form sit in view, in lines of the page's column, and the form sends the same address", async ({
+    page,
+    logIn,
+    checkAccessibility,
+  }) => {
+    await logIn(ALDIS)
+    await page.goto("/game-log?category=characters")
+    await page.waitForLoadState()
+    expect((await page.getByRole("complementary").boundingBox())?.width).toBe(
+      252
+    )
+    await expect(page.getByRole("button", { name: /^Filtres/ })).toHaveCount(0)
+    const fields = TEN_FIELDS.map((label) =>
+      page.getByLabel(label, { exact: true })
+    )
+    const main = await page.getByRole("main").boundingBox()
+    for (const field of fields) {
+      await expect(field).toBeVisible()
+      const box = await field.boundingBox()
+      expect(box?.x).toBeGreaterThanOrEqual(main?.x ?? 0)
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+        (main?.x ?? 0) + (main?.width ?? 0)
+      )
+    }
+    await fields[0]?.fill("disconnect")
+    await fields[1]?.fill("lyra")
+    await fields[2]?.fill("2094594321")
+    await fields[4]?.fill("3c")
+    await fields[5]?.fill("skyrim")
+    await fields[6]?.fill("déconnexion")
+    await fields[7]?.fill("lyra")
+    await fields[8]?.fill("2026-11-04")
+    await fields[9]?.fill("2026-11-04")
+    await page.getByRole("button", { name: "Filtrer" }).click()
+    await expect
+      .poll(() => Object.fromEntries(new URL(page.url()).searchParams))
+      .toEqual({
+        category: "characters",
+        action: "disconnect",
+        character: "lyra",
+        account: "2094594321",
+        target: "",
+        cell: "3c",
+        plugin: "skyrim",
+        reason: "déconnexion",
+        text: "lyra",
+        from: "2026-11-04",
+        to: "2026-11-04",
+      })
+    await expect(
+      page.getByRole("main").locator("ol").getByRole("listitem")
+    ).toHaveCount(1)
+    await checkAccessibility()
+  })
 })

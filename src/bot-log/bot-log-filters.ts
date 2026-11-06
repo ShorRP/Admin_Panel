@@ -2,7 +2,7 @@ import type { Snowflake } from "discord-api-types/v10"
 import { z } from "zod"
 
 import { MAX_SEARCHED_TEXT_LENGTH } from "@/discord/message-search-limits"
-import { hasWord } from "@/discord/search-words"
+import { withAWord } from "@/discord/search-words"
 import { cursorParamOf, dayParamOf, textParamOf } from "@/ui/filter-params"
 import { BOT_LOG_FAMILY_KEYS, type BotLogFamilyKey } from "./bot-log-families"
 
@@ -69,8 +69,4 @@ export function cursorOf(searchParams: BotLogSearchParams): Snowflake | null {
 
 export function hasFilter(filters: BotLogFilters) {
   return Object.values(filters).some((value) => value !== null)
-}
-
-function withAWord(text: string | null) {
-  return text !== null && hasWord(text) ? text : null
 }

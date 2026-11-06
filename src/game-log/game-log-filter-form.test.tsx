@@ -30,8 +30,19 @@ function labels(html: string) {
   )
 }
 
-test("the form sends its text and its period to /game-log, by GET, each under its own label, holding what was searched", () => {
-  const html = render({ text: "heal", from: "2026-10-05", to: "2026-10-31" })
+test("the form sends its ten fields to /game-log, by GET, each under its own label, holding what was searched", () => {
+  const html = render({
+    action: "administration:heal",
+    character: "Merida",
+    account: "2094594320",
+    target: "4278190080",
+    cell: "3c",
+    plugin: "Skyrim.esm",
+    reason: "test",
+    text: "heal",
+    from: "2026-10-05",
+    to: "2026-10-31",
+  })
   const form = /<form[^>]*>/.exec(html)?.[0] ?? ""
   const inputs = fields(html)
 
@@ -40,28 +51,52 @@ test("the form sends its text and its period to /game-log, by GET, each under it
   expect(
     inputs.map(({ type, name, value }) => ({ type, name, value }))
   ).toEqual([
+    { type: "text", name: "action", value: "administration:heal" },
+    { type: "text", name: "character", value: "Merida" },
+    { type: "text", name: "account", value: "2094594320" },
+    { type: "text", name: "target", value: "4278190080" },
+    { type: "text", name: "cell", value: "3c" },
+    { type: "text", name: "plugin", value: "Skyrim.esm" },
+    { type: "text", name: "reason", value: "test" },
     { type: "text", name: "text", value: "heal" },
     { type: "date", name: "from", value: "2026-10-05" },
     { type: "date", name: "to", value: "2026-10-31" },
   ])
   expect(labels(html)).toEqual(
-    ["Texte", "Du", "Au"].map((text, index) => ({
-      htmlFor: inputs[index]?.id,
-      text,
-    }))
+    [
+      "Action",
+      "Personnage",
+      "Compte de jeu",
+      "Cible",
+      "Cellule",
+      "Plugin",
+      "Motif",
+      "Texte",
+      "Du",
+      "Au",
+    ].map((text, index) => ({ htmlFor: inputs[index]?.id, text }))
   )
 })
 
 test("with nothing searched, the fields are empty, and they ask for no browser validation", () => {
   const html = render({})
 
-  expect(fields(html).map(({ value }) => value)).toEqual(["", "", ""])
+  expect(fields(html).map(({ value }) => value)).toEqual(
+    Array.from({ length: 10 }, () => "")
+  )
   expect(html).not.toMatch(/\s(required|maxLength|pattern)=/)
 })
 
-test("the form carries no page cursor, no hidden field and a button, so that sending it leads back to the newest lines", () => {
-  const html = render({ text: "heal" })
+test("the form keeps the category in a hidden field and carries no cursor, so that sending it leads back to the newest lines", () => {
+  const chosen = fields(render({ category: "characters" }))
+  const none = fields(render({}))
 
-  expect(fields(html).map(({ type }) => type)).not.toContain("hidden")
-  expect(html).toMatch(/<button[^>]*type="submit"[^>]*>.*Filtrer<\/button>/)
+  expect(chosen.filter(({ type }) => type === "hidden")).toEqual([
+    expect.objectContaining({ name: "category", value: "characters" }),
+  ])
+  expect(none.map(({ type }) => type)).not.toContain("hidden")
+  expect(chosen.map(({ name }) => name)).not.toContain("before")
+  expect(render({})).toMatch(
+    /<button[^>]*type="submit"[^>]*>.*Filtrer<\/button>/
+  )
 })
