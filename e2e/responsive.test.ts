@@ -351,6 +351,23 @@ for (const screen of SCREENS) {
       )
     }
 
+    test(`a game log line shows its character with its game account, and its target, in ${screen.width} px, scrolling no wider`, async ({
+      page,
+      logIn,
+    }) => {
+      await logIn(ALDIS)
+      await page.goto("/game-log")
+      await settle(page)
+      const heal = page
+        .getByRole("main")
+        .locator("ol")
+        .getByRole("listitem")
+        .filter({ hasText: "administration:heal" })
+      await expect(heal).toContainText("Merida · compte 2094594320")
+      await expect(heal).toContainText("Cible : 4278190080")
+      expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
+    })
+
     if (screen.width < 768) {
       for (const { owner, path, name, field, value } of FILTER_SHEETS) {
         test(`${owner} filter sheet gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px, docked to the bottom and scrolling no wider`, async ({

@@ -33,7 +33,7 @@ Established on 2026-11-06 from what Anaisenkit, who created the webhook « Shor 
 - Players sign in to the game's master server, `arena-auth`, through Discord (Gilles, 2026-11-06). Whether it keeps a player's Discord ID beside the game account is not known (`docs/agents/open-questions.md`).
 - Not known, and Anaisenkit knows no more (Gilles, 2026-11-06): the full lists of categories and actions, what the footer's hash is, which pieces a line may lack, any other field, and the volume per day.
 
-Inferred, not confirmed: `Cible` is the form ID the server gives the targeted actor, `4278190080` and `4278190515` being `0xFF000000` and `0xFF0001B3`, in the range SkyMP gives the actors it creates; the form ID of `Lieu` is a worldspace or a cell local to its plugin, `0x3C` being Tamriel in `Skyrim.esm`, and the plugins are those of the server's load order, 80 in the settings Anaisenkit gave Gilles, `Skyrim.esm` and `Shor-City.esp` among them; and `compte` is the profile ID that `arena-auth` gives. The panel's parser does not yet read the character's field of this layout (#412).
+Inferred, not confirmed: `Cible` is the form ID the server gives the targeted actor, `4278190080` and `4278190515` being `0xFF000000` and `0xFF0001B3`, in the range SkyMP gives the actors it creates; the form ID of `Lieu` is a worldspace or a cell local to its plugin, `0x3C` being Tamriel in `Skyrim.esm`, and the plugins are those of the server's load order, 80 in the settings Anaisenkit gave Gilles, `Skyrim.esm` and `Shor-City.esp` among them; and `compte` is the profile ID that `arena-auth` gives.
 
 ## What the search does
 

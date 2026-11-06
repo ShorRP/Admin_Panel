@@ -10,7 +10,7 @@ type GameLogLine = {
   action?: string
   character?: string
   account?: string
-  target?: string
+  target?: string | null
   reason?: string
   place?: string
   hash?: string
@@ -28,13 +28,16 @@ export function gameLogEmbed({
 }: GameLogLine = {}): APIEmbed {
   return {
     title: `${category} · ${action}`,
-    description: `${character} · compte ${account}`,
     fields: [
-      { name: "Cible", value: target, inline: true },
-      ...(reason === undefined
-        ? []
-        : [{ name: "Motif", value: reason, inline: false }]),
-      { name: "Lieu", value: `\`${place}\``, inline: true },
+      {
+        name: character,
+        value:
+          target === null
+            ? `compte ${account}`
+            : `compte ${account}\nCible : ${target}`,
+      },
+      ...(reason === undefined ? [] : [{ name: "Motif", value: reason }]),
+      { name: "Lieu", value: place },
     ],
     footer: { text: `Shor · ${hash}` },
   }
