@@ -1,6 +1,6 @@
 import "server-only"
 
-import { periodBounds } from "./period-bounds"
+import { periodBounds } from "@/discord/period-bounds"
 import { REQUEST_KINDS, requestKindKeyOf } from "./request-kinds"
 import {
   ARCHIVES_PER_PAGE,

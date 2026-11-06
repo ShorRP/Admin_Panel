@@ -4,10 +4,12 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import { compareIds } from "@/discord/compare-ids"
 import type { DiscordApi } from "@/discord/discord-api"
+import { periodBounds } from "@/discord/period-bounds"
 import { parisDayOf } from "@/ui/paris-day"
 import {
   cursorOf,
   gameLogFiltersOf,
+  isReversed,
   type GameLogFilters,
   type GameLogSearchParams,
 } from "./game-log-filters"
@@ -35,11 +37,21 @@ export async function readGameLog(
 ): Promise<GameLogPage> {
   const filters = gameLogFiltersOf(searchParams)
   const before = cursorOf(searchParams)
+  const { minId, maxId } = boundsOf(filters, before)
+  const nothingBetween =
+    isReversed(filters) ||
+    (minId !== undefined &&
+      maxId !== undefined &&
+      compareIds(minId, maxId) >= 0)
+  if (nothingBetween) {
+    return { ...filters, days: [], before, older: null }
+  }
   const { total_results, messages } = await discord.searchMessages({
     channel_id: [channelId],
     author_id: [webhookId],
     ...(filters.text === null ? {} : { content: filters.text }),
-    ...(before === null ? {} : { max_id: before }),
+    ...(minId === undefined ? {} : { min_id: minId }),
+    ...(maxId === undefined ? {} : { max_id: maxId }),
     sort_order: "desc",
     limit: ENTRIES_PER_PAGE,
     offset: 0,
@@ -63,6 +75,16 @@ export async function readGameLog(
         ? (newestFirst.at(-1)?.id ?? null)
         : null,
   }
+}
+
+function boundsOf(filters: GameLogFilters, before: Snowflake | null) {
+  const { minId, maxId: periodEnd } = periodBounds(filters)
+  const maxId =
+    before === null ||
+    (periodEnd !== undefined && compareIds(periodEnd, before) <= 0)
+      ? periodEnd
+      : before
+  return { minId, maxId }
 }
 
 function byParisDay(entries: GameLogEntry[]) {

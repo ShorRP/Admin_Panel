@@ -160,6 +160,115 @@ test("a text with no word in it counts as absent", async () => {
   expect(hashesOf(page)).toEqual(["11111111"])
 })
 
+const EDGES = [
+  gameLogLine("2026-11-02T22:59:59Z", "aaaaaaaa"),
+  gameLogLine("2026-11-02T23:00:00Z", "bbbbbbbb"),
+  gameLogLine("2026-11-03T22:59:59Z", "cccccccc"),
+  gameLogLine("2026-11-03T23:00:00Z", "dddddddd"),
+]
+
+test("a period keeps the lines from the first midnight of its first day of Paris to the last midnight of its last, both days included", async () => {
+  const discord = discordWith(EDGES)
+
+  const page = await readGameLog(discord, CONFIG, {
+    from: "2026-11-03",
+    to: "2026-11-03",
+  })
+
+  expect(hashesOf(page)).toEqual(["cccccccc", "bbbbbbbb"])
+  expect(page).toMatchObject({ from: "2026-11-03", to: "2026-11-03" })
+})
+
+test("a period with a first day alone reads to the newest line, and one with a last day alone from the oldest", async () => {
+  const discord = discordWith(EDGES)
+
+  expect(
+    hashesOf(await readGameLog(discord, CONFIG, { from: "2026-11-03" }))
+  ).toEqual(["dddddddd", "cccccccc", "bbbbbbbb"])
+  expect(
+    hashesOf(await readGameLog(discord, CONFIG, { to: "2026-11-02" }))
+  ).toEqual(["aaaaaaaa"])
+})
+
+test("a day that does not exist, or is not a day, counts as absent", async () => {
+  const discord = discordWith(EDGES)
+
+  const page = await readGameLog(discord, CONFIG, {
+    from: "2026-02-30",
+    to: "demain",
+  })
+
+  expect(page).toMatchObject({ from: null, to: null })
+  expect(hashesOf(page)).toHaveLength(4)
+})
+
+test("a period and a text combine", async () => {
+  const discord = discordWith([
+    ...EDGES,
+    gameLogLine("2026-11-03T12:00:00Z", "eeeeeeee", {
+      action: "character:disconnect",
+    }),
+  ])
+
+  const page = await readGameLog(discord, CONFIG, {
+    from: "2026-11-03",
+    to: "2026-11-03",
+    text: "disconnect",
+  })
+
+  expect(hashesOf(page)).toEqual(["eeeeeeee"])
+})
+
+test("the cursor of an older page and the end of the period both bound it, the nearer one winning", async () => {
+  const discord = discordWith(EDGES)
+  const bbbb = (await readGameLog(discord, CONFIG, {})).days
+    .flatMap(({ entries }) => entries)
+    .find((entry) => entry.kind === "event" && entry.eventId === "bbbbbbbb")
+  const cccc = (await readGameLog(discord, CONFIG, {})).days
+    .flatMap(({ entries }) => entries)
+    .find((entry) => entry.kind === "event" && entry.eventId === "cccccccc")
+
+  expect(
+    hashesOf(
+      await readGameLog(discord, CONFIG, {
+        to: "2026-11-03",
+        before: bbbb?.messageId,
+      })
+    )
+  ).toEqual(["aaaaaaaa"])
+  expect(
+    hashesOf(
+      await readGameLog(discord, CONFIG, {
+        to: "2026-11-02",
+        before: cccc?.messageId,
+      })
+    )
+  ).toEqual(["aaaaaaaa"])
+})
+
+test("a period that ends before it starts reads nothing, and Discord is not asked", async () => {
+  const discord = discordWith(EDGES)
+  discord.failNext(
+    "searchMessages",
+    new DiscordError({
+      method: "GET",
+      route: ROUTES.guildMessagesSearch,
+      status: 503,
+    })
+  )
+
+  const page = await readGameLog(discord, CONFIG, {
+    from: "2026-11-03",
+    to: "2026-11-02",
+  })
+
+  expect(page.days).toEqual([])
+  expect(page.older).toBeNull()
+  await expect(
+    discord.searchMessages({ channel_id: [CHANNEL_ID] })
+  ).rejects.toBeInstanceOf(DiscordError)
+})
+
 test("a page holds 25 lines and leads to the older ones by the ID of its last, which the older page continues from without repeating or skipping one", async () => {
   const lines = Array.from({ length: 26 }, (_, index) =>
     gameLogLine(

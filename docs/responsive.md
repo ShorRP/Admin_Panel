@@ -94,6 +94,15 @@ Delivered by #358.
 - The pagination's links take the full width under `sm`, side by side in two equal columns when both show, their text wrapping within the 44 px.
 - The text and the period (#393): « Texte », « Du » and « Au » join « Auteur » and « Compte », in that order. At 360 px, the five fields stack in the Sheet, each 44 px high, and the filters set show as chips, « Texte : insultes », « Du : 5 oct. 2026 » and « Au : 7 oct. 2026 » among them, which the logout flow holds in view with the pills, « Réinitialiser » and the button. At 768 and 1,024 px, the five fields share the inline form with `basis-44`, three to a row, the period's two days and « Filtrer » on the second; at 1,280 px four to a row; and from the box of 1,080 px, the five and the button on one row (`e2e/audit-log.test.ts`, a Playwright screenshot at each width, 2026-11-06). A period that starts before the 45 days Discord keeps adds a sentence over the changes, and a period outside them, or reversed, replaces the empty page's sentence (`.claude/rules/audit-log.md`). The skeleton of the form takes a bar for each of the five fields, which wear the same classes (decided by the agent on 2026-11-06, on #393, for Gilles to review).
 
+### `/game-log`
+
+Delivered by #394, on the same log components as the audit log, so that its header, its filters, its days and its pagination behave as that page's do (`.claude/rules/game-log.md` says what the page reads and shows).
+
+- Its filters are « Texte », « Du » and « Au ». From `md` they share the inline form with `basis-44`, wrapping onto a second row where the page's column is too narrow for the three fields and « Filtrer »; under `md` they fold behind « Filtres », a button as wide as the column, 44 px high, that opens a Sheet from the bottom, with the three fields stacked, each 44 px high, and the filters set show as chips of 44 px under the button, « Texte : heal », « Du : 4 nov. 2026 », each removing its filter alone. The page has no pills.
+- A line is the audit log's row: under `sm` its tile, its time and « Voir dans Discord » share a first line, the link at the right edge, and its body goes under that line, across the whole width; from `sm`, four columns, the time, the tile, the body and the link, which sits in the column of 150 px at the right. The body stacks up to five lines of text, the title, the character and the game account, the target and the reason, the place and the identifier, each wrapping anywhere, so that a place of 120 characters, a reason of 300 or a raw title of 150 scrolls nothing sideways at 360 px (`e2e/responsive.test.ts`). « Voir dans Discord » is 44 px high under `touch`, and as wide as its text.
+- The pagination is the audit log's: « Plus anciens » and « Revenir aux plus récents » side by side in two equal columns under `sm`, each 44 px high under `touch`.
+- The skeleton draws no pills, the three fields' bars and five rows, each a bar for its time, its tile, its title and a bar for the link, on the real row's grid (decided by the agent on 2026-11-06, on #394, for Gilles to review).
+
 ### `/records`
 
 Delivered by #360.

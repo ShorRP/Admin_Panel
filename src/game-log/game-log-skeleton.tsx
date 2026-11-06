@@ -3,7 +3,7 @@ import { LogSkeleton } from "@/ui/log-skeleton"
 import { Skeleton } from "@/ui/skeleton"
 import { FILTER_FIELD_CLASSES } from "./game-log-layout"
 
-const LABEL_WIDTHS = ["w-10"] as const
+const LABEL_WIDTHS = ["w-10", "w-5", "w-6"] as const
 
 export function GameLogSkeleton() {
   return (

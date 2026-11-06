@@ -62,7 +62,7 @@ const STAFF_PAGES = [
   { path: "/records?standing=members&sort=joined-recent", fixme: false },
   { path: `/records/${BRYNJA.id}`, fixme: false },
   { path: "/game-log", fixme: false },
-  { path: "/game-log?text=heal", fixme: false },
+  { path: "/game-log?text=heal&from=2026-11-04&to=2026-11-04", fixme: false },
   { path: "/support-tickets", fixme: false },
   { path: "/support-tickets?page=2", fixme: false },
   {
@@ -88,7 +88,7 @@ const FILTER_SHEETS = [
   },
   {
     owner: "the game log's",
-    path: "/game-log?text=heal",
+    path: "/game-log?text=heal&from=2026-11-04&to=2026-11-04",
     name: "Filtres",
     field: "Texte",
     value: "heal",

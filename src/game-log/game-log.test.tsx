@@ -53,6 +53,8 @@ const RAW: GameLogDay["entries"][number] = {
 function render(page: Partial<GameLogPage>) {
   const wholePage: GameLogPage = {
     text: null,
+    from: null,
+    to: null,
     days: [],
     before: null,
     older: null,

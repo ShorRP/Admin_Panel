@@ -44,7 +44,7 @@ export function GameLog({
   guildId: string
 }) {
   const { days, before, older } = page
-  const filters = { text: page.text }
+  const filters = { text: page.text, from: page.from, to: page.to }
   const oldest = days.at(-1)?.entries.at(-1)
   return (
     <LogFrame
@@ -85,11 +85,11 @@ export function GameLog({
   )
 }
 
-function noLineMessage({ text, before }: GameLogPage) {
+function noLineMessage({ text, from, to, before }: GameLogPage) {
   if (before !== null) {
     return "Aucune ligne plus ancienne."
   }
-  return hasFilter({ text })
+  return hasFilter({ text, from, to })
     ? "Aucune ligne du journal du jeu ne correspond à ces filtres."
     : "Aucune ligne dans le journal du jeu pour l’instant."
 }

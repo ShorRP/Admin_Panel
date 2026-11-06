@@ -2,13 +2,18 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { GameLogFilters } from "./game-log-filters"
 
+const FILTER_NAMES = ["text", "from", "to"] as const
+
 export function gameLogHref({
-  text,
   before = null,
+  ...filters
 }: GameLogFilters & { before?: Snowflake | null }) {
   const params = new URLSearchParams()
-  if (text !== null) {
-    params.set("text", text)
+  for (const name of FILTER_NAMES) {
+    const value = filters[name]
+    if (value !== null) {
+      params.set(name, value)
+    }
   }
   if (before !== null) {
     params.set("before", before)

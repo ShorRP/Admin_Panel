@@ -1,8 +1,14 @@
-import type { FilterChip } from "@/ui/filter-chips"
-import { Input } from "@/ui/input"
-import { Label } from "@/ui/label"
+import {
+  FilterFields,
+  PERIOD_FIELDS,
+  searchTextField,
+  type FilterFieldSpec,
+} from "@/ui/filter-fields"
 import type { GameLogFilters } from "./game-log-filters"
-import { gameLogHref } from "./game-log-href"
+
+export const GAME_LOG_FILTER_FIELDS: readonly FilterFieldSpec<
+  keyof GameLogFilters
+>[] = [searchTextField("Mots à chercher"), ...PERIOD_FIELDS]
 
 export function GameLogFilterFields({
   filters,
@@ -14,27 +20,11 @@ export function GameLogFilterFields({
   className: string
 }) {
   return (
-    <div className={className}>
-      <Label htmlFor={`${idPrefix}-text`}>Texte</Label>
-      <Input
-        id={`${idPrefix}-text`}
-        name="text"
-        defaultValue={filters.text ?? ""}
-        placeholder="Mots à chercher"
-        autoComplete="off"
-      />
-    </div>
+    <FilterFields
+      fields={GAME_LOG_FILTER_FIELDS}
+      values={filters}
+      idPrefix={idPrefix}
+      className={className}
+    />
   )
-}
-
-export function gameLogChipsOf(filters: GameLogFilters): FilterChip[] {
-  return filters.text === null
-    ? []
-    : [
-        {
-          name: "Texte",
-          value: filters.text,
-          href: gameLogHref({ ...filters, text: null }),
-        },
-      ]
 }

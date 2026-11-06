@@ -208,7 +208,7 @@ test("a text finds the lines whose words it holds, in the address, and a text th
   await page.waitForLoadState()
   await text.fill("disconnect")
   await page.getByRole("button", { name: "Filtrer" }).click()
-  await expect(page).toHaveURL("/game-log?text=disconnect")
+  await expect(page).toHaveURL("/game-log?text=disconnect&from=&to=")
   await expect(lines).toHaveCount(1)
   await expect(lines).toContainText("Lyra")
   await expect(text).toHaveValue("disconnect")
@@ -216,7 +216,7 @@ test("a text finds the lines whose words it holds, in the address, and a text th
 
   await text.fill("introuvable")
   await page.getByRole("button", { name: "Filtrer" }).click()
-  await expect(page).toHaveURL("/game-log?text=introuvable")
+  await expect(page).toHaveURL("/game-log?text=introuvable&from=&to=")
   await expect(
     page.getByText(
       "Aucune ligne du journal du jeu ne correspond à ces filtres."
@@ -226,6 +226,53 @@ test("a text finds the lines whose words it holds, in the address, and a text th
   await expect(page).toHaveURL("/game-log")
   await expect(lines).toHaveCount(25)
   await expect(text).toHaveValue("")
+})
+
+test("a period keeps the lines of its days of Paris, in the address, with a text beside it, and a period that ends before it starts reads nothing", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  const lines = page.getByRole("main").locator("ol").getByRole("listitem")
+  const from = page.getByLabel("Du", { exact: true })
+  const to = page.getByLabel("Au", { exact: true })
+  const filter = page.getByRole("button", { name: "Filtrer" })
+
+  await logIn(ALDIS)
+  await page.goto("/game-log")
+  await page.waitForLoadState()
+  await from.fill("2026-11-03")
+  await to.fill("2026-11-03")
+  await filter.click()
+  await expect(page).toHaveURL("/game-log?text=&from=2026-11-03&to=2026-11-03")
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("Serveur redémarré")
+  await expect(from).toHaveValue("2026-11-03")
+  await expect(to).toHaveValue("2026-11-03")
+  await checkAccessibility()
+
+  await from.fill("2026-11-04")
+  await to.fill("2026-11-04")
+  await page.getByLabel("Texte").fill("heal")
+  await filter.click()
+  await expect(page).toHaveURL(
+    "/game-log?text=heal&from=2026-11-04&to=2026-11-04"
+  )
+  await expect(lines).toHaveCount(1)
+  await expect(lines).toContainText("administration:heal")
+
+  await from.fill("2026-11-05")
+  await to.fill("2026-11-04")
+  await filter.click()
+  await expect(page).toHaveURL(
+    "/game-log?text=heal&from=2026-11-05&to=2026-11-04"
+  )
+  await expect(
+    page.getByText(
+      "Aucune ligne du journal du jeu ne correspond à ces filtres."
+    )
+  ).toBeVisible()
+  await checkAccessibility()
 })
 
 test("a staff member who does not view the channel on Discord has no link, and the page shows the not-found page, beside the navigation, though their tab still names it", async ({
@@ -300,17 +347,27 @@ test("on a 360 px screen, the menu leads to the game log, whose filters fold beh
   await fold.click()
   await expect(sheet).toBeVisible()
   await sheet.getByLabel("Texte").fill("heal")
+  await sheet.getByLabel("Du", { exact: true }).fill("2026-11-04")
+  await sheet.getByLabel("Au", { exact: true }).fill("2026-11-04")
   await sheet.getByRole("button", { name: "Filtrer" }).click()
   await expect(sheet).toBeHidden()
-  await expect(page).toHaveURL("/game-log?text=heal")
+  await expect(page).toHaveURL(
+    "/game-log?text=heal&from=2026-11-04&to=2026-11-04"
+  )
   await expect(lines).toHaveCount(1)
-  await expect(fold).toHaveAccessibleName(/^Filtres\s?1 filtre actif$/)
+  await expect(fold).toHaveAccessibleName(/^Filtres\s?3 filtres actifs$/)
   await expect(chips.getByRole("link")).toHaveText([
-    "Retirer le filtre Texte : heal",
+    "Retirer le filtre Texte : heal",
+    "Retirer le filtre Du : 4 nov. 2026",
+    "Retirer le filtre Au : 4 nov. 2026",
   ])
   await checkAccessibility()
 
-  await chips.getByRole("link").click()
+  await chips.getByRole("link").first().click()
+  await expect(page).toHaveURL("/game-log?from=2026-11-04&to=2026-11-04")
+  await expect(lines).toHaveCount(2)
+  await chips.getByRole("link").first().click()
+  await chips.getByRole("link").first().click()
   await expect(page).toHaveURL("/game-log")
   await expect(lines).toHaveCount(25)
 })
