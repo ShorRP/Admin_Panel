@@ -31,12 +31,13 @@ test.each(Object.entries(embeds))(
 )
 
 test.each(Object.entries(embeds))(
-  "the Bot log example %s has named fields and no text of its own",
+  "the Bot log example %s has named inline fields and no text of its own",
   (_name, embed) => {
     expect(embed.fields?.length).toBeGreaterThan(0)
     for (const field of embed.fields ?? []) {
       expect(field.name).not.toBe("")
       expect(field.value).not.toBe("")
+      expect(field.inline).toBe(true)
     }
     expect(embed.description).toBeUndefined()
   }
