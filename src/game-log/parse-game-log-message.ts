@@ -32,6 +32,8 @@ const TITLE = /^(.+?)\s+·\s+([\s\S]+)$/
 
 const CHARACTER_AND_ACCOUNT = /^(?:(.+?)\s*·\s*)?compte\s+(\d+)$/i
 
+const GAME_ACCOUNT = /^compte\s+(\d+)$/i
+
 const LABELLED_LINE = /^\**\s*([^:*]+?)\s*\**\s*:\s*(.+)$/
 
 const FOOTER_IDENTIFIER = /·\s*([^\s·]+)\s*$/
@@ -87,6 +89,8 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
   const claimedLines = new Set<number>()
   const claimedFields = new Set<number>()
 
+  const characterFieldRest = new Map<number, string[]>()
+
   let character: string | null = null
   let gameAccount: string | null = null
   let identified = false
@@ -103,6 +107,29 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     identified = true
     return true
   }
+  const identifyCharacterField = (
+    index: number,
+    name: string,
+    value: string
+  ) => {
+    if (identified) {
+      return false
+    }
+    const [first = "", ...rest] = value.split(/\r?\n/)
+    const found = GAME_ACCOUNT.exec(plain(first) ?? "")
+    const named = plain(name)
+    if (found === null || named === null) {
+      return false
+    }
+    character = named
+    gameAccount = found[1] ?? null
+    identified = true
+    characterFieldRest.set(
+      index,
+      rest.filter((line) => line.trim() !== "")
+    )
+    return true
+  }
   const authorClaimed = identify(authorName)
   lines.forEach((line, index) => {
     if (identify(line)) {
@@ -110,7 +137,11 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     }
   })
   fields.forEach(({ name, value }, index) => {
-    if (identify(name) || identify(value)) {
+    if (
+      identifyCharacterField(index, name, value) ||
+      identify(name) ||
+      identify(value)
+    ) {
       claimedFields.add(index)
     }
   })
@@ -132,7 +163,16 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
     return true
   }
   fields.forEach(({ name, value }, index) => {
-    if (!claimedFields.has(index) && take(name, value)) {
+    const rest = characterFieldRest.get(index)
+    if (rest !== undefined) {
+      characterFieldRest.set(
+        index,
+        rest.filter((line) => {
+          const found = LABELLED_LINE.exec(line)
+          return found === null || !take(found[1] ?? "", found[2] ?? "")
+        })
+      )
+    } else if (!claimedFields.has(index) && take(name, value)) {
       claimedFields.add(index)
     }
   })
@@ -161,8 +201,13 @@ function readEvent(content: string, embed: APIEmbed, others: APIEmbed[]) {
           ? []
           : [{ name: null, value: line }]
       ),
-      ...fields.flatMap(({ name, value }, index) =>
-        claimedFields.has(index) ? [] : [{ name, value }]
+      ...fields.flatMap<GameLogRawField>(({ name, value }, index) =>
+        claimedFields.has(index)
+          ? (characterFieldRest.get(index) ?? []).map((line) => ({
+              name: null,
+              value: line,
+            }))
+          : [{ name, value }]
       ),
       ...(embed.footer === undefined || eventId !== null
         ? []
