@@ -26,7 +26,7 @@
     "product": "fr"
   },
   "tracker": {
-    "closingCommentSince": "2026-11-10T00:00:00Z",
+    "closingCommentSince": "2026-10-23T00:00:00Z",
     "staleDays": 7
   },
   "commands": {
@@ -38,30 +38,23 @@
       "pnpm test",
       "pnpm build",
       "pnpm test:e2e"
-    ],
-    "format": {
-      "run": "pnpm exec prettier --write",
-      "extensions": [
-        ".js",
-        ".mjs",
-        ".cjs",
-        ".jsx",
-        ".ts",
-        ".mts",
-        ".cts",
-        ".tsx",
-        ".css",
-        ".json"
-      ]
-    }
+    ]
   },
   "slots": {
-    "merge": {
-      "count": 1
+    "e2e": {
+      "count": 1,
+      "commands": ["pnpm test:e2e"]
+    },
+    "build": {
+      "count": 2,
+      "commands": ["pnpm build"]
     },
     "test": {
       "count": 2,
       "commands": ["pnpm test"]
+    },
+    "merge": {
+      "count": 1
     }
   },
   "ci": {

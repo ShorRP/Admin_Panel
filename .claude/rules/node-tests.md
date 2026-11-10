@@ -2,7 +2,6 @@
 paths:
   - "test/**"
   - "scripts/**"
-  - ".claude/skills/**"
 ---
 
 # Gotchas of the tooling's scripts and tests
