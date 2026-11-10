@@ -1,0 +1,71 @@
+{
+  "owner": {
+    "name": "Gilles",
+    "login": "PothieuG"
+  },
+  "repo": "ShorRP/Admin_Panel",
+  "board": {
+    "ownerType": "organization",
+    "owner": "ShorRP",
+    "number": 1
+  },
+  "trunk": "main",
+  "milestones": ["MVP"],
+  "labels": {
+    "type": ["enhancement", "bug", "documentation"],
+    "skill": [
+      "skill:implement",
+      "skill:grill-with-docs",
+      "skill:grill-me",
+      "skill:to-questionnaire"
+    ]
+  },
+  "languages": {
+    "chat": "fr",
+    "tracker": "fr",
+    "product": "fr"
+  },
+  "tracker": {
+    "closingCommentSince": "2026-11-10T00:00:00Z",
+    "staleDays": 7
+  },
+  "commands": {
+    "verify": [
+      "pnpm check:comments",
+      "pnpm format:check",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm test",
+      "pnpm build",
+      "pnpm test:e2e"
+    ],
+    "format": {
+      "run": "pnpm exec prettier --write",
+      "extensions": [
+        ".js",
+        ".mjs",
+        ".cjs",
+        ".jsx",
+        ".ts",
+        ".mts",
+        ".cts",
+        ".tsx",
+        ".css",
+        ".json"
+      ]
+    }
+  },
+  "slots": {
+    "merge": {
+      "count": 1
+    },
+    "test": {
+      "count": 2,
+      "commands": ["pnpm test"]
+    }
+  },
+  "ci": {
+    "guard": "advisory"
+  },
+  "pluginVersion": "0.10.0"
+}
