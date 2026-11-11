@@ -164,5 +164,41 @@
         "inline": true
       }
     ]
+  },
+  "automatic-sanctions-member-kicked": {
+    "title": "Sanctions automatiques · Membre expulsé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Membre",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Règle",
+        "value": "Mots interdits du panel · expulsion",
+        "inline": true
+      }
+    ]
+  },
+  "automatic-sanctions-account-banned": {
+    "title": "Sanctions automatiques · Compte banni",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      {
+        "name": "Compte",
+        "value": "<@1400000000000000001> (`1400000000000000001`)",
+        "inline": true
+      },
+      {
+        "name": "Règle",
+        "value": "Mots interdits du panel · bannissement",
+        "inline": true
+      }
+    ]
   }
 }
