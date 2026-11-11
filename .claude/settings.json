@@ -28,6 +28,6 @@
     ]
   },
   "env": {
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "600000"
   }
 }

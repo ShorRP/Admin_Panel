@@ -60,5 +60,8 @@
   "ci": {
     "guard": "advisory"
   },
+  "relay": {
+    "threshold": 600000
+  },
   "pluginVersion": "0.26.1"
 }
