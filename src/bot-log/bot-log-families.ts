@@ -25,7 +25,10 @@ export const BOT_LOG_FAMILIES: Record<
   },
   tickets: { label: "Tickets", actions: ["Ticket ouvert", "Ticket fermé"] },
   "game-servers": { label: "Serveurs de jeu", actions: [] },
-  "automatic-sanctions": { label: "Sanctions automatiques", actions: [] },
+  "automatic-sanctions": {
+    label: "Sanctions automatiques",
+    actions: ["Membre expulsé", "Compte banni"],
+  },
 }
 
 export function familyKeyOfLabel(label: string): BotLogFamilyKey | null {
