@@ -32,7 +32,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 
 - A limit reached pauses the panel, and in most cases the feature comes back only after 30 days (above). What happens on Hobby past the rate-limiting rule's 1,000,000 allowed requests is documented nowhere; the same pause, presumably (inferred).
 - The terms keep Hobby for "your personal or non-commercial use", and let Vercel "shut down and terminate projects or deployments using the Hobby plan without notice" (§4). The fair use guidelines require Pro or Enterprise for "All commercial usage", and add that "Asking for Donations does not fall under commercial usage" (https://vercel.com/docs/limits/fair-use-guidelines, updated 2026-09-14). The POs answered that Shor makes no money (relayed by Gilles on 2026-10-29, on #13), so Hobby holds. Shor's Discord server has a Ko-fi bot, a Patreon bot and three supporter roles (#183): donations fit that answer, while a perk sold would reopen it (inferred).
-- Vercel's limits page says a Hobby project connects to no organization's repository, and points to creating a team instead (https://vercel.com/docs/limits, updated 2026-09-16), whose dialog offers the Pro Trial (the trials page). On 2026-10-27, Vercel linked Gilles' Hobby project to this public repository all the same (`CLAUDE.md`, **The trial**).
+- Vercel's limits page says a Hobby project connects to no organization's repository, and points to creating a team instead (https://vercel.com/docs/limits, updated 2026-09-16), whose dialog offers the Pro Trial (the trials page). On 2026-10-27, Vercel linked Gilles' Hobby project to this public repository all the same (`docs/delivery.md`, **The trial**).
 
 ## GitHub
 
@@ -67,7 +67,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 ## The npm registry
 
-**Used for** `pnpm install`, `pnpm audit` and `pnpm audit signatures`, from the public registry, with no account: the repository holds no `.npmrc`, and `ci.yml` holds no secret (`CLAUDE.md`, **CI secrets**).
+**Used for** `pnpm install`, `pnpm audit` and `pnpm audit signatures`, from the public registry, with no account: the repository holds no `.npmrc`, and `ci.yml` holds no secret (`.claude/rules/ci.md`, **CI secrets**).
 
 **Why it cannot bill.** Public packages are ones "anyone can download and use in their own projects" (https://docs.npmjs.com/about-public-packages, edited 2023-10-23), and sharing them publicly has "no cost" (https://docs.npmjs.com/about-npm).
 
@@ -77,7 +77,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 **Used for** `pnpm exec playwright install chromium`, in CI and at the desk. Playwright is Apache-2.0 (`"license"` in `node_modules/.pnpm/playwright-core@1.64.1/node_modules/playwright-core/package.json`), and downloads its browser from Microsoft's CDN (https://playwright.dev/docs/browsers): `https://cdn.playwright.dev/dbazure/download/playwright` or `https://playwright.download.prss.microsoft.com/dbazure/download/playwright` (`node_modules/.pnpm/playwright-core@1.64.1/node_modules/playwright-core/lib/coreBundle.js`).
 
-**Why it cannot bill.** The download needs no account and no key: `ci.yml` runs it with no secret (`CLAUDE.md`, **CI secrets**).
+**Why it cannot bill.** The download needs no account and no key: `ci.yml` runs it with no secret (`.claude/rules/ci.md`, **CI secrets**).
 
 **What would make it bill.** Nothing in this use; a hosted service that runs the browsers would be a new tool (`CLAUDE.md`, **A new tool**).
 
