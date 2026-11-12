@@ -1,0 +1,53 @@
+---
+paths:
+  - "src/records/read-record*"
+  - "src/records/record-*"
+  - "src/records/own-record*"
+  - "src/app/(staff)/records/**"
+  - "e2e/records.test.ts"
+---
+
+# Records
+
+The record of one account at `/records/{userId}` (#176), for the staff members who hold a role of `MODERATION_ROLE_IDS` (ADR 0005): its names, dates, roles and standing on the Discord server, read from Discord at each view, then its sanctions and history (`.claude/rules/sanctions.md`) and the support tickets the account opened (`.claude/rules/support-tickets.md`, **A record's ticket archives**). The list that leads to it is in `.claude/rules/account-list.md`. The tests of `src/records/` and `e2e/records.test.ts` name each case. The calls per view, the departures from the mockup, the measures and the trials are in `docs/records.md`: read it before adding a read to a record.
+
+## Reading
+
+- `readRecord` reads the member, else the ban, else the user, and gives no record for an ID that names no account. A member's roles come from `listRoles`, in the order of `rolesByHierarchy` (`.claude/rules/account-list.md`, **Badges**).
+- A banned account's author comes from the audit log: the ban reads as given through the panel, with « Banni par » and its reason without the panel's prefix, only if the entry of the ban in force counts as the panel's (`attributionOf`, #285); a ban with no entry, or whose entry is not the panel's, a ban given by hand with a reason in the panel's format included, reads as given in Discord, with its whole reason and no « Banni par » (decided by the agent on 2026-10-30, on #285, for Gilles to review). `docs/records.md`, **Calls per view**, says what that costs.
+- No request-scoped `cache()` shares those reads with the history's, as none shares `getMember`, until Discord answers with a 429 (decided by the agent on 2026-10-30, on #285, for Gilles to review).
+- A read that fails is thrown and `error.tsx` replaces the whole record, its sanctions with it; the ticket archives have their own failures (`.claude/rules/support-tickets.md`, **Read failures**).
+
+## The staff check
+
+- The page of `/records` starts `requireModerationAccess` in its body, through `moderatedDiscord`, after `connection()`, as the page of `/blocked-words` starts `requireStaffMember`, and `notFound()` is thrown where the promise is awaited, in the components of the form and of the list, each under its own `<Suspense>` (#324). A record starts it in `RecordFromDiscord`, under its own `<Suspense>`.
+- The shell's static `metadata` stays, so that the tab of a staff member who does not moderate reads « Modération – Panel de Shor » on `/records` and « Fiche – Panel de Shor » on a record, not « Page introuvable – Panel de Shor », and names the section, though the comment of #61 of 2026-10-28 asks that the page read « comme si la section n'existait pas » (`e2e/records.test.ts:258`, #61). This is intended (Gilles, 2026-10-30, on #269): until Discord answers, the shell's body names the section too, through the `h1` and the sentence of `/records`, whose form shows only once the staff check and the roles' read are done (#324), and the breadcrumb of a record, and the one reason ADR 0005 gives for the not-found page is that `/login/refused` would tell a staff member they are not staff.
+- So no `generateMetadata` awaits the check: it left every staff member without a `<title>` until Discord answered (`docs/records.md`, **Trials**).
+
+## The page
+
+- The page opens with a breadcrumb, `RecordBreadcrumb`, a `<nav>` « Fil d’Ariane » whose « Modération », after an `ArrowLeft`, is a `next/link` to `/records` that does not prefetch, as the sections' do, and whose « Fiche », after a `ChevronRight`, both icons `aria-hidden`, carries `aria-current="page"` (#233).
+- `RecordHeader` gives the account's name as the page's `h1`, at the size of the `h1` of `/records`, beside the account's avatar at 68 px, and at 56 px under `sm` (#361), in a decorative double ring, a `box-shadow` of `background` then `border`, then its standing badge and its `@username`, over the rule with `leadingLine`; the ID stays in the details, selectable, with no « Copier l’ID » (#221, #233). The initials of that avatar, 28 px, and 23 px under `sm`, in proportion to the avatar (decided by the agent on 2026-11-03, on #361, for Gilles to review), take the headings' font, as the mockup draws them (decided by the agent on 2026-10-29, on #233, for Gilles to review).
+- The record of an ID that names no account keeps « Fiche » as its `h1`, over « Aucun compte Discord n’a cet ID. », since it has no name to give (decided by the agent on 2026-10-29, on #233, for Gilles to review).
+- The page hands `RecordView` the record, its sanction options, its history and its ticket archives, and only wires, so that what the page shows is tested through `react-dom/server` (`CLAUDE.md`, **Entry points only wire**). `RecordView` renders the header, then, for an account, `RecordColumns`: the card « Détails » on the left, the history under it (`.claude/rules/sanctions.md`, **Notices and history**) and the tickets under that, and « Sanctions » on the right, which sticks 24 px below the screen's top as the page scrolls, once the page's column holds the mockup's 440 px, 32 px and 340 px, `50.75rem`, through a container query on that column rather than a breakpoint, since the sidebar and the margin's `clamp()` take their share of the screen; the right column then grows to 440 px at most, as the mockup's `flex: 1 1 340px; max-width: 440px` does (#233).
+- Narrower, one column holds the details, the sanctions, the history, then the tickets, so that a moderator reaches the sanctions before the history on a phone (decided by the agent on 2026-10-29, on #233, for Gilles to review).
+- A record that offers no sanction, `SanctionOptions`' `none`, hides the right column, the leaf of « Sanctions » staying mounted (`.claude/rules/sanctions.md`, **Forms**), and keeps one column at every width, `RecordView` passing `RecordColumns` its `twoColumns` from that `kind` (decided by the agent on 2026-10-29, on #233, for Gilles to review).
+- `RecordColumns` gives the tickets a third row, `grid-rows-[auto_auto_1fr]` with the sanctions on `row-span-3`, so that a sanctions card taller than the details and the history does not push the tickets down (`docs/records.md`, **Measures**). They follow the history in the one column, and sit under it on the left, beside the sanctions, once the page's column holds the two (decided by the agent on 2026-11-05, on #197, for Gilles to review; `docs/responsive.md`, **`/records/{userId}`**).
+- `RecordDetails`, the card « Détails », on `card`, gives the account's names, its ID, its dates and, for a member, its roles, and no line « État », which the header's badge says; its overline « Heures de Paris » says the time zone once, in place of a sentence (#233). Each term sits in `muted-foreground` beside its value from `sm`, in a column of 110 to 190 px, 40% of the card at most (decided by the agent on 2026-10-29, on #233, for Gilles to review; `docs/records.md`, **Measures**); under `sm` the term stacks above its value, in 12.5 px where it is 14 px from `sm` (#361). Each role is an item bordered in `input`, in the order of `rolesByHierarchy` (decided by the agent on 2026-11-02, on #323, for Gilles to review).
+- `/records` and a record sit in a box of 1,080 px, centered as `/blocked-words` and `/audit-log` are (decided by the agent on 2026-10-29, on #234, for Gilles to review; `docs/records.md`, **Measures**).
+
+## Avatars and the link to a record
+
+- Every avatar of an account links to that account's record for a staff member who moderates, and to nothing for one who does not, in every section and every feature to come, but on that record itself: the link holds the avatar and the name beside it, since `MemberAvatar` is `aria-hidden`, and takes `prefetch={false}`. The list's rows do, so do the audit log's rows, for the member who made the change, and so does the navigation's identity (Gilles, 2026-10-30, while grilling the account list and the automatic sanctions; #320).
+- `recordHrefForModerator`, in `record-href.ts`, is the one place of the rule: it gives `/records/{id}` to a staff member who moderates and an account with an ID, and `null` to anyone else, so that an author with no ID, such as the « AutoMod » of an automatic timeout, gets no link (#327). The list's rows take their path from `recordHref` beside it, as they are shown to those who moderate alone, and `ownRecordOnceRead`, in `own-record.ts`, takes the navigation's own-record link from it (`CLAUDE.md`, **Navigation**).
+- A record shows an account's avatar on the Discord server, else its Discord avatar; an account that is not a member, banned or absent, shows its Discord avatar, which `userAvatarUrl` builds (#176).
+- A record's avatar is asked at `?size=128` where the others are asked at `?size=64`: `memberAvatarUrl` and `userAvatarUrl` take an `AvatarSize`, `64` or `128`, as their last parameter, `64` when it is left out so that no other caller changes, and `readRecord` passes its `RECORD_AVATAR_SIZE`, 128, for a member, a banned account and an absent one (the union of two sizes and the default decided by the agent on 2026-11-02, on #246, for Gilles to review; `docs/records.md`, **Measures**).
+- `src/records/read-record.test.ts` proves that URL, the only proof of a record's avatar (`docs/records.md`, **Trials**).
+
+## Skeleton
+
+- `RecordDetailsSkeleton` takes the shape of the record: the header, a circle for the avatar, 68 px and 56 px under `sm`, a bar for the name, a pill for the standing badge and a bar for the `@username`, over the rule, then, in `RecordColumns`, the card « Détails », the history's heading over two entries of its timeline and the tickets' heading over a card of two rows (#177, #197, #233). It fills the two columns where both fit, with nothing in the right one, since it cannot know whether the record will offer a sanction, and one column below; « Sanctions », which only the record of a member shows, or, to a staff member who bans, that of an account absent or banned, has none (#176, #179, #181, #227).
+
+## Responsive and tests
+
+`docs/responsive.md`, **`/records/{userId}`**, specifies the page (#361). A later change must not break the avatar's 56 px and the terms stacked above their values under `sm`, the breadcrumb's 44 px under `touch` and the forms of « Sanctions » (`.claude/rules/sanctions.md`, **Forms**). `e2e/responsive.test.ts` measures them in its flow `the record at <width> px`, and `e2e/records.test.ts` the two columns, the card that sticks and the not-found page of a staff member who does not moderate.

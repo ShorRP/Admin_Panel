@@ -11,7 +11,7 @@ The reference behind `.claude/rules/blocked-words.md`: what a view and a write c
 
 ## Where the page departs from the mockup
 
-The mockup's lines are quoted as `M:<line>`, from the captures of `docs/design/hydromel/`.
+The mockup's lines are quoted as `M:<line>`: they are lines of `Panel Shor.dc.html`, which sits outside the repository (`docs/design/hydromel/README.md:29`), and the captures of `docs/design/hydromel/` show its pages.
 
 - The filter has a « Filtrer » button, where the mockup filters at each keystroke and has none (M:213-216, #229).
 - An empty list says « Aucun mot interdit pour l’instant. » in place of the count, where the mockup counts « 0 mots interdits » (M:910, #228). With a filter, an empty rule says « Aucun mot interdit ne contient « … » » and counts « 0 sur 0 », where the mockup keeps « Aucun mot interdit pour l’instant. » (M:912, #229).
