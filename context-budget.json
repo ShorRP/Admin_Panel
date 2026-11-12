@@ -1,0 +1,20 @@
+{
+  "budget": {
+    "alwaysLoaded": {
+      "bytes": 20000,
+      "lines": 200
+    },
+    "scopedRule": {
+      "bytes": 15000
+    }
+  },
+  "ceilings": {
+    "alwaysLoaded": {
+      "bytes": 492335,
+      "lines": 320
+    },
+    "scoped": {
+      ".claude/rules/game-log.md": 25356
+    }
+  }
+}

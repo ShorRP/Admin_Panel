@@ -16,6 +16,7 @@
     "test:contract": "vitest run --config vitest.contract.config.mts",
     "test:e2e": "playwright test",
     "check:comments": "node scripts/check-comments.mjs",
+    "check:context-budget": "node scripts/check-context-budget.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

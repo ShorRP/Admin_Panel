@@ -32,6 +32,8 @@ jobs:
 
       - run: pnpm check:comments
 
+      - run: pnpm check:context-budget
+
       - run: pnpm format:check
 
       - run: pnpm typecheck
