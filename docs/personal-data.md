@@ -1,6 +1,6 @@
 # Personal data
 
-What the Admin Panel processes about people, why, where and for how long, and what the GDPR and Discord's terms ask of it before it stores more, as Gilles decided while grilling #27 on 2026-10-28. A change that starts or stops processing a personal datum updates this file, and the privacy policy at `/privacy`, which says what **Today** says in French, with the date it shows, in the same change (`CLAUDE.md`, **Security**, **Privacy policy**). Every page below was read on 2026-10-28; a date after a URL is the page's own. Nobody on the project is a lawyer: the inferences are a developer's reading of the sources, worth checking with the CNIL or a lawyer before the store opens.
+What the Admin Panel processes about people, why, where and for how long, and what the GDPR and Discord's terms ask of it before it stores more, as Gilles decided while grilling #27 on 2026-10-28. A change that starts or stops processing a personal datum updates this file, and the privacy policy at `/privacy`, which says what **Today** says in French, with the date it shows, in the same change (`CLAUDE.md`, **Security**, and `.claude/rules/privacy-policy.md`, **Personal data**). Every page below was read on 2026-10-28; a date after a URL is the page's own. Nobody on the project is a lawyer: the inferences are a developer's reading of the sources, worth checking with the CNIL or a lawyer before the store opens.
 
 ## What applies
 

@@ -45,7 +45,7 @@ paths:
 ## Permissions and personal data
 
 - Reading the Bot log asks View Channel and Read Message History on « 🔧・log-admin » and the Message Content intent, for « Shor Panel »: Gilles gave the first two on the category « 🛠️・LOG » on 2026-11-05 and the channel is synced with it (#390). Without View Channel the channel is out of `listChannels` from 2026-11-16 and everyone gets the not-found page; without Read Message History the search is inferred to answer `403` with code `50001`, and the page fails with the error page and an alert (`game-log.md`). Whether the page reads on Shor is for the first try on Shor to tell (not tried).
-- The page shows accounts, with their names, and the reasons that members typed to close a support ticket, which the Bot copies from its closing form (ADR 0009): `docs/personal-data.md` and `/privacy` say what the panel reads of it and keeps none (**Personal data** of `CLAUDE.md`).
+- The page shows accounts, with their names, and the reasons that members typed to close a support ticket, which the Bot copies from its closing form (ADR 0009): `docs/personal-data.md` and `/privacy` say what the panel reads of it and keeps none (`.claude/rules/privacy-policy.md`, **Personal data**).
 
 ## Tests
 
