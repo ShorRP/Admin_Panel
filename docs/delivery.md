@@ -70,7 +70,7 @@ The `node_modules` citations are those of Next.js 16.4.2 unless a package is nam
 - A preview has no login by default, since Discord documents neither a wildcard redirect URI nor an endpoint that edits them (https://docs.discord.com/developers/resources/application, read 2026-10-25).
 - A pull request that touches the login, the session or the headers gets one on demand. Gilles registers its branch URL, `<project>-git-<branch>-<scope>.vercel.app` (https://vercel.com/docs/deployments/generated-urls, updated 2026-09-08), in "Shor Panel Dev", and sets `DISCORD_REDIRECT_URI` for that branch alone, as Preview variables allow (https://vercel.com/docs/environment-variables, updated 2026-09-17). He tries by hand what differs only for real, cookies over `https` and the headers Vercel serves, and removes both once the pull request merges.
 - Every pull request also waits for Vercel's commit status (https://vercel.com/docs/git/vercel-for-github, updated 2026-09-17), which proves the build with Preview's variables, on Vercel's Node and the pnpm `packageManager` names.
-- #9 turned Vercel's bot comments off, and kept its statuses and the deployment events that put the preview's link on the pull request. The Vercel Toolbar, on by default on previews, is off there (`.claude/rules/nextjs.md`, **Headers**).
+- #9 turned Vercel's bot comments off, and kept its statuses and the deployment events that put the preview's link on the pull request. The Vercel Toolbar, on by default on previews, is off there (https://vercel.com/docs/vercel-toolbar/managing-toolbar, updated 2026-08-11).
 - Whether Vercel's request logs keep a login's `code` and `state` was left to the first login on a preview: #9 closed without one (`.claude/rules/nextjs.md`).
 
 ## Production
