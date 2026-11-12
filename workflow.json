@@ -32,6 +32,7 @@
   "commands": {
     "verify": [
       "pnpm check:comments",
+      "pnpm check:context-budget",
       "pnpm format:check",
       "pnpm typecheck",
       "pnpm lint",

@@ -90,6 +90,13 @@ Check that the repository holds no comments:
 pnpm check:comments
 ```
 
+Check that the context Claude Code always loads, `CLAUDE.md` and the rules without `paths:`, stays within the budget and the ceilings of `context-budget.json`, and lower a ceiling once a change has shrunk its file:
+
+```bash
+pnpm check:context-budget
+pnpm check:context-budget --write
+```
+
 Lay out the repository with Prettier, sorting Tailwind classes and imports, as `prettier.config.mjs` sets:
 
 ```bash
