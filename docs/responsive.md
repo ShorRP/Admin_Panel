@@ -164,7 +164,7 @@ Delivered by #362.
 - `LoginNotice`: under `sm`, the title takes 38 px and the actions stack at full width, in a column, `flex-col sm:flex-row sm:flex-wrap`, which stretches a link; `LOGIN_ACTION_CLASS` adds `w-full sm:w-auto` for the log-out button, which sits in a `<form>` and would otherwise keep its width (decided by the agent on 2026-11-03, on #362, for Gilles to review). The actions take the full width of the block of at most 400 px that holds them, not of the column, so that at 639 px they are 400 px wide where the error pages' action takes 607 (decided by the agent on 2026-11-03, on #362, for Gilles to review, since #362 says « toute la largeur »). On a touch screen the buttons take 44 px, the Button's `touch:h-11` winning over their 40 px.
 - `ErrorNotice`: under `sm`, the action takes the full width, through the same column; the reference keeps `font-mono` and takes `wrap-anywhere`.
 - The privacy policy's `<code>` takes `wrap-anywhere`.
-- `e2e/responsive.test.ts` crosses `/login/refused` and `/login/failed` beside `/privacy` and `/login/logged-out`, and its flow `the login, error and privacy pages at <width> px` measures the actions of the refused page, of the not-found page and of the error page, and the long word (**Checks** of `CLAUDE.md`).
+- `e2e/responsive.test.ts` crosses `/login/refused` and `/login/failed` beside `/privacy` and `/login/logged-out`, and its flow `the login, error and privacy pages at <width> px` measures the actions of the refused page, of the not-found page and of the error page, and the long word (`e2e/responsive.test.ts`; `.claude/rules/e2e.md`, **The responsive checks**).
 
 ## Known limits
 
