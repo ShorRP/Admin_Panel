@@ -13,7 +13,7 @@ paths:
 - **Classes** are sorted by `prettier-plugin-tailwindcss`, in Tailwind's recommended order, against `src/ui/globals.css`, in `className` and inside `cva()` and `cn()` calls (`tailwindFunctions`), which drops duplicate classes and extra whitespace. A class held in a constant outside a `cn()` is not sorted (`.claude/rules/eslint.md`, **The responsive classes**). The plugin loads last among Prettier's plugins, as its README asks.
 - **Imports** are sorted by `@ianvs/prettier-plugin-sort-imports`, in the registry's order: `node:` modules, `react`, `next`, other packages, then, after a blank line, `@/` and relative paths. A side-effect import stays where it is and the imports after it are sorted, so that `import "server-only"` stays first.
 - `.prettierignore` keeps out `pnpm-lock.yaml` alone. `pnpm-workspace.yaml` stays in, and joins it only if a later `pnpm add` undoes Prettier's layout there (#48).
-- Code that Prettier lays out badly is reshaped, since `prettier-ignore` is a comment like any other (`CLAUDE.md`, **No comments**). `.prettierignore` and `.git-blame-ignore-revs` hold none either: `pnpm check:comments` reads both as files of `#` comments (`.claude/rules/check-comments.md`).
+- Code that Prettier lays out badly is reshaped, since `prettier-ignore` is a comment like any other (`CLAUDE.md`, **No comments**). `.prettierignore` and `.git-blame-ignore-revs` hold none either: `pnpm check:comments` reads both as files of `#` comments (`HASH_FILES` in `scripts/check-comments.mjs`).
 
 ## Enforcement
 
