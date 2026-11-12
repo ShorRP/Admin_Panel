@@ -142,6 +142,8 @@ test("the PR hook's refusal does not call a file it cannot read a comment, and s
       assert.equal(output.permissionDecision, "deny")
       assert.match(reason, /\nnotes\.xyz: unknown file type/)
       assert.match(reason, /\nbroken\.js: cannot be parsed/)
+      assert.match(reason, /\(\.claude\/rules\/check-comments\.md\)/)
+      assert.doesNotMatch(reason, /CLAUDE\.md/)
       assert.match(
         reason,
         /Remove each comment, fix each file that cannot be parsed/
