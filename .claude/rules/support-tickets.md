@@ -51,7 +51,7 @@ Discord refuses an `offset` past 9,975 (ADR 0010), so a served page reaches the 
 
 ## The search's rate limit
 
-Discord rate limits the search tightly (ADR 0010; the figures are in `docs/support-tickets.md`, **Why a record reads 100 archives**), and the client waits only for a 429 of 2 s or less (`CLAUDE.md`, **Retries**). A page that meets a longer one fails as Discord unavailable: nothing catches it, `error.tsx` replaces the page with « Réessayer », and no alert goes out (`.claude/rules/monitoring.md`). So a search added to a page or to a record spends the burst of every view: count it in `docs/support-tickets.md`, **Calls per view**.
+Discord rate limits the search tightly (ADR 0010; the figures are in `docs/support-tickets.md`, **Why a record reads 100 archives**), and the client waits only for a 429 of 2 s or less (`.claude/rules/discord.md`, **Errors and retries**). A page that meets a longer one fails as Discord unavailable: nothing catches it, `error.tsx` replaces the page with « Réessayer », and no alert goes out (`.claude/rules/monitoring.md`). So a search added to a page or to a record spends the burst of every view: count it in `docs/support-tickets.md`, **Calls per view**.
 
 ## A record's ticket archives (#197, #387)
 
