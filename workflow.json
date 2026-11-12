@@ -63,5 +63,5 @@
   "relay": {
     "threshold": 600000
   },
-  "pluginVersion": "0.26.3"
+  "pluginVersion": "0.27.0"
 }
