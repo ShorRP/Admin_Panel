@@ -29,14 +29,14 @@ The `node_modules` citations are those of Next.js 16.4.2 unless a package is nam
 ## CI
 
 - `.github/workflows/ci.yml`, read on 2026-11-12: one job, `Check`, with `timeout-minutes: 15`, `permissions: contents: read` and a concurrency group per pull request that cancels the run it replaces, run on every pull request and every push to `main`; it runs on `ubuntu-latest` and names its actions by major tag, which #95 changes. The file is the source for its steps.
-- A public repository's standard runners cost nothing (https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions, read 2026-10-25), and a larger runner is "always charged for, even when used by public repositories" (`docs/costs.md`, **GitHub**).
+- A public repository's standard runners cost nothing (https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions, read 2026-10-25), and what a larger runner costs is in `docs/costs.md`, **GitHub**.
 - `actions/setup-node` reads Node from `engines.node` through `node-version-file`, with `check-latest` (its README and `docs/advanced-usage.md`, read 2026-10-25). That version comes from the manifest of `actions/node-versions` first, which can lag Node's own releases: on 2026-10-29, CI ran 24.22.1 (run 40898070133), while https://nodejs.org/dist/index.json listed 24.22.2, of 2026-10-27.
 - The end-to-end step grows with every page, and the job gave up at its former 10 minutes on #394's pull request: run 42182828730, of 315 tests, was cancelled in `pnpm test:e2e` once the step had run 8 min 21 s, all that the other steps left of the 10 minutes, where the runs of 285 tests took 8 min 10 s (`main`, run 42132912057, 2026-11-06) and 7 min 58 s (run 42131672687), the other steps taking about 1 min 40 s (`gh run view <run> --json jobs`, 2026-11-06). At about 1.7 s a test on the runner's 2 workers, 315 tests need about 9 min, which the job's remaining 8 min 20 s could not hold, hence the 15 minutes of `.claude/rules/ci.md`, **CI**.
 
 ## Caches
 
-- `actions/setup-node`'s `cache: pnpm` keeps the pnpm store, and `actions/cache` keeps `.next/cache` (#103), keyed on `pnpm-lock.yaml` and the sources as Next.js's guide does (`node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md:73-89`, whose example is written for npm). Without it, `next build` prints "No build cache found" behind the `⚠` of Next.js's warnings, when it detects CI and finds no `.next/cache` (`node_modules/next/dist/build/index.js:230`).
-- Playwright's browsers are downloaded on every run, since Playwright advises against caching them in CI (https://playwright.dev/docs/ci, read 2026-10-25).
+- The key of the `.next/cache` step follows Next.js's guide (`node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md:73-89`), whose example is written for npm. Without that cache, `next build` prints "No build cache found" behind the `⚠` of Next.js's warnings, when it detects CI and finds no `.next/cache` (`node_modules/next/dist/build/index.js:230`).
+- Playwright advises against caching its browsers in CI (https://playwright.dev/docs/ci, read 2026-10-25).
 - No cache spares `pnpm audit` or `pnpm audit signatures` their call to the registry (inferred from https://pnpm.io/cli/audit, read 2026-10-25).
 - GitHub evicts a cache unused for 7 days, and a repository holds 10 GB of them (https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching, read 2026-10-25).
 
@@ -45,10 +45,9 @@ The `node_modules` citations are those of Next.js 16.4.2 unless a package is nam
 - `contract.yml` does not exist yet: `gh api repos/ShorRP/Admin_Panel/actions/workflows` lists `CI` alone on 2026-11-12, and #102 is open. #102's body holds the workflow's acceptance criteria.
 - `gh api repos/ShorRP/Admin_Panel/environments` lists `Preview` and `Production` on 2026-11-12, with no protection rule and no branch policy, and no `discord-contract`. The two are inferred to be the deployment environments of Vercel's GitHub App.
 - GitHub Free offers environments to public repositories only (https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment, read 2026-10-25), which is why #102 waited for #100, and the repository has been public since 2026-10-27 (ADR 0007).
-- The environment has no reviewer, who would have Gilles approve each run of his own pull requests, and allows every branch, since pull requests run it. `DISCORD_BOT_TOKEN` is its one secret, which Gilles sets himself through a masked prompt; `DISCORD_GUILD_ID`, `CONTRACT_MEMBER_ID` and `CONTRACT_ABSENT_USER_ID` are variables, with the values of `.env.local` (#179, #181).
-- The workflow pins its actions by SHA, restores no cache, since a cache written by `ci.yml`, whose actions follow tags, could carry code into the job that holds the token (inferred), and keeps two runs from overlapping on the test Discord server through one concurrency group.
+- The variables of the environment take the values of `.env.local`, and Gilles sets the secret through a masked prompt (#102).
 - A scheduled run that fails notifies Gilles: "Notifications for scheduled workflows are sent to the user who initially created the workflow" (https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs, read 2026-10-25), and he creates the workflow (inferred).
-- Against Discord, the first run of `pnpm test:contract`, with 9 tests, took 62.7 s on 2026-10-25, 48.3 s of it for the six keyword rules, which wait out 429s (#102's comment of 2026-10-25); the search tests of #383 bring it to 2 to 3 minutes (`docs/discord.md`, **The contract suite**). The job needs a `timeout-minutes` of its own (inferred, #102's comment).
+- Against Discord, the first run of `pnpm test:contract`, with 9 tests, took 62.7 s on 2026-10-25, 48.3 s of it for the six keyword rules, which wait out 429s (#102's comment of 2026-10-25); the search tests of #383 bring it to 2 to 3 minutes (`docs/discord.md`, **The contract suite**).
 - On Gilles' test Discord server, "Shor Panel Dev" held only Manage Server and View Audit Log (#10, comment of 2026-10-23); its permissions since are in `docs/discord.md`, **The application's permissions**.
 
 ## The Firewall
@@ -88,7 +87,7 @@ The `node_modules` citations are those of Next.js 16.4.2 unless a package is nam
 
 ## Scheduled workflows
 
-GitHub turns off a scheduled workflow of a public repository after 60 days without activity in it (https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows, read 2026-10-25), which would stop the daily audit (#93) and the weekly contract run (#102). The monthly session's pull request keeps the repository active (inferred).
+The 60 days without activity in a public repository after which GitHub turns off a scheduled workflow come from https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows (read 2026-10-25).
 
 ## The trial
 
@@ -102,5 +101,5 @@ GitHub turns off a scheduled workflow of a public repository after 60 days witho
 - Next.js writes a warning through `Log.warn`, behind `⚠` (`node_modules/next/dist/build/output/log.js:64`), and Node writes a process warning as `(node:<pid>) [DEP0040] DeprecationWarning: …` or `(node:<pid>) Warning: …` (Node 24.22.0, `require("punycode")` and `process.emitWarning`, 2026-10-24).
 - The local build of 2026-10-24 printed no `⚠`, and neither did the same build with 20 base-nova components rendered on a page (throwaway worktree, #87). CI printed one, "No build cache found", on run 40124210901.
 - A dependency's own `console.warn` follows no format: `baseline-browser-mapping` 2.11.30 writes one, with no `⚠`, once its data is two months old (`node_modules/.pnpm/baseline-browser-mapping@2.11.30/node_modules/baseline-browser-mapping/dist/index.cjs:1`).
-- `pnpm install --frozen-lockfile` answered "Lockfile is up to date, resolution step is skipped" on 2026-10-24, and so printed no peer or deprecation warning; `pnpm peers check` exists in pnpm 12.9.1 and answered "No peer dependency issues found", with the three `peerDependencyRules` of `.claude/rules/dependencies.md` (2026-10-24).
+- `pnpm install --frozen-lockfile` answered "Lockfile is up to date, resolution step is skipped" on 2026-10-24; `pnpm peers check` exists in pnpm 12.9.1 and answered "No peer dependency issues found", with the three `peerDependencyRules` of `.claude/rules/dependencies.md` (2026-10-24).
 - On run 40124210901, `actions/checkout` printed its `hint:` about the default branch name, `pnpm/action-setup` v6.0.10, whose `v6` tag was stale, installed pnpm 11.19.0, switched to 12.9.1 and printed `[WARN] Detected a pnpm v10 installation layout` (#95, pnpm/action-setup#288, #289), and the runner announced that `ubuntu-latest` moves to Ubuntu 26.
