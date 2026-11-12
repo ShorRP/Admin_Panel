@@ -29,7 +29,7 @@ What a page prerenders, what the headers carry, how the error pages fail and whi
 
 ## The end-to-end test proxy
 
-- `next.config.ts` sets `experimental.testProxy` only when `E2E_TEST_PROXY` is `1`, a switch that sends the server's `fetch` calls to `localhost` and that the build refuses on Vercel: leave it unset but for the `webServer` of `playwright.config.ts`. How end to end uses it is in `.claude/rules/e2e.md`, **The server and the fake Discord** (decided by the agent on 2026-11-12, on #449, for Gilles to review).
+- Read `.claude/rules/e2e.md`, **The server and the fake Discord**, before changing `E2E_TEST_PROXY` or `experimental.testProxy` in `next.config.ts` (decided by the agent on 2026-11-12, on #449, for Gilles to review, so that a session that edits `next.config.ts` finds where the switch is described).
 
 ## Error pages
 
