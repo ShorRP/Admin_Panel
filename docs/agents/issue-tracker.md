@@ -57,7 +57,7 @@ Issues are written in French: title, body and comments. Everything else (code, d
 
   A ticket tied to no step, such as tooling, tests, debt or a feature after the MVP, takes no milestone. An epic takes the earliest milestone among its open children. A new milestone waits for a step the staff announce, such as Shor's launch.
 
-- **Labels.** Each issue carries one type label: `enhancement`, `bug` or `documentation`. Unless it is an epic, it also carries one triage state, from the five roles in `triage-labels.md`. Epics carry `epic` instead of a triage state, and a type label like any issue. There are no area labels: the title prefix already names the area. No label repeats a milestone either.
+- **Labels.** Each issue carries one type label: `enhancement`, `bug` or `documentation`. Unless it is an epic, it also carries one triage state, from the five roles in `triage-labels.md`. Epics carry `epic` instead of a triage state, and a type label like any issue. There are no area labels: the title prefix already names the area. No label repeats a milestone either. A wayfinder map and its tickets are the exception: each carries its `wayfinder:` label alone, with no type label, no triage state and no `epic`, as `wayfinder` asks ("`wayfinder:` labels are the only labels a map and its tickets carry", its `SKILL.md`, **Tickets**), since they hold decisions rather than work to build (Gilles, 2026-11-12, on #421).
 - **Skill labels.** A ticket ready for work names, with one `skill:` label, the skill of `mattpocock/skills` that its session starts with, as Gilles decided on 2026-10-27:
   - `skill:implement`: specified enough to build, through `/implement`, which drives `tdd` and ends with `code-review`.
   - `skill:grill-with-docs`: a plan or a design to grill with the maintainer before anything is built, whose answers may land in `GLOSSARY.md` or an ADR; `CLAUDE.md` names it for a non-trivial change not grilled yet (**How we work**).
@@ -111,8 +111,8 @@ Read it as in **Read an issue** above.
 
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
 
-- **Map**: a single issue labelled `wayfinder:map`, whose body holds the headings that `wayfinder` sets (**Writing an issue in French**). `gh issue create --label wayfinder:map`.
-- **Child ticket**: an issue linked to the map as a GitHub sub-issue (see **Make an issue a sub-issue of a parent**). Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
+- **Map**: a single issue labelled `wayfinder:map`, whose body holds the headings that `wayfinder` sets (**Writing an issue in French**), and no other label, `epic` included, though its tickets are its sub-issues (**Labels**). `gh issue create --label wayfinder:map`.
+- **Child ticket**: an issue linked to the map as a GitHub sub-issue (see **Make an issue a sub-issue of a parent**). Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`), and no other (**Labels**). Once claimed, the ticket is assigned to the driving dev.
 - **Blocking**: GitHub's **native issue dependencies**, the canonical, UI-visible representation. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric **database id** (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`, _not_ the `#number` or `node_id`). GitHub reports `issue_dependencies_summary.blocked_by` (open blockers only, the live gate). A ticket is unblocked when every blocker is closed.
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
