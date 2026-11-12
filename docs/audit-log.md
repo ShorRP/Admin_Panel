@@ -14,7 +14,7 @@ The `node_modules` citations are those of Base UI 1.9.0: an update of a package 
 
 ## Where the page departs from the mockup
 
-The mockup's lines are quoted as `M:<line>`, from the captures of `docs/design/hydromel/`.
+The mockup's lines are quoted as `M:<line>`: they are lines of `Panel Shor.dc.html`, which sits outside the repository (`docs/design/hydromel/README.md:29`), and the captures of `docs/design/hydromel/` show its pages.
 
 - A sanction's account is a link to its record only for a staff member who moderates, where the mockup shows it to all (#182, #221).
 - « Revenir aux plus récents » and « Plus anciens » show only where they lead somewhere, as before #230, which reads « Il y a toujours » as « still there », against the mockup that drops the first (decided by the agent on 2026-10-29, on #230, for Gilles to review; `src/ui/log-pagination.tsx:28-55`).
