@@ -2,7 +2,7 @@
 
 The evidence behind `.claude/rules/monitoring.md`: what Next.js does with an error, what each vendor page says, and the trials that showed how an alert behaves. The rule says what to do; this file says how it was known. Gilles decided the design while grilling #50 on 2026-10-24, with everything kept free, and the options set aside, and why, are in #50's decisions. #78 wrote `src/monitoring/` and `instrumentation.ts`, #59 gave `DiscordError` its route's pattern, #10 made the login callback report what it catches, and #9 set the webhook's variable in Vercel's dashboard.
 
-The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (« Docs that name a version », in the Dependencies rules).
+The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## What Next.js prints
 

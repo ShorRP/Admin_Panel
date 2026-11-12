@@ -70,7 +70,7 @@ Every read of this folder is thrown on failure and `error.tsx` replaces the page
 
 ## Configuration
 
-- `TICKET_ARCHIVES_CHANNEL_ID`, the channel where the Bot posts the archives, is an optional snowflake that `src/ticket-archives/env.ts` reads (`CLAUDE.md`, **Variables**): left out, a record says that its archives are not configured. Production needs it set in Vercel's dashboard, which only Gilles does, and a variable reaches a deployment at its build (`.claude/rules/env.md`) (decided by the agent on 2026-11-05, on #197, for Gilles to review).
+- `TICKET_ARCHIVES_CHANNEL_ID`, the channel where the Bot posts the archives, is an optional snowflake that `src/ticket-archives/env.ts` reads (`.claude/rules/env.md`, **Variables**): left out, a record says that its archives are not configured. Production needs it set in Vercel's dashboard, which only Gilles does, and a variable reaches a deployment at its build (`.claude/rules/env.md`) (decided by the agent on 2026-11-05, on #197, for Gilles to review).
 - `TICKET_CATEGORY_ID`, the category where the Bot creates each ticket's channel, follows the same rules, and `/support-tickets` says that the tickets category is not configured when it is left out (#388). Both are named as ShorBot names them, where the code says « tickets category » and « archives channel », the terms of `GLOSSARY.md` (decided by the agent on 2026-11-05, on #388, for Gilles to review). The IDs on Shor and on the test Discord server are in `docs/support-tickets.md` and the README.
 
 ## Tests

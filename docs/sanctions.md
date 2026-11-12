@@ -2,7 +2,7 @@
 
 The evidence behind `.claude/rules/sanctions.md`: what Base UI does that the card's forms work around, the contrast measures of its notices, and what the history costs in calls to Discord. The rule says what to do; this file says how it was known. #179 wrote the timeout, #180 the kick, #181 the ban and its lifting, #177 the history, #182 and #327 its automatic timeouts, #234 the card and #235 its confirmation.
 
-The `node_modules` citations are those of Base UI 1.9.0: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`).
+The `node_modules` citations are those of Base UI 1.9.0: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## The card
 

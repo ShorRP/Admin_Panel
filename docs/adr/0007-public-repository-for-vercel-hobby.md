@@ -9,9 +9,9 @@ status: accepted
 ## Considered Options
 
 - **Moving the repository to Gilles' account**: Vercel's restriction targets organizations only, but the repository would leave ShorRP, and whether the organization's project board can hold the issues of a personal repository is unchecked (https://docs.github.com/en/issues/planning-and-tracking-with-projects/managing-items-in-your-project/adding-items-to-your-project names organizations only, read 2026-10-25).
-- **Deploying with Vercel's CLI from GitHub Actions** (https://vercel.com/kb/guide/how-can-i-use-github-actions-with-vercel, updated 2026-10-16): the repository stays private, but CI would hold a token that reads production's variables, Vercel's docs say nothing of Hobby on that path, and a prebuilt deployment lacks the system variables at build (https://vercel.com/docs/cli/deploy, read 2026-10-25), while `next.config.ts` reads `VERCEL` then (`CLAUDE.md`, **Configuration**).
+- **Deploying with Vercel's CLI from GitHub Actions** (https://vercel.com/kb/guide/how-can-i-use-github-actions-with-vercel, updated 2026-10-16): the repository stays private, but CI would hold a token that reads production's variables, Vercel's docs say nothing of Hobby on that path, and a prebuilt deployment lacks the system variables at build (https://vercel.com/docs/cli/deploy, read 2026-10-25), while `next.config.ts` reads `VERCEL` then (`.claude/rules/env.md`, **Configuration**).
 - **Vercel Pro**: paid.
-- **Another host**: it would reopen **Security**, **Monitoring** and **Configuration** in `CLAUDE.md`.
+- **Another host**: it would reopen **Security** in `CLAUDE.md`, `.claude/rules/monitoring.md` and **Configuration** in `.claude/rules/env.md`.
 
 ## Consequences
 

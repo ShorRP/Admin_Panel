@@ -10,8 +10,8 @@
   },
   "ceilings": {
     "alwaysLoaded": {
-      "bytes": 205470,
-      "lines": 259
+      "bytes": 172110,
+      "lines": 230
     },
     "scoped": {
       ".claude/rules/game-log.md": 25353

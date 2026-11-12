@@ -2,7 +2,7 @@
 
 The evidence behind `.claude/rules/nextjs.md`: what Next.js's docs and source say about prerendering, headers and error files, what the vendor pages say, and the trials that showed how the panel behaves. The rule says what to do; this file says how it was known.
 
-The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (« Docs that name a version » of `CLAUDE.md`, **Dependencies**).
+The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## Caching
 

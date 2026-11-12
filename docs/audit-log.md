@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/audit-log.md`: what a view costs in calls to Discord, where the page departs from the mockup, and the measures and trials behind some choices. The rule says what to do; this file says how it was known.
 
-The `node_modules` citations are those of Base UI 1.9.0: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`).
+The `node_modules` citations are those of Base UI 1.9.0: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## Calls per view
 
