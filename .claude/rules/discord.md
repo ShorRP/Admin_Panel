@@ -12,9 +12,9 @@ The panel's client for Discord's REST API (ADR 0003, #47, #59, #63): `DiscordApi
 
 - One method per endpoint the panel calls, but the alerts' webhook (`.claude/rules/monitoring.md`), typed with `discord-api-types`. The real implementations call `fetch`, with neither `@discordjs/rest` nor `@discordjs/core` (#47).
 - `DiscordApi` uses the application's token and is bound at construction to one Discord server, so no method takes its ID and `guildId` is a property, from which `member-avatar-url.ts` builds avatar URLs (`.claude/rules/records.md`, **Avatars and the link to a record**). `DiscordOAuth` uses the client ID and secret.
-- A method whose result is bigger than the panel needs returns the fields it uses, picked from the object of `discord-api-types`, such as `Guild`, `Message` or `GuildChannel` (#179, #384): `Guild` and `GuildChannel` keep what `canViewChannel` reads (`CLAUDE.md`, **Channel visibility**).
+- A method whose result is bigger than the panel needs returns the fields it uses, picked from the object of `discord-api-types`, such as `Guild`, `Message` or `GuildChannel` (#179, #384): `Guild` and `GuildChannel` keep what `canViewChannel` reads.
 - `listMembers` reads 1,000 a call at most, from the highest ID of the previous page, and needs the Server Members Intent (#322); a search by name runs in memory over it (#324). `listMessages` reads 100 a call at most, from the newest, before a given message; the tickets in progress read it (`src/support-tickets/read-open-support-tickets.ts:143`).
-- From 2026-11-16 Discord leaves out of `listChannels` the channels the application lacks View Channel on, so `canViewChannel` takes a channel that `listChannels` does not give as not viewable (#384; `CLAUDE.md`, **Channel visibility**; `docs/discord.md`, **The Discord seam**).
+- From 2026-11-16 Discord leaves out of `listChannels` the channels the application lacks View Channel on, so `canViewChannel` takes a channel that `listChannels` does not give as not viewable (#384; `.claude/rules/staff.md`, **Channel visibility**; `docs/discord.md`, **The Discord seam**).
 - `searchMessages` (#383) gives the `total_results` and the messages found, flat, and needs the Message Content intent and Read Message History on the channels it searches (**The application's permissions**). ADR 0010 holds what it reads and serves, and what it costs.
 
 ## Errors and retries
@@ -35,7 +35,7 @@ The panel's client for Discord's REST API (ADR 0003, #47, #59, #63): `DiscordApi
 - `searchMessages` (#383) finds the whole words of a text, whatever their case and with their accents, in the content or in one text of an embed at a time. Words split at everything that is no letter, digit or emoji, and an apostrophe, U+2019 alone, joins the letters around it (`search-words.ts`). Two words match within 2 words of one another, in any order. It has none of Discord's index lag, nor its 202 and its 429s: `failNext` makes it fail once.
 - `messageContentIntent: false`, on by default, stands for the Message Content intent turned off: `listMessages` and `searchMessages` give another author's message with its content and embeds emptied, unless the application wrote it or it mentions the application, and no text matches it (`docs/discord.md`, **The fake**).
 - `failNext(method, error)` makes that method's next call throw that `DiscordError`, once. A test that needs a method to fail with anything else, as a bug in the panel would, or to answer some calls and fail the others, subclasses the fake in its own file and overrides that method (#141, #231).
-- Another method issues the OAuth2 code a test logs in with, for the code challenge, and the exchange refuses the code with another code verifier, or none, as Discord did (`CLAUDE.md`, **OAuth2**).
+- Another method issues the OAuth2 code a test logs in with, for the code challenge, and the exchange refuses the code with another code verifier, or none, as Discord did (`.claude/rules/staff.md`, **OAuth2**).
 
 ## The HTTP adapter
 
@@ -63,7 +63,7 @@ They take `fetch` as a parameter, which `createDiscordApi()` and `createDiscordO
 - The panel's application never holds Administrator. Each feature adds the Discord permissions and privileged intents it needs, and no more, in the same change as the README's list of them, and the panel's role sits just above the roles it manages. Whoever holds the application's token holds all of them, so each one widens what a leak costs.
 - A new permission, a new intent or a change to the role is a stop for Gilles, in the Developer Portal or on the Discord server: an agent tells him what to grant and why, and acts nowhere there (`deliver-epic/rules.md` of the agent-workflow plugin, **Stops**, **Security**: what the application may do on a third party, a permission or a scope, which the **Security** intro of `CLAUDE.md` names).
 - The application is the Bot's too since ADR 0008, so the Bot's permissions join its role. Both applications hold the Server Members Intent, which `listMembers` needs (#318), and the Message Content intent, which the search needs (#382, ADR 0010); neither brings an event, since the panel opens no gateway connection (ADR 0003).
-- A page that reads a channel needs View Channel and Read Message History for the application on that channel itself, and a grant on a category reaches it only while the channel is synced to the category (`CLAUDE.md`, **Channel visibility**).
+- A page that reads a channel needs View Channel and Read Message History for the application on that channel itself, and a grant on a category reaches it only while the channel is synced to the category (`.claude/rules/staff.md`, **Channel visibility**).
 - The role, the intents and what each feature needs, on Shor and on the test Discord server: `docs/discord.md`, **The application's permissions**, to read before a page reads a new channel or an action asks for a permission.
 
 ## Traps

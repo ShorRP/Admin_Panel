@@ -26,10 +26,10 @@ Facts behind it, read on 2026-10-23:
 - **The member's OAuth2 token, kept in the session**, with the `guilds.members.read` scope and `GET /users/@me/guilds/{guild.id}/member`. The session would carry an access token that lives 7 days in Discord's example (`expires_in: 604800`, https://docs.discord.com/developers/topics/oauth2) and its refresh token, both to protect and to renew.
 - **A re-check before writes only**, as #10 first decided. A member who lost the staff role would keep reading the blocked words and the audit log until their session ends.
 - **A `staffAction` wrapper, an ESLint rule, or a test over every `actions.ts`.** Each can be forgotten: an action written without it still compiles.
-- **Any role of a section's list admits a member to the panel**, as first agreed while grilling #27. `/` redirects to `/blocked-words` before `proxy.ts` runs (`CLAUDE.md`, **Navigation**), so a moderator without the staff role would land on a section they cannot open, unless `/` became a page that sends each member to their first section.
+- **Any role of a section's list admits a member to the panel**, as first agreed while grilling #27. `/` redirects to `/blocked-words` before `proxy.ts` runs (`.claude/rules/staff-navigation.md`, **What it holds**), so a moderator without the staff role would land on a section they cannot open, unless `/` became a page that sends each member to their first section.
 - **One list of roles per action.** Two lists cover a team that times out and kicks but leaves bans to a few, and two equal lists give one.
 - **The lists on a settings page, stored in Neon.** A page that a role without access would have to open, and one more page to protect, for lists that change rarely.
-- **`/login/refused` or `forbidden()` for a section a staff member cannot open.** The first tells a staff member they are not staff, and the second needs `experimental.authInterrupts` (`CLAUDE.md`, **The staff check**).
+- **`/login/refused` or `forbidden()` for a section a staff member cannot open.** The first tells a staff member they are not staff, and the second needs `experimental.authInterrupts` (`.claude/rules/staff.md`, **The staff check**).
 
 ## Consequences
 
