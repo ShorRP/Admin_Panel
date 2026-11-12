@@ -27,6 +27,10 @@ What a page prerenders, what the headers carry, how the error pages fail and whi
 - A preview serves production's policy, with no directive opened to `vercel.live`, since the Vercel Toolbar is off there (`docs/delivery.md`, **Previews**).
 - HSTS is Vercel's: the panel sets none.
 
+## The end-to-end test proxy
+
+- Read `.claude/rules/e2e.md`, **The server and the fake Discord**, before changing `E2E_TEST_PROXY` or `experimental.testProxy` in `next.config.ts` (decided by the agent on 2026-11-12, on #449, for Gilles to review, so that a session that edits `next.config.ts` finds where the switch is described).
+
 ## Error pages
 
 - `src/app/` holds `not-found.tsx`, `error.tsx` and `global-error.tsx`, with their own markup since they belong to no domain, and `error-notice.tsx`, the frame the first two share. Next.js requires `error.tsx` and `global-error.tsx` to be Client Components, and `global-error.tsx` to bring its own `<html>` and `<body>`, here with `lang="fr"`.
