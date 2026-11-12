@@ -61,7 +61,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 **Why it cannot bill.** The Developer Terms name no fee for the APIs (https://support-dev.discord.com/hc/en-us/articles/8562894815383, effective 2024-07-08). The fee Discord takes from developers is a share of what a Premium App sells (https://support-dev.discord.com/hc/en-us/articles/17299902720919, updated 2026-06-11), and monetization is something a team owner enables (https://docs.discord.com/developers/monetization/enabling-monetization); the panel sells nothing.
 
-**What would make it bill.** Going past Discord's API limits needs "Discord's express written consent", which Discord may tie to "additional terms and/or charges" (Developer Policy, **API Limits**, https://support-dev.discord.com/hc/en-us/articles/8563934450327, effective 2024-07-08). The panel asks for none, and waits out a 429 (`CLAUDE.md`, **Retries**).
+**What would make it bill.** Going past Discord's API limits needs "Discord's express written consent", which Discord may tie to "additional terms and/or charges" (Developer Policy, **API Limits**, https://support-dev.discord.com/hc/en-us/articles/8563934450327, effective 2024-07-08). The panel asks for none, and waits out a 429 (`.claude/rules/discord.md`, **Errors and retries**).
 
 **What it can cost otherwise.** Discord "MAY CHANGE, SUSPEND, OR DISCONTINUE" its APIs, and its terms "from time to time" (the Developer Terms).
 

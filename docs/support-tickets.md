@@ -12,7 +12,7 @@ The reference behind `.claude/rules/support-tickets.md`: what each view of `/sup
 
 ## Why a record reads 100 archives
 
-The record reads the 100 newest archives that cite the account, 4 searches of 25, where #387 asks for all of its tickets. The search allows about one call every 4 to 5 s once a burst of a few has passed, and answers a call over it with a 429 whose `retry_after` reached 4.4 s, where the client waits for 2 s or less (`CLAUDE.md`, **Retries**). 10 searches back to back were 7 answers and 3 429s of 1.2 s or less (ADR 0010, `probe-383-5.mjs`), so 4 searches fit the burst of a rested start. A record that read every page the search reaches, 400 at 25 an offset up to 9,975, would take about 30 minutes at that rate (400 × 4.5 s) and meet a 429 over the 2 s the client waits for long before.
+The record reads the 100 newest archives that cite the account, 4 searches of 25, where #387 asks for all of its tickets. The search allows about one call every 4 to 5 s once a burst of a few has passed, and answers a call over it with a 429 whose `retry_after` reached 4.4 s, where the client waits for 2 s or less (`.claude/rules/discord.md`, **Errors and retries**). 10 searches back to back were 7 answers and 3 429s of 1.2 s or less (ADR 0010, `probe-383-5.mjs`), so 4 searches fit the burst of a rested start. A record that read every page the search reaches, 400 at 25 an offset up to 9,975, would take about 30 minutes at that rate (400 × 4.5 s) and meet a 429 over the 2 s the client waits for long before.
 
 ## What the staff see
 

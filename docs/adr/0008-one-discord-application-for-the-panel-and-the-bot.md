@@ -10,7 +10,7 @@ This supersedes two passages of ADR 0003: the panel's own Discord application th
 
 ## Considered Options
 
-- **Two applications, the panel's and the Bot's**, as ADR 0003 drew them: two bot accounts on Shor, each token holding only its own program's permissions. The panel's role sits low, at position 13 of 38 on 2026-10-29, so that a leak of its token touches neither the staff nor the bots above it (`CLAUDE.md`, **The application's permissions**).
+- **Two applications, the panel's and the Bot's**, as ADR 0003 drew them: two bot accounts on Shor, each token holding only its own program's permissions. The panel's role sits low, at position 13 of 38 on 2026-10-29, so that a leak of its token touches neither the staff nor the bots above it (`docs/discord.md`, **The application's permissions**).
 - **The panel runs the Bot itself.** Vercel's functions hold no lasting connection, and the gateway needs one.
 
 ## Consequences
