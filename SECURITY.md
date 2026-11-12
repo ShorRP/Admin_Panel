@@ -8,4 +8,4 @@ Never report a vulnerability through a public issue, a pull request, a discussio
 
 ## Supported versions
 
-Only the panel that runs in production, deployed from `main`, gets fixes. The panel has no version numbers and no tags: a fix ships with the merge into `main` that carries it (`CLAUDE.md`, **Delivery**).
+Only the panel that runs in production, deployed from `main`, gets fixes. The panel has no version numbers and no tags: a fix ships with the merge into `main` that carries it (`docs/delivery.md`, **Production**).
