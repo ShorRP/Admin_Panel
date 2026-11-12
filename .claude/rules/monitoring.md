@@ -6,16 +6,16 @@ paths:
 
 # Monitoring
 
-What the panel logs, what it never logs, and how Gilles learns that it broke (#50, built by #78, #59 and #10). Next.js's internals, the dated trials and the vendor pages behind each rule are in `docs/monitoring.md`: read it before changing how an error is caught, alerted or sent.
+What the panel logs, what it never logs, and how Gilles learns that it broke (#50, built by #78, #59 and #10). The evidence behind each rule, Next.js's internals and the dated trials are in `docs/monitoring.md`: read it before changing how an error is caught, alerted or sent.
 
 ## What is logged
 
-- Logs say why the panel failed, for whoever maintains it; the audit log says which staff member changed what (`GLOSSARY.md`, ADR 0004). Logs hold failures only: no staff action, no success, no login.
-- Next.js already prints every error that a render, a Server Action or a Route Handler throws, through `console.error`, then calls `onRequestError`; `redirect()` and `notFound()` never get there. The panel adds no line to those.
+- Logs say why the panel failed; the audit log says which staff member changed what (`GLOSSARY.md`, ADR 0004). So logs hold failures only: no staff action, no success, no login.
+- Next.js already prints every error that a render, a Server Action or a Route Handler throws, then calls `onRequestError`: the panel adds no line to those.
 - The panel writes only what the login callback catches, since the callback throws nothing: a panel error at `error`, Discord unavailable and a missing or differing `state` at `warn`. Refused input, refused access, a login the member cancels on Discord (#10), a write that returns `{ ok: false }` because Discord is unavailable and a 429 retried with success leave nothing. `info` and `debug` go unused.
-- An error thrown in `proxy.ts` never reaches `onRequestError`: Next.js looks for the edge runtime's instrumentation there, and `proxy.ts` runs on Node.js (tried under `next start`, inferred for Vercel). So `proxy.ts` catches what it throws, hands it to `Monitor.error`, which writes the one line and sends the alert, and lets the request through: `proxy.ts` authorizes nothing, and each page runs its own check, which fails the same way and alerts a second time (Gilles, 2026-10-25, on #78, and 2026-10-26, on #10). `src/staff/redirect-without-session.test.ts` proves it.
-- Log lines go through `console.error` and `console.warn`, called with the error object as Next.js does, with no logging library and no JSON: Vercel's own pages disagree on whether a JSON line's fields are searchable, and Hobby keeps runtime logs one hour, so the alert carries what matters.
-- Stacks stay minified as Next.js builds them, with neither `serverSourceMaps` nor `--enable-source-maps`: the message, the route and a `DiscordError`'s fields place most failures in a panel this small. This is revisited when a stack proves unreadable.
+- `proxy.ts` catches what it throws, hands it to `Monitor.error` and lets the request through, because Next.js does not report its errors to `onRequestError` (tried under `next start`, inferred for Vercel; #78) and `proxy.ts` authorizes nothing: each page runs its own check, which fails the same way and alerts a second time (#10, `src/staff/redirect-without-session.test.ts`).
+- Log lines go through `console.error` and `console.warn`, called with the error object as Next.js does, with no logging library and no JSON, since Vercel's log pages disagree on searching a JSON line's fields: the alert carries what matters.
+- Stacks stay minified, with neither `serverSourceMaps` nor `--enable-source-maps`: the message, the route and a `DiscordError`'s fields place most failures in a panel this small.
 
 ## What is never logged
 
@@ -23,11 +23,12 @@ Never logged, nor sent in an alert: a secret, such as `DISCORD_BOT_TOKEN`, `DISC
 
 ## Alerts
 
-- Every panel error notifies Gilles, the maintainer, alone, and stays findable for at least 7 days, one thrown in `proxy.ts` included. Two reads turn a `DiscordError` into something else and alert no one, an avatar's lookup in the audit log (initials) and the blocked words' count in the navigation (no badge), as Read failures says (#141, #226). The support tickets' counts of request kinds hide only Discord unavailable, so a panel error there alerts (#386). Discord unavailable notifies no one, since it passes.
+- Every panel error notifies Gilles, the maintainer, alone, and stays findable for at least 7 days, a `proxy.ts` error included.
+- Two reads turn a `DiscordError` into something else and alert no one, an avatar's lookup in the audit log (initials) and the blocked words' count in the navigation (no badge), as Read failures says (#141, #226). The support tickets' counts of request kinds hide only Discord unavailable, so a panel error there alerts (#386). Discord unavailable notifies no one, since it passes.
 - The staff get no alert: they report what they see in their channel, `error.tsx` with its reference, or `/login/failed`, which shows none.
-- Alerts go through a Discord webhook into a private channel of Gilles' test Discord server (#7): free, no other account, and the panel writes every word it sends. Executing a webhook is the one call to Discord's REST API outside `DiscordApi` and `DiscordOAuth` (ADR 0003). Discord keeps a channel's messages with no expiry, which covers the 7 days (inferred).
+- Alerts go through a Discord webhook into a private channel of Gilles' test Discord server (#7), which is free, needs no other account and leaves the panel writing every word it sends. Executing a webhook is the one call to Discord's REST API outside `DiscordApi` and `DiscordOAuth` (ADR 0003).
 - Nothing is grouped: ten failing pages send ten messages, an alert sent during a Discord outage is lost, and each render that fails sends its own, « Réessayer » on a failing page included.
-- No uptime probe: the failures that matter, a revoked token or a removed permission, show when a page reads Discord, so when the staff use the panel, and the alert fires then. A failed deployment notifies its creator by default, and Vercel keeps the previous production deployment.
+- No uptime probe: the failures that matter, a revoked token or a removed permission, show when a page reads Discord, and the alert fires then.
 - The browser reports nothing: client leaves hold no logic, an action's error is thrown on the server before the browser sees it, and `connect-src` stays `'self'`.
 
 ## What an alert says
@@ -42,10 +43,10 @@ It never carries `request.path`, whose query string holds the callback's `code` 
 
 ## Sending
 
-- An alert never changes what the staff see. It runs in the background through `waitUntil`, gives up after 2 s through `AbortSignal.timeout` and never throws. It is never retried, a 429 included: in a burst the same error repeats, so the first alerts carry it (inferred). Next.js does not await `onRequestError` for an error thrown while streaming, and `after()` is documented for Server Components, Server Functions, Route Handlers and `proxy.ts` only.
+- An alert never changes what the staff see, so it runs in the background through `waitUntil`, gives up after 2 s through `AbortSignal.timeout` and never throws.
+- It is never retried, a 429 included: in a burst the same error repeats, so the first alerts carry it (inferred).
 - A failed send is one `console.error` line, `Alert not sent: ` then Discord's status or the name of what `fetch` threw, never its message, which can hold the webhook's URL, as a `Failed to parse URL from …` would.
-- The factories can throw: `createRequestErrorReporter()` parses the variables on every error, and so does `createMonitor()`'s `error`, once its line is written, so an invalid `ALERT_WEBHOOK_URL` makes `onRequestError` throw. Next.js catches it and prints `Error in instrumentation.onRequestError:` with the variable's name, never its value.
-- `waitUntil` from `@vercel/functions` hands the send to the request context that Vercel's runtime keeps; without it, under `pnpm dev` and `next start`, it does nothing and the send runs on in a server that stays up.
+- The factories can throw: `createRequestErrorReporter()` parses the variables on every error, and so does `createMonitor()`'s `error`, once its line is written, so an invalid `ALERT_WEBHOOK_URL` makes `onRequestError` throw, with the variable's name and never its value.
 
 ## `src/monitoring/`
 
@@ -55,7 +56,7 @@ It never carries `request.path`, whose query string holds the callback's `code` 
 - `src/instrumentation.ts` only wires: its `onRequestError` hands the error, the request and the context to the reporter that `createRequestErrorReporter()` builds, in `request-error.ts`, which sends the alert when `isPanelError` says so and writes no line, since Next.js has written it.
 - The login callback's domain function takes a `Monitor`, as it takes `DiscordApi` and `DiscordOAuth`, and so does what `proxy.ts` calls.
 - `alert-message.ts` lays out the alert, and `alert.ts` sends it, over a `fetch` and a `waitUntil` taken as parameters that the two factories fill with `globalThis.fetch` and `@vercel/functions`' `waitUntil`.
-- `env.ts` reads `ALERT_WEBHOOK_URL`, `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA`, and `env.test.ts` holds its rules: the webhook URL is required in production, lives under `https://discord.com/api/webhooks/`, and counts as unset when empty.
+- `env.ts` reads `ALERT_WEBHOOK_URL`, `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA`, and `env.test.ts` holds their rules. `ALERT_WEBHOOK_URL` is a URL under `https://discord.com/api/webhooks/`, required when `VERCEL_ENV` is `production`, and left unset elsewhere, where `Monitor` only writes to the console. An empty one counts as unset, so that a copy of `.env.example` sends no alert rather than failing its parse (#78).
 - `InMemoryMonitor`, in `in-memory-monitor.ts`, keeps each report with its level for the tests; the `no-restricted-imports` rule of `eslint.config.mjs` that keeps the fake Discord in `*.test.*` files refuses it elsewhere too.
 
 ## Tests
