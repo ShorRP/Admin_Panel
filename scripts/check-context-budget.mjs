@@ -199,8 +199,15 @@ function withoutCode(text) {
   return kept
     .join("\n")
     .split(/\n[ \t]*\n/)
-    .map(withoutInlineCode)
+    .map((paragraph) => withoutInlineMarkup(withoutInlineCode(paragraph)))
     .join("\n\n")
+}
+
+function withoutInlineMarkup(paragraph) {
+  return paragraph
+    .replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, " $1 ")
+    .replace(/(^|[\s([])(\*{1,3}|_{1,3}|~~)(?=\S)/g, "$1 ")
+    .replace(/(?<=\S)(\*{1,3}|_{1,3}|~~)(?=$|[\s.,;:!?)\]])/g, " ")
 }
 
 function importsOf(file, text, tracked) {
@@ -208,7 +215,8 @@ function importsOf(file, text, tracked) {
   for (const match of withoutCode(text).matchAll(
     /(?:^|\s)@((?:[^\s\\]|\\ )+)/g
   )) {
-    const requested = match[1].replaceAll("\\ ", " ")
+    const requested = match[1].replaceAll("\\ ", " ").split("#")[0]
+    if (requested === "") continue
     if (requested.startsWith("/") || requested.startsWith("~")) continue
     const target = path.posix.join(path.posix.dirname(file), requested)
     if (target !== file && tracked.has(target)) targets.push(target)
@@ -306,14 +314,14 @@ function evaluateSet(budget, always) {
       )
       if (ceiling === undefined) unceilinged.push(`${unit}s`)
     }
-    const lowered = staleCeiling(
+    const staleMessage = staleCeiling(
       "The always-loaded context",
       size[key],
       ceiling,
       limit,
       unit
     )
-    if (lowered !== null) stale.push(lowered)
+    if (staleMessage !== null) stale.push(staleMessage)
     return ceiling === undefined
       ? `${plural(size[key], unit)} (budget ${count(limit)})`
       : `${plural(size[key], unit)} (ceiling ${count(ceiling)}, budget ${count(limit)})`
@@ -368,8 +376,8 @@ function evaluateScoped(budget, scoped) {
         `${file} is ${what} of ${plural(found.bytes, "byte")} against a ceiling of ${count(effective)} (budget ${count(limit)}), over by ${count(found.bytes - effective)}. ${loads} ${RULE_ADVICE}${none}`
       )
     }
-    const lowered = staleCeiling(file, found.bytes, ceiling, limit, "byte")
-    if (lowered !== null) failures.push(lowered)
+    const staleMessage = staleCeiling(file, found.bytes, ceiling, limit, "byte")
+    if (staleMessage !== null) failures.push(staleMessage)
     if (ceiling !== undefined) {
       lines.push(
         `${file}: ${plural(found.bytes, "byte")} (ceiling ${count(ceiling)}, budget ${count(limit)})`
@@ -396,63 +404,77 @@ function evaluate(budget, collected) {
   }
 }
 
-function lowered(size, ceiling, limit) {
+function ceilingChange(size, ceiling, limit) {
+  if (size > ceiling) return null
   if (size <= limit) return { remove: true }
   if (size < ceiling) return { value: size }
   return null
 }
 
-function lowerCeilings(budget, collected) {
+function lowerAlwaysLoaded(budget, always) {
   const changes = []
-  const alwaysLoaded = { ...budget.ceilings.alwaysLoaded }
+  const ceilings = { ...budget.ceilings.alwaysLoaded }
   for (const { key, unit } of MEASURES) {
-    const ceiling = alwaysLoaded[key]
+    const ceiling = ceilings[key]
     if (ceiling === undefined) continue
-    const size = sum(collected.always, key)
+    const size = sum(always, key)
     const limit = budget.budget.alwaysLoaded[key]
-    const change = lowered(size, ceiling, limit)
+    const change = ceilingChange(size, ceiling, limit)
     if (change === null) continue
     if (change.remove) {
-      delete alwaysLoaded[key]
+      delete ceilings[key]
       changes.push(
         `Removed the ceiling of the always-loaded ${unit}s (now ${count(size)}, within the budget of ${count(limit)}).`
       )
     } else {
-      alwaysLoaded[key] = change.value
+      ceilings[key] = change.value
       changes.push(
         `Lowered the ceiling of the always-loaded ${unit}s from ${count(ceiling)} to ${count(change.value)}.`
       )
     }
   }
-  const scoped = {}
+  return { changes, ceilings }
+}
+
+function lowerScoped(budget, scoped) {
+  const changes = []
+  const ceilings = {}
   const limit = budget.budget.scopedRule.bytes
-  for (const [file, ceiling] of Object.entries(budget.ceilings.scoped)) {
-    const found = collected.scoped.get(file)
+  const files = Object.keys(budget.ceilings.scoped).sort()
+  for (const file of files) {
+    const ceiling = budget.ceilings.scoped[file]
+    const found = scoped.get(file)
     if (found === undefined) {
       changes.push(
         `Removed the ceiling of ${file} (the file is gone or is no longer scoped).`
       )
       continue
     }
-    const change = lowered(found.bytes, ceiling, limit)
-    if (change === null) scoped[file] = ceiling
+    const change = ceilingChange(found.bytes, ceiling, limit)
+    if (change === null) ceilings[file] = ceiling
     else if (change.remove) {
       changes.push(
         `Removed the ceiling of ${file} (now ${count(found.bytes)}, within the budget of ${count(limit)}).`
       )
     } else {
-      scoped[file] = change.value
+      ceilings[file] = change.value
       changes.push(
         `Lowered the ceiling of ${file} from ${count(ceiling)} to ${count(change.value)}.`
       )
     }
   }
-  const sorted = Object.fromEntries(
-    Object.entries(scoped).sort(([a], [b]) => (a < b ? -1 : 1))
-  )
+  return { changes, ceilings }
+}
+
+function lowerCeilings(budget, collected) {
+  const always = lowerAlwaysLoaded(budget, collected.always)
+  const scoped = lowerScoped(budget, collected.scoped)
   return {
-    changes,
-    budget: { ...budget, ceilings: { alwaysLoaded, scoped: sorted } },
+    changes: [...always.changes, ...scoped.changes],
+    budget: {
+      ...budget,
+      ceilings: { alwaysLoaded: always.ceilings, scoped: scoped.ceilings },
+    },
   }
 }
 
@@ -477,16 +499,16 @@ function main(argv) {
   const collected = collect(root)
   const preamble = []
   if (args.includes("--write")) {
-    const lowered = lowerCeilings(budget, collected)
-    budget = lowered.budget
-    if (lowered.changes.length === 0) {
+    const lowering = lowerCeilings(budget, collected)
+    budget = lowering.budget
+    if (lowering.changes.length === 0) {
       preamble.push("No ceiling to lower or remove.")
     } else {
       fs.writeFileSync(
         path.join(root, BUDGET_FILE),
         `${JSON.stringify(budget, null, 2)}\n`
       )
-      preamble.push(...lowered.changes)
+      preamble.push(...lowering.changes)
     }
   }
   const { lines, failures } = evaluate(budget, collected)

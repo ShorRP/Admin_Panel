@@ -833,6 +833,95 @@ test("a scoped rule that CLAUDE.md imports counts as always loaded and keeps its
   )
 })
 
+test("an import with a fragment names its file, as Claude Code strips from the #", () => {
+  withRepository(
+    {
+      "CLAUDE.md": "see @docs/a.md#section and @docs/b.md#\n",
+      "docs/a.md": "aa\n",
+      "docs/b.md": "bb\n",
+      [BUDGET_FILE]: IMPORT_BUDGET,
+    },
+    (dir) => {
+      const result = run(dir)
+      assert.equal(result.status, 0)
+      assert.match(
+        result.stdout,
+        /Always-loaded: 45 bytes, 3 lines, within budget/
+      )
+    }
+  )
+})
+
+test("an import right after emphasis or link punctuation counts, and an underscore inside a name stays in it", () => {
+  withRepository(
+    {
+      "CLAUDE.md": [
+        "**@docs/a.md** and _@docs/b.md_ and ~~@docs/c.md~~",
+        "[@docs/d.md](https://example.com/x) and [see @docs/e.md](https://example.com/y)",
+        "and @docs/my_file.md but not (@docs/f.md) or x@docs/g.md",
+        "",
+      ].join("\n"),
+      "docs/a.md": "aa\n",
+      "docs/b.md": "bb\n",
+      "docs/c.md": "cc\n",
+      "docs/d.md": "dd\n",
+      "docs/e.md": "ee\n",
+      "docs/my_file.md": "mm\n",
+      "docs/f.md": "ff\n",
+      "docs/g.md": "gg\n",
+      [BUDGET_FILE]: budgetFile({
+        budget: {
+          alwaysLoaded: { bytes: 300, lines: 20 },
+          scopedRule: { bytes: 50 },
+        },
+      }),
+    },
+    (dir) => {
+      const result = run(dir)
+      assert.equal(result.status, 0)
+      assert.match(
+        result.stdout,
+        /Always-loaded: 206 bytes, 9 lines, within budget/
+      )
+    }
+  )
+})
+
+test("--write never raises the limit of a size over a hand-written ceiling", () => {
+  withRepository(
+    {
+      "CLAUDE.md": sized(95, 3),
+      ".claude/rules/big.md": scopedRule(sized(20, 2)),
+      [BUDGET_FILE]: budgetFile({
+        always: { bytes: 90 },
+        scoped: { ".claude/rules/big.md": 40 },
+      }),
+    },
+    (dir) => {
+      const written = run(dir, "--write")
+      assert.equal(written.status, 1)
+      assert.match(
+        written.stdout,
+        /95 bytes against a ceiling of 90 \(budget 100\), over by 5\./
+      )
+      assert.match(
+        written.stdout,
+        /big\.md is a rule scoped by paths: of 48 bytes against a ceiling of 40 \(budget 50\), over by 8\./
+      )
+      const after = run(dir)
+      assert.equal(after.status, 1)
+      assert.match(
+        after.stdout,
+        /95 bytes against a ceiling of 90 \(budget 100\), over by 5\./
+      )
+      assert.match(
+        after.stdout,
+        /big\.md is a rule scoped by paths: of 48 bytes against a ceiling of 40 \(budget 50\), over by 8\./
+      )
+    }
+  )
+})
+
 test("an unknown argument exits 2", () => {
   withRepository(
     { "CLAUDE.md": sized(30, 3), [BUDGET_FILE]: budgetFile() },
