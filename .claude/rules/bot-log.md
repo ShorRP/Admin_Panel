@@ -10,7 +10,7 @@ paths:
 
 # The Bot log's page (#396)
 
-`/bot-log`, under « Journaux » in the navigation, lists what the Bot posts in « 🔧・log-admin » for each thing it does by itself (`GLOSSARY.md`, **Bot log**; ADR 0009, **The Bot log**; ADR 0010; #381). It is built on the log components of `src/ui/` (`CLAUDE.md`, **`src/ui/`**), as the audit log and the game log are, and on the game log's page for its access, its cursor and its link in the navigation (`game-log.md`). The embed's format is a contract with ShorBot that ADR 0009 holds, with the shared example `src/bot-log/bot-log-examples.json`. This file holds what a change to `src/bot-log/` must not break.
+`/bot-log`, under « Journaux » in the navigation, lists what the Bot posts in « 🔧・log-admin » for each thing it does by itself (`GLOSSARY.md`, **Bot log**; ADR 0009, **The Bot log**; ADR 0010; #381). It is built on the log components of `src/ui/` (`.claude/rules/ui.md`, **Shared components**), as the audit log and the game log are, and on the game log's page for its access, its cursor and its link in the navigation (`game-log.md`). The embed's format is a contract with ShorBot that ADR 0009 holds, with the shared example `src/bot-log/bot-log-examples.json`. This file holds what a change to `src/bot-log/` must not break.
 
 ## Configuration and access
 

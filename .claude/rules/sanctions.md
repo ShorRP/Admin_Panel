@@ -30,9 +30,9 @@ A sanction adds this to the shape of a write's result in `CLAUDE.md`, **Write re
 ## Confirmation
 
 - A kick and a ban, of a member or of an account absent from the Discord server, ask for a confirmation, and no other write does (#221, #235): their form holds no submit button, and its red « Expulser » or « Bannir » is the trigger of shadcn/ui's Dialog on Base UI, which opens it with no check beforehand, since the domain stays the one validator.
-- `SanctionConfirmationDialog` renders the Dialog around `SanctionConfirmation`, which asks « Expulser {nom} ? » or « Bannir {nom} ? » by the name the record's header shows, which `SanctionOptions` carries. Its two buttons sit side by side at every width (#235, #357; `docs/sanctions.md`).
+- `SanctionConfirmationDialog` renders the Dialog around `SanctionConfirmation`, which asks « Expulser {nom} ? » or « Bannir {nom} ? » by the name the record's header shows, which `SanctionOptions` carries. Its two buttons sit side by side at every width, in a footer that is `grid grid-cols-2 gap-2` under `sm` and `sm:flex sm:justify-end` from it, in a dialog at `sm:max-w-110` (#235, #357; `docs/sanctions.md`).
 - The confirmation, a `DialogClose` of `type="submit"`, sends the open tab's form through its `form` attribute, which names that form's `id`, `kick-form` or `ban-form`, each unique on a record, which shows one ban form at most, then closes the dialog, while « Annuler » closes it and writes nothing; the dialog is portaled out of the form (`docs/sanctions.md`). A missing reason comes back, once confirmed, in the alert region, and the form keeps what was typed (**Keeping what was typed** of `CLAUDE.md`).
-- `SanctionConfirmationDialog` passes `DIALOG_ONLY_FADES_WHEN_REDUCED` of `src/ui/dialog-motion.ts` (`CLAUDE.md`, **Motion**).
+- `SanctionConfirmationDialog` passes `DIALOG_ONLY_FADES_WHEN_REDUCED` of `src/ui/dialog-motion.ts` (`.claude/rules/ui-overlays.md`, **Dialogs and sheets**).
 
 ## Buttons
 
