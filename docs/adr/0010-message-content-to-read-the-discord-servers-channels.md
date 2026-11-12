@@ -20,7 +20,7 @@ The game log's format, the title `<category> · <action>`, its fields and its fo
 - `docs/personal-data.md` and `/privacy` say what the panel now reads without keeping: the game log's characters, game accounts and places, and the support tickets' conversations in progress.
 - The search reads the text of an embed, which holds the whole of the game log and of an archive, and serves the filters listed under **What the search does**; a filter it cannot serve is done in memory over the pages read.
 - The application needs View Channel and Read Message History on the channels it reads, which Gilles grants on Shor.
-- The panel's page of the support ticket archives gives the search one text per view, since the search finds the words of one text of a message and never those of two: an account's ID, the words of a reason, or the emoji of a request kind. It checks every other filter in memory over the first 100 messages found, and counts the kinds with searches of their own, read after the list so that a refusal of theirs costs the numbers and not the page (#386, `CLAUDE.md`, **The filters**).
+- The panel's page of the support ticket archives gives the search one text per view, since the search finds the words of one text of a message and never those of two: an account's ID, the words of a reason, or the emoji of a request kind. It checks every other filter in memory over the first 100 messages found, and counts the kinds with searches of their own, read after the list so that a refusal of theirs costs the numbers and not the page (#386, `.claude/rules/support-tickets.md`, **The filters**).
 
 ## What a game log line holds
 

@@ -24,7 +24,7 @@ Never logged, nor sent in an alert: a secret, such as `DISCORD_BOT_TOKEN`, `DISC
 ## Alerts
 
 - Every panel error notifies Gilles, the maintainer, alone, and stays findable for at least 7 days, a `proxy.ts` error included.
-- Two reads turn a `DiscordError` into something else and alert no one, an avatar's lookup in the audit log (initials) and the blocked words' count in the navigation (no badge), as Read failures says (#141, #226). The support tickets' counts of request kinds hide only Discord unavailable, so a panel error there alerts (#386). Discord unavailable notifies no one, since it passes.
+- Two reads turn a `DiscordError` into something else and alert no one, an avatar's lookup in the audit log (initials) and the blocked words' count in the navigation (no badge), as Read failures says (#141, #226). The support tickets' counts of request kinds hide only Discord unavailable, so a panel error there alerts (`.claude/rules/support-tickets.md`, **Read failures**). Discord unavailable notifies no one, since it passes.
 - The staff get no alert: they report what they see in their channel, `error.tsx` with its reference, or `/login/failed`, which shows none.
 - Alerts go through a Discord webhook into a private channel of Gilles' test Discord server (#7), which is free, needs no other account and leaves the panel writing every word it sends. Executing a webhook is the one call to Discord's REST API outside `DiscordApi` and `DiscordOAuth` (ADR 0003).
 - Nothing is grouped: ten failing pages send ten messages, an alert sent during a Discord outage is lost, and each render that fails sends its own, « Réessayer » on a failing page included.
