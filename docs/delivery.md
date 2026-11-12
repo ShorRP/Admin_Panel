@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/ci.md`: what is set on GitHub's and Vercel's side, which no file of the repository shows, what each vendor page says, and the trials that showed how CI and a deployment behave. The rule says what to do; this file says how it was known. Gilles decided the design while grilling #57 on 2026-10-25, and the options set aside, and why, are in #57's decisions and in ADR 0007. #101 and #100 opened the repository, #96 and #95 set CI's Node and runner, #103 the build cache, #102 `contract.yml`, #9 the Vercel project and #13 the first production deploy. What each service can cost is in `docs/costs.md`, and the rule that none may bill in `CLAUDE.md`, **Costs**.
 
-The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`). A value read from GitHub with `gh api` carries its date: a setting can change without a commit.
+The `node_modules` citations are those of Next.js 16.4.2 unless a package is named: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**). A value read from GitHub with `gh api` carries its date: a setting can change without a commit.
 
 ## The repository
 

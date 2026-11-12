@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/discord.md`: what Discord was seen to do, what the fake copies of it, what the contract suite proves and what it costs to run, and where the application stands on Shor and on the test Discord server. The rule says what to do; this file says how it was known, with the ticket that learned each fact.
 
-A fact below is **seen** when Discord did it in `pnpm test:contract` or in a probe, **documented** when a page of Discord's docs says it, and **inferred** when neither was tried. The `node_modules` citations are those of Vitest 5.0.5 and `discord-api-types`: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`).
+A fact below is **seen** when Discord did it in `pnpm test:contract` or in a probe, **documented** when a page of Discord's docs says it, and **inferred** when neither was tried. The `node_modules` citations are those of Vitest 5.0.5 and `discord-api-types`: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## The Discord seam
 

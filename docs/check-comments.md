@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/check-comments.md`: what the PR hook was tried against, the page of PostgreSQL the SQL reader follows, the bash runs behind the shell reader and its limits, the dotenv expression the `.env*` reader copies, and what the repository held when each was measured. The rule says what to do; this file says how it was known.
 
-The `node_modules` citations are those of dotenv 17.4.2 and `@next/env` 16.4.2: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`).
+The `node_modules` citations are those of dotenv 17.4.2 and `@next/env` 16.4.2: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## The PR hook
 

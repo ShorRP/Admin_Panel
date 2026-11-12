@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/e2e.md`: what Next.js's test mode, Playwright, axe and the browser were seen to do, the measures behind each fixture, and the trials that showed what a flow proves. The rule says what to do; this file says how it was known. A flow that its test title says plainly has no entry: the title is its description.
 
-The `node_modules` citations are those of Next.js 16.4.2, React DOM `19.3.0-canary-278794d7-20261002` and Playwright 1.64.1 unless a package is named: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`, **Dependencies**). A run of a throwaway build or probe carries its date.
+The `node_modules` citations are those of Next.js 16.4.2, React DOM `19.3.0-canary-278794d7-20261002` and Playwright 1.64.1 unless a package is named: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**). A run of a throwaway build or probe carries its date.
 
 ## The server and the fake Discord
 

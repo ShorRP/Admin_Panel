@@ -2,7 +2,7 @@
 
 The reference behind `.claude/rules/records.md` and `.claude/rules/account-list.md`: what a view of the list and of a record costs in calls to Discord, where the pages depart from the mockup and from their tickets, and the measures and trials behind some choices. The rules say what to do; this file says how it was known.
 
-The mockup's lines are quoted as `M:<line>`: they are lines of `Panel Shor.dc.html`, which sits outside the repository (`docs/design/hydromel/README.md:29`), and the captures of `docs/design/hydromel/` show its pages. The `node_modules` citations are those of Next.js 16.4.2: an update of a package re-reads the citations that name it (**Docs that name a version** of `CLAUDE.md`).
+The mockup's lines are quoted as `M:<line>`: they are lines of `Panel Shor.dc.html`, which sits outside the repository (`docs/design/hydromel/README.md:29`), and the captures of `docs/design/hydromel/` show its pages. The `node_modules` citations are those of Next.js 16.4.2: an update of a package re-reads the citations that name it (`.claude/rules/dependencies.md`, **Docs that name a version**).
 
 ## Calls per view
 
