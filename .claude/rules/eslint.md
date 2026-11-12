@@ -12,7 +12,7 @@ paths:
 
 - `admin-panel/react-escaping`: `react/no-danger` and `react/jsx-no-script-url`, on `Link` too (`.claude/rules/nextjs.md`, **Headers**).
 - `admin-panel/test-doubles`: in `src/` outside `*.test.*` files, no import of the fake Discord, its HTTP adapter, the in-memory `Monitor` or the tests' helpers (`.claude/rules/discord.md`, **The fake**; `.claude/rules/monitoring.md`, **`src/monitoring/`**).
-- `admin-panel/ui-imports`: in `src/ui/`, no relative import and no `@/` import but `@/ui/*` (`CLAUDE.md`, **Interface**, **`src/ui/`**).
+- `admin-panel/ui-imports`: in `src/ui/`, no relative import and no `@/` import but `@/ui/*` (`.claude/rules/ui.md`, **What `src/ui/` holds**).
 - `admin-panel/e2e-fixtures`: in `e2e/` but `fixtures.ts`, no import of `@playwright/test` or `next/experimental/testmode/playwright` (`.claude/rules/e2e.md`, **The server and the fake Discord**).
 - `admin-panel/responsive-classes` and `admin-panel/ban-ts-comment` are below.
 
@@ -27,7 +27,7 @@ paths:
 
 ## Accessibility
 
-- `eslint.config.mjs` adds the rules of `eslint-plugin-jsx-a11y`'s `recommended` config after `eslint-config-next`'s, so that they keep its severities: `error`, but for the three it turns off, the six that `eslint-config-next` sets to `warn` among the errors (#55). It is the lint half of WCAG 2.2 AA (`CLAUDE.md`, **Interface**).
+- `eslint.config.mjs` adds the rules of `eslint-plugin-jsx-a11y`'s `recommended` config after `eslint-config-next`'s, so that they keep its severities: `error`, but for the three it turns off, the six that `eslint-config-next` sets to `warn` among the errors (#55). It is the lint half of WCAG 2.2 AA (`.claude/rules/ui-theme.md`, **Accessibility**).
 
 ## The responsive classes
 

@@ -57,7 +57,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 ## Discord
 
-**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, and the webhook of the alerts (`.claude/rules/monitoring.md`); and its CDN, from which the staff's browsers load the members' avatars, with no token (`CLAUDE.md`, **Avatars**).
+**Used for** the panel's two applications, « Shor Panel » and « Shor Panel Dev », which Gilles owns (#7): their bot tokens on the REST API, the OAuth2 login, and the webhook of the alerts (`.claude/rules/monitoring.md`); and its CDN, from which the staff's browsers load the members' avatars, with no token (`.claude/rules/ui.md`, **Avatars and skeletons**).
 
 **Why it cannot bill.** The Developer Terms name no fee for the APIs (https://support-dev.discord.com/hc/en-us/articles/8562894815383, effective 2024-07-08). The fee Discord takes from developers is a share of what a Premium App sells (https://support-dev.discord.com/hc/en-us/articles/17299902720919, updated 2026-06-11), and monetization is something a team owner enables (https://docs.discord.com/developers/monetization/enabling-monetization); the panel sells nothing.
 
@@ -85,7 +85,7 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 **Used for** `pnpm exec shadcn add` and its `--diff`, from shadcn/ui's own registry only: `components.json` sets `"registries": {}`. The code is MIT (https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
 
-**Why it cannot bill.** The registry answers without an account: `CLAUDE.md` cites its JSON, such as https://ui.shadcn.com/r/styles/base-nova/button.json, read with no login.
+**Why it cannot bill.** The registry answers without an account: `docs/ui.md` cites its JSON, such as https://ui.shadcn.com/r/styles/base-nova/button.json, read with no login.
 
 **What would make it bill.** Another registry, such as `@v0`, or a private one that takes a token in its headers (https://ui.shadcn.com/docs/components-json).
 

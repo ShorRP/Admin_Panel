@@ -4,7 +4,7 @@ The repository carries no license of its own ([README](README.md), **License**),
 
 ## shadcn/ui
 
-The code that shadcn/ui's CLI copies into [`src/ui/`](src/ui/), through its `init` and `add` commands, comes from [shadcn/ui](https://github.com/shadcn-ui/ui), which the panel then changes (`CLAUDE.md`, **Interface**): its components, and the theme it wrote into [`globals.css`](src/ui/globals.css). shadcn/ui's code there is under the MIT license, whose notice follows in full (https://github.com/shadcn-ui/ui/blob/main/LICENSE.md, read 2026-10-25).
+The code that shadcn/ui's CLI copies into [`src/ui/`](src/ui/), through its `init` and `add` commands, comes from [shadcn/ui](https://github.com/shadcn-ui/ui), which the panel then changes (`.claude/rules/ui.md`, **shadcn/ui and copied code**): its components, and the theme it wrote into [`globals.css`](src/ui/globals.css). shadcn/ui's code there is under the MIT license, whose notice follows in full (https://github.com/shadcn-ui/ui/blob/main/LICENSE.md, read 2026-10-25).
 
 ```text
 MIT License

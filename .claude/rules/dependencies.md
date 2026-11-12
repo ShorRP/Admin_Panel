@@ -96,7 +96,7 @@ A version held back is one line below: the package, the range it stays in, why, 
 
 ## The registry
 
-- Each session runs `pnpm exec shadcn add <component> --diff` on every copied component. What the registry changed comes in like a minor update, and the panel's own lines stay (**Copied code** of `CLAUDE.md`, **Interface** and **Code style**).
+- Each session runs `pnpm exec shadcn add <component> --diff` on every copied component. What the registry changed comes in like a minor update, and the panel's own lines stay (`.claude/rules/ui.md`, **shadcn/ui and copied code**).
 
 ## Adding a dependency
 

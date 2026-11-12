@@ -16,7 +16,7 @@ paths:
 
 # The game log's page (#394, #395)
 
-`/game-log`, under « Journaux » in the navigation, lists the lines that the game server's webhook posts in « 🔧・log-jeux » (`GLOSSARY.md`, **Game log**; ADR 0010, #381). It is built on the log components of `src/ui/` (`CLAUDE.md`, **`src/ui/`**), as the audit log and the Bot log are, and filtered by category, through pills, and by action, character, game account, target, cell, plugin, reason, text and period (**The filters**, #395). This file holds what a change to `src/game-log/` must not break.
+`/game-log`, under « Journaux » in the navigation, lists the lines that the game server's webhook posts in « 🔧・log-jeux » (`GLOSSARY.md`, **Game log**; ADR 0010, #381). It is built on the log components of `src/ui/` (`.claude/rules/ui.md`), as the audit log and the Bot log are, and filtered by category, through pills, and by action, character, game account, target, cell, plugin, reason, text and period (**The filters**, #395). This file holds what a change to `src/game-log/` must not break.
 
 ## Configuration and access
 
