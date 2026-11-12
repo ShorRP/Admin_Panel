@@ -12,7 +12,7 @@ The reference behind `.claude/rules/support-tickets.md`: what each view of `/sup
 
 ## Why a record reads 100 archives
 
-The record reads the 100 newest archives that cite the account, 4 searches of 25, where #387 asks for all of its tickets. The search allows about one call every 4 to 5 s once a burst of a few has passed, and 10 searches back to back were 7 answers and 3 429s of 1.2 s or less (ADR 0010, `probe-383-5.mjs`), so 4 searches fit the burst of a rested start. A record that read every page the search reaches, 400 at 25 an offset up to 9,975, would take about 30 minutes at that rate (400 × 4.5 s) and meet a 429 over the 2 s the client waits for long before.
+The record reads the 100 newest archives that cite the account, 4 searches of 25, where #387 asks for all of its tickets. The search allows about one call every 4 to 5 s once a burst of a few has passed, and answers a call over it with a 429 whose `retry_after` reached 4.4 s, where the client waits for 2 s or less (`CLAUDE.md`, **Retries**). 10 searches back to back were 7 answers and 3 429s of 1.2 s or less (ADR 0010, `probe-383-5.mjs`), so 4 searches fit the burst of a rested start. A record that read every page the search reaches, 400 at 25 an offset up to 9,975, would take about 30 minutes at that rate (400 × 4.5 s) and meet a 429 over the 2 s the client waits for long before.
 
 ## What the staff see
 
@@ -21,7 +21,7 @@ The record reads the 100 newest archives that cite the account, 4 searches of 25
 - Discord's index lags: a message was found 8 to 58 s after its post and a page may hold fewer messages than it should (ADR 0010, `probe-383-3.mjs` to `probe-383-9.mjs`), so an archive closed seconds ago may be missing for a while, and one that appears between two views pushes the archives after it one place down, so that the last archive of a page may show again at the top of the next (inferred). The next view shows it, and the page says nothing of it (#385).
 - A period on the closing is the time of the message, which the Bot posts seconds after the ticket closes, so an archive closed in the last seconds of a day may sit on the other side of it from its « Fermé le » (inferred).
 - A typed apostrophe of ASCII is not known to join the letters around it, as U+2019 does (ADR 0010; inferred, not tried).
-- `e2e/support-tickets.test.ts` proves the error page and its « Réessayer » on a 429 of 4.4 s that the fake throws once, not what the real client does with one, which no test measured on this page. That « Réessayer » works a few seconds later on a record is not tried either (ADR 0010).
+- `e2e/support-tickets.test.ts` proves the error page and its « Réessayer » on a 429 of 4.4 s that the fake throws once, not what the real client does with one, which no test measured on this page. A page or a record that meets a 429 over the 2 s shows the error page, and its « Réessayer » is inferred to work a few seconds later, once the search's rate has passed, which was not tried on a record (ADR 0010).
 
 ## Configuration
 
