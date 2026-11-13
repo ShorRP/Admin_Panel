@@ -13,5 +13,5 @@ paths:
 
 - The hook's gotchas are here and not in `.claude/rules/prettier.md` (decided by the agent on 2026-11-12, on #450, for Gilles to review, since the hook's code sits in `.claude/hooks/`, and `prettier.md` is scoped to Prettier's files alone).
 - `.claude/hooks/format-after-edit.mjs`, a `PostToolUse` hook of `.claude/settings.json` on `Edit|Write`, formats the file the tool touched. It calls Prettier from the project's root, `CLAUDE_PROJECT_DIR`, since Prettier resolves a plugin's package name from the working directory.
-- That root is where the session started, and a session that enters a worktree keeps it (https://code.claude.com/docs/en/hooks), so that such a session's edits in the worktree, which the main checkout's `.gitignore` lists, are not formatted (inferred from the code; `CLAUDE.md`, **Gotchas**, says to run `pnpm format`).
+- That root is where the session started, and a session that enters a worktree keeps it (https://code.claude.com/docs/en/hooks), so that such a session's edits in the worktree, which the main checkout's `.gitignore` lists, are not formatted until `pnpm format` (inferred from the code).
 - It leaves alone a file outside the project, one that `.gitignore` or `.prettierignore` lists, and one Prettier does not know, and exits 2 on a file Prettier cannot parse, so that Claude reads why (`test/format-after-edit.test.mjs`).
