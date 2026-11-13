@@ -9,10 +9,7 @@
     }
   },
   "ceilings": {
-    "alwaysLoaded": {
-      "bytes": 55691,
-      "lines": 215
-    },
+    "alwaysLoaded": {},
     "scoped": {}
   }
 }

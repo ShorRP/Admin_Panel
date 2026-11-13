@@ -13,7 +13,7 @@ What `/support-tickets` shows, the support tickets still open (#388) and the arc
 
 ## The support tickets' page
 
-- `/support-tickets` is open to the whole staff, as the archives channel is (#385). A name is a link to the account's record for a staff member who moderates, `recordHrefForModerator`, and text for another, each on a line of its own, since a link inside a sentence is exempt from the 44 px that #385 asks (`CLAUDE.md`, **Responsive**).
+- `/support-tickets` is open to the whole staff, as the archives channel is (#385). A name is a link to the account's record for a staff member who moderates, `recordHrefForModerator`, and text for another, each on a line of its own, since a link inside a sentence is exempt from the 44 px that #385 asks (`.claude/rules/ui.md`, **Touch targets, type and fields**).
 - Each skeleton wears the layout constants of what it stands for, in `support-ticket-archives-layout.ts`, `ticket-archive-layout.ts` and `open-support-tickets-layout.ts`, so that the content replaces it with the same layout (#385, #388; `docs/responsive.md`, **`/support-tickets`**).
 
 ### The tickets in progress (#388)
@@ -75,4 +75,4 @@ Every read of this folder is thrown on failure and `error.tsx` replaces the page
 
 ## Tests
 
-`archiveMessage` poses an archive in a test, and `archive-message.test.ts` holds its embed to the one ShorBot builds (`archive_embed`, `shorbot/support_tickets.py`): change both when the contract changes (ADR 0009). `supportTicketChannel` poses a ticket's channel with the overwrites ShorBot writes, and `channelIdAt` dates its ID (#388). Both stay in test files (`CLAUDE.md`, **Feedback loops**).
+`archiveMessage` poses an archive in a test, and `archive-message.test.ts` holds its embed to the one ShorBot builds (`archive_embed`, `shorbot/support_tickets.py`): change both when the contract changes (ADR 0009). `supportTicketChannel` poses a ticket's channel with the overwrites ShorBot writes, and `channelIdAt` dates its ID (#388). Both stay in test files (`.claude/rules/eslint.md`, **What the config refuses**).
