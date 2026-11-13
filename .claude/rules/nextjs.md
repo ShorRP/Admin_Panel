@@ -11,7 +11,7 @@ What a page prerenders, what the headers carry, how the error pages fail and whi
 
 ## Caching
 
-- Nothing from Discord and nothing from the session goes through `use cache`, since the panel reads Discord back on every view (ADR 0002); CLAUDE.md points here (decided by the agent on 2026-11-12, on #448, for Gilles to review).
+- Nothing from Discord and nothing from the session goes through `use cache` (`CLAUDE.md`, **No `use cache`**).
 - With `cacheComponents` on (`next.config.ts`), only the static shell prerenders: the part of a page that waits on Discord sits under `<Suspense>`, with a French fallback.
 - That part, and a Route Handler, await `connection()` before they create a client, so that the build never creates one: its variables are missing outside Vercel and `pnpm build` fails. It also keeps `/login` from prerendering one `state` for every visitor.
 - A cookie, or any request data, is read under `<Suspense>` too, or the static shell breaks (inferred, #225).

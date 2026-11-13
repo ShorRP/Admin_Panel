@@ -31,7 +31,7 @@ A sanction adds this to the shape of a write's result in `CLAUDE.md`, **Write re
 
 - A kick and a ban, of a member or of an account absent from the Discord server, ask for a confirmation, and no other write does (#221, #235): their form holds no submit button, and its red « Expulser » or « Bannir » is the trigger of shadcn/ui's Dialog on Base UI, which opens it with no check beforehand, since the domain stays the one validator.
 - `SanctionConfirmationDialog` renders the Dialog around `SanctionConfirmation`, which asks « Expulser {nom} ? » or « Bannir {nom} ? » by the name the record's header shows, which `SanctionOptions` carries. Its two buttons sit side by side at every width, in a footer that is `grid grid-cols-2 gap-2` under `sm` and `sm:flex sm:justify-end` from it, in a dialog at `sm:max-w-110` (#235, #357; `docs/sanctions.md`).
-- The confirmation, a `DialogClose` of `type="submit"`, sends the open tab's form through its `form` attribute, which names that form's `id`, `kick-form` or `ban-form`, each unique on a record, which shows one ban form at most, then closes the dialog, while « Annuler » closes it and writes nothing; the dialog is portaled out of the form (`docs/sanctions.md`). A missing reason comes back, once confirmed, in the alert region, and the form keeps what was typed (**Keeping what was typed** of `CLAUDE.md`).
+- The confirmation, a `DialogClose` of `type="submit"`, sends the open tab's form through its `form` attribute, which names that form's `id`, `kick-form` or `ban-form`, each unique on a record, which shows one ban form at most, then closes the dialog, while « Annuler » closes it and writes nothing; the dialog is portaled out of the form (`docs/sanctions.md`). A missing reason comes back, once confirmed, in the alert region, and the form keeps what was typed (`.claude/rules/components.md`, **Forms**).
 - `SanctionConfirmationDialog` passes `DIALOG_ONLY_FADES_WHEN_REDUCED` of `src/ui/dialog-motion.ts` (`.claude/rules/ui-overlays.md`, **Dialogs and sheets**).
 
 ## Buttons
@@ -51,4 +51,4 @@ A sanction adds this to the shape of a write's result in `CLAUDE.md`, **Write re
 
 ## Wording
 
-`deName` of `de-name.ts` elides « de » before a name, as `CLAUDE.md`, **Wording**, asks, in the four messages that name an account after it, the kick's, the ban's, the lifting of a ban's and the lifting of a timeout's (#219). The helper sits in this folder since only this folder uses it (decided by the agent on 2026-10-30, on #219, for Gilles to review).
+`deName` of `de-name.ts` elides « de » before a name, « d’Aldis » but « de Lyra », in the four messages that name an account after it, the kick's, the ban's, the lifting of a ban's and the lifting of a timeout's (#219). The helper sits in this folder since only this folder uses it (decided by the agent on 2026-10-30, on #219, for Gilles to review).

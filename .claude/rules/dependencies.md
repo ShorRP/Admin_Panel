@@ -16,7 +16,7 @@ How the panel's dependencies move to new versions (#56). The monthly session is 
 ## Who and when
 
 - No bot: Dependabot and Renovate re-read none of the citations that name a version (**Docs that name a version**), so each of their PRs would need a session anyway (#56).
-- Once a month, in its first week, Gilles starts a session of `/update-dependencies` (not yet, #97), which runs the updates and the monthly check of `CLAUDE.md`, **Costs**. He starts one out of cycle when the daily audit fails (**Advisories**) or a ticket needs a newer version. Its commits are his.
+- Once a month, in its first week, Gilles starts a session of `/update-dependencies` (not yet, #97), which runs the updates and the monthly check of the costs: free plans change, so it reads again the pages `docs/costs.md` cites, and an entry whose facts moved is updated before anything else, or its service leaves (#97). He starts one out of cycle when the daily audit fails (**Advisories**) or a ticket needs a newer version. Its commits are his.
 
 ## Exact versions
 
