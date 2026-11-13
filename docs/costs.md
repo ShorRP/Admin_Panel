@@ -73,6 +73,8 @@ Git LFS bandwidth and storage "always count against the repository owner's accou
 
 **What would make it bill.** Private packages, a paid npm organization, or another registry that needs a token.
 
+A package that only runs locally needs no entry of its own, since this one covers it (`CLAUDE.md`, **A new tool**).
+
 ## Playwright's browser
 
 **Used for** `pnpm exec playwright install chromium`, in CI and at the desk. Playwright is Apache-2.0 (`"license"` in `node_modules/.pnpm/playwright-core@1.64.1/node_modules/playwright-core/package.json`), and downloads its browser from Microsoft's CDN (https://playwright.dev/docs/browsers): `https://cdn.playwright.dev/dbazure/download/playwright` or `https://playwright.download.prss.microsoft.com/dbazure/download/playwright` (`node_modules/.pnpm/playwright-core@1.64.1/node_modules/playwright-core/lib/coreBundle.js`).

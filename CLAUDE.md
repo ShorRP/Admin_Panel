@@ -133,7 +133,7 @@ The lines here add to the **Security** stop of the plugin's `deliver-epic/rules.
 A trap of one area sits in its rule under `.claude/rules/`, the hooks' in `claude-hooks.md`; here stay those no path scopes:
 
 - Under Git Bash, write a path inside a script as `C:/Users/…`: Node reads `/c/Users/…` as `C:\c\Users\…`, since MSYS converts only arguments.
-- A U+00A0 typed into `Write` or `Edit` can land as an ordinary space, and `Read` shows one as a space too: count them with `grep -c $'\xc2\xa0' <file>`, or write a placeholder and replace it with `sed 's/<placeholder>/\xc2\xa0/g'`.
+- A U+00A0 typed into `Write` or `Edit` can land as an ordinary space, and `Read` shows one as a space too: count them with `grep -c $'\xc2\xa0' <file>`, or write a placeholder and replace it with `sed 's/<placeholder>/\xc2\xa0/g'`; ` ` typed into a JavaScript string lands as the character itself.
 - Several sessions can share this folder: before switching branches, read `git status` and `git reflog -3`; a change that needs its own branch goes in a `git worktree`.
 - The hooks of `.claude/settings.json` need `pnpm install` first: without `node_modules`, `gh pr create` and `gh pr new` are refused and edits go unformatted.
 - On Windows, `git worktree remove` fails (`Filename too long`) after `pnpm install` and unlists the worktree, its folder staying: `rm -rf` it in Git Bash, or `Remove-Item -LiteralPath '\\?\…'` in PowerShell, then `git worktree prune` (`git worktree unlock` first if locked).
