@@ -1,0 +1,68 @@
+---
+paths:
+  - "src/staff/staff-header*"
+  - "src/staff/stateful-staff-header*"
+  - "src/staff/staff-member-identity*"
+  - "src/staff/staff-role-label*"
+  - "src/staff/privacy-policy-link.tsx"
+  - "src/staff/log-out-form*"
+  - "src/app/(staff)/layout.tsx"
+  - "e2e/staff-header.test.ts"
+---
+
+# The navigation
+
+The panel's navigation, which `src/app/(staff)/layout.tsx` renders through `StatefulStaffHeader`: a sidebar from `lg`, a rail of 64 px from `md` to `lg`, a bar and its menu below `md` (#224, #356). `src/staff/staff-header.test.tsx` and `e2e/staff-header.test.ts` name each case. The rail's classes are in `docs/responsive.md`, **Navigation**; the sources, trials and measures behind a line are in `docs/staff.md`: read it before changing how the links prefetch or the safe areas. The theme toggle and the logo are in `.claude/rules/staff-theme-toggle.md`.
+
+## What it holds
+
+- Every page that the staff check guards has the navigation, in a layout below the root one, so that `error.tsx`, which sits above it, shows none (`.claude/rules/nextjs.md`, **Error pages**, #61).
+- The current section carries `aria-current="page"`, on its own path and on every path below it, such as a record under `/records`.
+- The sections sit in groups, each under an overline, a `<p>` rather than a heading, so that the pages' `h1` and `h2` stay their only headings. A list names itself through `aria-labelledby`, by an `id` that names the sidebar or the Sheet, since both render the groups, so that `StaffHeader` still renders from its props alone, where a `useId` would not (#224).
+- Every staff member sees « Journal d’audit » and « Tickets de support » (#385); « Journal du jeu » and « Journal du Bot » only one who views that log's channel on Discord (`.claude/rules/game-log.md`, **The link in the navigation**; #394, #396); « Modération » only one who holds a role of `MODERATION_ROLE_IDS`, title included (ADR 0005, #176), where the mockup shows it to all and names its link « Fiches des comptes » (#221, #224).
+- « Panel du staff » is the brand's label, as #221 and #224 set it, not a name of the panel, which keeps the glossary's (**Admin Panel**, `GLOSSARY.md`) in prose and code (decided by the agent on 2026-10-29, on #224, for Gilles to review).
+- « Shor » is written so in the source and set in capitals by `uppercase`, as an overline is, where #224 writes « SHOR » (decided by the agent on 2026-10-29, on #224, for Gilles to review).
+- Tab titles follow `%s – Panel de Shor`, the default staying « Panel d’administration de Shor », through the root layout's `metadata.title.template`.
+- `/` redirects to `/blocked-words` with a 307, not a permanent redirect, so that a home page can come back, through `redirects()` of `next.config.ts`, which runs before `proxy.ts` (`docs/staff.md`, **`proxy.ts`**). The panel's link is a plain `<a>`, since a `next/link`'s `fetch` of `/` would follow that redirect (`.claude/rules/next-link-prefetch.md`).
+
+## The sidebar and the rail
+
+- The sidebar is an `<aside>`, so a `complementary` landmark, that sticks to the screen's left edge, 252 px wide, a left safe-area inset more (#356), on `sidebar`, as the mockup draws it. The panel's link reads « Shor Panel du staff », and « Confidentialité » is `PrivacyPolicyLink`'s link to the privacy policy, which does not prefetch (#186).
+- `LogOutForm`, in `log-out-form.tsx`, is the form of the `logOut` Server Action: a `ghost` Button, an icon button, `size="icon"`, whose text is `sr-only`, in the sidebar's foot, and with its text visible in the Sheet (#221, #224).
+- The current section takes `sidebar-accent` as its fill and its icon in `primary`, which holds an icon's 3:1 and not text's 4.5:1, so its text stays `sidebar-accent-foreground` (`docs/ui.md`, **Contrast ratios**, #224); its 2 px bar is in a `<ViewTransition>` named `current-section-bar`, which slides to the next current one (`.claude/rules/ui-theme.md`, **Motion**).
+- It is built from plain elements rather than shadcn/ui's Sidebar, a client component with logic of its own, which would reopen **No DOM** and **Framework** of `CLAUDE.md` (Gilles, 2026-10-29, on #224; `docs/staff.md`, **The navigation**).
+- From `md` to `lg`, that same `<aside>` is a rail of 64 px, through `max-lg:` classes on the same markup and not a second render, so that the sections, the badge and the member are in the DOM once, under the same accessible names in the three forms; `e2e/responsive.test.ts` proves it, and the rail's classes, its `title`s and its scroll on a short screen are in `docs/responsive.md`, **Navigation** (decided by the agent on 2026-11-03, on #356, for Gilles to review).
+- In the rail the member's name goes `sr-only` in place of `hidden` (`docs/responsive.md`, **Navigation**), and so does the line under it, so that a screen reader still reads it; `staff-role-label.ts` gives that line and the `title` the same label (decided by the agent on 2026-11-03, on #356, for Gilles to review).
+- The badge of « Mots interdits » is `BlockedWordCountBadge` of `src/blocked-words/` (`.claude/rules/blocked-words.md`, **Navigation**). `StaffHeader` takes it as one node, `blockedWordCount`, as it takes `member`, so that the navigation knows nothing of the blocked words, and the layout fills it under a `<Suspense>` of its own with no fallback, so that the badge delays nothing and shows once Discord answers (#226) (decided by the agent on 2026-10-29, on #226, for Gilles to review).
+- The pages sit beside it in the layout's column, whose margin and safe-area insets are in `docs/responsive.md`, **Breakpoints**. A page's `<main>` carries no `p-4` of its own, since the layout's column holds the margin (decided by the agent on 2026-10-29, on #224, for Gilles to review).
+
+## The bar and its menu
+
+- Under `md`, the bar sticks to the top of the page, so that the menu stays in reach on a long page (Gilles, 2026-11-03, on #354, #356); its height, its insets and the Sheet's `SheetBody` are in `docs/responsive.md`, **Navigation**. The document takes a `scroll-padding-top` of the bar's height, `html:has([data-slot="bar"])` in `src/ui/globals.css`, so that a link focused just under the bar scrolls in below it, as WCAG 2.4.11, Focus Not Obscured (Minimum), asks: `e2e/responsive.test.ts` reads that it equals the bar's height, which `staff-header.tsx` and `globals.css` both write.
+- The menu button, named « Ouvrir le menu » in `sr-only`, opens shadcn/ui's Sheet from the right, the button's side (Gilles, 2026-10-27, on #137). The Sheet holds the same groups, the current section marked the same way, its bar included though it slides in the sidebar alone, then the theme toggle, the member, « Se déconnecter » with its text visible (#137, #224) and « Confidentialité », a `SheetClose` that renders `PrivacyPolicyLink`, so that a click closes the Sheet (#186).
+- Each section's link in the Sheet is a `SheetClose` that renders a `next/link`, so that a click closes the Sheet. `nativeButton={false}` has Base UI add `role="button"`, so the link keeps its `role={undefined}`, merged after it, which takes it off and leaves the link a link: the 360 px flow of `e2e/staff-header.test.ts` fails without it (`docs/staff.md`, **The navigation**).
+- The switch between the forms happens in CSS, through `md:` and `lg:` variants, never `useIsMobile` (`docs/staff.md`, **The navigation**). A new section joins the sidebar, the rail and the Sheet, never a bar of its own: tabs fixed to the bottom were set aside, since the number of sections to come is unknown (Gilles, 2026-11-03, on #354).
+
+## The member's identity
+
+- `StaffHeader` takes the avatar and the name as one node, `member`, which the layout fills with `StaffMemberIdentity` under `<Suspense>`, and renders it three times, in the sidebar's foot, in the bar and in the Sheet's footer. The avatar comes from the member `requireStaffMember` reads: `StaffMember` carries its `avatarUrl` (ADR 0005), `null` for a member without one (`.claude/rules/ui.md`, **Avatars and skeletons**).
+- In the bar, `**:data-[slot=staff-member-name]:hidden` hides the name, so that the avatar alone stays beside the menu button, and the bar's link keeps the name in an `sr-only` text before it, so that all three links are named by the account's name alone (#320).
+- For a staff member who moderates, each of the three is one link to their own record, which `StaffHeader` makes from `ownRecord`, a promise of `{ href, name }` or `null` that `ownRecordOnceRead`, in `src/records/own-record.ts`, gives from the same read as `opensModerationOnceRead`: `null` for a staff member who does not moderate and when the read fails. `StaffHeader` reads it through `use`, under a `<Suspense>` whose fallback is the node itself, so that the identity shows, unlinked, until Discord answers, and marks the link `aria-current="page"` on that record alone (#320).
+- The type of that promise's value is `StaffHeader`'s own, so that `src/staff/` imports no domain folder, which the cycle records → sanctions → staff → records would break (decided by the agent on 2026-11-02, on #320, for Gilles to review).
+- The sidebar's and the bar's links are `AccountLink`s, and the Sheet's is a `SheetClose` that renders a `next/link`, each with `prefetch={false}`. `StaffHeader` makes the link, and not `StaffMemberIdentity`, because the one node renders three times and Base UI's `DialogClose` throws outside a `Dialog.Root`, so that a node that carried it could not stand in the sidebar or the bar (decided by the agent on 2026-11-02, on #320, for Gilles to review).
+- The identity and `ownRecordOnceRead` take their href from `recordHrefForModerator`, as the audit log's account `TextLink` does (decided by the agent on 2026-11-02, on #320, for Gilles to review; `.claude/rules/records.md`).
+- The line under the name comes from the read whose promise `opensModerationOnceRead` gives `StaffHeader`, so that it costs no call to Discord (decided by the agent on 2026-10-29, on #224, for Gilles to review).
+- `StaffHeader` draws that line under the identity in the sidebar and in the Sheet, under a `<Suspense>` of its own whose fallback is a bar, so that it sits outside the identity's link and the link is named by the account's name alone (decided by the agent on 2026-11-02, on #320, for Gilles to review).
+
+## The layout's reads and client leaves
+
+- The layout reads the member once, through one `requireStaffMember` call whose promise it shares: it fills `member` from it, and hands `StaffHeader`, through `opensModerationOnceRead`, a promise of whether they open « Modération », false when the read fails, since the member's node then redirects or throws. `StaffHeader` reads it through `use`, under a `<Suspense>` of its own with no fallback, so that the other sections show at once and nothing of « Modération » shows until Discord answers, since most staff members never see it (#176, #224). « Support » waits with it, so that it does not move down when « Modération » arrives (decided by the agent on 2026-11-05, on #385, for Gilles to review).
+- A page loaded in full reads the member twice, once for the layout and once for the page, where ADR 0005 counts one, and a navigation between sections once; both reads stay, with no request-scoped `cache()` to share them, until Discord answers `getMember` with a 429 (Gilles, 2026-10-27, on #71).
+- `StatefulStaffHeader` is a client leaf that reads `usePathname`, since a layout receives no path and stays mounted across the navigations between sections. `StaffHeader` otherwise renders from its props alone, the Sheet keeping Base UI's own open state, but for the theme toggle's leaf: those two are the navigation's client leaves of the panel's own, beside the copied Sheet's (#224, #225). Its test renders it with `react-dom/static`'s `prerender`, given a `progressiveChunkSize` without limit, since past its default the render moves a completed `<Suspense>` behind a `<template>` that a script would fill (`docs/staff.md`, **The navigation**; #176, #224).
+
+## Fallbacks, motion, prefetch and safe areas
+
+- The skeleton is `StaffMemberIdentitySkeleton` (#224), with the shorter bar for the line under the name drawn by `StaffHeader` (#320); the three places hold the name in a `<div>` rather than a `<p>`, since the Skeleton is a `<div>`, and one node holds one skeleton for all three, where an avatar of its own would need a second `<Suspense>` (#140). The member replaces it with no animation (`.claude/rules/ui.md`, **Avatars and skeletons**).
+- The current section's bar moves through its `transform` alone, since every bar has the same size (`e2e/staff-header.test.ts`, #224). The menu's Sheet only fades under reduced motion, which `e2e/staff-header.test.ts` proves (`.claude/rules/ui-overlays.md`, **Dialogs and sheets**, for the class that does it; #137).
+- Each section's `next/link`, in the sidebar and in the Sheet, takes `prefetch={false}`, since its prefetch could reach `/login` right after a logout, which `proxy.ts` sends a request without a session to (Gilles, 2026-10-28, on #153; `.claude/rules/next-link-prefetch.md`, `docs/staff.md`, **Prefetch after a logout**). A click on a section then fetches its page, a round trip before its skeleton shows (inferred).
+- The bar, the rail, the sidebar and the page's column pad themselves by the screen's safe-area insets, as `docs/responsive.md`, **Known limits**, says, and `.claude/rules/ui-overlays.md`, **Dialogs and sheets**, says of whatever sticks to an edge. The rail's and the sidebar's paddings are the agent's (decided by the agent on 2026-11-03, on #356, for Gilles to review).

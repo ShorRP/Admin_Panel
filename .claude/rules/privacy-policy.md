@@ -19,12 +19,12 @@ Discord's Developer Terms ask every application for a privacy policy that its us
 
 ## The page
 
-- `PrivacyPolicy` reads nothing from Discord and runs no staff check, so the build prerenders it whole and `proxy.ts` lets a visitor without a session through (**`proxy.ts`** of `CLAUDE.md`, #186).
+- `PrivacyPolicy` reads nothing from Discord and runs no staff check, so the build prerenders it whole and `proxy.ts` lets a visitor without a session through (`.claude/rules/staff.md`, **`proxy.ts`**, #186).
 - It sits in `PublicPageFrame`, the login pages' frame, with the note « Panel du staff de Shor », since the login pages' « Réservé au staff de Shor » would tell a member that the policy is not for them.
 - Its `<section>`s take no name, so that they add no landmark beside the page's own.
 - The headings, the day of the last update and the footer's note were the agent's to pick, since #186 lists what the page says and not its form (decided by the agent on 2026-11-02, on #186, for Gilles to review).
 
 ## Where it is linked
 
-- `PrivacyPolicyLink` and `PublicPageFrame` link it and belong to `src/staff/`: **Navigation** and **Login pages** of `CLAUDE.md` place them.
+- `PrivacyPolicyLink` and `PublicPageFrame` link it and belong to `src/staff/`: `.claude/rules/staff-navigation.md`, **The sidebar and the rail**, and `.claude/rules/login-pages.md`, **The frame**, place them.
 - The error pages do not link it: they show the panel's failure and one way out of it. The « Confidentialité » link, where the navigation shows it, and its absence from the error pages were the agent's to pick (decided by the agent on 2026-11-02, on #186, for Gilles to review).
