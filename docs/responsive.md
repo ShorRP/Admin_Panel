@@ -1,8 +1,8 @@
 # Responsive
 
-The patterns, the per-page specification and the review checklist behind `CLAUDE.md`, **Interface**, **Small screens**, and `.claude/rules/components.md`, **Layout and links**. The mockups that show them, every page at 360, 390, 768, 1,024 and 1,280 px in light and in dark, were made with Claude Design outside the repository, as the Hydromel mockup was (#221, #223); the repository keeps no capture of them. Where this file and a ticket differ, the ticket wins.
+The patterns, the per-page specification and the review checklist behind `CLAUDE.md`, **Interface**, **Accessibility and small screens**, and `.claude/rules/components.md`, **Layout and links**. The mockups that show them, every page at 360, 390, 768, 1,024 and 1,280 px in light and in dark, were made with Claude Design outside the repository, as the Hydromel mockup was (#221, #223); the repository keeps no capture of them. Where this file and a ticket differ, the ticket wins.
 
-Like the **Architecture** of `CLAUDE.md`, this file was written before the code. #355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls, #356 the navigation, #358 `/blocked-words`, #360 `/records` and #362 the login pages, the privacy policy and the error pages; the tickets of #354 deliver the rest, each making its part true (#359 and #361 the other pages), so that a section below describes the target until its ticket lands.
+#355 delivered the `touch:` variant, the lint rule, the viewport and `e2e/responsive.test.ts`, #357 the shared controls, #356 the navigation, #358 `/blocked-words`, #360 `/records` and #362 the login pages, the privacy policy and the error pages; the tickets of #354 deliver the rest, each making its part true (#359 and #361 the other pages), so that a section below describes the target until its ticket lands.
 
 ## Options
 

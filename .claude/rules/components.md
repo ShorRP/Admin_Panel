@@ -1,11 +1,12 @@
 ---
 paths:
   - "src/**/*.tsx"
+  - "src/**/*-layout.ts"
 ---
 
 # The rules every component follows
 
-`CLAUDE.md`, **Interface**, holds the principles. These are the rules every component that shows a form, a list or an account applies, which no folder's rule holds, moved here from the old **Interface** and **Responsive** of `CLAUDE.md` because a rule scoped to `src/**/*.tsx` loads wherever a component is edited (decided by the agent on 2026-11-13, on #453, for Gilles to review: #426 names no rule for them).
+What every component that shows a form, a list or an account applies, and which no folder's rule holds: `CLAUDE.md`, **Interface**, holds the principles. This rule loads wherever a component or its layout classes are edited (decided by the agent on 2026-11-13, on #453, for Gilles to review: #426 names no rule for them).
 
 ## Forms
 
@@ -19,5 +20,8 @@ paths:
 
 - Breakpoints are Tailwind's and no other, written mobile first: the unprefixed class is the phone's. No arbitrary `min-[…]` breakpoint on the viewport; a component that must adapt to the room it is given uses a container query (`@container` and `@min-[…]:`).
 - A flex or grid child that holds text takes `min-w-0`, a grid track that holds text takes `minmax(0,1fr)`, and a word that may be long, such as a name, an ID, a reason or a blocked word, takes `wrap-anywhere` or `truncate` with its whole value in `title`. Nothing scrolls the page sideways at 360 px: a wide table scrolls inside its own box. `pnpm lint` refuses a fixed width above 20 rem, a grid of more than two columns and a length in `vh` that no breakpoint or container variant guards (`.claude/rules/eslint.md`, **The responsive classes**).
+
+## Skeletons and account links
+
 - A `<Suspense>` fallback is a skeleton in the shape of what loads, through `SuspenseWithSkeleton` (`.claude/rules/ui.md`, **Avatars and skeletons**).
 - An account shown by its avatar or its name links to its record for a staff member who moderates, through `recordHrefForModerator` (`.claude/rules/records.md`, **Avatars and the link to a record**).

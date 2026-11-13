@@ -37,7 +37,7 @@ paths:
 - A breakpoint prefix, `sm:` to `2xl:`, or a container size or minimum, `@sm:` or `@min-[…]:`, is a guard; `max-sm:`, `@max-md:`, `dark:` and `hover:` are not. 20 rem itself passes, and `repeat(auto-fill,minmax(…,1fr))` is no column count.
 - It does not see the keys of an object given to `cn` or `clsx`, as in `cn({ "w-96": open })`; a class held in a constant outside a `cn()`, which a change to such a file wraps in one, where Prettier sorts it too (`.claude/rules/prettier.md`, **Classes**); a string given to a prop other than `className`; `basis-*`; and a width in `calc()`, `em` or `%`.
 - It takes the arbitrary `min-[…]:` for a guard, though `.claude/rules/components.md`, **Layout and links**, refuses it: review checks that.
-- The layout principles that no rule checks, such as `min-w-0` on a flex or grid child that holds text, are not here: they are in `.claude/rules/components.md`, **Layout and links**, since they hold for every component and this rule loads only on the lint files (decided by the agent on 2026-11-12, on #450, for Gilles to review: only the lint rule of the old **Layout (#355)** bullet moved here, and its principles stayed in `CLAUDE.md` until #453 moved them).
+- The layout principles that no rule checks, such as `min-w-0` on a flex or grid child that holds text, are not here: they are in `.claude/rules/components.md`, **Layout and links**, since they hold for every component and this rule loads only on the lint files (decided by the agent on 2026-11-12, on #450, for Gilles to review: only the lint rule of the old **Layout (#355)** bullet moved here).
 
 ## Directives
 
