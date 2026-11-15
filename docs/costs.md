@@ -36,7 +36,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 
 ## GitHub
 
-**Used for** the repository `ShorRP/Admin_Panel`, public since 2026-10-27 (ADR 0007), owned by the organization ShorRP on GitHub Free (`gh api orgs/ShorRP`: `plan.name` `free`): issues, the project board, Actions on standard hosted runners with their cache, the ruleset on `main`, secret scanning, push protection, private vulnerability reporting and the dependency graph. Dependabot alerts come with #94, and the environment `discord-contract` with #102. `ci.yml`'s actions, `actions/checkout`, `pnpm/action-setup` and `actions/setup-node`, fetch pnpm and Node.js from their public releases (inferred).
+**Used for** the repository `ShorRP/Admin_Panel`, public since 2026-10-27 (ADR 0007), owned by the organization ShorRP on GitHub Free (`gh api orgs/ShorRP`: `plan.name` `free`): issues, the project board, Actions on standard hosted runners with their cache, the ruleset on `main`, secret scanning, push protection, private vulnerability reporting and the dependency graph. Dependabot alerts come with #94, and the environment `discord-contract` with #102. `ci.yml`'s actions, `actions/checkout`, `pnpm/action-setup` and `actions/setup-node`, fetch pnpm and Node.js from their public releases (inferred), and `actions/cache` keeps `.next/cache` in that Actions cache, beside `actions/setup-node`'s pnpm store (#103). It reaches no service this entry does not cover, so it gets no entry of its own, and Gilles chose it while grilling #57 (decided by the agent on 2026-11-15, on #103, for Gilles to review).
 
 **Why it cannot bill.**
 
@@ -48,7 +48,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 **What would make it bill: a payment method on ShorRP**, which any of its four owners (`gh api orgs/ShorRP/members?role=admin`) or a billing manager can add (https://docs.github.com/en/billing/reference/billing-roles). Then a $0 budget raised, deleted or set to alert only lets its product bill, and some things bill with no budget to stop them:
 
 - a larger runner, "always charged for, even when used by public repositories" (the Actions billing page);
-- an Actions cache raised above its 10 GB, billed above them (same page); the repository holds 2.9 GB in 20 caches (`gh api repos/ShorRP/Admin_Panel/actions/cache/usage`);
+- an Actions cache raised above its 10 GB, billed above them (same page); the repository held 2.9 GB in 20 caches, then 256 MB in 2 on 2026-11-15, `main`'s pnpm store and one `.next/cache` entry of 71 MB (`gh api repos/ShorRP/Admin_Panel/actions/cache/usage`, `gh api repos/ShorRP/Admin_Panel/actions/caches`);
 - Copilot seats, an upgrade to Team, or a Marketplace app on a paid plan, whose "paid subscription will start at the end of the 14-day trial" (https://docs.github.com/en/apps/using-github-apps/installing-a-github-app-from-github-marketplace-for-your-organizations).
 
 Git LFS bandwidth and storage "always count against the repository owner's account", even from a public repository (the Git LFS billing page), and so would private Packages. Going private again, which ADR 0007 allows, would put Actions on the organization's 2,000 free minutes a month, then block them.

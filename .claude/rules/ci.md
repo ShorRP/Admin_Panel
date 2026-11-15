@@ -5,7 +5,7 @@ paths:
 
 # CI and delivery
 
-How code goes from a branch to production and what CI checks (#57, ADR 0007). What is set on GitHub's and Vercel's side, which no file shows, with the vendor pages and the trials behind each line, is in `docs/delivery.md`: read it before an action that needs a ruleset, an environment, a Vercel setting, a deployment or a rollback. A target that an open ticket builds carries its ticket, as « (#103, not yet in `ci.yml`) » does, and goes once the ticket lands.
+How code goes from a branch to production and what CI checks (#57, ADR 0007). What is set on GitHub's and Vercel's side, which no file shows, with the vendor pages and the trials behind each line, is in `docs/delivery.md`: read it before an action that needs a ruleset, an environment, a Vercel setting, a deployment or a rollback. A target that an open ticket builds carries its ticket, as « (#93, not yet in `ci.yml`) » does, and goes once the ticket lands.
 
 ## CI
 
@@ -19,14 +19,16 @@ How code goes from a branch to production and what CI checks (#57, ADR 0007). Wh
 
 ## Caches
 
-- `actions/setup-node`'s `cache: pnpm` keeps the pnpm store. `actions/cache` keeps `.next/cache` (#103, not yet in `ci.yml`), keyed on `pnpm-lock.yaml` and the sources, so that `next build` stops warning "No build cache found".
+- `actions/setup-node`'s `cache: pnpm` keeps the pnpm store. `actions/cache` keeps `.next/cache` (#103): its key is `runner.os`, `pnpm-lock.yaml` and the sources, and its `restore-keys`, the same without the sources, restores the newest entry of the same lockfile when only the sources changed.
+- Its sources are `src/**` and the root files that configure the build, which `ci.yml` lists, not the `**/*.ts` of Next.js's guide, which would reach into `node_modules` (inferred) (decided by the agent on 2026-11-15, on #103, for Gilles to review). A root file that starts to configure the build joins that list; one left out costs a staler cache, not a wrong build (inferred).
+- `next build` still warns "No build cache found" on a run that restores no entry: the first of a lockfile that neither its pull request nor `main` has saved, or one after GitHub evicted the entry, unused for 7 days (`docs/delivery.md`, **Caches**). A red or cancelled run saves none (inferred).
 - Playwright's browsers are downloaded on every run and never cached, as Playwright advises.
 - The sources, the limits of GitHub's cache and why no cache spares `pnpm audit` its registry call: `docs/delivery.md`, **Caches**.
 
 ## CI's output
 
 - CI fails on a warning of `pnpm build`, `pnpm lint` or `pnpm typecheck` that a list of exceptions does not hold: any `⚠` line of the build, Next.js's warning prefix, and any `(node:<pid>) …Warning:` line of the three, Node's process warning. A script of `scripts/` reads the output (#87, not yet in `scripts/`). The commands themselves stay as they are, so that Vercel never fails a deployment over a warning.
-- The list starts with "No build cache found", which leaves with #103's cache. Each exception added gets a line in the rule of its area that says what lets it go (`CLAUDE.md`, **Reasons**).
+- The list starts empty. Each exception added gets a line in the rule of its area that says what lets it go (`CLAUDE.md`, **Reasons**).
 - A dependency's own `console.warn` follows no format and stays advisory. A Next.js that changed its glyph would pass the check unseen (inferred).
 - A warning that follows the date rather than the code can turn an unrelated pull request red: fix it like any other, by an update or an exception, since no PR merges red.
 - `pnpm install --frozen-lockfile` skips resolution when the lockfile is up to date, and so prints no peer or deprecation warning: those come at `pnpm add` and `pnpm update`. `pnpm peers check` runs right after the install (#87, not yet in `ci.yml`) and reads the lockfile without resolving (inferred). A deprecated package is handled by `.claude/rules/dependencies.md`, **Deprecated packages**.
