@@ -19,8 +19,9 @@ How code goes from a branch to production and what CI checks (#57, ADR 0007). Wh
 
 ## Caches
 
-- `actions/setup-node`'s `cache: pnpm` keeps the pnpm store. `actions/cache` keeps `.next/cache`, so that `next build` stops warning "No build cache found" (#103): its key is `runner.os`, `pnpm-lock.yaml` and the sources, and its `restore-keys`, the same without the sources, restores the latest entry of the same lockfile when only the sources changed.
-- The sources it hashes are `src/**` and the three files `next build` reads beside it, `next.config.ts`, `postcss.config.mjs` and `tsconfig.json`, not the `**/*.ts` of Next.js's guide, which would reach into `node_modules` (inferred) (decided by the agent on 2026-11-15, on #103, for Gilles to review). A file the build starts to read joins the list; one left out costs a staler cache, not a wrong build (inferred).
+- `actions/setup-node`'s `cache: pnpm` keeps the pnpm store. `actions/cache` keeps `.next/cache` (#103): its key is `runner.os`, `pnpm-lock.yaml` and the sources, and its `restore-keys`, the same without the sources, restores the newest entry of the same lockfile when only the sources changed.
+- Its sources are `src/**` and the root files that configure the build, which `ci.yml` lists, not the `**/*.ts` of Next.js's guide, which would reach into `node_modules` (inferred) (decided by the agent on 2026-11-15, on #103, for Gilles to review). A root file that starts to configure the build joins that list; one left out costs a staler cache, not a wrong build (inferred).
+- `next build` still warns "No build cache found" on a run that restores no entry: the first of a lockfile that neither its pull request nor `main` has saved, or one after GitHub evicted the entry, unused for 7 days (`docs/delivery.md`, **Caches**). A red or cancelled run saves none (inferred).
 - Playwright's browsers are downloaded on every run and never cached, as Playwright advises.
 - The sources, the limits of GitHub's cache and why no cache spares `pnpm audit` its registry call: `docs/delivery.md`, **Caches**.
 

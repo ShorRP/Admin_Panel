@@ -36,7 +36,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 
 ## GitHub
 
-**Used for** the repository `ShorRP/Admin_Panel`, public since 2026-10-27 (ADR 0007), owned by the organization ShorRP on GitHub Free (`gh api orgs/ShorRP`: `plan.name` `free`): issues, the project board, Actions on standard hosted runners with their cache, the ruleset on `main`, secret scanning, push protection, private vulnerability reporting and the dependency graph. Dependabot alerts come with #94, and the environment `discord-contract` with #102. `ci.yml`'s actions, `actions/checkout`, `pnpm/action-setup` and `actions/setup-node`, fetch pnpm and Node.js from their public releases (inferred), and `actions/cache`, GitHub's own, keeps `.next/cache` in that Actions cache, beside `actions/setup-node`'s pnpm store (#103).
+**Used for** the repository `ShorRP/Admin_Panel`, public since 2026-10-27 (ADR 0007), owned by the organization ShorRP on GitHub Free (`gh api orgs/ShorRP`: `plan.name` `free`): issues, the project board, Actions on standard hosted runners with their cache, the ruleset on `main`, secret scanning, push protection, private vulnerability reporting and the dependency graph. Dependabot alerts come with #94, and the environment `discord-contract` with #102. `ci.yml`'s actions, `actions/checkout`, `pnpm/action-setup` and `actions/setup-node`, fetch pnpm and Node.js from their public releases (inferred), and `actions/cache` keeps `.next/cache` in that Actions cache, beside `actions/setup-node`'s pnpm store (#103). It reaches no service this entry does not cover, so it gets no entry of its own, and Gilles chose it while grilling #57 (decided by the agent on 2026-11-15, on #103, for Gilles to review).
 
 **Why it cannot bill.**
 
