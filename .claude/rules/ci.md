@@ -5,13 +5,13 @@ paths:
 
 # CI and delivery
 
-How code goes from a branch to production and what CI checks (#57, ADR 0007). What is set on GitHub's and Vercel's side, which no file shows, with the vendor pages and the trials behind each line, is in `docs/delivery.md`: read it before an action that needs a ruleset, an environment, a Vercel setting, a deployment or a rollback. A target that an open ticket builds carries its ticket, as « (#95, not yet in `ci.yml`) » does, and goes once the ticket lands.
+How code goes from a branch to production and what CI checks (#57, ADR 0007). What is set on GitHub's and Vercel's side, which no file shows, with the vendor pages and the trials behind each line, is in `docs/delivery.md`: read it before an action that needs a ruleset, an environment, a Vercel setting, a deployment or a rollback. A target that an open ticket builds carries its ticket, as « (#103, not yet in `ci.yml`) » does, and goes once the ticket lands.
 
 ## CI
 
 - `ci.yml` has one job, `Check`, run on every pull request and every push to `main`; a daily run of the audit on `main` joins it (#93, not yet in `ci.yml`).
 - The job's name is a status that `main`'s ruleset requires beside Vercel's, so renaming it leaves every pull request unmergeable until Gilles changes the ruleset (inferred; `docs/delivery.md`, **The rules of `main`**) (decided by the agent on 2026-11-12, on #447, for Gilles to review).
-- The job runs on `ubuntu-24.04`, so that a change of Ubuntu shows in a diff, as an action's update does (#95, not yet in `ci.yml`, which says `ubuntu-latest`). The monthly session (`.claude/rules/dependencies.md`, **Who and when**) moves it to the next Ubuntu in a pull request, once GitHub offers it and Playwright supports it.
+- The job runs on `ubuntu-26.04`, not `ubuntu-latest`, so that a change of Ubuntu shows in a diff, as an action's update does (#95). It took 26.04 rather than the 24.04 that #95 named, since `ubuntu-latest` already ran every job on it and Playwright supports it, the two conditions #95 set for the move (decided by the agent on 2026-11-15, on #95, for Gilles to review; `docs/delivery.md`, **CI**). The monthly session (`.claude/rules/dependencies.md`, **Who and when**) moves it to the next Ubuntu in a pull request, once GitHub offers it and Playwright supports it.
 - It reads Node from `engines.node`, through `actions/setup-node`'s `node-version-file: package.json` with `check-latest: true`, and names no Node version of its own: it runs the latest of the panel's one major, as Vercel does (#96). It tests neither the floor of `engines.node`, which no deployment runs, nor the next major, which would either block merges or be ignored.
 - Standard GitHub-hosted runners only, since a larger runner bills (`docs/costs.md`, **GitHub**) (decided by the agent on 2026-11-12, on #447, for Gilles to review).
 - The job's `timeout-minutes` is 15, since the end-to-end step grows with every page and 10 minutes no longer held it (decided by the agent on 2026-11-06, on #394, for Gilles to review). A cancelled `Check` whose last line is `The operation was canceled.`, after `Running N tests using 2 workers`, is this limit and no hung test. The measures are in `docs/delivery.md`, **CI**.
@@ -30,7 +30,7 @@ How code goes from a branch to production and what CI checks (#57, ADR 0007). Wh
 - A dependency's own `console.warn` follows no format and stays advisory. A Next.js that changed its glyph would pass the check unseen (inferred).
 - A warning that follows the date rather than the code can turn an unrelated pull request red: fix it like any other, by an update or an exception, since no PR merges red.
 - `pnpm install --frozen-lockfile` skips resolution when the lockfile is up to date, and so prints no peer or deprecation warning: those come at `pnpm add` and `pnpm update`. `pnpm peers check` runs right after the install (#87, not yet in `ci.yml`) and reads the lockfile without resolving (inferred). A deprecated package is handled by `.claude/rules/dependencies.md`, **Deprecated packages**.
-- What the runner and the actions print themselves fails nothing: `actions/checkout`'s `hint:` about the default branch name, `pnpm/action-setup`'s `[WARN] Detected a pnpm v10 installation layout`, and the notice that `ubuntu-latest` moves to Ubuntu 26. The runs behind each line are in `docs/delivery.md`, **CI's output**.
+- What the runner and the actions print themselves fails nothing: `actions/checkout`'s `hint:` about the default branch name, the one such line left since #95. The runs behind it are in `docs/delivery.md`, **CI's output**.
 
 ## Scheduled workflows
 
