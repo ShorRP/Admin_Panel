@@ -2,6 +2,7 @@
 paths:
   - "src/staff/login-*"
   - "src/staff/logged-out*"
+  - "src/staff/log-out-form*"
   - "src/staff/public-page-frame.tsx"
   - "src/app/login/failed/**"
   - "src/app/login/logged-out/**"
@@ -25,6 +26,6 @@ paths:
 
 ## Buttons
 
-- A login page's main action is `default`, « Se connecter avec Discord », « Se reconnecter » or « Réessayer » (#221, #236); `outline` is for the « Se déconnecter » of `/login/refused`, beside its « Se reconnecter » (#236). `LoginLink`, in `login-link.tsx`, gives the `default` link to `/login` that each of the three pages draws (#236). That « Se déconnecter » is the navigation's `LogOutForm` (`.claude/rules/staff-navigation.md`), given `variant="outline"` and `LOGIN_ACTION_CLASS` for its button, so that the page writes no form of its own (#158).
+- A login page's main action is `default`, « Se connecter avec Discord », « Se reconnecter » or « Réessayer » (#221, #236); `outline` is for the « Se déconnecter » of `/login/refused`, beside its « Se reconnecter » (#236). `LoginLink`, in `login-link.tsx`, gives the `default` link to `/login` that each of the three pages draws (#236). That « Se déconnecter » is the navigation's `LogOutForm` (`.claude/rules/staff-navigation.md`), given `variant="outline"` and `LOGIN_ACTION_CLASS` for its button, so that the page writes no form of its own (#158). `LogOutForm`'s `className` goes to its button, not to its `<form>`, which no caller styled, and its `variant` takes `ghost`, the default, or `outline` alone (decided by the agent on 2026-11-15, on #158, for Gilles to review).
 - The buttons are 40 px high, as the mockup draws them, through `LOGIN_ACTION_CLASS`, in `login-notice.tsx`, which `cn` merges over the copied Button's default size, so that the Button does not change, and which keeps the Button's own `touch:h-11`, so that the buttons take 44 px on a touch screen (#362) (decided by the agent on 2026-10-29, on #236, for Gilles to review).
 - `LOGIN_ACTION_CLASS` also makes the buttons fill the width of the block of at most 400 px that holds them under `sm`, the log-out button inside its `<form>` included, and not the column's (`docs/responsive.md`, **Pages**, for the classes and the measure; #362).
