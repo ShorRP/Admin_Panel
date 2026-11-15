@@ -77,7 +77,7 @@ No third party the panel relies on, in its code, CI or tooling, may ever send a 
 
 - **Framework.** React through Next.js, with no library for state, client-side fetching, forms, URL state or animation (Discord holds the state, a form sends one field) and no React Compiler: revisited when a client leaf must share state or fetch data itself, or grows heavy.
 - **Styles.** Tailwind CSS 4 and shadcn/ui on Base UI (`.claude/rules/ui.md`), themed through semantic tokens, never a palette color (`.claude/rules/ui-theme.md`); a class name is written whole, never built by concatenation.
-- **Wording.** French only, « tu », buttons in the infinitive, with French typography: the apostrophe ’, « » with a no-break space U+00A0 inside, a U+00A0 before : ; ! ?, « … » as one character. `pnpm check:typography` is not yet in place (#73); the lint only refuses ' in JSX text.
+- **Wording.** French only, « tu », buttons in the infinitive, with French typography: the apostrophe ’, « » with a no-break space U+00A0 inside, a U+00A0 before : ; ! ?, « … » as one character. `pnpm check:typography` is not yet in place (#73); the lint only refuses ' in JSX text. Docs and rules that quote a text of the panel may keep ordinary spaces inside « » (Gilles, 2026-11-15).
 - **Dates** are absolute, on 24 hours, in Paris time, through `ParisTime` or `formatParisTime` of `src/ui/`; `timeZone` is always passed, since the server renders dates.
 - **Accessibility and small screens.** WCAG 2.2 AA in light and dark (text 4.5:1, a control and its state 3:1), and every page works from 360 px wide, mobile first, with every control a finger can reach at least 44 by 44 px (`.claude/rules/ui.md`, `docs/responsive.md`).
 

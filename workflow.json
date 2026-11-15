@@ -59,7 +59,7 @@
     }
   },
   "ci": {
-    "guard": "advisory"
+    "guard": "ruleset"
   },
   "relay": {
     "threshold": 600000
