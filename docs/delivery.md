@@ -40,7 +40,7 @@ The `node_modules` citations are those of Next.js 16.4.2 unless a package is nam
 
 ## Caches
 
-- The key of the `.next/cache` step follows Next.js's guide (`node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md:73-89`), whose example is written for npm. Without that cache, `next build` prints "No build cache found" behind the `⚠` of Next.js's warnings, when it detects CI and finds no `.next/cache` (`node_modules/next/dist/build/index.js:230`).
+- Next.js's guide keys its `.next/cache` step on npm's lockfile and on `hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx')`, and restores on the lockfile alone (`node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md:73-89`). `ci.yml` keeps that shape with `pnpm-lock.yaml`, and hashes `src/**`, `next.config.ts`, `postcss.config.mjs` and `tsconfig.json` instead, since its step comes after the install and `**/*.ts` would match the `.d.ts` files of `node_modules` (inferred; `.claude/rules/ci.md`, **Caches**). Without that cache, `next build` prints "No build cache found" behind the `⚠` of Next.js's warnings, when it detects CI and finds no `.next/cache` (`node_modules/next/dist/build/index.js:230`).
 - Playwright advises against caching its browsers in CI (https://playwright.dev/docs/ci, read 2026-10-25).
 - No cache spares `pnpm audit` or `pnpm audit signatures` their call to the registry (inferred from https://pnpm.io/cli/audit, read 2026-10-25).
 - GitHub evicts a cache unused for 7 days, and a repository holds 10 GB of them (https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching, read 2026-10-25).
