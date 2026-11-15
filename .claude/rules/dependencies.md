@@ -71,7 +71,7 @@ A version held back is one line below: the package, the range it stays in, why, 
 
 ## Actions
 
-- Actions name their full version tag, such as `pnpm/action-setup@v6.1.0` (not yet in `ci.yml`, which names `@v7` and `@v6`, #95): it reads without a comment (`CLAUDE.md`, **No comments**), and an update shows in the diff, where a major tag can lag. `pnpm outdated --include-github-actions` lists them with the packages.
+- Actions name their full version tag, such as `pnpm/action-setup@v6.1.1` (#95): it reads without a comment (`CLAUDE.md`, **No comments**), and an update shows in the diff, where a major tag can lag. `pnpm outdated --include-github-actions` lists them with the packages.
 - A workflow whose job holds a secret is to pin its actions by SHA instead, as `contract.yml` will (not yet in `.github/`, #102; `.claude/rules/ci.md`, **The contract suite in CI**).
 
 ## Advisories
