@@ -1,7 +1,6 @@
-import { LogIn, LogOut } from "lucide-react"
+import { LogIn } from "lucide-react"
 
-import { Button } from "@/ui/button"
-import { logOut } from "./actions"
+import { LogOutForm } from "./log-out-form"
 import { LoginLink } from "./login-link"
 import { LOGIN_ACTION_CLASS, LoginNotice } from "./login-notice"
 
@@ -12,16 +11,7 @@ export function LoginRefused() {
       actions={
         <>
           <LoginLink Icon={LogIn}>Se reconnecter</LoginLink>
-          <form action={logOut}>
-            <Button
-              type="submit"
-              variant="outline"
-              className={LOGIN_ACTION_CLASS}
-            >
-              <LogOut aria-hidden data-icon="inline-start" />
-              Se déconnecter
-            </Button>
-          </form>
+          <LogOutForm variant="outline" className={LOGIN_ACTION_CLASS} />
         </>
       }
     >
