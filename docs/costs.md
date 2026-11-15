@@ -48,7 +48,7 @@ A trial without a card bills nothing: "Without a payment method, your account re
 **What would make it bill: a payment method on ShorRP**, which any of its four owners (`gh api orgs/ShorRP/members?role=admin`) or a billing manager can add (https://docs.github.com/en/billing/reference/billing-roles). Then a $0 budget raised, deleted or set to alert only lets its product bill, and some things bill with no budget to stop them:
 
 - a larger runner, "always charged for, even when used by public repositories" (the Actions billing page);
-- an Actions cache raised above its 10 GB, billed above them (same page); the repository holds 2.9 GB in 20 caches (`gh api repos/ShorRP/Admin_Panel/actions/cache/usage`);
+- an Actions cache raised above its 10 GB, billed above them (same page); the repository held 2.9 GB in 20 caches, then 256 MB in 2 on 2026-11-15, `main`'s pnpm store and one `.next/cache` entry of 71 MB (`gh api repos/ShorRP/Admin_Panel/actions/cache/usage`, `gh api repos/ShorRP/Admin_Panel/actions/caches`);
 - Copilot seats, an upgrade to Team, or a Marketplace app on a paid plan, whose "paid subscription will start at the end of the 14-day trial" (https://docs.github.com/en/apps/using-github-apps/installing-a-github-app-from-github-marketplace-for-your-organizations).
 
 Git LFS bandwidth and storage "always count against the repository owner's account", even from a public repository (the Git LFS billing page), and so would private Packages. Going private again, which ADR 0007 allows, would put Actions on the organization's 2,000 free minutes a month, then block them.
