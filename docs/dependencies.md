@@ -42,7 +42,9 @@ The `node_modules` citations are those of the version named beside them: an upda
 ## Actions
 
 - `pnpm/action-setup`'s `v6` still pointed to v6.0.10, which predates its pnpm 12 support (pnpm/action-setup#288 and #289, 2026-10-25).
-- v6.1.1 came out on 2026-11-03, `v6` moved to it and pnpm/action-setup#289 closed the same day (`gh api repos/pnpm/action-setup/releases`, `gh issue view 289 -R pnpm/action-setup`, 2026-11-15). On 2026-11-15, each major tag `ci.yml` named pointed to the commit of the full tag #95 pins in its place: `actions/checkout` `v7` and `v7.0.1` to `3d3c42e`, `pnpm/action-setup` `v6` and `v6.1.1` to `73e4699`, `actions/setup-node` `v7` and `v7.1.0` to `949feb2` (`gh api repos/<owner>/<action>/tags`), so the pin changed no code that CI runs. #95's decisions named v6.1.0, the latest on 2026-10-25, which would have moved CI back, and which `pnpm outdated --include-github-actions` flags against 6.1.1, while it lists none of the three pinned tags (pnpm 12.9.1, 2026-11-15) (decided by the agent on 2026-11-15, on #95, for Gilles to review).
+- v6.1.1 came out on 2026-11-03, `v6` moved to it and pnpm/action-setup#289 closed the same day (`gh api repos/pnpm/action-setup/releases`, `gh issue view 289 -R pnpm/action-setup`, 2026-11-15). On 2026-11-15, each major tag `ci.yml` named pointed to the commit of the full tag #95 pins in its place: `actions/checkout` `v7` and `v7.0.1` to `3d3c42e`, `pnpm/action-setup` `v6` and `v6.1.1` to `73e4699`, `actions/setup-node` `v7` and `v7.1.0` to `949feb2` (`gh api repos/<owner>/<action>/tags`), so the pin keeps the commits CI ran.
+- `pnpm outdated --include-github-actions` flags `pnpm/action-setup` 6.1.0 against 6.1.1, and lists none of the three pinned tags (pnpm 12.9.1, 2026-11-15).
+- So #95 pins v6.1.1, which CI already ran, rather than the v6.1.0 its decisions named, the latest on 2026-10-25 (decided by the agent on 2026-11-15, on #95, for Gilles to review).
 
 ## Advisories
 
