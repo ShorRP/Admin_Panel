@@ -33,3 +33,26 @@ test("checkAccessibility waits for the page's title to come back before running 
 
   await expect(page).toHaveTitle("Mots interdits – Panel de Shor")
 })
+
+test("checkAccessibility narrows the viewport to 360 px at the end, unless it is told not to", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  await page.setViewportSize({ width: 800, height: 900 })
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.waitForLoadState()
+  const resizedTo = await page.evaluateHandle(() => {
+    const widths: number[] = []
+    window.addEventListener("resize", () => {
+      widths.push(window.innerWidth)
+    })
+    return widths
+  })
+
+  await checkAccessibility({ narrow: false })
+  await checkAccessibility()
+
+  await expect.poll(() => resizedTo.jsonValue()).toEqual([360, 800])
+})
