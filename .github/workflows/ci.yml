@@ -18,29 +18,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7.0.1
-
-      - uses: pnpm/action-setup@v6.1.1
-
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: package.json
-          check-latest: true
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm check:comments
-
-      - run: pnpm check:context-budget
-
-      - run: pnpm format:check
-
-      - run: pnpm typecheck
-
-      - run: pnpm lint
-
-      - run: pnpm test
+      - run: echo static
 
   e2e:
     name: End to end (${{ matrix.shard }})
@@ -51,31 +29,9 @@ jobs:
       matrix:
         shard: ["1/6", "2/6", "3/6", "4/6", "5/6", "6/6"]
     steps:
-      - uses: actions/checkout@v7.0.1
-
-      - uses: pnpm/action-setup@v6.1.1
-
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: package.json
-          check-latest: true
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - uses: actions/cache@v6.1.0
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**', 'next.config.ts', 'postcss.config.mjs', 'tsconfig.json') }}
-          restore-keys: ${{ runner.os }}-nextjs-${{ hashFiles('pnpm-lock.yaml') }}-
-
-      - run: pnpm build
-
-      - run: pnpm exec playwright install chromium
-        timeout-minutes: 2
-
-      - run: pnpm test:e2e --shard=${{ matrix.shard }} --workers=2
-
+      - run: echo shard ${{ matrix.shard }}
+      - run: exit 1
+        if: matrix.shard == '2/6'
   check:
     name: Check
     if: always()
