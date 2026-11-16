@@ -54,24 +54,17 @@ jobs:
           - { config: "4x2", shard: "2/4", workers: 2 }
           - { config: "4x2", shard: "3/4", workers: 2 }
           - { config: "4x2", shard: "4/4", workers: 2 }
-          - { config: "4x4", shard: "1/4", workers: 4 }
-          - { config: "4x4", shard: "2/4", workers: 4 }
-          - { config: "4x4", shard: "3/4", workers: 4 }
-          - { config: "4x4", shard: "4/4", workers: 4 }
+          - { config: "5x2", shard: "1/5", workers: 2 }
+          - { config: "5x2", shard: "2/5", workers: 2 }
+          - { config: "5x2", shard: "3/5", workers: 2 }
+          - { config: "5x2", shard: "4/5", workers: 2 }
+          - { config: "5x2", shard: "5/5", workers: 2 }
           - { config: "6x2", shard: "1/6", workers: 2 }
           - { config: "6x2", shard: "2/6", workers: 2 }
           - { config: "6x2", shard: "3/6", workers: 2 }
           - { config: "6x2", shard: "4/6", workers: 2 }
           - { config: "6x2", shard: "5/6", workers: 2 }
           - { config: "6x2", shard: "6/6", workers: 2 }
-          - { config: "8x2", shard: "1/8", workers: 2 }
-          - { config: "8x2", shard: "2/8", workers: 2 }
-          - { config: "8x2", shard: "3/8", workers: 2 }
-          - { config: "8x2", shard: "4/8", workers: 2 }
-          - { config: "8x2", shard: "5/8", workers: 2 }
-          - { config: "8x2", shard: "6/8", workers: 2 }
-          - { config: "8x2", shard: "7/8", workers: 2 }
-          - { config: "8x2", shard: "8/8", workers: 2 }
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -96,7 +89,7 @@ jobs:
       - run: pnpm exec playwright install chromium
         timeout-minutes: 2
 
-      - run: pnpm test:e2e --shard=${{ matrix.shard }} --workers=${{ matrix.workers }}
+      - run: pnpm test:e2e --shard=${{ matrix.shard }} --workers=${{ matrix.workers }} --reporter=list
 
   check:
     name: Check
