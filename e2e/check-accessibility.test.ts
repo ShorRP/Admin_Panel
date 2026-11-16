@@ -43,16 +43,16 @@ test("checkAccessibility narrows the viewport to 360 px at the end, unless it is
   await logIn(ALDIS)
   await expect(page).toHaveURL("/blocked-words")
   await page.waitForLoadState()
-  const resizedTo = await page.evaluateHandle(() => {
-    const widths: number[] = []
-    window.addEventListener("resize", () => {
-      widths.push(window.innerWidth)
-    })
-    return widths
+  await page.evaluate(() => {
+    const wide = document.createElement("div")
+    wide.style.width = "700px"
+    wide.style.height = "1px"
+    document.body.append(wide)
   })
 
   await checkAccessibility({ narrow: false })
-  await checkAccessibility()
 
-  await expect.poll(() => resizedTo.jsonValue()).toEqual([360, 800])
+  await expect(checkAccessibility()).rejects.toThrow(
+    "the page's width at 360 px"
+  )
 })
