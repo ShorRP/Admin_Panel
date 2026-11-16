@@ -23,6 +23,7 @@ export const BOT_LOG_CHANNEL_ID = "1300000000000000052"
 export default defineConfig({
   testDir: "e2e",
   testMatch: "*.test.ts",
+  fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   use: { baseURL: ORIGIN, reducedMotion: "reduce" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
