@@ -33,3 +33,26 @@ test("checkAccessibility waits for the page's title to come back before running 
 
   await expect(page).toHaveTitle("Mots interdits – Panel de Shor")
 })
+
+test("checkAccessibility narrows the viewport to 360 px at the end, unless it is told not to", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  await page.setViewportSize({ width: 800, height: 900 })
+  await logIn(ALDIS)
+  await expect(page).toHaveURL("/blocked-words")
+  await page.waitForLoadState()
+  await page.evaluate(() => {
+    const wide = document.createElement("div")
+    wide.style.width = "700px"
+    wide.style.height = "1px"
+    document.body.append(wide)
+  })
+
+  await checkAccessibility({ narrow: false })
+
+  await expect(checkAccessibility()).rejects.toThrow(
+    "the page's width at 360 px"
+  )
+})

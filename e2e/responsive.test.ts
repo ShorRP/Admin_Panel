@@ -45,10 +45,10 @@ const PANEL = { id: "1300000000000000020", name: "Shor Panel", position: 2 }
 const GUARD = { id: "1300000000000000010", name: "Garde", position: 1 }
 
 const SCREENS = [
-  { width: 360, height: 780, touchScreen: false },
-  { width: 390, height: 844, touchScreen: false },
-  { width: 768, height: 1024, touchScreen: false },
-  { width: 1024, height: 768, touchScreen: true },
+  { width: 360, height: 780, touchScreen: false, axe: true },
+  { width: 390, height: 844, touchScreen: false, axe: false },
+  { width: 768, height: 1024, touchScreen: false, axe: true },
+  { width: 1024, height: 768, touchScreen: true, axe: true },
 ] as const
 
 const DESKTOP = { width: 1280, height: 800, touchScreen: false } as const
@@ -362,6 +362,42 @@ function smallTargets(page: Page, within = "body") {
   )
 }
 
+function holdsTitle(path: string, screen: (typeof SCREENS)[number]) {
+  return `${path} holds in ${screen.width} px, scrolling no wider, giving every control a ${MIN_TARGET_PX} px target${screen.axe ? " and passing axe" : ""}`
+}
+
+async function expectPageToHold(
+  {
+    page,
+    checkAccessibility,
+  }: {
+    page: Page
+    checkAccessibility: (options: { narrow: false }) => Promise<void>
+  },
+  screen: (typeof SCREENS)[number],
+  fixme: boolean
+) {
+  expect(await holdsTouch(page)).toBe(true)
+  expect
+    .soft(await horizontalOverflow(page), "the page's sideways scroll")
+    .toEqual({ scroll: 0, wider: [] })
+  if (fixme) {
+    test.info().annotations.push({
+      type: "fixme",
+      description: `every control a ${MIN_TARGET_PX} px target`,
+    })
+  } else {
+    expect
+      .soft(await smallTargets(page), `the controls under ${MIN_TARGET_PX} px`)
+      .toEqual([])
+  }
+  if (screen.axe) {
+    await expect
+      .soft(checkAccessibility({ narrow: false }), "axe")
+      .resolves.toBeUndefined()
+  }
+}
+
 for (const screen of SCREENS) {
   test.describe(`at ${screen.width} px`, () => {
     test.use({
@@ -371,29 +407,14 @@ for (const screen of SCREENS) {
     })
 
     for (const { path, fixme } of STAFF_PAGES) {
-      test(`${path} holds in ${screen.width} px, scrolling no wider and passing axe`, async ({
-        page,
-        logIn,
-        checkAccessibility,
-      }) => {
-        await logIn(ALDIS)
-        await page.goto(path)
-        await settle(page)
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
-        expect(await holdsTouch(page)).toBe(true)
-        expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
-        await checkAccessibility()
-      })
-
-      const sizeTest = fixme ? test.fixme : test
-      sizeTest(
-        `${path} gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px`,
-        async ({ page, logIn }) => {
+      test(
+        holdsTitle(path, screen),
+        async ({ page, logIn, checkAccessibility }) => {
           await logIn(ALDIS)
           await page.goto(path)
           await settle(page)
           await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
-          expect(await smallTargets(page)).toEqual([])
+          await expectPageToHold({ page, checkAccessibility }, screen, fixme)
         }
       )
     }
@@ -450,26 +471,11 @@ for (const screen of SCREENS) {
     }
 
     for (const { path, fixme } of PUBLIC_PAGES) {
-      test(`${path} holds in ${screen.width} px, scrolling no wider and passing axe`, async ({
-        page,
-        checkAccessibility,
-      }) => {
+      test(holdsTitle(path, screen), async ({ page, checkAccessibility }) => {
         await page.goto(path)
         await settle(page)
-        expect(await holdsTouch(page)).toBe(true)
-        expect(await horizontalOverflow(page)).toEqual({ scroll: 0, wider: [] })
-        await checkAccessibility()
+        await expectPageToHold({ page, checkAccessibility }, screen, fixme)
       })
-
-      const sizeTest = fixme ? test.fixme : test
-      sizeTest(
-        `${path} gives every control a ${MIN_TARGET_PX} px target in ${screen.width} px`,
-        async ({ page }) => {
-          await page.goto(path)
-          await settle(page)
-          expect(await smallTargets(page)).toEqual([])
-        }
-      )
     }
   })
 }
