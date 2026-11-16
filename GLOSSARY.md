@@ -92,6 +92,22 @@ _Avoid_: blacklist, banned word, forbidden word
 The AutoMod rules on the Discord server whose keywords are the blocked words, one for each thing a blocked word can do, which the Admin Panel creates and keeps. Not the AutoMod rules the staff make in Discord, which the panel only shows.
 _Avoid_: blocked words rule, the rule (alone)
 
+**Link rule**:
+The AutoMod rule on the Discord server, which the Admin Panel creates and keeps, that blocks a member's message holding a link, unless its domain is an allowed domain, or the member holds an exempt role, or the message is in an exempt channel. Not one of the panel's rules, which hold the blocked words.
+_Avoid_: link filter, anti-link, the rule (alone)
+
+**Allowed domain**:
+A web domain, such as YouTube's, whose links the link rule lets any member post.
+_Avoid_: whitelist (which names a player's approval), allowed link
+
+**Exempt role**:
+A Discord role whose members the link rule lets post any link. The staff role is always one.
+_Avoid_: allowed role, bypass role
+
+**Exempt channel**:
+A channel of the Discord server where the link rule lets any member post any link.
+_Avoid_: allowed channel, links channel
+
 **Sanction**:
 A measure taken against an account for its conduct on the Discord server, by the staff or automatically: a warning, a timeout, a kick or a ban. Lifting a timeout or a ban is not a sanction.
 _Avoid_: punishment, infraction, strike
