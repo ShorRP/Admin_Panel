@@ -144,6 +144,7 @@ const WALL_OF_TEXT_TICKET_ID = channelIdAt("2026-11-02T10:00:00Z")
 const WELCOME_TICKET_ID = channelIdAt("2026-11-03T14:32:10Z")
 
 test.use({
+  unthrottledReveals: true,
   discordState: {
     roles: [STAFF, MODERATION, BANS, PANEL, GUARD],
     applicationRoles: [PANEL.id],

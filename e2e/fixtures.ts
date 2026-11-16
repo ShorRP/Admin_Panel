@@ -13,6 +13,8 @@ import { ARCHIVES_CHANNEL_ID } from "../playwright.config"
 
 type Fixtures = {
   discordState: FakeDiscordState
+  unthrottledReveals: boolean
+  revealThrottle: void
   discord: FakeDiscord
   logIn: (user: FakeUser) => Promise<void>
   holdDiscord: () => () => void
@@ -46,6 +48,22 @@ export function bodyBackground() {
 
 export const test = base.extend<Fixtures>({
   discordState: [{}, { option: true }],
+  unthrottledReveals: [false, { option: true }],
+  revealThrottle: [
+    async ({ page, unthrottledReveals }, use) => {
+      if (unthrottledReveals) {
+        await page.addInitScript(() => {
+          Object.defineProperty(window, "$RT", {
+            configurable: true,
+            get: () => undefined,
+            set: () => {},
+          })
+        })
+      }
+      await use()
+    },
+    { auto: true },
+  ],
   discord: [
     async ({ next, discordState }, use) => {
       const discord = new FakeDiscord({
