@@ -11,7 +11,11 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}", "next.config.test.ts"],
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "next.config.test.ts",
+      "playwright.config.test.ts",
+    ],
     exclude: [...configDefaults.exclude, "src/**/*.contract.test.ts"],
     unstubEnvs: true,
   },
