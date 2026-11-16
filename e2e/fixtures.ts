@@ -13,6 +13,8 @@ import { ARCHIVES_CHANNEL_ID } from "../playwright.config"
 
 type Fixtures = {
   discordState: FakeDiscordState
+  instantReveals: boolean
+  revealTiming: void
   discord: FakeDiscord
   logIn: (user: FakeUser) => Promise<void>
   holdDiscord: () => () => void
@@ -33,6 +35,9 @@ const WCAG_22_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
 const SMALLEST_SCREEN_WIDTH = 360
 
+const INSTANT_VIEW_TRANSITIONS =
+  "::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 0s !important; }"
+
 const LOCAL_AVATAR =
   '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#423020"/></svg>'
 
@@ -46,6 +51,25 @@ export function bodyBackground() {
 
 export const test = base.extend<Fixtures>({
   discordState: [{}, { option: true }],
+  instantReveals: [false, { option: true }],
+  revealTiming: [
+    async ({ page, instantReveals }, use) => {
+      if (instantReveals) {
+        await page.addInitScript((fades) => {
+          Object.defineProperty(window, "$RT", {
+            configurable: true,
+            get: () => undefined,
+            set: () => {},
+          })
+          const sheet = new CSSStyleSheet()
+          sheet.replaceSync(fades)
+          document.adoptedStyleSheets.push(sheet)
+        }, INSTANT_VIEW_TRANSITIONS)
+      }
+      await use()
+    },
+    { auto: true },
+  ],
   discord: [
     async ({ next, discordState }, use) => {
       const discord = new FakeDiscord({
