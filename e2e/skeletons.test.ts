@@ -19,6 +19,14 @@ const PAGES = [
     content: "Aucun mot interdit pour l’instant.",
   },
   {
+    path: "/blocked-links",
+    loading: [
+      "Chargement de la règle des liens…",
+      "Chargement des domaines permis…",
+    ],
+    content: "Pas encore créée",
+  },
+  {
     path: "/audit-log",
     loading: ["Chargement du journal d’audit…"],
     content:

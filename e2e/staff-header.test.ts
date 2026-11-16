@@ -36,8 +36,13 @@ test("a staff member moves between sections through the sidebar, which marks the
       .getByRole("link", { name: "Mots interdits" })
   ).toBeVisible()
   await expect(
+    sections
+      .getByRole("list", { name: "Administration" })
+      .getByRole("link", { name: "Liens" })
+  ).toBeVisible()
+  await expect(
     sections.getByRole("list", { name: "Administration" }).getByRole("link")
-  ).toHaveCount(1)
+  ).toHaveCount(2)
   await expect(
     sections
       .getByRole("list", { name: "Journaux" })

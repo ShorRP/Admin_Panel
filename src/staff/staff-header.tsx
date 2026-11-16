@@ -13,6 +13,7 @@ import {
   Bot,
   Gamepad2,
   Gavel,
+  Link2,
   Menu,
   ScrollText,
   Ticket,
@@ -68,6 +69,12 @@ const BLOCKED_WORDS = {
   href: "/blocked-words",
   name: "Mots interdits",
   Icon: Ban,
+}
+
+const BLOCKED_LINKS = {
+  href: "/blocked-links",
+  name: "Liens",
+  Icon: Link2,
 }
 
 const AUDIT_LOG = {
@@ -147,6 +154,7 @@ export function StaffHeader({
   const linkTo = { currentPath, ownRecord }
   const administration = [
     withCurrent({ ...BLOCKED_WORDS, badge: blockedWordCount }, currentPath),
+    withCurrent(BLOCKED_LINKS, currentPath),
   ]
   const logs = [
     withCurrent(AUDIT_LOG, currentPath),

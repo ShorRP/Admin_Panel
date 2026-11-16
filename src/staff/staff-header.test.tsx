@@ -4,6 +4,7 @@ import {
   Bot,
   Gamepad2,
   Gavel,
+  Link2,
   Lock,
   LogOut,
   Menu,
@@ -135,6 +136,7 @@ test("the sidebar links to the panel, then to each section, then to the privacy 
   expect(links(sidebar).map(({ text, href }) => ({ text, href }))).toEqual([
     { text: "Shor Panel du staff", href: "/" },
     { text: "Mots interdits", href: "/blocked-words" },
+    { text: "Liens", href: "/blocked-links" },
     { text: "Journal d’audit", href: "/audit-log" },
     { text: "Tickets de support", href: "/support-tickets" },
     { text: "Confidentialité", href: "/privacy" },
@@ -193,7 +195,7 @@ test("a staff member who cannot open the moderation section sees the sections un
     {
       title: "Administration",
       titlesItsList: true,
-      sections: ["Mots interdits"],
+      sections: ["Mots interdits", "Liens"],
     },
     {
       title: "Journaux",
@@ -216,7 +218,7 @@ test("a staff member who opens the moderation section also sees « Modération �
     {
       title: "Administration",
       titlesItsList: true,
-      sections: ["Mots interdits"],
+      sections: ["Mots interdits", "Liens"],
     },
     {
       title: "Journaux",
@@ -320,6 +322,10 @@ test("each section's link shows its icon before its name, hidden from assistive 
       image: { drawing: drawing(<Ban />), hidden: true },
     },
     {
+      text: "Liens",
+      image: { drawing: drawing(<Link2 />), hidden: true },
+    },
+    {
       text: "Journal d’audit",
       image: { drawing: drawing(<ScrollText />), hidden: true },
     },
@@ -358,6 +364,7 @@ test("the blocked words' link shows the count it is given after the section's na
       }))
     ).toEqual([
       { countAfterName: true, count: true },
+      { countAfterName: false, count: false },
       { countAfterName: false, count: false },
       { countAfterName: false, count: false },
       { countAfterName: false, count: false },
@@ -475,6 +482,7 @@ test("each of the sidebar's section links repeats its name in a title, for the r
     links(navOf(sidebar)).map(({ text, title }) => ({ text, title }))
   ).toEqual([
     { text: "Mots interdits", title: "Mots interdits" },
+    { text: "Liens", title: "Liens" },
     { text: "Journal d’audit", title: "Journal d’audit" },
     { text: "Modération", title: "Modération" },
     { text: "Tickets de support", title: "Tickets de support" },
