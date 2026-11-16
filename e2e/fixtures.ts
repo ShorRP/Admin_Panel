@@ -16,7 +16,10 @@ type Fixtures = {
   discord: FakeDiscord
   logIn: (user: FakeUser) => Promise<void>
   holdDiscord: () => () => void
-  checkAccessibility: (options?: { waitForLoad?: boolean }) => Promise<void>
+  checkAccessibility: (options?: {
+    waitForLoad?: boolean
+    narrow?: boolean
+  }) => Promise<void>
   toast: (message?: string | RegExp) => Locator
   readToast: (message: string | RegExp) => Promise<void>
   discordCdnRequests: string[]
@@ -115,7 +118,7 @@ export const test = base.extend<Fixtures>({
   },
   checkAccessibility: async ({ page, colorScheme }, use) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    await use(async ({ waitForLoad = true } = {}) => {
+    await use(async ({ waitForLoad = true, narrow = true } = {}) => {
       if (waitForLoad) {
         await page.waitForLoadState()
       }
@@ -161,6 +164,10 @@ export const test = base.extend<Fixtures>({
         await page.emulateMedia({ colorScheme })
       } else {
         await checkTheme(`the theme chosen as ${chosenTheme}`)
+      }
+
+      if (!narrow) {
+        return
       }
 
       const viewport = page.viewportSize()
