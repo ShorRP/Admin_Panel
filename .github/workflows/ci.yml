@@ -82,12 +82,12 @@ jobs:
     needs: [static, e2e]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
-    env:
-      STATIC: ${{ needs.static.result }}
-      E2E: ${{ needs.e2e.result }}
     steps:
-      - run: |
-          echo "static: $STATIC"
-          echo "end to end: $E2E"
-          test "$STATIC" = success
-          test "$E2E" = success
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          test -n "$RESULTS"
+          for result in $RESULTS; do
+            echo "$result"
+            test "$result" = success
+          done
