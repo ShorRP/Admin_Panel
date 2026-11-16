@@ -13,10 +13,10 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Check
+  static:
+    name: Static checks
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -42,6 +42,27 @@ jobs:
 
       - run: pnpm test
 
+  e2e:
+    name: End to end (${{ matrix.shard }})
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/6", "2/6", "3/6", "4/6", "5/6", "6/6"]
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: pnpm/action-setup@v6.1.1
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: package.json
+          check-latest: true
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
       - uses: actions/cache@v6.1.0
         with:
           path: .next/cache
@@ -53,4 +74,20 @@ jobs:
       - run: pnpm exec playwright install chromium
         timeout-minutes: 2
 
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e --shard=${{ matrix.shard }} --workers=2
+
+  check:
+    name: Check
+    if: always()
+    needs: [static, e2e]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          test -n "$RESULTS"
+          for result in $RESULTS; do
+            echo "$result"
+            test "$result" = success
+          done
