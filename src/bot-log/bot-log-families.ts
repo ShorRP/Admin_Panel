@@ -24,7 +24,7 @@ export const BOT_LOG_FAMILIES: Record<
     ],
   },
   tickets: { label: "Tickets", actions: ["Ticket ouvert", "Ticket fermé"] },
-  "game-servers": { label: "Serveurs de jeu", actions: [] },
+  "game-servers": { label: "Serveurs de jeu", actions: ["Salon renommé"] },
   "automatic-sanctions": {
     label: "Sanctions automatiques",
     actions: ["Membre expulsé", "Compte banni"],
