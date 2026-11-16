@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { cn } from "cn"
 
 import { Overline } from "@/ui/overline"
-import { CARD_CLASSES } from "./link-rule-layout"
+import { CARD_CLASSES, SECTION_SENTENCE_CLASSES } from "./link-rule-layout"
 import type { LinkRuleStatus } from "./read-link-rule"
 
 const LABEL_ID = "link-rule-switch"
@@ -46,9 +46,7 @@ export function LinkRuleSwitchCard({
         <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />
         {name}
       </p>
-      <p className="text-[0.84375rem] leading-5 text-pretty text-muted-foreground">
-        {description}
-      </p>
+      <p className={SECTION_SENTENCE_CLASSES}>{description}</p>
       <div className="mt-1.5">{form}</div>
     </section>
   )

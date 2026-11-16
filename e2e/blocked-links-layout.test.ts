@@ -12,6 +12,10 @@ const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 const GALLERY_ID = "1500000000000000001"
 
+const GUARD_ROLE_ID = "1300000000000000010"
+
+const LONG_DOMAIN = `${"a".repeat(40)}.com`
+
 const SCREENS = [
   { width: 360, height: 780, touchScreen: false, columns: 1 },
   { width: 768, height: 1024, touchScreen: false, columns: 1 },
@@ -45,8 +49,11 @@ const SIDE_REGIONS = [
 test.use({
   discordState: {
     members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
-    roles: [{ id: STAFF_ROLE_ID, name: "Staff" }],
-    channels: [{ id: GALLERY_ID, name: "galerie" }],
+    roles: [
+      { id: STAFF_ROLE_ID, name: "Staff" },
+      { id: GUARD_ROLE_ID, name: "G".repeat(90) },
+    ],
+    channels: [{ id: GALLERY_ID, name: "g".repeat(95) }],
   },
 })
 
@@ -62,11 +69,15 @@ test.beforeEach(({ discord }) => {
         "https://youtube.com/*",
         "https://www.youtube.com",
         "https://www.youtube.com/*",
+        `https://${LONG_DOMAIN}`,
+        `https://${LONG_DOMAIN}/*`,
+        `https://www.${LONG_DOMAIN}`,
+        `https://www.${LONG_DOMAIN}/*`,
         "*arnaque.example/a-very-long-entry-that-does-not-follow-the-model-of-the-panel",
       ],
     },
     actions: [{ type: AutoModerationActionType.BlockMessage }],
-    exempt_roles: [STAFF_ROLE_ID],
+    exempt_roles: [STAFF_ROLE_ID, GUARD_ROLE_ID],
     exempt_channels: [GALLERY_ID],
     enabled: true,
   })
@@ -90,8 +101,8 @@ for (const screen of [...SCREENS, DESKTOP]) {
 
     test(
       screen.columns === 1
-        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high"
-        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse",
+        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
+        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
       async ({ page, logIn, checkAccessibility }) => {
         await logIn(ALDIS)
         await page.goto("/blocked-links")
@@ -140,6 +151,14 @@ for (const screen of [...SCREENS, DESKTOP]) {
         if (screen.width >= 768) {
           expect(switchCard.x).toBeGreaterThanOrEqual(navigationWidth)
         }
+
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth
+          )
+        ).toBeLessThanOrEqual(0)
 
         const button = page.getByRole("button", { name: "Couper" })
         const { height, width } = await boxOf(button)

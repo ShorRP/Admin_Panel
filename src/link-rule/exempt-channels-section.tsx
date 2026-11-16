@@ -11,7 +11,7 @@ import type { NamedItem } from "./read-link-rule"
 
 const LABEL_ID = "exempt-channels"
 
-export function ExemptChannels({ channels }: { channels: NamedItem[] }) {
+export function ExemptChannelsSection({ channels }: { channels: NamedItem[] }) {
   return (
     <section aria-labelledby={LABEL_ID} className={SECTION_CLASSES}>
       <Overline id={LABEL_ID}>Salons exemptés</Overline>

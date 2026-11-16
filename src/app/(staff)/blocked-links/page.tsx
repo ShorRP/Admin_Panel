@@ -3,18 +3,16 @@ import type { Metadata } from "next"
 import { connection } from "next/server"
 
 import { createDiscordApi } from "@/discord/discord-api"
-import { AllowedDomains } from "@/link-rule/allowed-domains-section"
-import { ExemptChannels } from "@/link-rule/exempt-channels-section"
-import { ExemptRoles } from "@/link-rule/exempt-roles-section"
+import { AllowedDomainsSection } from "@/link-rule/allowed-domains-section"
+import { AllowedDomainsSkeleton } from "@/link-rule/allowed-domains-skeleton"
+import { ExemptChannelsSection } from "@/link-rule/exempt-channels-section"
+import { ExemptRolesSection } from "@/link-rule/exempt-roles-section"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
-import {
-  AllowedDomainsSkeleton,
-  LinkRuleSideSectionSkeleton,
-  LinkRuleSwitchSkeleton,
-} from "@/link-rule/link-rule-skeletons"
+import { LinkRuleSideSectionSkeleton } from "@/link-rule/link-rule-side-section-skeleton"
 import { LinkRuleSwitchCard } from "@/link-rule/link-rule-switch-card"
+import { LinkRuleSwitchSkeleton } from "@/link-rule/link-rule-switch-skeleton"
 import { LinkRuleView } from "@/link-rule/link-rule-view"
-import { OtherExceptions } from "@/link-rule/other-exceptions-section"
+import { OtherExceptionsSection } from "@/link-rule/other-exceptions-section"
 import { readLinkRule, type LinkRuleSettings } from "@/link-rule/read-link-rule"
 import { StatefulLinkRuleSwitchForm } from "@/link-rule/stateful-link-rule-switch-form"
 import { requireStaffMember } from "@/staff/require-staff-member"
@@ -105,17 +103,17 @@ async function SwitchFromDiscord({ linkRule }: FromDiscordProps) {
 
 async function DomainsFromDiscord({ linkRule }: FromDiscordProps) {
   const { allowedDomains } = await linkRule
-  return <AllowedDomains domains={allowedDomains} />
+  return <AllowedDomainsSection domains={allowedDomains} />
 }
 
 async function RolesFromDiscord({ linkRule }: FromDiscordProps) {
   const { exemptRoles } = await linkRule
-  return <ExemptRoles roles={exemptRoles} />
+  return <ExemptRolesSection roles={exemptRoles} />
 }
 
 async function ChannelsFromDiscord({ linkRule }: FromDiscordProps) {
   const { exemptChannels } = await linkRule
-  return <ExemptChannels channels={exemptChannels} />
+  return <ExemptChannelsSection channels={exemptChannels} />
 }
 
 async function ActionFromDiscord({ linkRule }: FromDiscordProps) {
@@ -125,5 +123,5 @@ async function ActionFromDiscord({ linkRule }: FromDiscordProps) {
 
 async function OtherExceptionsFromDiscord({ linkRule }: FromDiscordProps) {
   const { otherExceptions } = await linkRule
-  return <OtherExceptions entries={otherExceptions} />
+  return <OtherExceptionsSection entries={otherExceptions} />
 }

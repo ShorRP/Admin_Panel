@@ -11,7 +11,7 @@ import type { NamedItem } from "./read-link-rule"
 
 const LABEL_ID = "exempt-roles"
 
-export function ExemptRoles({ roles }: { roles: NamedItem[] }) {
+export function ExemptRolesSection({ roles }: { roles: NamedItem[] }) {
   return (
     <section aria-labelledby={LABEL_ID} className={SECTION_CLASSES}>
       <Overline id={LABEL_ID}>Rôles exemptés</Overline>

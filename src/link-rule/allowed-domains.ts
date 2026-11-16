@@ -11,6 +11,10 @@ export function allowListEntriesOf(domain: string) {
   ]
 }
 
+export function inFrenchOrder(domains: string[]) {
+  return domains.toSorted(frenchOrder.compare)
+}
+
 export function allowedDomainsOf(allowList: string[]) {
   const held = new Set(allowList)
   const domains = new Set<string>()
@@ -27,7 +31,7 @@ export function allowedDomainsOf(allowList: string[]) {
     }
   }
   return {
-    domains: Array.from(domains).toSorted(frenchOrder.compare),
+    domains: inFrenchOrder(Array.from(domains)),
     otherExceptions: allowList.filter((entry) => !covered.has(entry)),
   }
 }

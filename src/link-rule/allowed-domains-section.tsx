@@ -2,11 +2,15 @@ import { cn } from "cn"
 
 import { counted } from "@/blocked-words/french-text"
 import { EmptyListFrame } from "@/ui/empty-list-frame"
-import { CHIP_CLASSES, CHIPS_CLASSES } from "./link-rule-layout"
+import {
+  CHIP_CLASSES,
+  CHIPS_CLASSES,
+  SECTION_SENTENCE_CLASSES,
+} from "./link-rule-layout"
 
 const HEADING_ID = "allowed-domains"
 
-export function AllowedDomains({ domains }: { domains: string[] }) {
+export function AllowedDomainsSection({ domains }: { domains: string[] }) {
   return (
     <section aria-labelledby={HEADING_ID} className="flex flex-col">
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -25,7 +29,7 @@ export function AllowedDomains({ domains }: { domains: string[] }) {
           <p>Aucun domaine permis : tout lien est bloqué.</p>
         </EmptyListFrame>
       ) : (
-        <p className="mt-1.5 text-[0.84375rem] leading-5 text-pretty text-muted-foreground">
+        <p className={cn("mt-1.5", SECTION_SENTENCE_CLASSES)}>
           Les liens en https vers ces domaines, avec ou sans « www. », passent.
         </p>
       )}

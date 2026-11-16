@@ -3,13 +3,7 @@ import {
   type APIAutoModerationRule,
 } from "discord-api-types/v10"
 
-export const LINK_RULE_ACTION_IDS = [
-  "block",
-  "timeout-1h",
-  "timeout-1d",
-] as const
-
-export type LinkRuleActionId = (typeof LINK_RULE_ACTION_IDS)[number]
+export type LinkRuleActionId = "block" | "timeout-1h" | "timeout-1d"
 
 const LABELS: Record<LinkRuleActionId, string> = {
   block: "Bloquer seulement",

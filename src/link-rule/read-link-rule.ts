@@ -4,7 +4,7 @@ import type { Snowflake } from "discord-api-types/v10"
 
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { allowedDomainsOf } from "./allowed-domains"
+import { allowedDomainsOf, inFrenchOrder } from "./allowed-domains"
 import { DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
 import { linkRuleActionOf, type LinkRuleActionId } from "./link-rule-action"
 
@@ -21,8 +21,6 @@ export type LinkRuleSettings = {
   action: LinkRuleActionId | null
 }
 
-const frenchOrder = new Intl.Collator("fr")
-
 export async function readLinkRule(
   discord: DiscordApi,
   { staffRoleId }: Pick<StaffMember, "staffRoleId">
@@ -36,12 +34,12 @@ export async function readLinkRule(
   ])
   const { domains, otherExceptions } =
     rule === undefined
-      ? { domains: DEFAULT_ALLOWED_DOMAINS, otherExceptions: [] }
+      ? { domains: inFrenchOrder(DEFAULT_ALLOWED_DOMAINS), otherExceptions: [] }
       : allowedDomainsOf(rule.trigger_metadata.allow_list ?? [])
   return {
     status:
       rule === undefined ? "absent" : rule.enabled ? "enabled" : "disabled",
-    allowedDomains: domains.toSorted(frenchOrder.compare),
+    allowedDomains: domains,
     otherExceptions,
     exemptRoles: named(exemptRoleIds, roles),
     exemptChannels: named(exemptChannelIds, channels),

@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { expect, test } from "vitest"
 
-import { AllowedDomains } from "./allowed-domains-section"
-import { ExemptChannels } from "./exempt-channels-section"
-import { ExemptRoles } from "./exempt-roles-section"
+import { AllowedDomainsSection } from "./allowed-domains-section"
+import { ExemptChannelsSection } from "./exempt-channels-section"
+import { ExemptRolesSection } from "./exempt-roles-section"
 import { LinkRuleActionSection } from "./link-rule-action-section"
-import { OtherExceptions } from "./other-exceptions-section"
+import { OtherExceptionsSection } from "./other-exceptions-section"
 
 function texts(html: string) {
   return Array.from(html.matchAll(/>([^<]+)</g), ([, text]) => text)
@@ -19,7 +19,7 @@ function listItems(html: string) {
 
 test("the allowed domains are listed under their count, and say that the links to them pass with or without « www. »", () => {
   const html = renderToStaticMarkup(
-    <AllowedDomains domains={["twitch.tv", "youtube.com"]} />
+    <AllowedDomainsSection domains={["twitch.tv", "youtube.com"]} />
   )
 
   expect(texts(html).slice(0, 3)).toEqual([
@@ -32,29 +32,23 @@ test("the allowed domains are listed under their count, and say that the links t
 })
 
 test("a single allowed domain counts in the singular", () => {
-  const html = renderToStaticMarkup(<AllowedDomains domains={["twitch.tv"]} />)
+  const html = renderToStaticMarkup(
+    <AllowedDomainsSection domains={["twitch.tv"]} />
+  )
 
   expect(texts(html)).toContain("1 domaine")
 })
 
 test("with no allowed domain, the section says that every link is blocked, and lists nothing", () => {
-  const html = renderToStaticMarkup(<AllowedDomains domains={[]} />)
+  const html = renderToStaticMarkup(<AllowedDomainsSection domains={[]} />)
 
   expect(texts(html)).toContain("Aucun domaine permis : tout lien est bloqué.")
   expect(listItems(html)).toEqual([])
 })
 
-test("a domain too long for its column wraps inside it", () => {
-  const html = renderToStaticMarkup(
-    <AllowedDomains domains={["a".repeat(60) + ".com"]} />
-  )
-
-  expect(html).toMatch(/<li[^>]*class="[^"]*wrap-anywhere/)
-})
-
 test("the exempt roles are listed by name, a role that Discord no longer lists as « Rôle supprimé », under what AutoMod spares whatever the rule says", () => {
   const html = renderToStaticMarkup(
-    <ExemptRoles
+    <ExemptRolesSection
       roles={[
         { id: "1", name: "Staff" },
         { id: "2", name: null },
@@ -73,7 +67,7 @@ test("the exempt roles are listed by name, a role that Discord no longer lists a
 })
 
 test("with no exempt role, the section says so", () => {
-  const html = renderToStaticMarkup(<ExemptRoles roles={[]} />)
+  const html = renderToStaticMarkup(<ExemptRolesSection roles={[]} />)
 
   expect(texts(html)).toContain("Aucun rôle exempté.")
   expect(listItems(html)).toEqual([])
@@ -81,7 +75,7 @@ test("with no exempt role, the section says so", () => {
 
 test("the exempt channels are listed with their #, a channel that Discord does not list as « Salon introuvable »", () => {
   const html = renderToStaticMarkup(
-    <ExemptChannels
+    <ExemptChannelsSection
       channels={[
         { id: "1", name: "galerie" },
         { id: "2", name: null },
@@ -99,7 +93,7 @@ test("the exempt channels are listed with their #, a channel that Discord does n
 })
 
 test("with no exempt channel, the section says that a link is blocked in every channel", () => {
-  const html = renderToStaticMarkup(<ExemptChannels channels={[]} />)
+  const html = renderToStaticMarkup(<ExemptChannelsSection channels={[]} />)
 
   expect(texts(html)).toEqual([
     "Salons exemptés",
@@ -129,7 +123,9 @@ test("the action is shown by its name, and an action that the panel does not off
 
 test("the other exceptions are listed as written, under what the panel does with them, and the section is absent when there is none", () => {
   const html = renderToStaticMarkup(
-    <OtherExceptions entries={["*youtube.com", "https://m.youtube.com/*"]} />
+    <OtherExceptionsSection
+      entries={["*youtube.com", "https://m.youtube.com/*"]}
+    />
   )
 
   expect(texts(html)).toEqual([
@@ -139,5 +135,5 @@ test("the other exceptions are listed as written, under what the panel does with
     "https://m.youtube.com/*",
   ])
   expect(listItems(html)).toEqual(["*youtube.com", "https://m.youtube.com/*"])
-  expect(renderToStaticMarkup(<OtherExceptions entries={[]} />)).toBe("")
+  expect(renderToStaticMarkup(<OtherExceptionsSection entries={[]} />)).toBe("")
 })

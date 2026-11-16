@@ -10,7 +10,7 @@ import {
 
 const LABEL_ID = "other-exceptions"
 
-export function OtherExceptions({ entries }: { entries: string[] }) {
+export function OtherExceptionsSection({ entries }: { entries: string[] }) {
   if (entries.length === 0) {
     return null
   }
