@@ -50,6 +50,7 @@ test.each([
   ["tickets-ticket-closed", "tickets"],
   ["automatic-sanctions-member-kicked", "automatic-sanctions"],
   ["automatic-sanctions-account-banned", "automatic-sanctions"],
+  ["game-servers-channel-renamed", "game-servers"],
 ] as const)("the example %s is an event of the family %s", (name, family) => {
   expect(parse(name)).toMatchObject({ kind: "event", family })
 })

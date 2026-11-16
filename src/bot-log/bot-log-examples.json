@@ -200,5 +200,20 @@
         "inline": true
       }
     ]
+  },
+  "game-servers-channel-renamed": {
+    "title": "Serveurs de jeu · Salon renommé",
+    "color": 16777215,
+    "timestamp": "2026-11-06T09:30:00+00:00",
+    "footer": { "text": "Shor — journal du Bot" },
+    "fields": [
+      { "name": "Serveur de jeu", "value": "Serveur Test", "inline": true },
+      { "name": "État", "value": "OFF", "inline": true },
+      {
+        "name": "Salon",
+        "value": "<#1400000000000000030> (`1400000000000000030`)",
+        "inline": true
+      }
+    ]
   }
 }
