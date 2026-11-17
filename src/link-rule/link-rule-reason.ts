@@ -13,3 +13,11 @@ export function domainAdditionReason(domain: string) {
 export function domainRemovalReason(domain: string) {
   return `retrait du domaine permis ${quoted(domain)}`
 }
+
+export function exemptRoleAdditionReason(role: string) {
+  return `ajout du rôle exempté ${quoted(role)}`
+}
+
+export function exemptRoleRemovalReason(role: string) {
+  return `retrait du rôle exempté ${quoted(role)}`
+}

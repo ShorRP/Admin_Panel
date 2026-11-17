@@ -7,6 +7,7 @@ import { AllowedDomainsSection } from "@/link-rule/allowed-domains-section"
 import { AllowedDomainsSkeleton } from "@/link-rule/allowed-domains-skeleton"
 import { ExemptChannelsSection } from "@/link-rule/exempt-channels-section"
 import { ExemptRolesSection } from "@/link-rule/exempt-roles-section"
+import { ExemptRolesSkeleton } from "@/link-rule/exempt-roles-skeleton"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
 import { LinkRuleSideSectionSkeleton } from "@/link-rule/link-rule-side-section-skeleton"
 import { LinkRuleSwitchCard } from "@/link-rule/link-rule-switch-card"
@@ -15,7 +16,9 @@ import { LinkRuleView } from "@/link-rule/link-rule-view"
 import { OtherExceptionsSection } from "@/link-rule/other-exceptions-section"
 import { readLinkRule, type LinkRuleSettings } from "@/link-rule/read-link-rule"
 import { StatefulAddAllowedDomainForm } from "@/link-rule/stateful-add-allowed-domain-form"
+import { StatefulAddExemptRoleForm } from "@/link-rule/stateful-add-exempt-role-form"
 import { StatefulAllowedDomainList } from "@/link-rule/stateful-allowed-domain-list"
+import { StatefulExemptRoleList } from "@/link-rule/stateful-exempt-role-list"
 import { StatefulLinkRuleSwitchForm } from "@/link-rule/stateful-link-rule-switch-form"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import type { StaffMember } from "@/staff/staff-member"
@@ -44,11 +47,7 @@ export default function BlockedLinksPage() {
             </SuspenseWithSkeleton>
           }
           roles={
-            <SuspenseWithSkeleton
-              skeleton={
-                <LinkRuleSideSectionSkeleton loading="Chargement des rôles exemptés…" />
-              }
-            >
+            <SuspenseWithSkeleton skeleton={<ExemptRolesSkeleton />}>
               <RolesFromDiscord linkRule={linkRule} />
             </SuspenseWithSkeleton>
           }
@@ -120,8 +119,17 @@ async function DomainsFromDiscord({ linkRule }: FromDiscordProps) {
 }
 
 async function RolesFromDiscord({ linkRule }: FromDiscordProps) {
-  const { exemptRoles } = await linkRule
-  return <ExemptRolesSection roles={exemptRoles} />
+  const { exemptRoles, exemptableRoles, staffRoleId } = await linkRule
+  return (
+    <ExemptRolesSection
+      roles={exemptRoles}
+      staffRoleId={staffRoleId}
+      form={<StatefulAddExemptRoleForm roles={exemptableRoles} />}
+      list={
+        <StatefulExemptRoleList roles={exemptRoles} staffRoleId={staffRoleId} />
+      }
+    />
+  )
 }
 
 async function ChannelsFromDiscord({ linkRule }: FromDiscordProps) {

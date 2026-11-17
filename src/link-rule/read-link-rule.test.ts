@@ -74,10 +74,61 @@ test("before the link rule exists, the settings are the ones that « Activer » 
     ],
     otherExceptions: [],
     exemptRoles: [{ id: STAFF_ROLE_ID, name: "Staff" }],
+    exemptableRoles: [],
+    staffRoleId: STAFF_ROLE_ID,
     exemptChannels: [],
     action: "block",
   })
   expect(await discord.listAutoModerationRules()).toEqual([])
+})
+
+test("the roles that the staff can choose are the Discord server's, from the highest in its hierarchy, but @everyone, the roles that an integration manages and those that the rule exempts already", async () => {
+  const discord = discordOn({
+    roles: [
+      { id: STAFF_ROLE_ID, name: "Staff", position: 5 },
+      { id: GUARD_ROLE_ID, name: "Garde", position: 3 },
+      { id: "1300000000000000011", name: "Modérateur", position: 4 },
+      {
+        id: "1300000000000000012",
+        name: "Intégration",
+        position: 9,
+        managed: true,
+      },
+      { id: "1300000000000000013", name: "Membre", position: 1 },
+    ],
+  })
+  const absent = await readOn(discord)
+  discord.createAutoModerationRuleAs(
+    ALDIS.id,
+    linkRule({ exempt_roles: [STAFF_ROLE_ID, "1300000000000000013"] })
+  )
+
+  const present = await readOn(discord)
+
+  expect(absent.exemptableRoles).toEqual([
+    { id: "1300000000000000011", name: "Modérateur" },
+    { id: GUARD_ROLE_ID, name: "Garde" },
+    { id: "1300000000000000013", name: "Membre" },
+  ])
+  expect(present.exemptableRoles).toEqual([
+    { id: "1300000000000000011", name: "Modérateur" },
+    { id: GUARD_ROLE_ID, name: "Garde" },
+  ])
+})
+
+test("a rule that no longer exempts the staff role offers it among the roles to choose, and the settings hold the staff role either way", async () => {
+  const discord = discordOn({
+    roles: [STAFF, { id: GUARD_ROLE_ID, name: "Garde" }],
+  })
+  discord.createAutoModerationRuleAs(
+    ALDIS.id,
+    linkRule({ exempt_roles: [GUARD_ROLE_ID] })
+  )
+
+  const settings = await readOn(discord)
+
+  expect(settings.exemptableRoles.map(({ id }) => id)).toEqual([STAFF_ROLE_ID])
+  expect(settings.staffRoleId).toBe(STAFF_ROLE_ID)
 })
 
 test("a rule that is on or off reads as so, and the rule's own settings replace the defaults", async () => {
