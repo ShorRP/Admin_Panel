@@ -5,7 +5,7 @@ import type { Snowflake } from "discord-api-types/v10"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
 import { allowedDomainsOf, inFrenchOrder } from "./allowed-domains"
-import { DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
+import { allowListOf, DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
 import { linkRuleActionOf, type LinkRuleActionId } from "./link-rule-action"
 
 export type LinkRuleStatus = "absent" | "enabled" | "disabled"
@@ -35,7 +35,7 @@ export async function readLinkRule(
   const { domains, otherExceptions } =
     rule === undefined
       ? { domains: inFrenchOrder(DEFAULT_ALLOWED_DOMAINS), otherExceptions: [] }
-      : allowedDomainsOf(rule.trigger_metadata.allow_list ?? [])
+      : allowedDomainsOf(allowListOf(rule))
   return {
     status:
       rule === undefined ? "absent" : rule.enabled ? "enabled" : "disabled",

@@ -14,6 +14,8 @@ import { LinkRuleSwitchSkeleton } from "@/link-rule/link-rule-switch-skeleton"
 import { LinkRuleView } from "@/link-rule/link-rule-view"
 import { OtherExceptionsSection } from "@/link-rule/other-exceptions-section"
 import { readLinkRule, type LinkRuleSettings } from "@/link-rule/read-link-rule"
+import { StatefulAddAllowedDomainForm } from "@/link-rule/stateful-add-allowed-domain-form"
+import { StatefulAllowedDomainList } from "@/link-rule/stateful-allowed-domain-list"
 import { StatefulLinkRuleSwitchForm } from "@/link-rule/stateful-link-rule-switch-form"
 import { requireStaffMember } from "@/staff/require-staff-member"
 import type { StaffMember } from "@/staff/staff-member"
@@ -102,8 +104,19 @@ async function SwitchFromDiscord({ linkRule }: FromDiscordProps) {
 }
 
 async function DomainsFromDiscord({ linkRule }: FromDiscordProps) {
-  const { allowedDomains } = await linkRule
-  return <AllowedDomainsSection domains={allowedDomains} />
+  const { allowedDomains, status } = await linkRule
+  return (
+    <AllowedDomainsSection
+      domains={allowedDomains}
+      form={<StatefulAddAllowedDomainForm />}
+      list={
+        <StatefulAllowedDomainList
+          domains={allowedDomains}
+          removable={status !== "absent"}
+        />
+      }
+    />
+  )
 }
 
 async function RolesFromDiscord({ linkRule }: FromDiscordProps) {

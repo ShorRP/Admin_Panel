@@ -55,7 +55,7 @@ test("a staff member opens « Liens » from the navigation, finds the rule that 
   )
   const domains = page.getByRole("region", { name: "Domaines permis" })
   await expect(domains).toContainText("8 domaines")
-  await expect(domains.getByRole("listitem")).toHaveText([
+  await expect(domains.locator("li > span")).toHaveText([
     "cdn.discordapp.com",
     "giphy.com",
     "klipy.com",
@@ -171,7 +171,7 @@ test("the page shows the rule as it stands on the Discord server, its domains, e
     page.getByRole("region", { name: "Règle des liens" })
   ).toContainText("Coupée")
   await expect(
-    page.getByRole("region", { name: "Domaines permis" }).getByRole("listitem")
+    page.getByRole("region", { name: "Domaines permis" }).locator("li > span")
   ).toHaveText(["arte.tv"])
   await expect(
     page.getByRole("region", { name: "Rôles exemptés" }).getByRole("listitem")
@@ -235,4 +235,117 @@ test("once the rule exists, « Mots interdits » lists it with the other AutoMod
   await expect(
     page.getByText("Aucun mot interdit pour l’instant.")
   ).toBeVisible()
+})
+
+test("a staff member adds an allowed domain typed in capitals, which the list shows in lower case, is refused a link, a duplicate and a missing rule in French with the domain as typed, then removes the domain, each write saying so in a toast and the audit log naming each", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+  readToast,
+}) => {
+  await logIn(ALDIS)
+  await page.goto("/blocked-links")
+  await page.waitForLoadState()
+  const domains = page.getByRole("region", { name: "Domaines permis" })
+  const field = domains.getByLabel("Ajouter un domaine")
+  const add = domains.getByRole("button", { name: "Ajouter" })
+
+  await field.fill("Arte.TV")
+  await add.click()
+
+  await expect(domains.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
+    "La règle des liens n’existe pas encore : active-la d’abord, puis ajoute le domaine."
+  )
+  await expect(field).toHaveValue("Arte.TV")
+  expect(await discord.listAutoModerationRules()).toEqual([])
+  await checkAccessibility()
+
+  await page.getByRole("button", { name: "Activer" }).click()
+  await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
+  await field.fill("Arte.TV")
+  await add.click()
+
+  await readToast("« arte.tv » est maintenant un domaine permis.")
+  await expect(field).toHaveValue("")
+  await expect(domains).toContainText("9 domaines")
+  await expect(domains.locator("li > span")).toHaveText([
+    "arte.tv",
+    "cdn.discordapp.com",
+    "giphy.com",
+    "klipy.com",
+    "media.discordapp.net",
+    "tenor.com",
+    "twitch.tv",
+    "youtu.be",
+    "youtube.com",
+  ])
+  expect(
+    (await discord.listAutoModerationRules())[0]?.trigger_metadata.allow_list
+  ).toEqual(
+    expect.arrayContaining([
+      "https://arte.tv",
+      "https://arte.tv/*",
+      "https://www.arte.tv",
+      "https://www.arte.tv/*",
+    ])
+  )
+  await checkAccessibility()
+
+  await field.fill("https://arte.tv/direct")
+  await add.click()
+
+  await expect(domains.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
+    "Saisis le domaine seul, sans schéma : « twitch.tv », pas « https://twitch.tv »."
+  )
+  await expect(field).toHaveValue("https://arte.tv/direct")
+  await checkAccessibility()
+
+  await field.fill("ARTE.tv")
+  await add.click()
+
+  await expect(domains.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
+    "« arte.tv » est déjà un domaine permis."
+  )
+  await expect(field).toHaveValue("ARTE.tv")
+  await expect(domains).toContainText("9 domaines")
+  await checkAccessibility()
+
+  await domains.getByRole("button", { name: "Retirer « arte.tv »" }).click()
+
+  await readToast("« arte.tv » n’est plus un domaine permis.")
+  await expect(domains).toContainText("8 domaines")
+  await expect(domains.getByRole("button", { name: /arte\.tv/ })).toHaveCount(0)
+  expect(
+    (await discord.listAutoModerationRules())[0]?.trigger_metadata.allow_list
+  ).toHaveLength(32)
+  await checkAccessibility()
+  const { audit_log_entries } = await discord.getAuditLog({
+    action_type: AuditLogEvent.AutoModerationRuleUpdate,
+  })
+  expect(audit_log_entries.map(({ reason }) => reason)).toEqual([
+    "aldis (1400000000000000001) : retrait du domaine permis « arte.tv »",
+    "aldis (1400000000000000001) : ajout du domaine permis « arte.tv »",
+  ])
+})
+
+test("before the rule exists, the domains that « Activer » would start with show with no cross, and the rule created gives each its cross", async ({
+  page,
+  logIn,
+  checkAccessibility,
+}) => {
+  await logIn(ALDIS)
+  await page.goto("/blocked-links")
+  await page.waitForLoadState()
+  const domains = page.getByRole("region", { name: "Domaines permis" })
+  const crosses = domains.getByRole("button", { name: /^Retirer/ })
+
+  await expect(domains).toContainText("8 domaines")
+  await expect(crosses).toHaveCount(0)
+  await checkAccessibility()
+
+  await page.getByRole("button", { name: "Activer" }).click()
+
+  await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
+  await expect(crosses).toHaveCount(8)
 })
