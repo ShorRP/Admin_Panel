@@ -14,6 +14,7 @@ import { DiscordError } from "@/discord/discord-error"
 import { memberAvatarUrl } from "@/discord/member-avatar-url"
 import { userName } from "@/discord/member-name"
 import { snowflakeDate } from "@/discord/snowflake-date"
+import { linkRuleOf } from "@/link-rule/link-rule"
 import {
   AUTO_MODERATION_NAME,
   AUTOMATIC_TIMEOUT_EVENT,
@@ -58,7 +59,12 @@ export type AuditLogChange = {
   memberId: Snowflake | null
   avatarUrl: string | null
 } & (
-  | { kind: "rule"; description: string; madeInDiscord: boolean }
+  | {
+      kind: "rule"
+      rule: PanelRuleKind["type"]
+      description: string
+      madeInDiscord: boolean
+    }
   | {
       kind: "sanction-change"
       sanctionChange: SanctionChange
@@ -82,6 +88,9 @@ type FoundChange = {
   change: WithoutAuthorLookup<AuditLogChange>
   actionChange?: ActionChangeEntry
 }
+
+type PanelRuleKind =
+  { type: "blocked-words"; action: BlockedWordAction } | { type: "links" }
 
 type Users = Map<Snowflake, APIUser>
 
@@ -107,6 +116,7 @@ const AUTO_MOD_RULE_EVENTS = [
 
 const EVENTS_OF_TYPE: Record<ChangeType, AuditLogEvent[]> = {
   "blocked-words": AUTO_MOD_RULE_EVENTS,
+  links: AUTO_MOD_RULE_EVENTS,
   timeouts: [
     AuditLogEvent.MemberUpdate,
     AuditLogEvent.AutoModerationUserCommunicationDisabled,
@@ -226,27 +236,34 @@ async function eventReadersOf(
   if (events.length === 0) {
     return []
   }
-  const [ruleActions, application] = await Promise.all([
+  const [panelRules, application] = await Promise.all([
     events.some((event) => AUTO_MOD_RULE_EVENTS.includes(event))
-      ? panelRuleActions(discord)
+      ? panelRuleKinds(discord, type)
       : null,
     discord.getApplicationUser(),
   ])
-  return eventReaders(ruleActions, application.id).filter(({ actionType }) =>
+  return eventReaders(panelRules, application.id).filter(({ actionType }) =>
     events.includes(actionType)
   )
 }
 
-async function panelRuleActions(discord: DiscordApi) {
-  return new Map(
-    panelRulesOf(await discord.listAutoModerationRules()).map(
-      ({ rule, action }) => [rule.id, action] as const
-    )
-  )
+async function panelRuleKinds(discord: DiscordApi, type: ChangeType | null) {
+  const rules = await discord.listAutoModerationRules()
+  const kinds = new Map<Snowflake, PanelRuleKind>()
+  if (type === null || type === "blocked-words") {
+    for (const { rule, action } of panelRulesOf(rules)) {
+      kinds.set(rule.id, { type: "blocked-words", action })
+    }
+  }
+  const linkRule = linkRuleOf(rules)
+  if (linkRule !== undefined && (type === null || type === "links")) {
+    kinds.set(linkRule.id, { type: "links" })
+  }
+  return kinds
 }
 
 function eventReaders(
-  ruleActions: ReadonlyMap<Snowflake, BlockedWordAction> | null,
+  panelRules: ReadonlyMap<Snowflake, PanelRuleKind> | null,
   applicationId: Snowflake
 ): EventReader[] {
   const sanctionReaders: EventReader[] = [
@@ -262,17 +279,17 @@ function eventReaders(
       retainedLimit: CHANGES_PER_PAGE,
     },
   ]
-  if (ruleActions === null || ruleActions.size === 0) {
+  if (panelRules === null || panelRules.size === 0) {
     return sanctionReaders
   }
   const ruleReaders = AUTO_MOD_RULE_EVENTS.map((actionType) => ({
     actionType,
     changeOf: (entry: APIAuditLogEntry, users: Users) => {
-      const ruleAction =
-        entry.target_id === null ? undefined : ruleActions.get(entry.target_id)
-      return ruleAction === undefined
+      const panelRule =
+        entry.target_id === null ? undefined : panelRules.get(entry.target_id)
+      return panelRule === undefined
         ? null
-        : ruleChangeOf(entry, users, applicationId, ruleAction)
+        : ruleChangeOf(entry, users, applicationId, panelRule)
     },
     retainedLimit: CHANGES_PER_PAGE * ENTRIES_PER_RULE_CHANGE,
   }))
@@ -332,18 +349,19 @@ function ruleChangeOf(
   entry: APIAuditLogEntry,
   users: Users,
   applicationId: Snowflake,
-  ruleAction: BlockedWordAction
+  panelRule: PanelRuleKind
 ): FoundChange {
   const attribution = attributionOf(entry, users, applicationId)
   const actionChange =
-    attribution.kind === "panel"
-      ? actionChangeEntryOf(attribution.reason, ruleAction)
+    attribution.kind === "panel" && panelRule.type === "blocked-words"
+      ? actionChangeEntryOf(attribution.reason, panelRule.action)
       : null
   return {
     author: authorOf(attribution),
     account: null,
     change: {
       kind: "rule",
+      rule: panelRule.type,
       ...momentOf(entry, attribution),
       madeInDiscord: attribution.kind === "discord",
       description: describedRuleChange(attribution, actionChange),

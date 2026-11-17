@@ -1,5 +1,6 @@
 export const CHANGE_TYPES = [
   "blocked-words",
+  "links",
   "timeouts",
   "kicks",
   "bans",

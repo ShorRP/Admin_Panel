@@ -1,6 +1,7 @@
 import {
   Ban,
   ExternalLink,
+  Link2,
   ShieldBan,
   Timer,
   TimerOff,
@@ -32,6 +33,7 @@ import type {
 
 const CHANGE_ICONS = {
   word: { Icon: Ban, color: "text-muted-foreground" },
+  link: { Icon: Link2, color: "text-muted-foreground" },
   rule: { Icon: ExternalLink, color: "text-muted-foreground" },
   timeout: { Icon: Timer, color: "text-warning" },
   "automatic-timeout": { Icon: Timer, color: "text-warning" },
@@ -189,7 +191,10 @@ function ChangeRow({
 function iconKindOf(change: AuditLogChange): ChangeIconKind {
   switch (change.kind) {
     case "rule":
-      return change.madeInDiscord ? "rule" : "word"
+      if (change.madeInDiscord) {
+        return "rule"
+      }
+      return change.rule === "links" ? "link" : "word"
     case "automatic-timeout":
       return change.kind
     case "sanction-change":

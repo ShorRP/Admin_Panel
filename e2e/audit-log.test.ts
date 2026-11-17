@@ -9,10 +9,13 @@ import { blockedWordAction } from "@/blocked-words/blocked-word-action"
 import { newPanelRule } from "@/blocked-words/panel-rule"
 import type { FakeDiscord } from "@/discord/fake-discord"
 import { firstSnowflakeAt } from "@/discord/snowflake-date"
+import { newLinkRule } from "@/link-rule/link-rule"
+import { CREATION_REASON, CUT_REASON } from "@/link-rule/link-rule-reason"
 import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { dialogTransitions } from "./dialog-opening"
 import { expect, test, type Locator, type Page } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
+import { settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -56,6 +59,50 @@ function shortDay(date: Date) {
 
 function addition(word: string) {
   return `aldis (${ALDIS.id}) : ajout de « ${word} »`
+}
+
+function panelReason(change: string) {
+  return `aldis (${ALDIS.id}) : ${change}`
+}
+
+const TYPE_PILLS = [
+  "Tout",
+  "Mots interdits",
+  "Liens",
+  "Exclusions",
+  "Expulsions",
+  "Bannissements",
+]
+
+const LINK_RULE_LINES = [
+  "Règle modifiée dans Discord",
+  "Coupure de la règle des liens",
+  "Création et activation de la règle des liens",
+]
+
+async function seedLinkRuleChanges(discord: FakeDiscord) {
+  const rule = await discord.createAutoModerationRule(
+    newLinkRule(STAFF_ROLE_ID),
+    panelReason(CREATION_REASON)
+  )
+  await discord.modifyAutoModerationRule(
+    rule.id,
+    { enabled: false },
+    panelReason(CUT_REASON)
+  )
+  discord.modifyAutoModerationRuleAs(LYRA.id, rule.id, { enabled: true })
+}
+
+async function boxesOf(links: Locator) {
+  return await Promise.all(
+    (await links.all()).map(async (link) => {
+      const box = await link.boundingBox()
+      if (box === null) {
+        throw new Error("A pill has no box on the page.")
+      }
+      return box
+    })
+  )
 }
 
 async function seedBlockedWordChanges(discord: FakeDiscord, count: number) {
@@ -486,6 +533,55 @@ test.describe("on a 360 px screen", () => {
     expect(prefetchedPaths).toEqual([])
   })
 
+  test("« Liens » joins the other type pills, which wrap in view at 44 px, and keeps the link rule's lines alone, which fit the column", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    await seedLinkRuleChanges(discord)
+    const pills = page
+      .getByRole("navigation", { name: "Filtrer par type" })
+      .getByRole("link")
+    const changes = page.locator("ol").getByRole("listitem")
+    const main = page.getByRole("main")
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
+    const column = await main.boundingBox()
+    const boxes = await boxesOf(pills)
+    for (const box of boxes) {
+      expect(box.height).toBe(TOUCH_TARGET_PX)
+      expect(box.x).toBeGreaterThanOrEqual(column?.x ?? 0)
+      expect(box.x + box.width).toBeLessThanOrEqual(
+        (column?.x ?? 0) + (column?.width ?? 0)
+      )
+    }
+    expect(new Set(boxes.map(({ y }) => y)).size).toBeGreaterThan(1)
+    for (const pill of await pills.all()) {
+      await expect(pill).toBeInViewport()
+    }
+    await checkAccessibility()
+
+    await pills.getByText("Liens", { exact: true }).click()
+    await expect(page).toHaveURL("/audit-log?type=links")
+    await expect(changes).toHaveCount(LINK_RULE_LINES.length)
+    for (const [index, line] of LINK_RULE_LINES.entries()) {
+      await expect(changes.nth(index)).toContainText(line)
+    }
+    await settle(page)
+    for (const row of await changes.all()) {
+      const box = await row.boundingBox()
+      expect(box?.x).toBeGreaterThanOrEqual(column?.x ?? 0)
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+        (column?.x ?? 0) + (column?.width ?? 0)
+      )
+    }
+    await checkAccessibility()
+  })
+
   test("the filter sheet fades in and slides up only with motion", async ({
     page,
     logIn,
@@ -596,6 +692,77 @@ test.describe("on a 768 px screen", () => {
       page.getByRole("list", { name: "Filtres actifs" })
     ).toHaveCount(0)
     await expect(page.getByLabel("Texte")).toHaveValue("insultes")
+    await checkAccessibility()
+  })
+
+  test("the type pills, « Liens » among them, stand in a row beside the navigation rail, each 44 px high, and « Liens » keeps the link rule's lines alone", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    await seedLinkRuleChanges(discord)
+    const pills = page
+      .getByRole("navigation", { name: "Filtrer par type" })
+      .getByRole("link")
+    const changes = page.locator("ol").getByRole("listitem")
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
+    const [rail, boxes] = await Promise.all([
+      page.getByRole("complementary").boundingBox(),
+      boxesOf(pills),
+    ])
+    for (const box of boxes) {
+      expect(box.height).toBe(TOUCH_TARGET_PX)
+      expect(box.x).toBeGreaterThanOrEqual((rail?.x ?? 0) + (rail?.width ?? 0))
+    }
+    expect(new Set(boxes.map(({ y }) => y)).size).toBe(1)
+    await checkAccessibility()
+
+    await pills.getByText("Liens", { exact: true }).click()
+    await expect(page).toHaveURL("/audit-log?type=links")
+    await expect(changes).toHaveCount(LINK_RULE_LINES.length)
+    await checkAccessibility()
+  })
+})
+
+test.describe("on a 1,024 px screen with a touch screen", () => {
+  test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true })
+
+  test("the type pills, « Liens » among them, stand beside the sidebar, each 44 px high, and « Liens » keeps the link rule's lines alone", async ({
+    page,
+    logIn,
+    discord,
+    checkAccessibility,
+  }) => {
+    await seedLinkRuleChanges(discord)
+    const pills = page
+      .getByRole("navigation", { name: "Filtrer par type" })
+      .getByRole("link")
+    const changes = page.locator("ol").getByRole("listitem")
+
+    await logIn(ALDIS)
+    await page.goto("/audit-log")
+    await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
+    const [sidebar, boxes] = await Promise.all([
+      page.getByRole("complementary").boundingBox(),
+      boxesOf(pills),
+    ])
+    for (const box of boxes) {
+      expect(box.height).toBe(TOUCH_TARGET_PX)
+      expect(box.x).toBeGreaterThanOrEqual(
+        (sidebar?.x ?? 0) + (sidebar?.width ?? 0)
+      )
+    }
+    await checkAccessibility()
+
+    await pills.getByText("Liens", { exact: true }).click()
+    await expect(page).toHaveURL("/audit-log?type=links")
+    await expect(changes).toHaveCount(LINK_RULE_LINES.length)
     await checkAccessibility()
   })
 })
@@ -898,7 +1065,7 @@ test.describe("for a staff member who moderates", () => {
     await expect(timeouts).toHaveAttribute("aria-current", "true")
     await expect(account).toBeVisible()
     await expect(author).toBeVisible()
-    await expect(typeFilter.getByRole("link")).toHaveCount(5)
+    await expect(typeFilter.getByRole("link")).toHaveCount(TYPE_PILLS.length)
     const links = [
       ...(await typeFilter.getByRole("link").all()),
       reset,

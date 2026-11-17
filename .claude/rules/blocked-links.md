@@ -60,5 +60,5 @@ What `/blocked-links` reads and writes: the link rule, the one AutoMod rule that
 ## Traps
 
 - AutoMod spares the owner of the Discord server and the members with Administrator or Manage Server: try a link from an account that holds none of them (ADR 0011, `.claude/rules/blocked-words.md`, **Traps**).
-- The panel's `/audit-log` lists no change of the link rule yet: `readAuditLog` keeps the rule entries of the panel's rules alone, by their ID (`src/audit-log/read-audit-log.ts`, `panelRuleActions`), so the reasons above reach Discord's audit log and not the panel's page, until its own ticket (#481).
 - The fake Discord refuses an `allow_list` of more than 100 entries or an entry of more than 60 characters, and more than 10 `regex_patterns` or one of more than 260 characters, as Discord does: a test that poses a rule with a longer entry is refused, so that a seed keeps its entries to 60 characters (`docs/discord.md`, **The fake**, #482).
+- The panel's `/audit-log` lists the link rule's writes under « Liens », each reason as it is while it follows the panel's format (`src/link-rule/link-rule-reason.ts`), and as « Règle modifiée dans Discord » when it does not (`.claude/rules/audit-log.md`, **The link rule's lines**, #505).
