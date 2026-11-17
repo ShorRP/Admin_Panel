@@ -3,6 +3,7 @@ import {
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
   type APIAutoModerationRule,
+  type RESTPatchAPIAutoModerationRuleJSONBody,
   type RESTPostAPIAutoModerationRuleJSONBody,
   type Snowflake,
 } from "discord-api-types/v10"
@@ -35,6 +36,19 @@ export function linkRuleOf(rules: APIAutoModerationRule[]) {
   return rules.find(
     (rule) => isKeywordRule(rule) && rule.name === LINK_RULE_NAME
   )
+}
+
+export function allowListOf(rule: APIAutoModerationRule) {
+  return rule.trigger_metadata.allow_list ?? []
+}
+
+export function withAllowList(
+  rule: APIAutoModerationRule,
+  allowList: string[]
+): RESTPatchAPIAutoModerationRuleJSONBody {
+  return {
+    trigger_metadata: { ...rule.trigger_metadata, allow_list: allowList },
+  }
 }
 
 export function newLinkRule(

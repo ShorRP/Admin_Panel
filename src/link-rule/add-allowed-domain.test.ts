@@ -481,3 +481,23 @@ test("a panel error is thrown, not returned", async () => {
     addAllowedDomain(discord, staffMember, form("arte.tv"))
   ).rejects.toBe(missingPermissions)
 })
+
+test("a domain that the staff added in Discord in capitals is already allowed, since AutoMod compares the allow list whatever the case: typing it in lower case is refused as a duplicate, and nothing is written", async () => {
+  const discord = discordWithStaff()
+  const staffMember = await staffMemberOn(discord)
+  createdLinkRuleWith(discord, entriesOf("Arte.TV"))
+  const before = await discord.listAutoModerationRules()
+  const entriesBefore = (await discord.getAuditLog({})).audit_log_entries
+
+  const result = await addAllowedDomain(discord, staffMember, form("arte.tv"))
+
+  expect(result).toEqual({
+    ok: false,
+    message: "« arte.tv » est déjà un domaine permis.",
+    domain: "arte.tv",
+  })
+  expect(await discord.listAutoModerationRules()).toEqual(before)
+  expect((await discord.getAuditLog({})).audit_log_entries).toEqual(
+    entriesBefore
+  )
+})

@@ -4,7 +4,7 @@ import { quoted } from "@/blocked-words/french-text"
 import { allowListEntriesOf } from "./allowed-domains"
 import { MAX_ALLOW_LIST_ENTRY_LENGTH } from "./limits"
 
-const TYPED = z.string().catch("")
+export const TYPED_DOMAIN = z.string().catch("")
 
 const EXAMPLE = "twitch.tv"
 
@@ -29,7 +29,7 @@ export type SubmittedDomain =
   | { ok: false; typed: string; message: string }
 
 export function submittedDomain(formData: FormData): SubmittedDomain {
-  const typed = TYPED.parse(formData.get("domain"))
+  const typed = TYPED_DOMAIN.parse(formData.get("domain"))
   const domain = typed.trim().toLowerCase()
   const message = refusalOf(domain)
   return message === null

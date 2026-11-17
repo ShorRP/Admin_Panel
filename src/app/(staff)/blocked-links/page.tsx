@@ -104,12 +104,17 @@ async function SwitchFromDiscord({ linkRule }: FromDiscordProps) {
 }
 
 async function DomainsFromDiscord({ linkRule }: FromDiscordProps) {
-  const { allowedDomains } = await linkRule
+  const { allowedDomains, status } = await linkRule
   return (
     <AllowedDomainsSection
       domains={allowedDomains}
       form={<StatefulAddAllowedDomainForm />}
-      list={<StatefulAllowedDomainList domains={allowedDomains} />}
+      list={
+        <StatefulAllowedDomainList
+          domains={allowedDomains}
+          removable={status !== "absent"}
+        />
+      }
     />
   )
 }

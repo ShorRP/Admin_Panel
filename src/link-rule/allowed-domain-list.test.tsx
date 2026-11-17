@@ -8,11 +8,13 @@ import type { DomainFields, WriteResult } from "./write-result"
 function render(
   domains: string[],
   state: WriteResult<DomainFields> | null = null,
-  pending = false
+  pending = false,
+  removable = true
 ) {
   return renderToStaticMarkup(
     <AllowedDomainList
       domains={domains}
+      removable={removable}
       state={state}
       pending={pending}
       action={() => {}}
@@ -37,9 +39,7 @@ function chips(html: string) {
   return Array.from(
     html.matchAll(/<li[^>]*>(.*?)<\/li>/g),
     ([, chip = ""]) => ({
-      domain: /<span class="[^"]*font-mono[^"]*">([^<]*)<\/span>/.exec(
-        chip
-      )?.[1],
+      domain: /^<span[^>]*>([^<]*)<\/span>/.exec(chip)?.[1],
       sent: /<input[^>]*type="hidden"[^>]*name="domain"[^>]*value="([^"]*)"/.exec(
         chip
       )?.[1],
@@ -66,18 +66,17 @@ function chip(domain: string, disabled = false) {
 
 const EMPTY = { icon: undefined, text: "" }
 
-test("each allowed domain is a chip in monospace with a cross that sends it as it stands, whose hidden icon leaves it the name « Retirer « domaine » » for assistive technologies", () => {
+test("each allowed domain is a chip with a cross that sends it as it stands, whose hidden icon leaves it the name « Retirer « domaine » » for assistive technologies", () => {
   const html = render(["twitch.tv", "youtube.com"])
 
   expect(chips(html)).toEqual([chip("twitch.tv"), chip("youtube.com")])
 })
 
-test("the cross is a ghost icon button, which asks for no confirmation: adding the domain back undoes it", () => {
+test("the cross submits at once: it asks for no confirmation, since adding the domain back undoes it", () => {
   const html = render(["twitch.tv"])
 
   expect(html).toMatch(/<button[^>]*type="submit"/)
-  expect(html).toContain("hover:bg-muted")
-  expect(html).not.toContain("<dialog")
+  expect(html).not.toContain("aria-haspopup")
 })
 
 test("a domain that the staff typed in Discord, whatever it holds, is escaped in the chip and in what the cross sends", () => {
@@ -96,10 +95,26 @@ test("a domain that the staff typed in Discord, whatever it holds, is escaped in
   ])
 })
 
-test("with no allowed domain the list keeps its ul, hidden while empty, so that the first domain added can animate in", () => {
+test("while the rule does not exist, the domains it would start with show with no cross, since a removal could only be refused", () => {
+  const html = render(["twitch.tv", "youtube.com"], null, false, false)
+
+  expect(chips(html)).toEqual([
+    { domain: "twitch.tv", sent: undefined, cross: undefined, disabled: false },
+    {
+      domain: "youtube.com",
+      sent: undefined,
+      cross: undefined,
+      disabled: false,
+    },
+  ])
+  expect(html).not.toContain("<form")
+  expect(html).not.toContain("<button")
+})
+
+test("with no allowed domain the list draws no list", () => {
   const html = render([])
 
-  expect(html).toMatch(/<ul class="[^"]*\bempty:hidden\b[^"]*"><\/ul>/)
+  expect(html).not.toContain("<ul")
   expect(chips(html)).toEqual([])
 })
 

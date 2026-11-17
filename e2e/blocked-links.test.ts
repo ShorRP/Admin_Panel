@@ -329,21 +329,23 @@ test("a staff member adds an allowed domain typed in capitals, which the list sh
   ])
 })
 
-test("before the rule exists, removing a default domain is refused in French, and nothing is written", async ({
+test("before the rule exists, the domains that « Activer » would start with show with no cross, and the rule created gives each its cross", async ({
   page,
   logIn,
-  discord,
+  checkAccessibility,
 }) => {
   await logIn(ALDIS)
   await page.goto("/blocked-links")
   await page.waitForLoadState()
   const domains = page.getByRole("region", { name: "Domaines permis" })
+  const crosses = domains.getByRole("button", { name: /^Retirer/ })
 
-  await domains.getByRole("button", { name: "Retirer « giphy.com »" }).click()
-
-  await expect(domains.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
-    "La règle des liens n’existe pas encore : active-la d’abord, puis retire le domaine."
-  )
   await expect(domains).toContainText("8 domaines")
-  expect(await discord.listAutoModerationRules()).toEqual([])
+  await expect(crosses).toHaveCount(0)
+  await checkAccessibility()
+
+  await page.getByRole("button", { name: "Activer" }).click()
+
+  await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
+  await expect(crosses).toHaveCount(8)
 })
