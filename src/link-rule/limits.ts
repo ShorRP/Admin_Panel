@@ -1,0 +1,3 @@
+export const MAX_ALLOW_LIST_ENTRIES = 100
+
+export const MAX_ALLOW_LIST_ENTRY_LENGTH = 60

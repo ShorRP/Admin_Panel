@@ -6,6 +6,10 @@ export const CARD_CLASSES = cn(
 
 export const CONTROL_CLASSES = cn("h-9.5 touch:h-11")
 
+export const DOMAIN_FIELD_ROW_CLASSES = cn(
+  "mt-2.5 flex flex-col gap-3 sm:flex-row"
+)
+
 export const SECTION_CLASSES = cn("flex flex-col gap-2")
 
 export const SECTION_SENTENCE_CLASSES = cn(

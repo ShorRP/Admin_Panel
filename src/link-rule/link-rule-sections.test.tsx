@@ -17,33 +17,43 @@ function listItems(html: string) {
   )
 }
 
-test("the allowed domains are listed under their count, and say that the links to them pass with or without « www. »", () => {
-  const html = renderToStaticMarkup(
-    <AllowedDomainsSection domains={["twitch.tv", "youtube.com"]} />
+function allowedDomains(domains: string[]) {
+  return renderToStaticMarkup(
+    <AllowedDomainsSection
+      domains={domains}
+      form={<b>the form</b>}
+      list={<b>the list</b>}
+    />
   )
+}
 
-  expect(texts(html).slice(0, 3)).toEqual([
+test("the allowed domains come under their count, with the form to add one, then say that the links to them pass with or without « www. », over their list", () => {
+  const html = allowedDomains(["twitch.tv", "youtube.com"])
+
+  expect(texts(html)).toEqual([
     "Domaines permis",
     "2 domaines",
+    "the form",
     "Les liens en https vers ces domaines, avec ou sans « www. », passent.",
+    "the list",
   ])
-  expect(listItems(html)).toEqual(["twitch.tv", "youtube.com"])
   expect(html).toMatch(/<h2[^>]*>Domaines permis<\/h2>/)
 })
 
 test("a single allowed domain counts in the singular", () => {
-  const html = renderToStaticMarkup(
-    <AllowedDomainsSection domains={["twitch.tv"]} />
-  )
-
-  expect(texts(html)).toContain("1 domaine")
+  expect(texts(allowedDomains(["twitch.tv"]))).toContain("1 domaine")
 })
 
-test("with no allowed domain, the section says that every link is blocked, and lists nothing", () => {
-  const html = renderToStaticMarkup(<AllowedDomainsSection domains={[]} />)
+test("with no allowed domain, the section says that every link is blocked, keeps the form and the list, and has no sentence on the links that pass", () => {
+  const html = allowedDomains([])
 
-  expect(texts(html)).toContain("Aucun domaine permis : tout lien est bloqué.")
-  expect(listItems(html)).toEqual([])
+  expect(texts(html)).toEqual([
+    "Domaines permis",
+    "0 domaine",
+    "the form",
+    "Aucun domaine permis : tout lien est bloqué.",
+    "the list",
+  ])
 })
 
 test("the exempt roles are listed by name, a role that Discord no longer lists as « Rôle supprimé », under what AutoMod spares whatever the rule says", () => {

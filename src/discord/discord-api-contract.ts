@@ -64,6 +64,31 @@ function keywordChanges(keywordFilter: string[]) {
   return { trigger_metadata: { keyword_filter: keywordFilter } }
 }
 
+function regexRule(
+  regexPatterns: string[],
+  allowList: string[]
+): RESTPostAPIAutoModerationRuleJSONBody {
+  return {
+    ...keywordRule([]),
+    trigger_metadata: {
+      regex_patterns: regexPatterns,
+      allow_list: allowList,
+    },
+  }
+}
+
+function regexChanges(regexPatterns: string[], allowList: string[]) {
+  return {
+    trigger_metadata: { regex_patterns: regexPatterns, allow_list: allowList },
+  }
+}
+
+function distinct(count: number, length: number, fill: string) {
+  return Array.from({ length: count }, (_, index) =>
+    `${index}`.padStart(length, fill)
+  )
+}
+
 const DAY_S = 86_400
 
 const CLOCK_SKEW_S = 60
@@ -491,6 +516,70 @@ export function describeDiscordApiContract(
           created.id,
           keywordChanges(["😀".repeat(61)]),
           "Contract: a keyword of 61 emoji"
+        )
+      ).rejects.toMatchObject(REFUSED)
+    })
+
+    test("a rule holds up to 10 regex patterns of up to 260 characters", async () => {
+      const { discord } = connected()
+      const ten = distinct(10, 260, "a")
+
+      const created = await discord.createAutoModerationRule(
+        regexRule(ten, []),
+        "Contract: 10 regex patterns"
+      )
+
+      expect(created.trigger_metadata.regex_patterns).toEqual(ten)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          regexChanges([...ten, "b".repeat(260)], []),
+          "Contract: 11 regex patterns"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          regexChanges(["a".repeat(261)], []),
+          "Contract: a regex pattern of 261 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.createAutoModerationRule(
+          regexRule(["a".repeat(261)], []),
+          "Contract: a regex pattern of 261 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+    })
+
+    test("a rule holds up to 100 allow list entries of up to 60 characters", async () => {
+      const { discord } = connected()
+      const hundred = distinct(100, 60, "a")
+
+      const created = await discord.createAutoModerationRule(
+        regexRule(["a"], hundred),
+        "Contract: 100 allow list entries"
+      )
+
+      expect(created.trigger_metadata.allow_list).toEqual(hundred)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          regexChanges(["a"], [...hundred, "b"]),
+          "Contract: 101 allow list entries"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.modifyAutoModerationRule(
+          created.id,
+          regexChanges(["a"], ["b".repeat(61)]),
+          "Contract: an allow list entry of 61 characters"
+        )
+      ).rejects.toMatchObject(REFUSED)
+      await expect(
+        discord.createAutoModerationRule(
+          regexRule(["a"], ["b".repeat(61)]),
+          "Contract: an allow list entry of 61 characters"
         )
       ).rejects.toMatchObject(REFUSED)
     })

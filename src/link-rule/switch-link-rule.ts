@@ -36,7 +36,7 @@ export async function switchLinkRule(
     )
   }
   const enabled = submitted.data === "true"
-  return await unlessDiscordUnavailable(async () => {
+  return await unlessDiscordUnavailable({}, async () => {
     const rules = await discord.listAutoModerationRules()
     const rule = linkRuleOf(rules)
     if (rule === undefined) {

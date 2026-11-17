@@ -33,6 +33,8 @@ const MIN_TARGET_PX = 44
 
 const DESKTOP_CONTROL_PX = 38
 
+const DESKTOP_CROSS_PX = 28
+
 const RAIL_PX = 64
 
 const SIDEBAR_PX = 252
@@ -73,7 +75,7 @@ test.beforeEach(({ discord }) => {
         `https://${LONG_DOMAIN}/*`,
         `https://www.${LONG_DOMAIN}`,
         `https://www.${LONG_DOMAIN}/*`,
-        "*arnaque.example/a-very-long-entry-that-does-not-follow-the-model-of-the-panel",
+        "*arnaque.example/a-long-entry-that-does-not-follow-the-model",
       ],
     },
     actions: [{ type: AutoModerationActionType.BlockMessage }],
@@ -101,8 +103,8 @@ for (const screen of [...SCREENS, DESKTOP]) {
 
     test(
       screen.columns === 1
-        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
-        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
+        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
+        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
       async ({ page, logIn, checkAccessibility }) => {
         await logIn(ALDIS)
         await page.goto("/blocked-links")
@@ -169,6 +171,39 @@ for (const screen of [...SCREENS, DESKTOP]) {
           expect(width).toBe(switchCard.width - 2 * 21)
         } else {
           expect(width).toBeLessThan(switchCard.width / 2)
+        }
+        const domainsRegion = page.getByRole("region", {
+          name: "Domaines permis",
+        })
+        const field = await boxOf(
+          domainsRegion.getByLabel("Ajouter un domaine")
+        )
+        const add = await boxOf(
+          domainsRegion.getByRole("button", { name: "Ajouter" })
+        )
+        const controlPx =
+          screen === DESKTOP ? DESKTOP_CONTROL_PX : MIN_TARGET_PX
+        expect(Math.round(field.height)).toBe(controlPx)
+        expect(Math.round(add.height)).toBe(controlPx)
+        if (screen.width < 640) {
+          expect([add.x, add.width]).toEqual([field.x, field.width])
+          expect(add.y).toBeGreaterThanOrEqual(field.y + field.height)
+        } else {
+          expect(Math.round(add.y)).toBe(Math.round(field.y))
+          expect(add.x).toBeGreaterThanOrEqual(field.x + field.width)
+        }
+        expect(add.x + add.width).toBeLessThanOrEqual(domains.x + domains.width)
+        const crosses = await domainsRegion
+          .getByRole("button", { name: /^Retirer/ })
+          .all()
+        expect(crosses).toHaveLength(2)
+        for (const cross of crosses) {
+          const { height, width } = await boxOf(cross)
+          expect([Math.round(width), Math.round(height)]).toEqual(
+            screen === DESKTOP
+              ? [DESKTOP_CROSS_PX, DESKTOP_CROSS_PX]
+              : [MIN_TARGET_PX, MIN_TARGET_PX]
+          )
         }
         await checkAccessibility()
       }

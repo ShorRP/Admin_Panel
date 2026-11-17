@@ -106,6 +106,14 @@ const MAX_KEYWORDS = 1000
 
 const MAX_KEYWORD_LENGTH = 60
 
+const MAX_REGEX_PATTERNS = 10
+
+const MAX_REGEX_PATTERN_LENGTH = 260
+
+const MAX_ALLOW_LIST_ENTRIES = 100
+
+const MAX_ALLOW_LIST_ENTRY_LENGTH = 60
+
 const MAX_EXEMPT_ROLES = 20
 
 const MAX_AUTO_MODERATION_TIMEOUT_S = 2_419_200
@@ -340,15 +348,29 @@ function keptReason(reason: string | undefined) {
   return Array.from(reason).slice(0, MAX_REASON_LENGTH).join("")
 }
 
-function checkKeywords(
+function exceeds(texts: string[], maxCount: number, maxLength: number) {
+  return (
+    texts.length > maxCount || texts.some((text) => lengthOf(text) > maxLength)
+  )
+}
+
+function checkTrigger(
   metadata: APIAutoModerationRuleTriggerMetadata | undefined,
   method: HttpMethod,
   route: DiscordRoute
 ) {
-  const keywords = metadata?.keyword_filter ?? []
   if (
-    keywords.length > MAX_KEYWORDS ||
-    keywords.some((keyword) => lengthOf(keyword) > MAX_KEYWORD_LENGTH)
+    exceeds(metadata?.keyword_filter ?? [], MAX_KEYWORDS, MAX_KEYWORD_LENGTH) ||
+    exceeds(
+      metadata?.regex_patterns ?? [],
+      MAX_REGEX_PATTERNS,
+      MAX_REGEX_PATTERN_LENGTH
+    ) ||
+    exceeds(
+      metadata?.allow_list ?? [],
+      MAX_ALLOW_LIST_ENTRIES,
+      MAX_ALLOW_LIST_ENTRY_LENGTH
+    )
   ) {
     throw refused(method, route)
   }
@@ -1073,7 +1095,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     reason: string | undefined
   ) {
     const route = ROUTES.autoModerationRules
-    checkKeywords(rule.trigger_metadata, "POST", route)
+    checkTrigger(rule.trigger_metadata, "POST", route)
     checkActions(rule.actions, rule.exempt_roles, "POST", route)
     if (
       rule.trigger_type === AutoModerationRuleTriggerType.Keyword &&
@@ -1113,7 +1135,7 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
     if (rule === undefined) {
       throw new DiscordError({ method: "PATCH", route, status: 404 })
     }
-    checkKeywords(changes.trigger_metadata, "PATCH", route)
+    checkTrigger(changes.trigger_metadata, "PATCH", route)
     checkActions(changes.actions, changes.exempt_roles, "PATCH", route)
     const modified: APIAutoModerationRule = structuredClone({
       ...rule,
