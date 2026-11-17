@@ -18,9 +18,9 @@ paths:
 
 ## The link rule's lines
 
-- « Liens » (`type=links`) lists the writes of the link rule beside the blocked words'. `panelRuleKinds` gives each rule ID its type from the one read of the AutoMod rules: the blocked words' rules, and the one rule `linkRuleOf` finds by its exact name, so a rule that differs by a letter or a case never shows, and a type reads only its own rules' entries (`read-audit-log-link-rule.test.ts`, #505; `.claude/rules/blocked-links.md`).
-- A link line is generic: the panel's reason as it is, its first letter in capitals, or « Règle modifiée dans Discord » for a change made there, and it never joins an action change, so that a reason no switch writes shows all the same and the other link tickets add nothing here while their reasons follow the panel's format (decided by the agent on 2026-11-17, on #481, for Gilles to review).
-- Its icon is `Link2`, `ExternalLink` when made in Discord, « Liens » follows « Mots interdits » among the pills, the page's sentence names the link rule, and the empty page's sentence, true all the same, stays (decided by the agent on 2026-11-17, on #505, for Gilles to review).
+- « Liens » (`type=links`) lists the writes of the link rule beside the blocked words'. `panelRuleKinds` gives each rule ID its type from the one read of the AutoMod rules: the blocked words' rules, and the one rule `linkRuleOf` finds by its exact name; a type reads only its own rules' entries (`read-audit-log-link-rule.test.ts`, #505; `.claude/rules/blocked-links.md`).
+- A link line is generic: the panel's reason as it is, its first letter in capitals, or « Règle modifiée dans Discord » for a change made there, and it never joins an action change, so that a reason no switch writes shows all the same (decided by the agent on 2026-11-17, on #481, for Gilles to review).
+- Its icon is `Link2`, `ExternalLink` when made in Discord, « Liens » follows « Mots interdits » among the pills, the page's sentence names the link rule and the empty page's stays (decided by the agent on 2026-11-17, on #505, for Gilles to review).
 
 ## The page
 
@@ -69,7 +69,7 @@ paths:
 ## Avatars and read failures
 
 - A change's author avatar comes from one `getMember` per distinct member of the page, for the ID the reason names when the change was made through the panel and the entry's `user_id` when it was made in Discord, since the audit log's `users` hold only the global avatar (#141, #210).
-- A member no longer on the Discord server shows the initials, and so does one whose lookup throws a `DiscordError`, since an avatar is decorative; any other error is thrown (`avatarUrlOf`). So a panel error there alerts no one, against `.claude/rules/monitoring.md`, **Alerts**, short of a failure tied to one member's ID (`docs/audit-log.md`, **Known limits**; inferred; Gilles, 2026-10-28, on #141).
+- A member no longer on the Discord server shows the initials, and so does one whose lookup throws a `DiscordError`, since an avatar is decorative; any other error is thrown (`avatarUrlOf`). A panel error there alerts no one, against `.claude/rules/monitoring.md`, **Alerts**, since the staff check reads the same token first and alerts when it fails, so only a failure tied to one member's ID goes unreported (`docs/audit-log.md`, **Known limits**; inferred; Gilles, 2026-10-28, on #141).
 
 ## The skeleton
 

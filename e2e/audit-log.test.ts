@@ -15,6 +15,7 @@ import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { dialogTransitions } from "./dialog-opening"
 import { expect, test, type Locator, type Page } from "./fixtures"
 import { logOutWithScriptsHeld } from "./log-out-with-scripts-held"
+import { settle } from "./settle"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -548,6 +549,7 @@ test.describe("on a 360 px screen", () => {
     await logIn(ALDIS)
     await page.goto("/audit-log")
     await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
     const column = await main.boundingBox()
     const boxes = await boxesOf(pills)
     for (const box of boxes) {
@@ -569,6 +571,7 @@ test.describe("on a 360 px screen", () => {
     for (const [index, line] of LINK_RULE_LINES.entries()) {
       await expect(changes.nth(index)).toContainText(line)
     }
+    await settle(page)
     for (const row of await changes.all()) {
       const box = await row.boundingBox()
       expect(box?.x).toBeGreaterThanOrEqual(column?.x ?? 0)
@@ -707,6 +710,7 @@ test.describe("on a 768 px screen", () => {
     await logIn(ALDIS)
     await page.goto("/audit-log")
     await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
     const [rail, boxes] = await Promise.all([
       page.getByRole("complementary").boundingBox(),
       boxesOf(pills),
@@ -743,6 +747,7 @@ test.describe("on a 1,024 px screen with a touch screen", () => {
     await logIn(ALDIS)
     await page.goto("/audit-log")
     await expect(pills).toHaveText(TYPE_PILLS)
+    await settle(page)
     const [sidebar, boxes] = await Promise.all([
       page.getByRole("complementary").boundingBox(),
       boxesOf(pills),
