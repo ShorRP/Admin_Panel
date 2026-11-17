@@ -7,7 +7,7 @@ paths:
 
 # Blocked links
 
-What `/blocked-links` reads and writes: the link rule, the one AutoMod rule that blocks a link, read back from Discord at each view and switched on and off as a whole, with its allowed domains added and removed (ADR 0011, #479, #481, #482). The tests of `src/link-rule/`, `e2e/blocked-links.test.ts` and `e2e/blocked-links-layout.test.ts` name each case. The page's layout at each width is in `docs/responsive.md`, **`/blocked-links`**; the trials behind the rule's shape are in ADR 0011.
+What `/blocked-links` reads and writes: the link rule, the one AutoMod rule that blocks a link, read back from Discord at each view and switched on and off as a whole, with its allowed domains and its exempt roles added and removed (ADR 0011, #479, #481, #482, #483). The tests of `src/link-rule/`, `e2e/blocked-links.test.ts` and `e2e/blocked-links-layout.test.ts` name each case. The page's layout at each width is in `docs/responsive.md`, **`/blocked-links`**; the trials behind the rule's shape are in ADR 0011.
 
 ## Names
 
@@ -43,6 +43,10 @@ What `/blocked-links` reads and writes: the link rule, the one AutoMod rule that
 - Removing a domain removes its four entries and them alone, an entry that only looks like one stays; a domain the rule no longer holds is removed with no write, as two staff members who press together do not fail each other (decided by the agent on 2026-11-17, on #482, for Gilles to review).
 - Before the rule exists, both writes refuse and say to activate it first: creating it stays « Activer »'s, which would otherwise turn on a rule that nobody asked to turn on (decided by the agent on 2026-11-17, on #482, for Gilles to review).
 - The reasons are `ajout du domaine permis « d »` and `retrait du domaine permis « d »` (`link-rule-reason.ts`), in the panel's format, so that the audit log attributes each to the staff member and names the domain (#482).
+- `addExemptRole` and `removeExemptRole` re-read the rules and the roles and send `exempt_roles` alone, changed by their own role, so that what the staff changed in Discord stays; they take a `StaffMember` and no role list, and hand `role` back as typed when they refuse (`RoleFields`, #483).
+- An add refuses, in this order, no choice, the absent rule, a role Discord no longer lists, @everyone or a role an integration manages (the choice leaves both out, so only a forged form reaches that refusal), a role already exempt, and a 21st role, the staff role counting in the 20 (`MAX_EXEMPT_ROLES`), so that Discord's 400 stays a panel error. The fake holds the 20 as Discord documents, and the contract suite cannot try it (`docs/discord.md`, **The fake**).
+- A removal refuses no choice, the absent rule and the staff role, whatever the form sends (`STAFF_ROLE_REFUSAL`): no write removes it. A role the rule no longer exempts is removed with no write, and a role Discord no longer lists is removed all the same, named by its ID in the message and the reason (decided by the agent on 2026-11-17, on #483, for Gilles to review).
+- The reasons are `ajout du rôle exempté « r »` and `retrait du rôle exempté « r »`, with the role's name when Discord lists it, in the panel's format (`link-rule-reason.ts`, #483).
 
 ## Forms
 
@@ -50,6 +54,9 @@ What `/blocked-links` reads and writes: the link rule, the one AutoMod rule that
 - The field has `autoCapitalize="none"` and `spellCheck={false}`, and the hint under it says what the rule blocks even for an allowed domain: a link in `http://`, a subdomain other than `www.`, to add apart, and a link glued to punctuation (ADR 0011).
 - A domain stays a chip in `font-mono` with a `ghost` icon cross, named « Retirer « d » » in `sr-only`: 44 by 44 px under `touch:`, 28 by 28 with a mouse. Removing asks for no confirmation, since adding the domain back undoes it, and the chips have no `<ViewTransition>`, so the list draws no `<ul>` while it is empty (decided by the agent on 2026-11-17, on #482, for Gilles to review, since the ticket asks for none). While the rule does not exist, the domains that « Activer » would start with show with no cross, since a removal could only be refused (`removable` of `AllowedDomainList`, false for the status `absent`); the form keeps refusing, with the message that says to activate the rule first.
 - `AllowedDomainsSkeleton` draws the card of the form with its field and its button as bars, holding no field, since a fallback form would lose what was typed.
+- « Rôles exemptés » holds `StatefulAddExemptRoleForm` and `StatefulExemptRoleList`, each with its own `useActionState`, and its section takes both as props. The choice is a `NativeSelect` named `role`, whose value is the role's ID, with a first choice « Choisir un rôle » and the roles by hierarchy (`rolesByHierarchy`) that the rule does not exempt, `readLinkRule`'s `exemptableRoles`, without @everyone and the roles an integration manages; with none left it reads « Aucun autre rôle » and is disabled with its button. The staff role has no cross and the section says so (`staffRoleId` of the settings); the other chips, a role Discord no longer lists included, have the same cross as a domain (#483).
+- The form is its own `@container`: its choice and its button stack under 28 rem (`@md:`) and share a row from it, so that the side column, 280 px, stacks them at every width and the single column shares them from 640 px (`ROLE_FIELD_ROW_CLASSES`, `docs/responsive.md`). While the rule does not exist the form stays and refuses, as the domains' does (decided by the agent on 2026-11-17, on #483, for Gilles to review).
+- `ExemptRolesSkeleton` draws the title, the form's label, choice and button, and three chips as bars.
 
 ## Where the next sections join
 

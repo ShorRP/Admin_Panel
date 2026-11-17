@@ -12,10 +12,26 @@ const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 const GALLERY_ID = "1500000000000000001"
 
+const GUARD_ROLE_ID = "1300000000000000010"
+
+const MODERATOR_ROLE_ID = "1300000000000000011"
+
+const INTEGRATION_ROLE_ID = "1300000000000000012"
+
 test.use({
   discordState: {
     members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
-    roles: [{ id: STAFF_ROLE_ID, name: "Staff" }],
+    roles: [
+      { id: STAFF_ROLE_ID, name: "Staff", position: 5 },
+      { id: GUARD_ROLE_ID, name: "Garde", position: 3 },
+      { id: MODERATOR_ROLE_ID, name: "Modérateur", position: 4 },
+      {
+        id: INTEGRATION_ROLE_ID,
+        name: "Intégration",
+        position: 9,
+        managed: true,
+      },
+    ],
     channels: [{ id: GALLERY_ID, name: "galerie" }],
   },
 })
@@ -66,7 +82,7 @@ test("a staff member opens « Liens » from the navigation, finds the rule that 
     "youtube.com",
   ])
   await expect(
-    page.getByRole("region", { name: "Rôles exemptés" }).getByRole("listitem")
+    page.getByRole("region", { name: "Rôles exemptés" }).locator("li > span")
   ).toHaveText(["Staff"])
   await expect(
     page.getByRole("region", { name: "Salons exemptés" })
@@ -174,7 +190,7 @@ test("the page shows the rule as it stands on the Discord server, its domains, e
     page.getByRole("region", { name: "Domaines permis" }).locator("li > span")
   ).toHaveText(["arte.tv"])
   await expect(
-    page.getByRole("region", { name: "Rôles exemptés" }).getByRole("listitem")
+    page.getByRole("region", { name: "Rôles exemptés" }).locator("li > span")
   ).toHaveText(["Staff", "Rôle supprimé"])
   await expect(
     page.getByRole("region", { name: "Salons exemptés" }).getByRole("listitem")
@@ -348,4 +364,85 @@ test("before the rule exists, the domains that « Activer » would start with 
 
   await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
   await expect(crosses).toHaveCount(8)
+})
+
+test("a staff member chooses a role among the Discord server's, is refused with the rule missing and with no role chosen, adds the role, which gets a cross where the staff role has none, then removes it, each write saying so in a toast and the audit log naming each", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+  readToast,
+}) => {
+  await logIn(ALDIS)
+  await page.goto("/blocked-links")
+  await page.waitForLoadState()
+  const roles = page.getByRole("region", { name: "Rôles exemptés" })
+  const choice = roles.getByLabel("Ajouter un rôle")
+  const add = roles.getByRole("button", { name: "Ajouter" })
+  const crosses = roles.getByRole("button", { name: /^Retirer/ })
+
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un rôle",
+    "Modérateur",
+    "Garde",
+  ])
+  await expect(roles.locator("li > span")).toHaveText(["Staff"])
+  await expect(crosses).toHaveCount(0)
+  await choice.selectOption({ label: "Modérateur" })
+  await add.click()
+
+  await expect(roles.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
+    "La règle des liens n’existe pas encore : active-la d’abord, puis ajoute le rôle."
+  )
+  await expect(choice).toHaveValue(MODERATOR_ROLE_ID)
+  expect(await discord.listAutoModerationRules()).toEqual([])
+  await checkAccessibility()
+
+  await page.getByRole("button", { name: "Activer" }).click()
+  await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
+  await choice.selectOption({ label: "Choisir un rôle" })
+  await add.click()
+
+  await expect(roles.getByRole("alert").filter({ hasText: /\S/ })).toHaveText(
+    "Choisis le rôle à exempter."
+  )
+  await checkAccessibility()
+
+  await choice.selectOption({ label: "Modérateur" })
+  await add.click()
+
+  await readToast("« Modérateur » est maintenant un rôle exempté.")
+  await expect(roles.locator("li > span")).toHaveText(["Staff", "Modérateur"])
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un rôle",
+    "Garde",
+  ])
+  await expect(choice).toHaveValue("")
+  await expect(crosses).toHaveText(["Retirer « Modérateur »"])
+  expect(await discord.listAutoModerationRules()).toMatchObject([
+    { exempt_roles: [STAFF_ROLE_ID, MODERATOR_ROLE_ID] },
+  ])
+  await checkAccessibility()
+
+  await crosses.click()
+
+  await readToast("« Modérateur » n’est plus un rôle exempté.")
+  await expect(roles.locator("li > span")).toHaveText(["Staff"])
+  await expect(crosses).toHaveCount(0)
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un rôle",
+    "Modérateur",
+    "Garde",
+  ])
+  expect(await discord.listAutoModerationRules()).toMatchObject([
+    { exempt_roles: [STAFF_ROLE_ID] },
+  ])
+  await checkAccessibility()
+  const { audit_log_entries } = await discord.getAuditLog({
+    action_type: AuditLogEvent.AutoModerationRuleUpdate,
+  })
+  expect(audit_log_entries.map(({ reason }) => reason)).toEqual([
+    "aldis (1400000000000000001) : retrait du rôle exempté « Modérateur »",
+    "aldis (1400000000000000001) : ajout du rôle exempté « Modérateur »",
+  ])
 })

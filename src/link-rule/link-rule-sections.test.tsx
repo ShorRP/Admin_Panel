@@ -56,31 +56,51 @@ test("with no allowed domain, the section says that every link is blocked, keeps
   ])
 })
 
-test("the exempt roles are listed by name, a role that Discord no longer lists as « Rôle supprimé », under what AutoMod spares whatever the rule says", () => {
-  const html = renderToStaticMarkup(
+function exemptRoles(roles: { id: string; name: string | null }[]) {
+  return renderToStaticMarkup(
     <ExemptRolesSection
-      roles={[
-        { id: "1", name: "Staff" },
-        { id: "2", name: null },
-      ]}
+      roles={roles}
+      staffRoleId="1"
+      form={<b>the form</b>}
+      list={<b>the list</b>}
     />
   )
+}
+
+test("the exempt roles come under their title, with the form to add one, then say that their members post any link and that the staff role has no cross, over their list and under what AutoMod spares whatever the rule says", () => {
+  const html = exemptRoles([
+    { id: "1", name: "Staff" },
+    { id: "2", name: "Garde" },
+  ])
 
   expect(texts(html)).toEqual([
     "Rôles exemptés",
-    "Les membres de ces rôles postent n’importe quel lien.",
-    "Staff",
-    "Rôle supprimé",
+    "the form",
+    "Les membres de ces rôles postent n’importe quel lien. Le rôle du staff est toujours exempté : il n’a pas de croix.",
+    "the list",
     "AutoMod laisse aussi passer le propriétaire du serveur Discord et les membres qui ont la permission « Administrateur » ou « Gérer le serveur ».",
   ])
-  expect(listItems(html)).toEqual(["Staff", "Rôle supprimé"])
+  expect(html).toMatch(/<section[^>]*aria-labelledby="exempt-roles"/)
 })
 
-test("with no exempt role, the section says so", () => {
-  const html = renderToStaticMarkup(<ExemptRolesSection roles={[]} />)
+test("a rule that does not exempt the staff role says nothing of its cross", () => {
+  const html = exemptRoles([{ id: "2", name: "Garde" }])
 
-  expect(texts(html)).toContain("Aucun rôle exempté.")
-  expect(listItems(html)).toEqual([])
+  expect(texts(html)).toContain(
+    "Les membres de ces rôles postent n’importe quel lien."
+  )
+})
+
+test("with no exempt role, the section says so, and keeps the form and the list", () => {
+  const html = exemptRoles([])
+
+  expect(texts(html)).toEqual([
+    "Rôles exemptés",
+    "the form",
+    "Aucun rôle exempté.",
+    "the list",
+    "AutoMod laisse aussi passer le propriétaire du serveur Discord et les membres qui ont la permission « Administrateur » ou « Gérer le serveur ».",
+  ])
 })
 
 test("the exempt channels are listed with their #, a channel that Discord does not list as « Salon introuvable »", () => {
