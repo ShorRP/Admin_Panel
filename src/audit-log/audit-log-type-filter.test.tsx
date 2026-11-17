@@ -37,6 +37,7 @@ function resetLinks(html: string) {
 const TYPES = [
   { text: "Tout", href: "/audit-log" },
   { text: "Mots interdits", href: "/audit-log?type=blocked-words" },
+  { text: "Liens", href: "/audit-log?type=links" },
   { text: "Exclusions", href: "/audit-log?type=timeouts" },
   { text: "Expulsions", href: "/audit-log?type=kicks" },
   { text: "Bannissements", href: "/audit-log?type=bans" },
@@ -58,6 +59,7 @@ test("with no filter chosen, the filter links each type, « Tout » marked as 
 
 test.each([
   ["blocked-words", "Mots interdits"],
+  ["links", "Liens"],
   ["timeouts", "Exclusions"],
   ["kicks", "Expulsions"],
   ["bans", "Bannissements"],
@@ -86,6 +88,10 @@ test("each link of the filter keeps the author and the account chosen, « Tout�
     {
       text: "Mots interdits",
       href: "/audit-log?type=blocked-words&author=bryn&account=%3C%401400000000000000003%3E",
+    },
+    {
+      text: "Liens",
+      href: "/audit-log?type=links&author=bryn&account=%3C%401400000000000000003%3E",
     },
     {
       text: "Exclusions",

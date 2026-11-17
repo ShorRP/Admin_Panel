@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Ban,
   ExternalLink,
+  Link2,
   ShieldBan,
   Timer,
   TimerOff,
@@ -34,6 +35,7 @@ const ADDITION: AuditLogChange = {
   avatarUrl:
     "https://cdn.discordapp.com/guilds/1100000000000000000/users/1400000000000000001/avatars/f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8.webp?size=64",
   description: "Ajout de « foo »",
+  rule: "blocked-words",
   madeInDiscord: false,
 }
 
@@ -45,7 +47,21 @@ const DISCORD_CHANGE: AuditLogChange = {
   memberId: BRYN_ID,
   avatarUrl: null,
   description: "Règle modifiée dans Discord",
+  rule: "blocked-words",
   madeInDiscord: true,
+}
+
+const LINK_ACTIVATION: AuditLogChange = {
+  ...ADDITION,
+  id: "1563530499194880004",
+  description: "Activation de la règle des liens",
+  rule: "links",
+}
+
+const LINK_DISCORD_CHANGE: AuditLogChange = {
+  ...DISCORD_CHANGE,
+  id: "1563530499194880005",
+  rule: "links",
 }
 
 const TIMEOUT: Extract<AuditLogChange, { kind: "sanction-change" }> = {
@@ -348,6 +364,8 @@ test("each change shows the icon of its kind, hidden from assistive technologies
     onOneDay(
       ADDITION,
       DISCORD_CHANGE,
+      LINK_ACTIVATION,
+      LINK_DISCORD_CHANGE,
       TIMEOUT,
       sanction({ kind: "timeout-lift" }),
       sanction({ kind: "kick" }),
@@ -358,9 +376,18 @@ test("each change shows the icon of its kind, hidden from assistive technologies
   )
 
   expect(icons(html)).toEqual(
-    [Ban, ExternalLink, Timer, TimerOff, UserX, ShieldBan, Undo2, Timer].map(
-      (Icon) => ({ icon: drawing(Icon), hidden: true })
-    )
+    [
+      Ban,
+      ExternalLink,
+      Link2,
+      ExternalLink,
+      Timer,
+      TimerOff,
+      UserX,
+      ShieldBan,
+      Undo2,
+      Timer,
+    ].map((Icon) => ({ icon: drawing(Icon), hidden: true }))
   )
 })
 
