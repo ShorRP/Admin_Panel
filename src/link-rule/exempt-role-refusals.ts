@@ -22,6 +22,6 @@ export function alreadyExemptRefusal(role: string) {
   return `${quoted(role)} est déjà un rôle exempté.`
 }
 
-export function fullRolesRefusal() {
-  return `La règle des liens exempte déjà ${frenchNumber(MAX_EXEMPT_ROLES)} rôles sur ${frenchNumber(MAX_EXEMPT_ROLES)}, celui du staff compris. Retire un rôle exempté, puis réessaie.`
+export function fullRolesRefusal(staffRoleCounts: boolean) {
+  return `La règle des liens exempte déjà ${frenchNumber(MAX_EXEMPT_ROLES)} rôles sur ${frenchNumber(MAX_EXEMPT_ROLES)}${staffRoleCounts ? ", celui du staff compris" : ""}. Retire un rôle exempté, puis réessaie.`
 }

@@ -12,6 +12,7 @@ import {
   noRuleRefusal,
   UNEXEMPTABLE_ROLE_REFUSAL,
 } from "./exempt-role-refusals"
+import { isExemptableRole } from "./exemptable-role"
 import { MAX_EXEMPT_ROLES } from "./limits"
 import { linkRuleOf } from "./link-rule"
 import { exemptRoleAdditionReason } from "./link-rule-reason"
@@ -47,14 +48,17 @@ export async function addExemptRole(
     if (chosen === undefined) {
       return failure(GONE_ROLE_REFUSAL, fields)
     }
-    if (chosen.id === discord.guildId || chosen.managed) {
+    if (!isExemptableRole(chosen, discord.guildId)) {
       return failure(UNEXEMPTABLE_ROLE_REFUSAL, fields)
     }
     if (rule.exempt_roles.includes(chosen.id)) {
       return failure(alreadyExemptRefusal(chosen.name), fields)
     }
     if (rule.exempt_roles.length >= MAX_EXEMPT_ROLES) {
-      return failure(fullRolesRefusal(), fields)
+      return failure(
+        fullRolesRefusal(rule.exempt_roles.includes(staffMember.staffRoleId)),
+        fields
+      )
     }
     await discord.modifyAutoModerationRule(
       rule.id,

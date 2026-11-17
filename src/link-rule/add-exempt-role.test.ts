@@ -10,6 +10,7 @@ import { FakeDiscord } from "@/discord/fake-discord"
 import { ROUTES } from "@/discord/routes"
 import { findStaffMember } from "@/staff/staff-member"
 import { addExemptRole } from "./add-exempt-role"
+import { newLinkRule } from "./link-rule"
 import { readLinkRule } from "./read-link-rule"
 import { switchLinkRule } from "./switch-link-rule"
 
@@ -361,4 +362,24 @@ test("a panel error is thrown, not returned", async () => {
   await expect(
     addExemptRole(discord, staffMember, form(MODERATOR_ROLE_ID))
   ).rejects.toBe(missingPermissions)
+})
+
+test("when the rule exempts 20 roles and the staff role is none of them, the refusal does not say that the staff role counts, and adding the staff role is refused too", async () => {
+  const discord = discordWithStaff(20)
+  const staffMember = await staffMemberOn(discord)
+  discord.createAutoModerationRuleAs(ALDIS.id, {
+    ...newLinkRule(STAFF_ROLE_ID),
+    exempt_roles: Array.from({ length: 20 }, (_, index) => roleId(index)),
+  })
+  const before = await discord.listAutoModerationRules()
+
+  const refused = await addExemptRole(discord, staffMember, form(STAFF_ROLE_ID))
+
+  expect(refused).toEqual({
+    ok: false,
+    message:
+      "La règle des liens exempte déjà 20 rôles sur 20. Retire un rôle exempté, puis réessaie.",
+    role: STAFF_ROLE_ID,
+  })
+  expect(await discord.listAutoModerationRules()).toEqual(before)
 })

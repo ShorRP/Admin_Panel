@@ -55,14 +55,18 @@ function chips(html: string) {
   )
 }
 
-function chip(item: { id: string; name: string }, disabled = false) {
+function chip(
+  item: { id: string; name: string },
+  disabled = false,
+  crossName = `Retirer « ${item.name} »`
+) {
   return {
     name: item.name,
     sent: item.id,
     cross: [
       expect.stringContaining('aria-hidden="true"'),
       drawing(X),
-      `<span class="sr-only">Retirer « ${item.name} »</span>`,
+      `<span class="sr-only">${crossName}</span>`,
     ],
     disabled,
   }
@@ -95,7 +99,31 @@ test("a role that Discord no longer lists shows as « Rôle supprimé » and k
 
   expect(chips(html)).toEqual([
     STAFF_CHIP,
-    chip({ id: "99", name: "Rôle supprimé" }),
+    chip(
+      { id: "99", name: "Rôle supprimé" },
+      false,
+      "Retirer « Rôle supprimé » (99)"
+    ),
+  ])
+})
+
+test("two roles that Discord no longer lists read alike in the list and are told apart by their ID in the name of their cross", () => {
+  const html = render([
+    STAFF,
+    { id: "98", name: null },
+    { id: "99", name: null },
+  ])
+
+  expect(chips(html).map(({ name, cross }) => [name, cross?.[2]])).toEqual([
+    ["Staff", undefined],
+    [
+      "Rôle supprimé",
+      '<span class="sr-only">Retirer « Rôle supprimé » (98)</span>',
+    ],
+    [
+      "Rôle supprimé",
+      '<span class="sr-only">Retirer « Rôle supprimé » (99)</span>',
+    ],
   ])
 })
 

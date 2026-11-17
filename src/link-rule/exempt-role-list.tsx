@@ -27,6 +27,10 @@ export function ExemptRoleList({
         <ul className={CHIPS_CLASSES}>
           {roles.map(({ id, name }) => {
             const label = name ?? "Rôle supprimé"
+            const crossName =
+              name === null
+                ? `Retirer ${quoted(label)} (${id})`
+                : `Retirer ${quoted(label)}`
             const removable = id !== staffRoleId
             return (
               <li
@@ -48,7 +52,7 @@ export function ExemptRoleList({
                       className="text-muted-foreground"
                     >
                       <X aria-hidden className="size-3.75" />
-                      <span className="sr-only">{`Retirer ${quoted(label)}`}</span>
+                      <span className="sr-only">{crossName}</span>
                     </Button>
                   </form>
                 )}

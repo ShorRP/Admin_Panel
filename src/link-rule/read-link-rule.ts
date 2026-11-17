@@ -6,6 +6,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { rolesByHierarchy } from "@/records/role-hierarchy"
 import type { StaffMember } from "@/staff/staff-member"
 import { allowedDomainsOf, inFrenchOrder } from "./allowed-domains"
+import { isExemptableRole } from "./exemptable-role"
 import { allowListOf, DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
 import { linkRuleActionOf, type LinkRuleActionId } from "./link-rule-action"
 
@@ -49,8 +50,9 @@ export async function readLinkRule(
     exemptRoles: named(exemptRoleIds, roles),
     exemptableRoles: rolesByHierarchy(roles)
       .filter(
-        ({ id, managed }) =>
-          id !== discord.guildId && !managed && !exemptRoleIds.includes(id)
+        (role) =>
+          isExemptableRole(role, discord.guildId) &&
+          !exemptRoleIds.includes(role.id)
       )
       .map(({ id, name }) => ({ id, name })),
     staffRoleId,
