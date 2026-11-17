@@ -5,6 +5,7 @@ import { CHANGE_TYPES, type ChangeType } from "./change-type"
 
 const LABELS: Record<ChangeType, string> = {
   "blocked-words": "Mots interdits",
+  links: "Liens",
   timeouts: "Exclusions",
   kicks: "Expulsions",
   bans: "Bannissements",
