@@ -14,6 +14,8 @@ const GALLERY_ID = "1500000000000000001"
 
 const NEWS_ID = "1500000000000000002"
 
+const LONG_ALERT_ID = "1500000000000000003"
+
 const GUARD_ROLE_ID = "1300000000000000010"
 
 const MODERATOR_ROLE_ID = "1300000000000000011"
@@ -82,6 +84,7 @@ const SIDE_REGIONS = [
   "Rôles exemptés",
   "Salons exemptés",
   "Action",
+  "Salon d’alerte",
   "Autres exceptions",
 ]
 
@@ -96,6 +99,7 @@ test.use({
     channels: [
       { id: GALLERY_ID, name: "g".repeat(95) },
       { id: NEWS_ID, name: "nouvelles" },
+      { id: LONG_ALERT_ID, name: "l".repeat(95) },
     ],
   },
 })
@@ -176,9 +180,14 @@ async function expectChoiceRow(
   }
 }
 
-async function expectActionRow(region: Locator, screen: Screen, side: Box) {
+async function expectActionRow(
+  region: Locator,
+  label: string,
+  screen: Screen,
+  side: Box
+) {
   const controlPx = screen === DESKTOP ? DESKTOP_CONTROL_PX : MIN_TARGET_PX
-  const choice = await boxOf(region.getByLabel("Changer l’action"))
+  const choice = await boxOf(region.getByLabel(label))
   const change = await boxOf(region.getByRole("button", { name: "Changer" }))
   const section = await boxOf(region)
   expect(Math.round(choice.height)).toBe(controlPx)
@@ -197,6 +206,16 @@ async function expectActionRow(region: Locator, screen: Screen, side: Box) {
   expect(change.x + change.width).toBeLessThanOrEqual(side.x + side.width)
 }
 
+async function expectAlertRow(region: Locator, screen: Screen, side: Box) {
+  await expectActionRow(region, "Changer le salon d’alerte", screen, side)
+  const notice = await boxOf(region.getByText(/ne laissent pas de trace/))
+  const choice = await boxOf(region.getByLabel("Changer le salon d’alerte"))
+  const section = await boxOf(region)
+  expect(notice.y + notice.height).toBeLessThanOrEqual(choice.y)
+  expect(notice.x).toBeGreaterThanOrEqual(section.x)
+  expect(notice.x + notice.width).toBeLessThanOrEqual(section.x + section.width)
+}
+
 for (const screen of [...SCREENS, DESKTOP]) {
   test.describe(`at ${screen.width} px`, () => {
     test.use({
@@ -207,8 +226,8 @@ for (const screen of [...SCREENS, DESKTOP]) {
 
     test(
       screen.columns === 1
-        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel and the choice of an action, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
-        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel and the choice of an action, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
+        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel, the choice of an action and the choice of an alert channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
+        : "the switch and the domains take the main column and the roles, the channels, the action, the alert channel and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel, the choice of an action and the choice of an alert channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
       async ({ page, logIn, checkAccessibility }) => {
         await logIn(ALDIS)
         await page.goto("/blocked-links")
@@ -322,11 +341,60 @@ for (const screen of [...SCREENS, DESKTOP]) {
         }
         await expectActionRow(
           page.getByRole("region", { name: "Action" }),
+          "Changer l’action",
+          screen,
+          firstSide
+        )
+        await expectAlertRow(
+          page.getByRole("region", { name: "Salon d’alerte" }),
           screen,
           firstSide
         )
         await checkAccessibility()
       }
     )
+
+    test("the alert channel of a long name wraps inside the side column, its choice and its button keeping their sizes, with no sideways scroll", async ({
+      page,
+      logIn,
+      discord,
+      checkAccessibility,
+    }) => {
+      const [rule] = await discord.listAutoModerationRules()
+      if (rule === undefined) {
+        throw new Error("The link rule is missing")
+      }
+      discord.modifyAutoModerationRuleAs(ALDIS.id, rule.id, {
+        actions: [
+          ...rule.actions,
+          {
+            type: AutoModerationActionType.SendAlertMessage,
+            metadata: { channel_id: LONG_ALERT_ID },
+          },
+        ],
+      })
+      await logIn(ALDIS)
+      await page.goto("/blocked-links")
+      await settle(page)
+
+      const region = page.getByRole("region", { name: "Salon d’alerte" })
+      const section = await boxOf(region)
+      const sentence = await boxOf(region.getByText(/AutoMod recopie/))
+      const choice = await boxOf(region.getByLabel("Changer le salon d’alerte"))
+      expect(sentence.x + sentence.width).toBeLessThanOrEqual(
+        section.x + section.width
+      )
+      expect(choice.x + choice.width).toBeLessThanOrEqual(
+        section.x + section.width
+      )
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth
+        )
+      ).toBeLessThanOrEqual(0)
+      await checkAccessibility()
+    })
   })
 }

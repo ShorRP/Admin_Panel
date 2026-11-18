@@ -50,9 +50,9 @@ test("the privacy policy opens on the public pages' overline, its heading, what 
       "Panel du staff · Skyrim Roleplay",
       "Politique de confidentialité",
       "Ce que le panel du staff de Shor lit, garde et écrit sur les comptes Discord, pourquoi, combien de temps, qui le voit, et comment demander à le corriger ou à l’effacer.",
-      "Mise à jour le 6 nov. 2026.",
+      "Mise à jour le 18 nov. 2026.",
     ],
-    updated: ["2026-11-06", "6 nov. 2026"],
+    updated: ["2026-11-18", "18 nov. 2026"],
     rule: true,
   })
 })
@@ -204,6 +204,25 @@ test("the privacy policy says Discord keeps what the panel writes, every change'
   expect(text).toMatch(/où il reste tant que dure le bannissement/)
   expect(text).toMatch(/de la dernière heure aux 7 derniers jours/)
   expect(text).toMatch(/message privé/)
+})
+
+test("the privacy policy says that, once the staff choose an alert channel for the link rule, AutoMod copies there each message it blocks for a link, with its member and its channel, that the panel neither reads nor keeps it, that it stays in the channel until a staff member deletes it and that removing the channel leaves the alerts already posted, and that those who view that channel see them", () => {
+  const written = sectionText("Ce que le panel écrit dans Discord")
+
+  expect(written).toMatch(
+    /quand le staff choisit un salon d’alerte pour la règle des liens, AutoMod y recopie, à chaque message qu’il bloque parce qu’il contient un lien, le message du membre, avec le membre qui l’a écrit et le salon où il l’a écrit/
+  )
+  expect(written).toMatch(
+    /le panel ne lit ni ne garde ce message, qui reste dans ce salon, sur Discord, tant qu’un membre du staff n’a pas supprimé son message/
+  )
+  expect(written).toMatch(
+    /retirer le salon d’alerte n’efface pas les alertes déjà postées/
+  )
+  expect(sectionText("Qui le voit")).toMatch(
+    /Les alertes de la règle des liens sont vues par tous ceux qui voient leur salon sur Discord/
+  )
+  expect(sectionText("Pourquoi")).toMatch(/ses liens bloqués/)
+  expect(sectionText("Ce que couvre cette page")).toMatch(/ses liens bloqués/)
 })
 
 test("the privacy policy says only the staff open the panel, and only those who moderate see the list of accounts and their records", () => {

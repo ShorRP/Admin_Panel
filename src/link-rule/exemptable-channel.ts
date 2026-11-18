@@ -56,10 +56,20 @@ export function exemptableChannelGroups(
   channels: GuildChannel[],
   exemptIds: Snowflake[]
 ): ChannelChoiceGroup[] {
-  const categories = channels.filter(isCategory).toSorted(byName)
-  const offered = channels.filter(
-    (channel) => isExemptableChannel(channel) && !exemptIds.includes(channel.id)
+  return groupedChannels(
+    channels,
+    channels.filter(
+      (channel) =>
+        isExemptableChannel(channel) && !exemptIds.includes(channel.id)
+    )
   )
+}
+
+export function groupedChannels(
+  channels: GuildChannel[],
+  offered: GuildChannel[]
+): ChannelChoiceGroup[] {
+  const categories = channels.filter(isCategory).toSorted(byName)
   const inCategory = (categoryId: Snowflake) =>
     offered
       .filter(({ parent_id }) => parent_id === categoryId)

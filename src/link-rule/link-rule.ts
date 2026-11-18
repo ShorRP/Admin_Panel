@@ -11,6 +11,7 @@ import {
 import { isKeywordRule } from "@/blocked-words/panel-rule"
 import { allowListEntriesOf } from "./allowed-domains"
 import { actionsOf, type LinkRuleActionId } from "./link-rule-action"
+import { isAlert } from "./link-rule-alert"
 
 export const LINK_RULE_NAME = "Liens bloqués du panel"
 
@@ -62,6 +63,24 @@ export function withAction(
           type !== AutoModerationActionType.Timeout
       ),
     ],
+  }
+}
+
+export function withAlert(
+  rule: APIAutoModerationRule,
+  channelId: Snowflake | null
+): RESTPatchAPIAutoModerationRuleJSONBody {
+  if (channelId === null) {
+    return { actions: rule.actions.filter((action) => !isAlert(action)) }
+  }
+  const alert = {
+    type: AutoModerationActionType.SendAlertMessage,
+    metadata: { channel_id: channelId },
+  }
+  return {
+    actions: rule.actions.some(isAlert)
+      ? rule.actions.map((action) => (isAlert(action) ? alert : action))
+      : [...rule.actions, alert],
   }
 }
 

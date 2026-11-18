@@ -11,6 +11,7 @@ function render() {
       roles={<b>the roles</b>}
       channels={<b>the channels</b>}
       action={<b>the action</b>}
+      alert={<b>the alert</b>}
       otherExceptions={<b>the other exceptions</b>}
     />
   )
@@ -20,7 +21,7 @@ function texts(html: string) {
   return Array.from(html.matchAll(/>([^<]+)</g), ([, text]) => text)
 }
 
-test("the page opens with its overline, its h1 and its sentence, then gives the switch and the domains before the roles, the channels, the action and the other exceptions, which is the order of a phone's single column", () => {
+test("the page opens with its overline, its h1 and its sentence, then gives the switch and the domains before the roles, the channels, the action, the alert channel and the other exceptions, which is the order of a phone's single column", () => {
   expect(texts(render())).toEqual([
     "AutoMod · règle du panel",
     "Liens",
@@ -30,6 +31,7 @@ test("the page opens with its overline, its h1 and its sentence, then gives the 
     "the roles",
     "the channels",
     "the action",
+    "the alert",
     "the other exceptions",
   ])
   expect(render()).toMatch(/<h1[^>]*>Liens<\/h1>/)

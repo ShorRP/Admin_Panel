@@ -9,6 +9,7 @@ export function LinkRuleView({
   roles,
   channels,
   action,
+  alert,
   otherExceptions,
 }: {
   switchCard: ReactNode
@@ -16,6 +17,7 @@ export function LinkRuleView({
   roles: ReactNode
   channels: ReactNode
   action: ReactNode
+  alert: ReactNode
   otherExceptions: ReactNode
 }) {
   return (
@@ -40,6 +42,7 @@ export function LinkRuleView({
             {roles}
             {channels}
             {action}
+            {alert}
             {otherExceptions}
           </div>
         </div>

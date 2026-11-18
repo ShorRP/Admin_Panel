@@ -7,6 +7,7 @@ import { requireStaffMember } from "@/staff/require-staff-member"
 import { addAllowedDomain } from "./add-allowed-domain"
 import { addExemptChannel } from "./add-exempt-channel"
 import { addExemptRole } from "./add-exempt-role"
+import { changeAlertChannel } from "./change-alert-channel"
 import { changeLinkRuleAction } from "./change-link-rule-action"
 import { removeAllowedDomain } from "./remove-allowed-domain"
 import { removeExemptChannel } from "./remove-exempt-channel"
@@ -118,6 +119,19 @@ export async function changeLinkRuleActionAction(
   const discord = createDiscordApi()
   const staffMember = await requireStaffMember(discord)
   const result = await changeLinkRuleAction(discord, staffMember, formData)
+  if (result.ok) {
+    refresh()
+  }
+  return result
+}
+
+export async function changeAlertChannelAction(
+  _previous: WriteResult<ChannelFields> | null,
+  formData: FormData
+) {
+  const discord = createDiscordApi()
+  const staffMember = await requireStaffMember(discord)
+  const result = await changeAlertChannel(discord, staffMember, formData)
   if (result.ok) {
     refresh()
   }

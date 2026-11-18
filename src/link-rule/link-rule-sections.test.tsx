@@ -5,6 +5,7 @@ import { AllowedDomainsSection } from "./allowed-domains-section"
 import { ExemptChannelsSection } from "./exempt-channels-section"
 import { ExemptRolesSection } from "./exempt-roles-section"
 import { LinkRuleActionSection } from "./link-rule-action-section"
+import { LinkRuleAlertSection } from "./link-rule-alert-section"
 import { OtherExceptionsSection } from "./other-exceptions-section"
 import type { ExemptChannel } from "./read-link-rule"
 
@@ -175,6 +176,68 @@ test("with no form, the action is shown by its name and the sentence says that c
     "Action",
     "Réglée dans Discord",
     "Cette action n’est pas l’une de celles du panel : elle se change dans Discord.",
+  ])
+})
+
+test("with no alert channel, the section says above its form that blocked links leave no trace, and with one it says where AutoMod copies each blocked message", () => {
+  const none = renderToStaticMarkup(
+    <LinkRuleAlertSection alert={{ kind: "none" }} form={<b>the form</b>} />
+  )
+  const named = renderToStaticMarkup(
+    <LinkRuleAlertSection
+      alert={{ kind: "channel", id: "21", name: "alertes", category: false }}
+      form={<b>the form</b>}
+    />
+  )
+  const gone = renderToStaticMarkup(
+    <LinkRuleAlertSection
+      alert={{ kind: "channel", id: "21", name: null, category: false }}
+      form={<b>the form</b>}
+    />
+  )
+  const category = renderToStaticMarkup(
+    <LinkRuleAlertSection
+      alert={{ kind: "channel", id: "22", name: "Jeux", category: true }}
+      form={<b>the form</b>}
+    />
+  )
+
+  expect(texts(none)).toEqual([
+    "Salon d’alerte",
+    "Aucun salon d’alerte : les liens bloqués ne laissent pas de trace.",
+    "the form",
+  ])
+  expect(texts(named)).toEqual([
+    "Salon d’alerte",
+    "AutoMod recopie chaque message bloqué dans « #alertes ».",
+    "the form",
+  ])
+  expect(texts(category)).toContain(
+    "AutoMod recopie chaque message bloqué dans « Jeux (catégorie) »."
+  )
+  expect(texts(gone)).toEqual([
+    "Salon d’alerte",
+    "AutoMod recopie chaque message bloqué dans un salon que le panel ne trouve plus.",
+    "the form",
+  ])
+  expect(none).toMatch(/<section[^>]*aria-labelledby="link-rule-alert"/)
+  expect(none).toMatch(
+    /<[a-z0-9]+[^>]* id="link-rule-alert"[^>]*>Salon d’alerte</
+  )
+})
+
+test("an alert that is set in Discord is shown as so, with no form, whatever form it is given", () => {
+  const html = renderToStaticMarkup(
+    <LinkRuleAlertSection
+      alert={{ kind: "set-in-discord" }}
+      form={<b>the form</b>}
+    />
+  )
+
+  expect(texts(html)).toEqual([
+    "Salon d’alerte",
+    "Réglé dans Discord",
+    "Le salon d’alerte est réglé d’une façon que le panel ne sait pas écrire : il se change dans Discord.",
   ])
 })
 

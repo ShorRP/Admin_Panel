@@ -108,6 +108,10 @@ _Avoid_: allowed role, bypass role
 A text channel, an announcement channel or a category of the Discord server where the link rule lets any member post any link.
 _Avoid_: allowed channel, links channel
 
+**Alert channel**:
+The text channel or announcement channel of the Discord server where AutoMod copies each message the link rule blocks, which the staff choose or leave out. Not the Bot log, where a blocked link does not enter.
+_Avoid_: links log, log channel
+
 **Sanction**:
 A measure taken against an account for its conduct on the Discord server, by the staff or automatically: a warning, a timeout, a kick or a ban. Lifting a timeout or a ban is not a sanction.
 _Avoid_: punishment, infraction, strike

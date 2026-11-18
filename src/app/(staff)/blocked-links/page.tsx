@@ -12,6 +12,8 @@ import { ExemptRolesSkeleton } from "@/link-rule/exempt-roles-skeleton"
 import { changeableActionOf } from "@/link-rule/link-rule-action"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
 import { LinkRuleActionSkeleton } from "@/link-rule/link-rule-action-skeleton"
+import { LinkRuleAlertSection } from "@/link-rule/link-rule-alert-section"
+import { LinkRuleAlertSkeleton } from "@/link-rule/link-rule-alert-skeleton"
 import { LinkRuleSwitchCard } from "@/link-rule/link-rule-switch-card"
 import { LinkRuleSwitchSkeleton } from "@/link-rule/link-rule-switch-skeleton"
 import { LinkRuleView } from "@/link-rule/link-rule-view"
@@ -21,6 +23,7 @@ import { StatefulAddAllowedDomainForm } from "@/link-rule/stateful-add-allowed-d
 import { StatefulAddExemptChannelForm } from "@/link-rule/stateful-add-exempt-channel-form"
 import { StatefulAddExemptRoleForm } from "@/link-rule/stateful-add-exempt-role-form"
 import { StatefulAllowedDomainList } from "@/link-rule/stateful-allowed-domain-list"
+import { StatefulChangeAlertChannelForm } from "@/link-rule/stateful-change-alert-channel-form"
 import { StatefulChangeLinkRuleActionForm } from "@/link-rule/stateful-change-link-rule-action-form"
 import { StatefulExemptChannelList } from "@/link-rule/stateful-exempt-channel-list"
 import { StatefulExemptRoleList } from "@/link-rule/stateful-exempt-role-list"
@@ -68,6 +71,11 @@ export default function BlockedLinksPage() {
                 linkRule={linkRule}
                 staffMember={staffMember}
               />
+            </SuspenseWithSkeleton>
+          }
+          alert={
+            <SuspenseWithSkeleton skeleton={<LinkRuleAlertSkeleton />}>
+              <AlertFromDiscord linkRule={linkRule} />
             </SuspenseWithSkeleton>
           }
           otherExceptions={
@@ -160,6 +168,21 @@ async function ActionFromDiscord({
             current={changeable.current}
           />
         )
+      }
+    />
+  )
+}
+
+async function AlertFromDiscord({ linkRule }: FromDiscordProps) {
+  const { alert, alertableChannels } = await linkRule
+  return (
+    <LinkRuleAlertSection
+      alert={alert}
+      form={
+        <StatefulChangeAlertChannelForm
+          groups={alertableChannels}
+          alert={alert}
+        />
       }
     />
   )
