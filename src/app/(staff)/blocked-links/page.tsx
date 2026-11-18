@@ -9,8 +9,9 @@ import { ExemptChannelsSection } from "@/link-rule/exempt-channels-section"
 import { ExemptChannelsSkeleton } from "@/link-rule/exempt-channels-skeleton"
 import { ExemptRolesSection } from "@/link-rule/exempt-roles-section"
 import { ExemptRolesSkeleton } from "@/link-rule/exempt-roles-skeleton"
+import { changeableActionOf } from "@/link-rule/link-rule-action"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
-import { LinkRuleSideSectionSkeleton } from "@/link-rule/link-rule-side-section-skeleton"
+import { LinkRuleActionSkeleton } from "@/link-rule/link-rule-action-skeleton"
 import { LinkRuleSwitchCard } from "@/link-rule/link-rule-switch-card"
 import { LinkRuleSwitchSkeleton } from "@/link-rule/link-rule-switch-skeleton"
 import { LinkRuleView } from "@/link-rule/link-rule-view"
@@ -20,6 +21,7 @@ import { StatefulAddAllowedDomainForm } from "@/link-rule/stateful-add-allowed-d
 import { StatefulAddExemptChannelForm } from "@/link-rule/stateful-add-exempt-channel-form"
 import { StatefulAddExemptRoleForm } from "@/link-rule/stateful-add-exempt-role-form"
 import { StatefulAllowedDomainList } from "@/link-rule/stateful-allowed-domain-list"
+import { StatefulChangeLinkRuleActionForm } from "@/link-rule/stateful-change-link-rule-action-form"
 import { StatefulExemptChannelList } from "@/link-rule/stateful-exempt-channel-list"
 import { StatefulExemptRoleList } from "@/link-rule/stateful-exempt-role-list"
 import { StatefulLinkRuleSwitchForm } from "@/link-rule/stateful-link-rule-switch-form"
@@ -30,7 +32,8 @@ import { SuspenseWithSkeleton } from "@/ui/suspense-with-skeleton"
 export const metadata: Metadata = { title: "Liens" }
 
 export default function BlockedLinksPage() {
-  const linkRule = linkRuleFromDiscord(staffMemberFromDiscord())
+  const staffMember = staffMemberFromDiscord()
+  const linkRule = linkRuleFromDiscord(staffMember)
   return (
     <ViewTransition
       enter="section-crossfade"
@@ -60,12 +63,11 @@ export default function BlockedLinksPage() {
             </SuspenseWithSkeleton>
           }
           action={
-            <SuspenseWithSkeleton
-              skeleton={
-                <LinkRuleSideSectionSkeleton loading="Chargement de l’action…" />
-              }
-            >
-              <ActionFromDiscord linkRule={linkRule} />
+            <SuspenseWithSkeleton skeleton={<LinkRuleActionSkeleton />}>
+              <ActionFromDiscord
+                linkRule={linkRule}
+                staffMember={staffMember}
+              />
             </SuspenseWithSkeleton>
           }
           otherExceptions={
@@ -142,9 +144,25 @@ async function ChannelsFromDiscord({ linkRule }: FromDiscordProps) {
   )
 }
 
-async function ActionFromDiscord({ linkRule }: FromDiscordProps) {
+async function ActionFromDiscord({
+  linkRule,
+  staffMember,
+}: FromDiscordProps & { staffMember: Promise<StaffMember> }) {
   const { action } = await linkRule
-  return <LinkRuleActionSection action={action} />
+  const changeable = changeableActionOf(await staffMember, action)
+  return (
+    <LinkRuleActionSection
+      action={action}
+      form={
+        changeable === null ? null : (
+          <StatefulChangeLinkRuleActionForm
+            choices={changeable.choices}
+            current={changeable.current}
+          />
+        )
+      }
+    />
+  )
 }
 
 async function OtherExceptionsFromDiscord({ linkRule }: FromDiscordProps) {

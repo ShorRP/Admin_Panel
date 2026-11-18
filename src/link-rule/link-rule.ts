@@ -10,6 +10,7 @@ import {
 
 import { isKeywordRule } from "@/blocked-words/panel-rule"
 import { allowListEntriesOf } from "./allowed-domains"
+import { actionsOf, type LinkRuleActionId } from "./link-rule-action"
 
 export const LINK_RULE_NAME = "Liens bloqués du panel"
 
@@ -28,9 +29,6 @@ const LINK_PATTERNS = [
   "https?://[^\\s/?#]+",
   "(?:discord\\.gg|discord(?:app)?\\.com/invite)/\\S+",
 ]
-
-const BLOCKED_LINK_MESSAGE =
-  "Message bloqué : ce lien n’est pas permis sur le serveur Discord de Shor."
 
 export function linkRuleOf(rules: APIAutoModerationRule[]) {
   return rules.find(
@@ -51,6 +49,22 @@ export function withAllowList(
   }
 }
 
+export function withAction(
+  rule: APIAutoModerationRule,
+  id: LinkRuleActionId
+): RESTPatchAPIAutoModerationRuleJSONBody {
+  return {
+    actions: [
+      ...actionsOf(id),
+      ...rule.actions.filter(
+        ({ type }) =>
+          type !== AutoModerationActionType.BlockMessage &&
+          type !== AutoModerationActionType.Timeout
+      ),
+    ],
+  }
+}
+
 export function newLinkRule(
   staffRoleId: Snowflake
 ): RESTPostAPIAutoModerationRuleJSONBody {
@@ -62,12 +76,7 @@ export function newLinkRule(
       regex_patterns: LINK_PATTERNS,
       allow_list: DEFAULT_ALLOWED_DOMAINS.flatMap(allowListEntriesOf),
     },
-    actions: [
-      {
-        type: AutoModerationActionType.BlockMessage,
-        metadata: { custom_message: BLOCKED_LINK_MESSAGE },
-      },
-    ],
+    actions: actionsOf("block"),
     exempt_roles: [staffRoleId],
     enabled: true,
   }

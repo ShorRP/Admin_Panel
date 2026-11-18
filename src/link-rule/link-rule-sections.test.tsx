@@ -140,17 +140,35 @@ test("with no exempt channel, the section says that a link is blocked in every c
   ])
 })
 
-test("the action is shown by its name, and an action that the panel does not offer is said to be set in Discord", () => {
-  const block = renderToStaticMarkup(<LinkRuleActionSection action="block" />)
-  const day = renderToStaticMarkup(
-    <LinkRuleActionSection action="timeout-1d" />
+test("with the form to change it, the action comes under its title as the form's choice, over the sentence on what happens to a message with a blocked link", () => {
+  const html = renderToStaticMarkup(
+    <LinkRuleActionSection action="timeout-1d" form={<b>the form</b>} />
   )
-  const other = renderToStaticMarkup(<LinkRuleActionSection action={null} />)
+
+  expect(texts(html)).toEqual([
+    "Action",
+    "the form",
+    "Ce qui arrive à un message qui contient un lien bloqué.",
+  ])
+  expect(html).toMatch(/<section[^>]*aria-labelledby="link-rule-action"/)
+  expect(html).toMatch(/<[a-z0-9]+[^>]* id="link-rule-action"[^>]*>Action</)
+})
+
+test("with no form, the action is shown by its name and the sentence says that choosing or leaving an exclusion asks for a moderation role, and an action that the panel does not offer is said to be set in Discord", () => {
+  const block = renderToStaticMarkup(
+    <LinkRuleActionSection action="block" form={null} />
+  )
+  const day = renderToStaticMarkup(
+    <LinkRuleActionSection action="timeout-1d" form={null} />
+  )
+  const other = renderToStaticMarkup(
+    <LinkRuleActionSection action={null} form={null} />
+  )
 
   expect(texts(block)).toEqual([
     "Action",
     "Bloquer seulement",
-    "Ce qui arrive à un message qui contient un lien bloqué.",
+    "Ce qui arrive à un message qui contient un lien bloqué. Choisir ou quitter une exclusion demande un rôle de modération.",
   ])
   expect(texts(day)).toContain("Exclusion 1 jour")
   expect(texts(other)).toEqual([
