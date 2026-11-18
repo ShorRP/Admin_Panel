@@ -1,10 +1,11 @@
 import "server-only"
 
-import type { Snowflake } from "discord-api-types/v10"
+import type { APIAutoModerationRule, Snowflake } from "discord-api-types/v10"
 
-import type { DiscordApi } from "@/discord/discord-api"
+import type { DiscordApi, GuildChannel } from "@/discord/discord-api"
 import { rolesByHierarchy } from "@/records/role-hierarchy"
 import type { StaffMember } from "@/staff/staff-member"
+import { alertChannelGroups } from "./alert-channel"
 import { allowedDomainsOf, inFrenchOrder } from "./allowed-domains"
 import {
   exemptableChannelGroups,
@@ -14,6 +15,7 @@ import {
 import { isExemptableRole } from "./exemptable-role"
 import { allowListOf, DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
 import { linkRuleActionOf, type LinkRuleActionId } from "./link-rule-action"
+import { alertOf } from "./link-rule-alert"
 
 export type LinkRuleStatus = "absent" | "enabled" | "disabled"
 
@@ -27,6 +29,11 @@ export type ExemptChannel = {
   category: boolean
 }
 
+export type LinkRuleAlert =
+  | { kind: "none" }
+  | { kind: "channel"; id: Snowflake; name: string | null }
+  | { kind: "set-in-discord" }
+
 export type LinkRuleSettings = {
   status: LinkRuleStatus
   allowedDomains: string[]
@@ -37,6 +44,8 @@ export type LinkRuleSettings = {
   exemptChannels: ExemptChannel[]
   exemptableChannels: ChannelChoiceGroup[]
   action: LinkRuleActionId | null
+  alert: LinkRuleAlert
+  alertableChannels: ChannelChoiceGroup[]
 }
 
 export async function readLinkRule(
@@ -78,6 +87,23 @@ export async function readLinkRule(
     }),
     exemptableChannels: exemptableChannelGroups(channels, exemptChannelIds),
     action: rule === undefined ? "block" : linkRuleActionOf(rule),
+    alert: rule === undefined ? { kind: "none" } : alertIn(rule, channels),
+    alertableChannels: alertChannelGroups(channels),
+  }
+}
+
+function alertIn(
+  rule: APIAutoModerationRule,
+  channels: GuildChannel[]
+): LinkRuleAlert {
+  const alert = alertOf(rule)
+  if (alert.kind !== "channel") {
+    return alert
+  }
+  return {
+    kind: "channel",
+    id: alert.id,
+    name: channels.find(({ id }) => id === alert.id)?.name ?? null,
   }
 }
 

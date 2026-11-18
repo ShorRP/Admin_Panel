@@ -642,6 +642,63 @@ export function describeDiscordApiContract(
       expect(await readBack()).toMatchObject(asCreated)
     })
 
+    test("a rule that blocks the message and alerts a text channel is read back as created, and a change of the actions alone drops the alert and puts it back, the rule keeping the rest", async () => {
+      const { discord } = connected()
+      const alertChannel = defined(
+        (await discord.listChannels()).find(
+          ({ type }) => type === ChannelType.GuildText
+        )
+      )
+      const blocking = {
+        type: AutoModerationActionType.BlockMessage,
+        metadata: { custom_message: "Contract: a blocked message" },
+      }
+      const alerting = {
+        type: AutoModerationActionType.SendAlertMessage,
+        metadata: { channel_id: alertChannel.id },
+      }
+      const exemptRole = defined((await applicationMember(discord)).roles[0])
+
+      const created = await discord.createAutoModerationRule(
+        {
+          ...keywordRule(["contract-alert-rule"]),
+          actions: [blocking, alerting],
+          exempt_roles: [exemptRole],
+        },
+        "Contract: a rule that alerts"
+      )
+
+      const readBack = async () =>
+        (await discord.listAutoModerationRules()).find(
+          ({ id }) => id === created.id
+        )
+      expect(await readBack()).toMatchObject({
+        actions: [blocking, alerting],
+        exempt_roles: [exemptRole],
+        trigger_metadata: { keyword_filter: ["contract-alert-rule"] },
+        enabled: false,
+      })
+      await discord.modifyAutoModerationRule(
+        created.id,
+        { actions: [blocking] },
+        "Contract: an alert dropped"
+      )
+      expect(await readBack()).toMatchObject({
+        actions: [blocking],
+        exempt_roles: [exemptRole],
+        trigger_metadata: { keyword_filter: ["contract-alert-rule"] },
+      })
+      await discord.modifyAutoModerationRule(
+        created.id,
+        { actions: [blocking, alerting] },
+        "Contract: an alert put back"
+      )
+      expect(await readBack()).toMatchObject({
+        actions: [blocking, alerting],
+        exempt_roles: [exemptRole],
+      })
+    })
+
     test("a Discord server holds up to 6 keyword rules", async () => {
       const { discord } = connected()
       const rules = await discord.listAutoModerationRules()

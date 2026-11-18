@@ -1,6 +1,6 @@
 # Blocked links
 
-The reference behind `.claude/rules/blocked-links.md`: what the exempt roles, the exempt channels and the action of the link rule are, what was measured on Discord for them and what stays open. The rule says what to do; this file says how it was known. #483 wrote the exempt roles, #484 the exempt channels and #485 the action; ADR 0011 holds the rest of the link rule's trials.
+The reference behind `.claude/rules/blocked-links.md`: what the allowed domains' forms, the exempt roles, the exempt channels, the action and the alert channel of the link rule are, what was measured on Discord for them and what stays open. The rule says what to do; this file says how it was known. #483 wrote the exempt roles, #484 the exempt channels, #485 the action and #486 the alert channel; ADR 0011 holds the rest of the link rule's trials.
 
 ## Exempt channels
 
@@ -61,5 +61,48 @@ Moved here from `.claude/rules/blocked-links.md`, **Forms**, with their marks, w
 
 ### Open
 
-- A PATCH of `actions` on the link rule's regex rule, which Discord accepts: not tried on the test Discord server, `src/discord/` being unchanged and the contract suite not run for #485. The contract's rule is made with keywords and its edge checks are refusals.
+- A PATCH of `actions` on the link rule's regex rule, which Discord accepts: not tried. The contract suite patches `actions` of a keyword rule, which Discord accepted with an alert added, dropped and put back (2026-11-18, #486, seen), so a change of `actions` on the regex rule is inferred to work the same.
 - Whether AutoMod's timeout spares the members whom a timeout by the panel cannot reach, the owner, a member with Administrator or a higher role (`docs/discord.md:27`): not documented, not tried.
+
+## Alert channel
+
+### Facts
+
+- Discord documents `SEND_ALERT_MESSAGE` as "logs user content to a specified channel", its `channel_id` metadata as "channel to which user content should be logged", an "existing channel", and states no maximum number of actions, no permission on the alert channel and no rule on an empty `actions`. Creating and modifying a rule asks `MANAGE_GUILD`, which "Shor Panel" holds on Shor and on the test Discord server (https://docs.discord.com/developers/resources/auto-moderation, read 2026-11-18 through a fetch tool's summary, #486; `docs/discord.md`, **The application's permissions**). So the alert asks no new permission of the application, as far as the page says.
+- The contract suite creates a keyword rule that blocks and alerts the first text channel of the test Discord server with "Shor Panel Dev", reads it back as created, drops the alert with a change of `actions` alone and puts it back: 45 tests of 45 by hand, on 2026-11-18, the one new test being this (#486, seen). Discord asked no permission beyond the role's, Manage Server above all. What the application holds on that channel itself, View Channel and Send Messages, is not isolated, since the channel tried is the first of the list (inferred).
+- A text channel that the application cannot view is out of `listChannels` from 2026-11-16 (`.claude/rules/discord.md`, **The Discord seam**), so the choice offers only channels the application views.
+
+### Decisions
+
+(decided by the agent on 2026-11-18, on #486, for Gilles to review)
+
+- **The partition of `actions`.** `linkRuleActionOf` ignores every alert and `withAction` keeps every action but the block and the timeout; `alertOf` reads the one alert and `withAlert` touches nothing but it: the two sections write the same array and keep each other's actions, whatever the order, which `change-alert-channel.test.ts` cycles through the page's own reads. An alert that stands before, between or after the block and the timeout is replaced and removed where it sits, and a new one is appended after the others.
+- **What is set in Discord.** An alert the panel could not write back whole reads as `set-in-discord`: two alerts, one with no `channel_id`, and a lone alert, which is the rule's only action. The lone alert is the case where `linkRuleActionOf` reads the action as none too, and where removing the alert would leave the rule with no action, which Discord's page does not say Discord accepts. The section then shows « Réglé dans Discord » with `ALERT_SET_IN_DISCORD` and no form, and a forced write is refused with that sentence and the channel as typed, with nothing written. `linkRuleActionOf` filters every alert, so a second alert does not make the action foreign.
+- **One form.** A native choice whose first option, « Aucun salon d’alerte », removes the alert, and « Changer », since the ticket speaks of « le choix et son bouton ». A channel the rule alerts that the choice does not offer, one that Discord no longer lists, shown as « Salon introuvable (ID) », or a voice channel set in Discord, shown as `#name`, is the choice's first option after « Aucun salon d’alerte » and is chosen, so that « Changer » never removes an alert that nobody asked to remove. Choosing it again succeeds with no write, as does choosing the channel the rule alerts, or none when it alerts none.
+- **Which channels.** A text channel or an announcement channel, the channels where AutoMod posts a message; a category cannot receive an alert. Voice, stage, forum and media channels are left out as #484 left them out of the exempt channels, and `isAlertChannel` is what widening it changes. The choice groups them by category as #484's does, with no category among the options.
+- **Open to every staff member.** An alert needs no moderation role, as `TIMEOUT` does: `requireStaffMember` alone guards the write.
+- **The reasons** are `choix du salon d’alerte « #alertes »` and `retrait du salon d’alerte « #alertes »`, naming the channel, the one removed for a removal, so that the audit log lists them as link lines, generic (`.claude/rules/audit-log.md`, **The link rule's lines**). A channel that Discord no longer lists is named by its ID.
+- **With the rule missing** the form stays and refuses in the other sections' message (`noRuleRefusal`), with the channel as typed.
+- **The glossary term.** **Alert channel** is new in `GLOSSARY.md`: the text channel or announcement channel where AutoMod copies each message the link rule blocks, which the staff choose or leave out.
+- **The personal data.** `docs/personal-data.md` and `/privacy` say that the alert copies a member's message into a staff channel, which stays there until a staff member deletes it (Gilles, 2026-11-16, while grilling #480, for the copy itself).
+
+### Open
+
+- **The channel's privacy is not checked.** The choice offers every text and announcement channel that the application views, a public one included, so that a staff member could copy blocked messages into a channel that every member reads. The section says what AutoMod does, not who reads the channel, and no ticket asks the panel to say it.
+- What the alert shows, the member and the channel beside the message, is inferred from Discord's own alerts, which nothing of the panel reads; `/privacy` is written to the wider reading.
+- What Discord answers to an alert for a channel that does not exist or that the application cannot view, to an empty `actions`, and whether the application needs View Channel and Send Messages on the alert channel: not tried. The fake accepts any alert channel and any `actions`, since it copies what Discord was seen to do.
+- That AutoMod posts the alert whatever the member's role, the owner and Administrators excepted, as it blocks (ADR 0011): not tried, since no account of the test server was posted from.
+
+## Allowed domains
+
+Moved here from `.claude/rules/blocked-links.md`, **Forms** and **Writes**, with their marks, when #486 needed the room.
+
+### Forms
+
+- « Domaines permis » holds two client leaves, `StatefulAddAllowedDomainForm` and `StatefulAllowedDomainList`, each with its own `useActionState`, so that a refused add shows its message under the field, with the domain as typed, and a refused removal under the list; the section is a Server Component that takes both as props (`.claude/rules/components.md`, **Forms**, #482).
+- The field has `autoCapitalize="none"` and `spellCheck={false}`, and the hint under it says what the rule blocks even for an allowed domain: a link in `http://`, a subdomain other than `www.`, to add apart, and a link glued to punctuation (ADR 0011).
+- A domain stays a chip in `font-mono` with a `ghost` icon cross, named « Retirer « d » » in `sr-only`: 44 by 44 px under `touch:`, 28 by 28 with a mouse. Removing asks for no confirmation, since adding the domain back undoes it, and the chips have no `<ViewTransition>`, so the list draws no `<ul>` while it is empty (decided by the agent on 2026-11-17, on #482, for Gilles to review, since the ticket asks for none). While the rule does not exist, the domains that « Activer » would start with show with no cross, since a removal could only be refused (`removable` of `AllowedDomainList`, false for the status `absent`); the form keeps refusing, with the message that says to activate the rule first.
+
+### The domain typed
+
+- `submittedDomain` trims what the staff typed and lowers it, then refuses, in this order, an empty text, a scheme, a path, a query or a fragment, a leading `www.` in any case, a text that is no domain, and a domain longer than `MAX_DOMAIN_LENGTH`. A domain is ASCII labels of letters, digits and hyphens, two at least, ending in letters, so that an IP address and an accented name are refused; its 46 characters are the 60 of an allow list entry less the 14 of `https://www.` and `/*`, the longest of the four entries. Every refusal returns the domain as typed (#482; decided by the agent on 2026-11-17, on #482, for Gilles to review, for the IP address and the accents, which the ticket does not name).

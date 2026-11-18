@@ -14,6 +14,14 @@ export function actionChangeReason(
   return `changement de l’action de la règle des liens, de ${quoted(linkRuleActionLabel(from))} à ${quoted(linkRuleActionLabel(to))}`
 }
 
+export function alertChannelChoiceReason(channel: string) {
+  return `choix du salon d’alerte ${quoted(channel)}`
+}
+
+export function alertChannelRemovalReason(channel: string) {
+  return `retrait du salon d’alerte ${quoted(channel)}`
+}
+
 export function domainAdditionReason(domain: string) {
   return `ajout du domaine permis ${quoted(domain)}`
 }

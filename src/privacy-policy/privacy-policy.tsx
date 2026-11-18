@@ -4,7 +4,7 @@ import { PublicPageFrame } from "@/staff/public-page-frame"
 import { OrnamentRule } from "@/ui/ornament-rule"
 import { PageHeader } from "@/ui/page-header"
 
-const LAST_UPDATED = "2026-11-06"
+const LAST_UPDATED = "2026-11-18"
 
 const lastUpdatedDay = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "medium",
@@ -36,11 +36,11 @@ export function PrivacyPolicy() {
         <PolicySection title="Ce que couvre cette page">
           <p>
             Le panel est l’application web où le staff de Shor administre le
-            serveur Discord de Shor : ses mots interdits, son journal d’audit et
-            les sanctions des comptes. Il agit sur Discord par son application
-            Discord, « Shor Panel ». Cette politique couvre aussi « Shor Panel
-            Dev », la seconde application sur laquelle le panel est développé et
-            essayé, sur un serveur Discord de test.
+            serveur Discord de Shor : ses mots interdits, ses liens bloqués, son
+            journal d’audit et les sanctions des comptes. Il agit sur Discord
+            par son application Discord, « Shor Panel ». Cette politique couvre
+            aussi « Shor Panel Dev », la seconde application sur laquelle le
+            panel est développé et essayé, sur un serveur Discord de test.
           </p>
         </PolicySection>
         <PolicySection title="Ce que le panel garde">
@@ -182,16 +182,26 @@ export function PrivacyPolicy() {
               une sanction peut envoyer au membre un message privé qui la
               reprend avec son motif : il reste dans la conversation entre
               l’application du panel et le membre, tant que l’application ne
-              l’efface pas.
+              l’efface pas ;
+            </li>
+            <li>
+              quand le staff choisit un salon d’alerte pour la règle des liens,
+              AutoMod y recopie, à chaque message qu’il bloque parce qu’il
+              contient un lien, le message du membre, avec le membre qui l’a
+              écrit et le salon où il l’a écrit : le panel ne lit ni ne garde ce
+              message, qui reste dans ce salon, sur Discord, tant qu’un membre
+              du staff n’a pas supprimé son message, et retirer le salon
+              d’alerte n’efface pas les alertes déjà postées.
             </li>
           </PolicyList>
         </PolicySection>
         <PolicySection title="Pourquoi">
           <p>
             Le panel lit et écrit ces données pour que le staff de Shor
-            administre le serveur Discord : qu’il tienne ses mots interdits,
-            sache qui a changé quoi, sanctionne un compte ou lève sa sanction.
-            Le cookie sert à garder le membre du staff connecté.
+            administre le serveur Discord : qu’il tienne ses mots interdits et
+            ses liens bloqués, sache qui a changé quoi, sanctionne un compte ou
+            lève sa sanction. Le cookie sert à garder le membre du staff
+            connecté.
           </p>
         </PolicySection>
         <PolicySection title="Qui le voit">
@@ -202,7 +212,9 @@ export function PrivacyPolicy() {
             tickets de support, ainsi que les tickets en cours dont il voit le
             salon sur Discord, et le journal du jeu et le Journal du Bot, que
             voit seul le staff qui voit leur salon sur Discord ; seul le staff
-            qui modère voit la liste des comptes et leurs fiches.
+            qui modère voit la liste des comptes et leurs fiches. Les alertes de
+            la règle des liens sont vues par tous ceux qui voient leur salon sur
+            Discord, que le staff choisit.
           </p>
         </PolicySection>
         <PolicySection title="Qui d’autre y touche">

@@ -82,6 +82,8 @@ test("before the link rule exists, the settings are the ones that « Activer » 
     exemptChannels: [],
     exemptableChannels: [],
     action: "block",
+    alert: { kind: "none" },
+    alertableChannels: [],
   })
   expect(await discord.listAutoModerationRules()).toEqual([])
 })
@@ -364,4 +366,112 @@ test("only a keyword rule of exactly that name is the link rule", async () => {
   )
 
   expect((await readOn(discord)).status).toBe("absent")
+})
+
+test("the alert channel is read from the rule's actions, whatever the action the rule holds beside it: none without an alert, the channel with its name, or one that Discord does not list with none", async () => {
+  const discord = discordOn({
+    channels: [{ id: GALLERY_ID, name: "galerie" }],
+  })
+  const block = { type: AutoModerationActionType.BlockMessage }
+  const timeout = {
+    type: AutoModerationActionType.Timeout,
+    metadata: { duration_seconds: 3600 },
+  }
+  const alertTo = (channelId: string) => ({
+    type: AutoModerationActionType.SendAlertMessage,
+    metadata: { channel_id: channelId },
+  })
+  const rule = discord.createAutoModerationRuleAs(ALDIS.id, linkRule())
+  const alertAfter = async (
+    actions: RESTPostAPIAutoModerationRuleJSONBody["actions"]
+  ) => {
+    discord.modifyAutoModerationRuleAs(ALDIS.id, rule.id, { actions })
+    return (await readOn(discord)).alert
+  }
+  const gallery = { kind: "channel", id: GALLERY_ID, name: "galerie" }
+
+  expect(await alertAfter([block])).toEqual({ kind: "none" })
+  expect(await alertAfter([block, timeout])).toEqual({ kind: "none" })
+  expect(await alertAfter([block, alertTo(GALLERY_ID)])).toEqual(gallery)
+  expect(await alertAfter([alertTo(GALLERY_ID), block, timeout])).toEqual(
+    gallery
+  )
+  expect(await alertAfter([block, alertTo(GALLERY_ID), timeout])).toEqual(
+    gallery
+  )
+  expect(await alertAfter([block, alertTo("1500000000000000999")])).toEqual({
+    kind: "channel",
+    id: "1500000000000000999",
+    name: null,
+  })
+})
+
+test("an alert that the panel cannot write back whole reads as set in Discord: a second alert, an alert with no channel, and an alert that is the rule's only action, which the action's own reading calls foreign too", async () => {
+  const discord = discordOn({
+    channels: [
+      { id: GALLERY_ID, name: "galerie" },
+      { id: GAMES_ID, name: "jeux" },
+    ],
+  })
+  const block = { type: AutoModerationActionType.BlockMessage }
+  const alertTo = (channelId: string) => ({
+    type: AutoModerationActionType.SendAlertMessage,
+    metadata: { channel_id: channelId },
+  })
+  const rule = discord.createAutoModerationRuleAs(ALDIS.id, linkRule())
+  const settingsAfter = async (
+    actions: RESTPostAPIAutoModerationRuleJSONBody["actions"]
+  ) => {
+    discord.modifyAutoModerationRuleAs(ALDIS.id, rule.id, { actions })
+    const { alert, action } = await readOn(discord)
+    return { alert, action }
+  }
+  const foreign = { kind: "set-in-discord" }
+
+  expect(
+    await settingsAfter([block, alertTo(GALLERY_ID), alertTo(GAMES_ID)])
+  ).toEqual({ alert: foreign, action: "block" })
+  expect(
+    await settingsAfter([
+      block,
+      { type: AutoModerationActionType.SendAlertMessage },
+    ])
+  ).toEqual({ alert: foreign, action: "block" })
+  expect(await settingsAfter([alertTo(GALLERY_ID)])).toEqual({
+    alert: foreign,
+    action: null,
+  })
+})
+
+test("the channels that the staff can choose for the alert are the text and announcement channels of the Discord server, by group of category as the exempt channels' are, a category being no place to post an alert, and no voice, stage, forum or media channel", async () => {
+  const discord = discordOn({
+    channels: [
+      { id: "20", name: "Zèbre" },
+      { id: "21", name: "écran", type: ChannelType.GuildAnnouncement },
+      { id: "22", name: "Jeux", type: ChannelType.GuildCategory },
+      { id: "23", name: "tournois", parent_id: "22" },
+      {
+        id: "25",
+        name: "salon vocal",
+        type: ChannelType.GuildVoice,
+        parent_id: "22",
+      },
+      { id: "26", name: "scène", type: ChannelType.GuildStageVoice },
+      { id: "27", name: "idées", type: ChannelType.GuildForum },
+      { id: "28", name: "médias", type: ChannelType.GuildMedia },
+      { id: "31", name: "vide", type: ChannelType.GuildCategory },
+    ],
+  })
+
+  const { alertableChannels } = await readOn(discord)
+
+  const choice = (id: string, name: string) => ({ id, name, category: false })
+  expect(alertableChannels).toEqual([
+    {
+      id: null,
+      label: null,
+      choices: [choice("21", "écran"), choice("20", "Zèbre")],
+    },
+    { id: "22", label: "Jeux", choices: [choice("23", "tournois")] },
+  ])
 })
