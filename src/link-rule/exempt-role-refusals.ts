@@ -14,10 +14,6 @@ export const UNEXEMPTABLE_ROLE_REFUSAL = `Ce rôle ne peut pas être exempté :
 export const STAFF_ROLE_REFUSAL =
   "Le rôle du staff est toujours exempté : il ne se retire pas."
 
-export function noRuleRefusal(change: "ajoute" | "retire") {
-  return `La règle des liens n’existe pas encore : active-la d’abord, puis ${change} le rôle.`
-}
-
 export function alreadyExemptRefusal(role: string) {
   return `${quoted(role)} est déjà un rôle exempté.`
 }
