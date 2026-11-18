@@ -10,6 +10,7 @@ import {
 } from "@/ui/native-select"
 import { WriteFailureMessage } from "@/ui/write-failure-message"
 import { channelLabel, type ChannelChoiceGroup } from "./exemptable-channel"
+import { NO_ALERT_CHOICE } from "./link-rule-alert"
 import { CHOICE_FIELD_ROW_CLASSES, CONTROL_CLASSES } from "./link-rule-layout"
 import type { LinkRuleAlert } from "./read-link-rule"
 import type { ChannelFields, WriteResult } from "./write-result"
@@ -38,7 +39,7 @@ export function ChangeAlertChannelForm({
       ? current
       : null
   const available = [
-    "",
+    NO_ALERT_CHOICE,
     ...(own === null ? [] : [own.id]),
     ...offered.map(({ id }) => id),
   ]
@@ -46,7 +47,7 @@ export function ChangeAlertChannelForm({
     state?.ok === false && available.includes(state.channel)
       ? state.channel
       : undefined
-  const chosen = typed ?? current?.id ?? ""
+  const chosen = typed ?? current?.id ?? NO_ALERT_CHOICE
   return (
     <form action={action} className="@container flex flex-col">
       <Label htmlFor={FIELD_ID} className="text-[0.8125rem] leading-4.5">
@@ -61,12 +62,14 @@ export function ChangeAlertChannelForm({
           aria-describedby={ALERT_ID}
           className="w-full @md:min-w-0 @md:flex-1 [&>select]:h-9.5 [&>select]:touch:h-11"
         >
-          <NativeSelectOption value="">Aucun salon d’alerte</NativeSelectOption>
+          <NativeSelectOption value={NO_ALERT_CHOICE}>
+            Aucun salon d’alerte
+          </NativeSelectOption>
           {own !== null && (
             <NativeSelectOption value={own.id}>
               {own.name === null
                 ? `Salon introuvable (${own.id})`
-                : channelLabel({ name: own.name, category: false })}
+                : channelLabel({ name: own.name, category: own.category })}
             </NativeSelectOption>
           )}
           {groups.map(({ id, label, choices }) => {

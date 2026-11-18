@@ -7,12 +7,13 @@ import type { StaffMember } from "@/staff/staff-member"
 import { isAlertChannel } from "./alert-channel"
 import {
   ALERT_SET_IN_DISCORD,
+  NO_ALERT_CHOICE_REFUSAL,
   NOT_AN_ALERT_CHANNEL_REFUSAL,
 } from "./alert-channel-refusals"
 import { GONE_CHANNEL_REFUSAL } from "./exempt-channel-refusals"
 import { labelOfChannel } from "./exemptable-channel"
 import { linkRuleOf, withAlert } from "./link-rule"
-import { alertOf } from "./link-rule-alert"
+import { alertOf, NO_ALERT_CHOICE } from "./link-rule-alert"
 import {
   alertChannelChoiceReason,
   alertChannelRemovalReason,
@@ -34,6 +35,9 @@ export async function changeAlertChannel(
 ): Promise<WriteResult<ChannelFields>> {
   const channel = TYPED_CHOICE.parse(formData.get("channel"))
   const fields = { channel }
+  if (channel === "") {
+    return failure(NO_ALERT_CHOICE_REFUSAL, fields)
+  }
   return await unlessDiscordUnavailable(fields, async () => {
     const [rules, channels] = await Promise.all([
       discord.listAutoModerationRules(),
@@ -51,7 +55,7 @@ export async function changeAlertChannel(
       const known = channels.find((candidate) => candidate.id === id)
       return known === undefined ? id : labelOfChannel(known)
     }
-    if (channel === "") {
+    if (channel === NO_ALERT_CHOICE) {
       if (alert.kind === "none") {
         return success("La règle des liens n’a pas de salon d’alerte.")
       }

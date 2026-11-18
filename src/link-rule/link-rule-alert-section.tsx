@@ -20,7 +20,7 @@ function sentenceOf(alert: Exclude<LinkRuleAlert, { kind: "set-in-discord" }>) {
   const where =
     alert.name === null
       ? "un salon que le panel ne trouve plus"
-      : quoted(channelLabel({ name: alert.name, category: false }))
+      : quoted(channelLabel({ name: alert.name, category: alert.category }))
   return `AutoMod recopie chaque message bloqué dans ${where}.`
 }
 

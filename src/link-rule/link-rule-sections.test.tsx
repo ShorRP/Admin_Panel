@@ -185,13 +185,19 @@ test("with no alert channel, the section says above its form that blocked links 
   )
   const named = renderToStaticMarkup(
     <LinkRuleAlertSection
-      alert={{ kind: "channel", id: "21", name: "alertes" }}
+      alert={{ kind: "channel", id: "21", name: "alertes", category: false }}
       form={<b>the form</b>}
     />
   )
   const gone = renderToStaticMarkup(
     <LinkRuleAlertSection
-      alert={{ kind: "channel", id: "21", name: null }}
+      alert={{ kind: "channel", id: "21", name: null, category: false }}
+      form={<b>the form</b>}
+    />
+  )
+  const category = renderToStaticMarkup(
+    <LinkRuleAlertSection
+      alert={{ kind: "channel", id: "22", name: "Jeux", category: true }}
       form={<b>the form</b>}
     />
   )
@@ -206,6 +212,9 @@ test("with no alert channel, the section says above its form that blocked links 
     "AutoMod recopie chaque message bloqué dans « #alertes ».",
     "the form",
   ])
+  expect(texts(category)).toContain(
+    "AutoMod recopie chaque message bloqué dans « Jeux (catégorie) »."
+  )
   expect(texts(gone)).toEqual([
     "Salon d’alerte",
     "AutoMod recopie chaque message bloqué dans un salon que le panel ne trouve plus.",

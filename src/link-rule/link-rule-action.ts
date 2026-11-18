@@ -5,6 +5,7 @@ import {
 } from "discord-api-types/v10"
 
 import type { StaffMember } from "@/staff/staff-member"
+import { isAlert } from "./link-rule-alert"
 
 export const LINK_RULE_ACTION_IDS = [
   "block",
@@ -108,9 +109,7 @@ export function actionsOf(id: LinkRuleActionId): APIAutoModerationAction[] {
 export function linkRuleActionOf(
   rule: APIAutoModerationRule
 ): LinkRuleActionId | null {
-  const acting = rule.actions.filter(
-    ({ type }) => type !== AutoModerationActionType.SendAlertMessage
-  )
+  const acting = rule.actions.filter((action) => !isAlert(action))
   const [first, second, ...rest] = acting
   if (
     first?.type !== AutoModerationActionType.BlockMessage ||

@@ -95,7 +95,7 @@ test("with no alert channel, the form shows its labelled choice, « Aucun salon 
   )
   expect(select(html)?.[0]).toContain('id="link-rule-alert-channel"')
   expect(options(html)).toEqual([
-    { value: "", selected: true, text: "Aucun salon d’alerte" },
+    { value: "none", selected: true, text: "Aucun salon d’alerte" },
     { value: "21", selected: false, text: "#alertes" },
     { group: "Jeux" },
     { value: "23", selected: false, text: "#tournois" },
@@ -110,7 +110,12 @@ test("with no alert channel, the form shows its labelled choice, « Aucun salon 
 })
 
 test("the channel the rule alerts is chosen among the channels offered", () => {
-  const html = render(null, { kind: "channel", id: "23", name: "tournois" })
+  const html = render(null, {
+    kind: "channel",
+    id: "23",
+    name: "tournois",
+    category: false,
+  })
 
   expect(chosen(html)).toEqual([
     { value: "23", selected: true, text: "#tournois" },
@@ -122,11 +127,27 @@ test("a channel the rule alerts that the choice does not offer, one that Discord
     kind: "channel",
     id: "1500000000000000999",
     name: null,
+    category: false,
   })
-  const voice = render(null, { kind: "channel", id: "40", name: "vocal" })
+  const voice = render(null, {
+    kind: "channel",
+    id: "40",
+    name: "vocal",
+    category: false,
+  })
+  const category = render(null, {
+    kind: "channel",
+    id: "41",
+    name: "Jeux",
+    category: true,
+  })
 
+  expect(options(category).slice(0, 2)).toEqual([
+    { value: "none", selected: false, text: "Aucun salon d’alerte" },
+    { value: "41", selected: true, text: "Jeux (catégorie)" },
+  ])
   expect(options(gone).slice(0, 2)).toEqual([
-    { value: "", selected: false, text: "Aucun salon d’alerte" },
+    { value: "none", selected: false, text: "Aucun salon d’alerte" },
     {
       value: "1500000000000000999",
       selected: true,
@@ -134,7 +155,7 @@ test("a channel the rule alerts that the choice does not offer, one that Discord
     },
   ])
   expect(options(voice).slice(0, 2)).toEqual([
-    { value: "", selected: false, text: "Aucun salon d’alerte" },
+    { value: "none", selected: false, text: "Aucun salon d’alerte" },
     { value: "40", selected: true, text: "#vocal" },
   ])
 })
@@ -157,7 +178,7 @@ test("a refused choice shows its message in the alert region, after a hidden ale
       message: "Le panel ne trouve plus ce salon.",
       channel: "23",
     },
-    { kind: "channel", id: "21", name: "alertes" }
+    { kind: "channel", id: "21", name: "alertes", category: false }
   )
 
   expect(alert(html)).toEqual({
@@ -171,16 +192,16 @@ test("a refused choice shows its message in the alert region, after a hidden ale
 
 test("a refused removal keeps « Aucun salon d’alerte » chosen, and a channel that the choice does not hold, typed in a forged form, leaves the rule's own chosen", () => {
   const removal = render(
-    { ok: false, message: "Refusé.", channel: "" },
-    { kind: "channel", id: "21", name: "alertes" }
+    { ok: false, message: "Refusé.", channel: "none" },
+    { kind: "channel", id: "21", name: "alertes", category: false }
   )
   const forged = render(
     { ok: false, message: "Refusé.", channel: "99" },
-    { kind: "channel", id: "21", name: "alertes" }
+    { kind: "channel", id: "21", name: "alertes", category: false }
   )
 
   expect(chosen(removal)).toEqual([
-    { value: "", selected: true, text: "Aucun salon d’alerte" },
+    { value: "none", selected: true, text: "Aucun salon d’alerte" },
   ])
   expect(chosen(forged)).toEqual([
     { value: "21", selected: true, text: "#alertes" },
@@ -190,7 +211,7 @@ test("a refused removal keeps « Aucun salon d’alerte » chosen, and a channel
 test("after a write that landed, the rule's own alert channel is chosen and the alert region is empty", () => {
   const html = render(
     { ok: true, message: "Fait." },
-    { kind: "channel", id: "21", name: "alertes" }
+    { kind: "channel", id: "21", name: "alertes", category: false }
   )
 
   expect(chosen(html)).toEqual([
@@ -210,6 +231,6 @@ test("while the write is pending, the button reads « Changement… » after a h
 
 test("with no channel to choose, the choice holds « Aucun salon d’alerte » alone", () => {
   expect(options(render(null, { kind: "none" }, false, []))).toEqual([
-    { value: "", selected: true, text: "Aucun salon d’alerte" },
+    { value: "none", selected: true, text: "Aucun salon d’alerte" },
   ])
 })

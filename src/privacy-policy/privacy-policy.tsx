@@ -182,7 +182,7 @@ export function PrivacyPolicy() {
               une sanction peut envoyer au membre un message privé qui la
               reprend avec son motif : il reste dans la conversation entre
               l’application du panel et le membre, tant que l’application ne
-              l’efface pas ;
+              l’efface pas ;
             </li>
             <li>
               quand le staff choisit un salon d’alerte pour la règle des liens,

@@ -65,6 +65,9 @@ function alertTo(channelId: string) {
   }
 }
 
+const NO_CHOICE_MESSAGE =
+  "Choisis un salon d’alerte, ou « Aucun salon d’alerte »."
+
 const NO_RULE_MESSAGE =
   "La règle des liens n’existe pas encore : active-la d’abord, puis change le salon d’alerte."
 
@@ -175,7 +178,7 @@ test("a channel chosen is the one the rule's actions alert once the rule is read
     form(JOURNAL_ID)
   )
   const afterReplacing = await actionsOf(discord)
-  const removed = await changeAlertChannel(discord, moderator, form(""))
+  const removed = await changeAlertChannel(discord, moderator, form("none"))
 
   expect(chosen).toEqual({
     ok: true,
@@ -183,7 +186,12 @@ test("a channel chosen is the one the rule's actions alert once the rule is read
       "« #alertes » est maintenant le salon d’alerte de la règle des liens.",
   })
   expect(afterChoosing).toEqual([BLOCKING, alertTo(ALERTS_ID)])
-  expect(read).toEqual({ kind: "channel", id: ALERTS_ID, name: "alertes" })
+  expect(read).toEqual({
+    kind: "channel",
+    id: ALERTS_ID,
+    name: "alertes",
+    category: false,
+  })
   expect(replaced).toEqual({
     ok: true,
     message:
@@ -216,7 +224,7 @@ test("the alert and the panel's action keep each other, whichever is written fir
   await changeLinkRuleAction(discord, moderator, formOf("timeout-1h"))
   await changeAlertChannel(discord, moderator, form(JOURNAL_ID))
   const movedAfterAnHour = await actionsOf(discord)
-  await changeAlertChannel(discord, moderator, form(""))
+  await changeAlertChannel(discord, moderator, form("none"))
   const settings = await readLinkRule(discord, moderator)
 
   expect(alertedAfterAnHour).toEqual([
@@ -250,7 +258,7 @@ test("an alert that sits before the other actions, between them or after them is
 
     await changeAlertChannel(discord, moderator, form(JOURNAL_ID))
     const replaced = await actionsOf(discord)
-    await changeAlertChannel(discord, moderator, form(""))
+    await changeAlertChannel(discord, moderator, form("none"))
 
     expect(replaced, where).toEqual(arranged(alertTo(JOURNAL_ID)))
     expect(await actionsOf(discord), where).toEqual([blocking, timeout])
@@ -295,7 +303,7 @@ test("every staff member may choose the alert channel, a moderation role being n
 
 test("choosing the channel the rule alerts already, or none when it alerts none, succeeds and writes nothing", async () => {
   const { discord, moderator } = await withTheLinkRule()
-  const none = await changeAlertChannel(discord, moderator, form(""))
+  const none = await changeAlertChannel(discord, moderator, form("none"))
   await changeAlertChannel(discord, moderator, form(ALERTS_ID))
   const reasonsBefore = await auditReasons(discord)
   const before = await discord.listAutoModerationRules()
@@ -325,7 +333,7 @@ test("an alert to a channel that Discord no longer lists is removed all the same
     moderator,
     form("1500000000000000999")
   )
-  const removed = await changeAlertChannel(discord, moderator, form(""))
+  const removed = await changeAlertChannel(discord, moderator, form("none"))
 
   expect(same).toEqual({
     ok: true,
@@ -342,6 +350,49 @@ test("an alert to a channel that Discord no longer lists is removed all the same
   ])
 })
 
+test("a request that holds no choice, an empty one or a file, as a forged form sends, is refused with the choice as typed and writes nothing, since only « Aucun salon d’alerte » removes the alert", async () => {
+  const { discord, moderator } = await withTheLinkRule()
+  await changeAlertChannel(discord, moderator, form(ALERTS_ID))
+  const before = await discord.listAutoModerationRules()
+  const reasonsBefore = await auditReasons(discord)
+  const file = new FormData()
+  file.set("channel", new File(["x"], "x.txt"))
+
+  const missing = await changeAlertChannel(discord, moderator, new FormData())
+  const empty = await changeAlertChannel(discord, moderator, form(""))
+  const asFile = await changeAlertChannel(discord, moderator, file)
+
+  for (const result of [missing, empty, asFile]) {
+    expect(result).toEqual({
+      ok: false,
+      message: NO_CHOICE_MESSAGE,
+      channel: "",
+    })
+  }
+  expect(await discord.listAutoModerationRules()).toEqual(before)
+  expect(await auditReasons(discord)).toEqual(reasonsBefore)
+})
+
+test("an alert that Discord set on a category is named as a category, in the message that says it is already the alert channel and in the reason of its removal", async () => {
+  const { discord, moderator } = await withARuleActing([
+    BLOCKING,
+    alertTo(GAMES_ID),
+  ])
+
+  const same = await changeAlertChannel(discord, moderator, form(GAMES_ID))
+  const removed = await changeAlertChannel(discord, moderator, form("none"))
+
+  expect(same).toEqual({
+    ok: true,
+    message:
+      "« Jeux (catégorie) » est déjà le salon d’alerte de la règle des liens.",
+  })
+  expect(removed.ok).toBe(true)
+  expect(await auditReasons(discord)).toEqual([
+    "aldis (1400000000000000001) : retrait du salon d’alerte « Jeux (catégorie) »",
+  ])
+})
+
 test("with the rule missing, the choice is refused and the channel comes back as typed, a rule of another name being no link rule", async () => {
   const discord = discordWithStaff()
   discord.createAutoModerationRuleAs(ALDIS.id, {
@@ -352,7 +403,7 @@ test("with the rule missing, the choice is refused and the channel comes back as
   const moderator = await staffMemberOn(discord)
 
   const result = await changeAlertChannel(discord, moderator, form(ALERTS_ID))
-  const removal = await changeAlertChannel(discord, moderator, form(""))
+  const removal = await changeAlertChannel(discord, moderator, form("none"))
 
   expect(result).toEqual({
     ok: false,
@@ -362,7 +413,7 @@ test("with the rule missing, the choice is refused and the channel comes back as
   expect(removal).toEqual({
     ok: false,
     message: NO_RULE_MESSAGE,
-    channel: "",
+    channel: "none",
   })
   expect(await discord.listAutoModerationRules()).toEqual(before)
 })
@@ -419,7 +470,7 @@ test("an alert that the panel cannot write back whole, a second one, one with no
       moderator,
       form(GALLERY_ID)
     )
-    const removal = await changeAlertChannel(discord, moderator, form(""))
+    const removal = await changeAlertChannel(discord, moderator, form("none"))
 
     expect(choice, what).toEqual({
       ok: false,
@@ -429,7 +480,7 @@ test("an alert that the panel cannot write back whole, a second one, one with no
     expect(removal, what).toEqual({
       ok: false,
       message: SET_IN_DISCORD_MESSAGE,
-      channel: "",
+      channel: "none",
     })
     expect(await discord.listAutoModerationRules(), what).toEqual(before)
   }

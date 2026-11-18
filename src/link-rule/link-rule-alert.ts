@@ -5,6 +5,8 @@ import {
   type Snowflake,
 } from "discord-api-types/v10"
 
+export const NO_ALERT_CHOICE = "none"
+
 export type AlertReading =
   | { kind: "none" }
   | { kind: "channel"; id: Snowflake }

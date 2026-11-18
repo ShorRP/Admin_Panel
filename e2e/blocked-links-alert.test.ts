@@ -131,7 +131,7 @@ test("a staff member is refused a choice of alert channel with the rule missing,
   await change.click()
 
   await readThenClose("La règle des liens n’a plus de salon d’alerte.")
-  await expect(choice).toHaveValue("")
+  await expect(choice).toHaveValue("none")
   await expect(region).toContainText(
     "Aucun salon d’alerte : les liens bloqués ne laissent pas de trace."
   )

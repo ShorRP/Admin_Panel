@@ -388,7 +388,12 @@ test("the alert channel is read from the rule's actions, whatever the action the
     discord.modifyAutoModerationRuleAs(ALDIS.id, rule.id, { actions })
     return (await readOn(discord)).alert
   }
-  const gallery = { kind: "channel", id: GALLERY_ID, name: "galerie" }
+  const gallery = {
+    kind: "channel",
+    id: GALLERY_ID,
+    name: "galerie",
+    category: false,
+  }
 
   expect(await alertAfter([block])).toEqual({ kind: "none" })
   expect(await alertAfter([block, timeout])).toEqual({ kind: "none" })
@@ -403,6 +408,34 @@ test("the alert channel is read from the rule's actions, whatever the action the
     kind: "channel",
     id: "1500000000000000999",
     name: null,
+    category: false,
+  })
+})
+
+test("an alert that Discord set on a category reads as a category, so that it is named as one", async () => {
+  const discord = discordOn({
+    channels: [{ id: GAMES_ID, name: "Jeux", type: ChannelType.GuildCategory }],
+  })
+  discord.createAutoModerationRuleAs(
+    ALDIS.id,
+    linkRule({
+      actions: [
+        { type: AutoModerationActionType.BlockMessage },
+        {
+          type: AutoModerationActionType.SendAlertMessage,
+          metadata: { channel_id: GAMES_ID },
+        },
+      ],
+    })
+  )
+
+  const { alert } = await readOn(discord)
+
+  expect(alert).toEqual({
+    kind: "channel",
+    id: GAMES_ID,
+    name: "Jeux",
+    category: true,
   })
 })
 

@@ -31,7 +31,7 @@ export type ExemptChannel = {
 
 export type LinkRuleAlert =
   | { kind: "none" }
-  | { kind: "channel"; id: Snowflake; name: string | null }
+  | { kind: "channel"; id: Snowflake; name: string | null; category: boolean }
   | { kind: "set-in-discord" }
 
 export type LinkRuleSettings = {
@@ -100,10 +100,12 @@ function alertIn(
   if (alert.kind !== "channel") {
     return alert
   }
+  const channel = channels.find(({ id }) => id === alert.id)
   return {
     kind: "channel",
     id: alert.id,
-    name: channels.find(({ id }) => id === alert.id)?.name ?? null,
+    name: channel?.name ?? null,
+    category: channel !== undefined && isCategory(channel),
   }
 }
 
