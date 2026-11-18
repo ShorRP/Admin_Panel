@@ -9,6 +9,8 @@ export type DomainFields = { domain: string }
 
 export type RoleFields = { role: string }
 
+export type ChannelFields = { channel: string }
+
 const DISCORD_UNAVAILABLE =
   "Discord n’a pas répondu : le changement est peut-être passé, peut-être pas. Recharge la page pour vérifier, puis réessaie."
 

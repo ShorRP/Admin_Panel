@@ -9,14 +9,14 @@ import {
   fullRolesRefusal,
   GONE_ROLE_REFUSAL,
   NO_ROLE_CHOSEN_REFUSAL,
-  noRuleRefusal,
   UNEXEMPTABLE_ROLE_REFUSAL,
 } from "./exempt-role-refusals"
 import { isExemptableRole } from "./exemptable-role"
 import { MAX_EXEMPT_ROLES } from "./limits"
 import { linkRuleOf } from "./link-rule"
 import { exemptRoleAdditionReason } from "./link-rule-reason"
-import { TYPED_ROLE } from "./typed-role"
+import { noRuleRefusal } from "./no-rule-refusal"
+import { TYPED_CHOICE } from "./typed-choice"
 import {
   failure,
   success,
@@ -30,7 +30,7 @@ export async function addExemptRole(
   staffMember: StaffMember,
   formData: FormData
 ): Promise<WriteResult<RoleFields>> {
-  const role = TYPED_ROLE.parse(formData.get("role"))
+  const role = TYPED_CHOICE.parse(formData.get("role"))
   const fields = { role }
   if (role === "") {
     return failure(NO_ROLE_CHOSEN_REFUSAL, fields)
@@ -42,7 +42,7 @@ export async function addExemptRole(
     ])
     const rule = linkRuleOf(rules)
     if (rule === undefined) {
-      return failure(noRuleRefusal("ajoute"), fields)
+      return failure(noRuleRefusal("ajoute", "le rôle"), fields)
     }
     const chosen = roles.find(({ id }) => id === role)
     if (chosen === undefined) {

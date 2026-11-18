@@ -62,7 +62,8 @@ describeDiscordApiContract("The fake Discord", () => ({
 
 function limitedRule(
   actions: RESTPostAPIAutoModerationRuleJSONBody["actions"],
-  exemptRoles: string[]
+  exemptRoles: string[],
+  exemptChannels: string[] = []
 ): RESTPostAPIAutoModerationRuleJSONBody {
   return {
     name: "Limited rule",
@@ -71,6 +72,7 @@ function limitedRule(
     trigger_metadata: { keyword_filter: ["a"] },
     actions,
     exempt_roles: exemptRoles,
+    exempt_channels: exemptChannels,
     enabled: false,
   }
 }
@@ -96,6 +98,13 @@ function roleIds(count: number) {
   )
 }
 
+function channelIds(count: number) {
+  return Array.from(
+    { length: count },
+    (_, index) => `45000000000000${String(index).padStart(4, "0")}`
+  )
+}
+
 const REFUSED = {
   status: 400,
   code: RESTJSONErrorCodes.InvalidFormBodyOrContentType,
@@ -111,6 +120,11 @@ const LIMITS = [
     limit: "up to 20 exempt roles",
     within: limitedRule([], roleIds(20)),
     beyond: limitedRule([], roleIds(21)),
+  },
+  {
+    limit: "up to 50 exempt channels",
+    within: limitedRule([], [], channelIds(50)),
+    beyond: limitedRule([], [], channelIds(51)),
   },
   {
     limit: "a custom message of up to 300 characters",
@@ -130,7 +144,11 @@ for (const { limit, within, beyond } of LIMITS) {
     await expect(
       discord.modifyAutoModerationRule(
         created.id,
-        { actions: beyond.actions, exempt_roles: beyond.exempt_roles },
+        {
+          actions: beyond.actions,
+          exempt_roles: beyond.exempt_roles,
+          exempt_channels: beyond.exempt_channels,
+        },
         "Beyond"
       )
     ).rejects.toMatchObject(REFUSED)

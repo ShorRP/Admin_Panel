@@ -21,3 +21,11 @@ export function exemptRoleAdditionReason(role: string) {
 export function exemptRoleRemovalReason(role: string) {
   return `retrait du rôle exempté ${quoted(role)}`
 }
+
+export function exemptChannelAdditionReason(channel: string) {
+  return `ajout du salon exempté ${quoted(channel)}`
+}
+
+export function exemptChannelRemovalReason(channel: string) {
+  return `retrait du salon exempté ${quoted(channel)}`
+}

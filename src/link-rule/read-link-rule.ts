@@ -6,6 +6,11 @@ import type { DiscordApi } from "@/discord/discord-api"
 import { rolesByHierarchy } from "@/records/role-hierarchy"
 import type { StaffMember } from "@/staff/staff-member"
 import { allowedDomainsOf, inFrenchOrder } from "./allowed-domains"
+import {
+  exemptableChannelGroups,
+  isCategory,
+  type ChannelChoiceGroup,
+} from "./exemptable-channel"
 import { isExemptableRole } from "./exemptable-role"
 import { allowListOf, DEFAULT_ALLOWED_DOMAINS, linkRuleOf } from "./link-rule"
 import { linkRuleActionOf, type LinkRuleActionId } from "./link-rule-action"
@@ -16,6 +21,12 @@ export type NamedItem = { id: Snowflake; name: string | null }
 
 export type RoleChoice = { id: Snowflake; name: string }
 
+export type ExemptChannel = {
+  id: Snowflake
+  name: string | null
+  category: boolean
+}
+
 export type LinkRuleSettings = {
   status: LinkRuleStatus
   allowedDomains: string[]
@@ -23,7 +34,8 @@ export type LinkRuleSettings = {
   exemptRoles: NamedItem[]
   exemptableRoles: RoleChoice[]
   staffRoleId: Snowflake
-  exemptChannels: NamedItem[]
+  exemptChannels: ExemptChannel[]
+  exemptableChannels: ChannelChoiceGroup[]
   action: LinkRuleActionId | null
 }
 
@@ -36,7 +48,7 @@ export async function readLinkRule(
   const exemptChannelIds = rule?.exempt_channels ?? []
   const [roles, channels] = await Promise.all([
     discord.listRoles(),
-    exemptChannelIds.length === 0 ? [] : discord.listChannels(),
+    discord.listChannels(),
   ])
   const { domains, otherExceptions } =
     rule === undefined
@@ -56,7 +68,15 @@ export async function readLinkRule(
       )
       .map(({ id, name }) => ({ id, name })),
     staffRoleId,
-    exemptChannels: named(exemptChannelIds, channels),
+    exemptChannels: exemptChannelIds.map((id) => {
+      const channel = channels.find((candidate) => candidate.id === id)
+      return {
+        id,
+        name: channel?.name ?? null,
+        category: channel !== undefined && isCategory(channel),
+      }
+    }),
+    exemptableChannels: exemptableChannelGroups(channels, exemptChannelIds),
     action: rule === undefined ? "block" : linkRuleActionOf(rule),
   }
 }

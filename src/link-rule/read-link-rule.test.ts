@@ -2,6 +2,7 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  ChannelType,
   type RESTPostAPIAutoModerationRuleJSONBody,
 } from "discord-api-types/v10"
 import { expect, test } from "vitest"
@@ -16,6 +17,8 @@ const STAFF_ROLE_ID = "1300000000000000000"
 const GUARD_ROLE_ID = "1300000000000000010"
 
 const GALLERY_ID = "1500000000000000001"
+
+const GAMES_ID = "1500000000000000002"
 
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
@@ -77,6 +80,7 @@ test("before the link rule exists, the settings are the ones that « Activer » 
     exemptableRoles: [],
     staffRoleId: STAFF_ROLE_ID,
     exemptChannels: [],
+    exemptableChannels: [],
     action: "block",
   })
   expect(await discord.listAutoModerationRules()).toEqual([])
@@ -153,6 +157,7 @@ test("a rule that is on or off reads as so, and the rule's own settings replace 
     otherExceptions: [],
     exemptRoles: [],
     exemptChannels: [],
+    exemptableChannels: [],
     action: "block",
   })
   expect(disabled.status).toBe("disabled")
@@ -194,13 +199,16 @@ test("an allow list entry that is not part of a domain's four entries is an othe
 test("the exempt roles and channels read with their names, one that Discord does not list with none", async () => {
   const discord = discordOn({
     roles: [STAFF, { id: GUARD_ROLE_ID, name: "Garde" }],
-    channels: [{ id: GALLERY_ID, name: "galerie" }],
+    channels: [
+      { id: GALLERY_ID, name: "galerie" },
+      { id: GAMES_ID, name: "Jeux", type: ChannelType.GuildCategory },
+    ],
   })
   discord.createAutoModerationRuleAs(
     ALDIS.id,
     linkRule({
       exempt_roles: [STAFF_ROLE_ID, GUARD_ROLE_ID, "1300000000000000999"],
-      exempt_channels: [GALLERY_ID, "1500000000000000999"],
+      exempt_channels: [GALLERY_ID, GAMES_ID, "1500000000000000999"],
     })
   )
 
@@ -212,22 +220,104 @@ test("the exempt roles and channels read with their names, one that Discord does
     { id: "1300000000000000999", name: null },
   ])
   expect(exemptChannels).toEqual([
-    { id: GALLERY_ID, name: "galerie" },
-    { id: "1500000000000000999", name: null },
+    { id: GALLERY_ID, name: "galerie", category: false },
+    { id: GAMES_ID, name: "Jeux", category: true },
+    { id: "1500000000000000999", name: null, category: false },
   ])
 })
 
-test("with no exempt channel, a read of the channels that fails does not fail the page", async () => {
+test("a read of the channels that fails fails the read, even with no exempt channel, since the choice of a channel needs them", async () => {
   const discord = discordOn({ roles: [STAFF] })
   discord.createAutoModerationRuleAs(ALDIS.id, linkRule())
-  discord.failNext(
-    "listChannels",
-    new DiscordError({ method: "GET", route: ROUTES.guildChannels })
+  const failure = new DiscordError({
+    method: "GET",
+    route: ROUTES.guildChannels,
+  })
+  discord.failNext("listChannels", failure)
+
+  await expect(readOn(discord)).rejects.toBe(failure)
+})
+
+test("the channels that the staff can choose are the text and announcement channels and the categories of the Discord server, a category first in a group of its own name and a channel with no category before the groups, each in French alphabetical order, but voice, stage, forum and media channels and those that the rule exempts already", async () => {
+  const discord = discordOn({
+    channels: [
+      { id: "20", name: "Zèbre" },
+      { id: "21", name: "écran", type: ChannelType.GuildAnnouncement },
+      { id: "22", name: "Jeux", type: ChannelType.GuildCategory },
+      { id: "23", name: "tournois", parent_id: "22" },
+      { id: "24", name: "annonces", parent_id: "22" },
+      {
+        id: "25",
+        name: "salon vocal",
+        type: ChannelType.GuildVoice,
+        parent_id: "22",
+      },
+      { id: "26", name: "scène", type: ChannelType.GuildStageVoice },
+      { id: "27", name: "idées", type: ChannelType.GuildForum },
+      { id: "28", name: "médias", type: ChannelType.GuildMedia },
+      { id: "29", name: "Accueil", type: ChannelType.GuildCategory },
+      { id: "30", name: "règles", parent_id: "29" },
+      { id: "31", name: "vide", type: ChannelType.GuildCategory },
+      { id: "32", name: "orphelin", parent_id: "99" },
+    ],
+  })
+  const absent = await readOn(discord)
+  discord.createAutoModerationRuleAs(
+    ALDIS.id,
+    linkRule({ exempt_channels: ["23", "29"] })
   )
 
-  const settings = await readOn(discord)
+  const present = await readOn(discord)
 
-  expect(settings.exemptChannels).toEqual([])
+  const choice = (id: string, name: string, category = false) => ({
+    id,
+    name,
+    category,
+  })
+  expect(absent.exemptableChannels).toEqual([
+    {
+      id: null,
+      label: null,
+      choices: [
+        choice("21", "écran"),
+        choice("32", "orphelin"),
+        choice("20", "Zèbre"),
+      ],
+    },
+    {
+      id: "29",
+      label: "Accueil",
+      choices: [choice("29", "Accueil", true), choice("30", "règles")],
+    },
+    {
+      id: "22",
+      label: "Jeux",
+      choices: [
+        choice("22", "Jeux", true),
+        choice("24", "annonces"),
+        choice("23", "tournois"),
+      ],
+    },
+    { id: "31", label: "vide", choices: [choice("31", "vide", true)] },
+  ])
+  expect(present.exemptableChannels).toEqual([
+    {
+      id: null,
+      label: null,
+      choices: [
+        choice("21", "écran"),
+        choice("32", "orphelin"),
+        choice("20", "Zèbre"),
+      ],
+    },
+    { id: "29", label: "Accueil", choices: [choice("30", "règles")] },
+    {
+      id: "22",
+      label: "Jeux",
+      choices: [choice("22", "Jeux", true), choice("24", "annonces")],
+    },
+    { id: "31", label: "vide", choices: [choice("31", "vide", true)] },
+  ])
 })
 
 test("the action is read from the rule's actions: blocking alone, with a timeout of an hour or of a day, or one that Discord's own settings made, which reads as none, an alert to a channel being left out of the reading", async () => {

@@ -2,10 +2,6 @@ import { quoted } from "@/blocked-words/french-text"
 import { frenchNumber } from "@/ui/french-number"
 import { MAX_ALLOW_LIST_ENTRIES } from "./limits"
 
-export function noRuleRefusal(change: "ajoute" | "retire") {
-  return `La règle des liens n’existe pas encore : active-la d’abord, puis ${change} le domaine.`
-}
-
 export function alreadyAllowedRefusal(domain: string) {
   return `${quoted(domain)} est déjà un domaine permis.`
 }

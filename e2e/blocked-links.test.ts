@@ -3,6 +3,7 @@ import {
   AutoModerationActionType,
   AutoModerationRuleEventType,
   AutoModerationRuleTriggerType,
+  ChannelType,
 } from "discord-api-types/v10"
 
 import { STAFF_ROLE_ID } from "../playwright.config"
@@ -11,6 +12,14 @@ import { expect, test } from "./fixtures"
 const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 const GALLERY_ID = "1500000000000000001"
+
+const NEWS_ID = "1500000000000000002"
+
+const GAMES_ID = "1500000000000000003"
+
+const TOURNAMENTS_ID = "1500000000000000004"
+
+const VOICE_ID = "1500000000000000005"
 
 const GUARD_ROLE_ID = "1300000000000000010"
 
@@ -32,7 +41,13 @@ test.use({
         managed: true,
       },
     ],
-    channels: [{ id: GALLERY_ID, name: "galerie" }],
+    channels: [
+      { id: GALLERY_ID, name: "galerie" },
+      { id: NEWS_ID, name: "nouvelles", type: ChannelType.GuildAnnouncement },
+      { id: GAMES_ID, name: "Jeux", type: ChannelType.GuildCategory },
+      { id: TOURNAMENTS_ID, name: "tournois", parent_id: GAMES_ID },
+      { id: VOICE_ID, name: "salon vocal", type: ChannelType.GuildVoice },
+    ],
   },
 })
 
@@ -193,7 +208,7 @@ test("the page shows the rule as it stands on the Discord server, its domains, e
     page.getByRole("region", { name: "Rôles exemptés" }).locator("li > span")
   ).toHaveText(["Staff", "Rôle supprimé"])
   await expect(
-    page.getByRole("region", { name: "Salons exemptés" }).getByRole("listitem")
+    page.getByRole("region", { name: "Salons exemptés" }).locator("li > span")
   ).toHaveText(["#galerie"])
   await expect(page.getByRole("region", { name: "Action" })).toContainText(
     "Exclusion 1 jour"
@@ -444,5 +459,116 @@ test("a staff member chooses a role among the Discord server's, is refused with 
   expect(audit_log_entries.map(({ reason }) => reason)).toEqual([
     "aldis (1400000000000000001) : retrait du rôle exempté « Modérateur »",
     "aldis (1400000000000000001) : ajout du rôle exempté « Modérateur »",
+  ])
+})
+
+test("a staff member chooses a channel or a category among the Discord server's, is refused with the rule missing and with nothing chosen, adds a channel and a category, which get their cross, then removes them, each write saying so in a toast and the audit log naming each", async ({
+  page,
+  logIn,
+  discord,
+  checkAccessibility,
+  readToast,
+  toast,
+}) => {
+  await logIn(ALDIS)
+  await page.goto("/blocked-links")
+  await page.waitForLoadState()
+  const channels = page.getByRole("region", { name: "Salons exemptés" })
+  const choice = channels.getByLabel("Ajouter un salon")
+  const add = channels.getByRole("button", { name: "Ajouter" })
+  const crosses = channels.getByRole("button", { name: /^Retirer/ })
+  async function readThenClose(message: string) {
+    await readToast(message)
+    await checkAccessibility()
+    await toast(message).getByRole("button", { name: "Fermer" }).click()
+    await expect(toast(message)).toHaveCount(0)
+  }
+
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un salon",
+    "#channel",
+    "#galerie",
+    "#nouvelles",
+    "Jeux (catégorie)",
+    "#tournois",
+  ])
+  await expect(choice.locator("optgroup")).toHaveAttribute("label", "Jeux")
+  await expect(channels.getByRole("listitem")).toHaveCount(0)
+  await choice.selectOption({ label: "#galerie" })
+  await add.click()
+
+  await expect(
+    channels.getByRole("alert").filter({ hasText: /\S/ })
+  ).toHaveText(
+    "La règle des liens n’existe pas encore : active-la d’abord, puis ajoute le salon."
+  )
+  await expect(choice).toHaveValue(GALLERY_ID)
+  expect(await discord.listAutoModerationRules()).toEqual([])
+  await checkAccessibility()
+
+  await page.getByRole("button", { name: "Activer" }).click()
+  await expect(page.getByRole("button", { name: "Couper" })).toBeVisible()
+  await choice.selectOption({ label: "Choisir un salon" })
+  await add.click()
+
+  await expect(
+    channels.getByRole("alert").filter({ hasText: /\S/ })
+  ).toHaveText("Choisis le salon à exempter.")
+  await checkAccessibility()
+
+  await choice.selectOption({ label: "#galerie" })
+  await add.click()
+
+  await readThenClose("« #galerie » est maintenant un salon exempté.")
+  await expect(channels.locator("li > span")).toHaveText(["#galerie"])
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un salon",
+    "#channel",
+    "#nouvelles",
+    "Jeux (catégorie)",
+    "#tournois",
+  ])
+  await expect(crosses).toHaveText(["Retirer « #galerie »"])
+
+  await choice.selectOption({ label: "Jeux (catégorie)" })
+  await add.click()
+
+  await readThenClose("« Jeux (catégorie) » est maintenant un salon exempté.")
+  await expect(channels.locator("li > span")).toHaveText([
+    "#galerie",
+    "Jeux (catégorie)",
+  ])
+  expect(await discord.listAutoModerationRules()).toMatchObject([
+    { exempt_channels: [GALLERY_ID, GAMES_ID] },
+  ])
+
+  await crosses.first().click()
+
+  await readThenClose("« #galerie » n’est plus un salon exempté.")
+  await expect(channels.locator("li > span")).toHaveText(["Jeux (catégorie)"])
+  await crosses.click()
+
+  await readThenClose("« Jeux (catégorie) » n’est plus un salon exempté.")
+  await expect(crosses).toHaveCount(0)
+  await expect(choice.locator("option")).toHaveText([
+    "Choisir un salon",
+    "#channel",
+    "#galerie",
+    "#nouvelles",
+    "Jeux (catégorie)",
+    "#tournois",
+  ])
+  expect(await discord.listAutoModerationRules()).toMatchObject([
+    { exempt_channels: [] },
+  ])
+  await checkAccessibility()
+  const { audit_log_entries } = await discord.getAuditLog({
+    action_type: AuditLogEvent.AutoModerationRuleUpdate,
+  })
+  expect(audit_log_entries.map(({ reason }) => reason)).toEqual([
+    "aldis (1400000000000000001) : retrait du salon exempté « Jeux (catégorie) »",
+    "aldis (1400000000000000001) : retrait du salon exempté « #galerie »",
+    "aldis (1400000000000000001) : ajout du salon exempté « Jeux (catégorie) »",
+    "aldis (1400000000000000001) : ajout du salon exempté « #galerie »",
   ])
 })
