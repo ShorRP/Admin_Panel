@@ -12,6 +12,8 @@ const ALDIS = { id: "1400000000000000001", username: "aldis" }
 
 const GALLERY_ID = "1500000000000000001"
 
+const NEWS_ID = "1500000000000000002"
+
 const GUARD_ROLE_ID = "1300000000000000010"
 
 const MODERATOR_ROLE_ID = "1300000000000000011"
@@ -24,35 +26,35 @@ const SCREENS = [
     height: 780,
     touchScreen: false,
     columns: 1,
-    rolesOnOneLine: false,
+    choiceOnOneLine: false,
   },
   {
     width: 487,
     height: 780,
     touchScreen: false,
     columns: 1,
-    rolesOnOneLine: false,
+    choiceOnOneLine: false,
   },
   {
     width: 488,
     height: 780,
     touchScreen: false,
     columns: 1,
-    rolesOnOneLine: true,
+    choiceOnOneLine: true,
   },
   {
     width: 768,
     height: 1024,
     touchScreen: false,
     columns: 1,
-    rolesOnOneLine: true,
+    choiceOnOneLine: true,
   },
   {
     width: 1024,
     height: 768,
     touchScreen: true,
     columns: 2,
-    rolesOnOneLine: false,
+    choiceOnOneLine: false,
   },
 ] as const
 
@@ -61,7 +63,7 @@ const DESKTOP = {
   height: 800,
   touchScreen: false,
   columns: 2,
-  rolesOnOneLine: false,
+  choiceOnOneLine: false,
 } as const
 
 const MIN_TARGET_PX = 44
@@ -91,7 +93,10 @@ test.use({
       { id: GUARD_ROLE_ID, name: "G".repeat(90) },
       { id: MODERATOR_ROLE_ID, name: "Modérateur" },
     ],
-    channels: [{ id: GALLERY_ID, name: "g".repeat(95) }],
+    channels: [
+      { id: GALLERY_ID, name: "g".repeat(95) },
+      { id: NEWS_ID, name: "nouvelles" },
+    ],
   },
 })
 
@@ -129,6 +134,48 @@ async function boxOf(locator: Locator) {
   return box
 }
 
+type Screen = (typeof SCREENS)[number] | typeof DESKTOP
+
+type Box = { x: number; y: number; width: number; height: number }
+
+async function expectChoiceRow(
+  region: Locator,
+  label: string,
+  screen: Screen,
+  side: Box
+) {
+  const controlPx = screen === DESKTOP ? DESKTOP_CONTROL_PX : MIN_TARGET_PX
+  const choice = await boxOf(region.getByLabel(label))
+  const add = await boxOf(region.getByRole("button", { name: "Ajouter" }))
+  expect(Math.round(choice.height)).toBe(controlPx)
+  expect(Math.round(add.height)).toBe(controlPx)
+  if (screen.choiceOnOneLine) {
+    expect(Math.round(add.y)).toBe(Math.round(choice.y))
+    expect(add.x).toBeGreaterThanOrEqual(choice.x + choice.width)
+  } else {
+    expect([add.x, add.width]).toEqual([choice.x, choice.width])
+    expect(add.y).toBeGreaterThanOrEqual(choice.y + choice.height)
+  }
+  expect(choice.x).toBeGreaterThanOrEqual(side.x)
+  expect(add.x + add.width).toBeLessThanOrEqual(side.x + side.width)
+  const list = await boxOf(region.locator("ul"))
+  expect(list.y).toBeGreaterThanOrEqual(
+    Math.max(choice.y + choice.height, add.y + add.height)
+  )
+  expect(list.x).toBeGreaterThanOrEqual(side.x)
+  expect(list.x + list.width).toBeLessThanOrEqual(side.x + side.width)
+  const crosses = await region.getByRole("button", { name: /^Retirer/ }).all()
+  expect(crosses).toHaveLength(1)
+  for (const cross of crosses) {
+    const { height, width } = await boxOf(cross)
+    expect([Math.round(width), Math.round(height)]).toEqual(
+      screen === DESKTOP
+        ? [DESKTOP_CROSS_PX, DESKTOP_CROSS_PX]
+        : [MIN_TARGET_PX, MIN_TARGET_PX]
+    )
+  }
+}
+
 for (const screen of [...SCREENS, DESKTOP]) {
   test.describe(`at ${screen.width} px`, () => {
     test.use({
@@ -139,8 +186,8 @@ for (const screen of [...SCREENS, DESKTOP]) {
 
     test(
       screen.columns === 1
-        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and its button stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles under them, a cross of the same size beside each exempt role but the staff role, which has none, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
-        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and its button stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles under them, a cross of the same size beside each exempt role but the staff role, which has none, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
+        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and the choice of a channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
+        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and the choice of a channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
       async ({ page, logIn, checkAccessibility }) => {
         await logIn(ALDIS)
         await page.goto("/blocked-links")
@@ -241,53 +288,15 @@ for (const screen of [...SCREENS, DESKTOP]) {
               : [MIN_TARGET_PX, MIN_TARGET_PX]
           )
         }
-        const rolesRegion = page.getByRole("region", {
-          name: "Rôles exemptés",
-        })
-        const roleChoice = await boxOf(
-          rolesRegion.getByLabel("Ajouter un rôle")
-        )
-        const roleAdd = await boxOf(
-          rolesRegion.getByRole("button", { name: "Ajouter" })
-        )
-        expect(Math.round(roleChoice.height)).toBe(controlPx)
-        expect(Math.round(roleAdd.height)).toBe(controlPx)
-        if (screen.rolesOnOneLine) {
-          expect(Math.round(roleAdd.y)).toBe(Math.round(roleChoice.y))
-          expect(roleAdd.x).toBeGreaterThanOrEqual(
-            roleChoice.x + roleChoice.width
-          )
-        } else {
-          expect([roleAdd.x, roleAdd.width]).toEqual([
-            roleChoice.x,
-            roleChoice.width,
-          ])
-          expect(roleAdd.y).toBeGreaterThanOrEqual(
-            roleChoice.y + roleChoice.height
-          )
-        }
-        expect(roleChoice.x).toBeGreaterThanOrEqual(firstSide.x)
-        expect(roleAdd.x + roleAdd.width).toBeLessThanOrEqual(
-          firstSide.x + firstSide.width
-        )
-        const roleList = await boxOf(rolesRegion.locator("ul"))
-        expect(roleList.y).toBeGreaterThanOrEqual(
-          Math.max(roleChoice.y + roleChoice.height, roleAdd.y + roleAdd.height)
-        )
-        expect(roleList.x).toBeGreaterThanOrEqual(firstSide.x)
-        expect(roleList.x + roleList.width).toBeLessThanOrEqual(
-          firstSide.x + firstSide.width
-        )
-        const roleCrosses = await rolesRegion
-          .getByRole("button", { name: /^Retirer/ })
-          .all()
-        expect(roleCrosses).toHaveLength(1)
-        for (const cross of roleCrosses) {
-          const { height, width } = await boxOf(cross)
-          expect([Math.round(width), Math.round(height)]).toEqual(
-            screen === DESKTOP
-              ? [DESKTOP_CROSS_PX, DESKTOP_CROSS_PX]
-              : [MIN_TARGET_PX, MIN_TARGET_PX]
+        for (const [name, label] of [
+          ["Rôles exemptés", "Ajouter un rôle"],
+          ["Salons exemptés", "Ajouter un salon"],
+        ] as const) {
+          await expectChoiceRow(
+            page.getByRole("region", { name }),
+            label,
+            screen,
+            firstSide
           )
         }
         await checkAccessibility()

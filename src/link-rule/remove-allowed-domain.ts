@@ -4,10 +4,10 @@ import { auditLogReason } from "@/audit-log/audit-log-reason"
 import { quoted } from "@/blocked-words/french-text"
 import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
-import { noRuleRefusal } from "./allowed-domain-refusals"
 import { allowedDomainsOf, allowListEntriesOf } from "./allowed-domains"
 import { allowListOf, linkRuleOf, withAllowList } from "./link-rule"
 import { domainRemovalReason } from "./link-rule-reason"
+import { noRuleRefusal } from "./no-rule-refusal"
 import { TYPED_DOMAIN } from "./submitted-domain"
 import {
   failure,
@@ -30,7 +30,7 @@ export async function removeAllowedDomain(
   return await unlessDiscordUnavailable(fields, async () => {
     const rule = linkRuleOf(await discord.listAutoModerationRules())
     if (rule === undefined) {
-      return failure(noRuleRefusal("retire"), fields)
+      return failure(noRuleRefusal("retire", "le domaine"), fields)
     }
     const allowList = allowListOf(rule)
     if (allowedDomainsOf(allowList).domains.includes(domain)) {

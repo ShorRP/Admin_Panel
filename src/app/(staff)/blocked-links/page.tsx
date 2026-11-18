@@ -6,6 +6,7 @@ import { createDiscordApi } from "@/discord/discord-api"
 import { AllowedDomainsSection } from "@/link-rule/allowed-domains-section"
 import { AllowedDomainsSkeleton } from "@/link-rule/allowed-domains-skeleton"
 import { ExemptChannelsSection } from "@/link-rule/exempt-channels-section"
+import { ExemptChannelsSkeleton } from "@/link-rule/exempt-channels-skeleton"
 import { ExemptRolesSection } from "@/link-rule/exempt-roles-section"
 import { ExemptRolesSkeleton } from "@/link-rule/exempt-roles-skeleton"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
@@ -16,8 +17,10 @@ import { LinkRuleView } from "@/link-rule/link-rule-view"
 import { OtherExceptionsSection } from "@/link-rule/other-exceptions-section"
 import { readLinkRule, type LinkRuleSettings } from "@/link-rule/read-link-rule"
 import { StatefulAddAllowedDomainForm } from "@/link-rule/stateful-add-allowed-domain-form"
+import { StatefulAddExemptChannelForm } from "@/link-rule/stateful-add-exempt-channel-form"
 import { StatefulAddExemptRoleForm } from "@/link-rule/stateful-add-exempt-role-form"
 import { StatefulAllowedDomainList } from "@/link-rule/stateful-allowed-domain-list"
+import { StatefulExemptChannelList } from "@/link-rule/stateful-exempt-channel-list"
 import { StatefulExemptRoleList } from "@/link-rule/stateful-exempt-role-list"
 import { StatefulLinkRuleSwitchForm } from "@/link-rule/stateful-link-rule-switch-form"
 import { requireStaffMember } from "@/staff/require-staff-member"
@@ -52,11 +55,7 @@ export default function BlockedLinksPage() {
             </SuspenseWithSkeleton>
           }
           channels={
-            <SuspenseWithSkeleton
-              skeleton={
-                <LinkRuleSideSectionSkeleton loading="Chargement des salons exemptés…" />
-              }
-            >
+            <SuspenseWithSkeleton skeleton={<ExemptChannelsSkeleton />}>
               <ChannelsFromDiscord linkRule={linkRule} />
             </SuspenseWithSkeleton>
           }
@@ -133,8 +132,14 @@ async function RolesFromDiscord({ linkRule }: FromDiscordProps) {
 }
 
 async function ChannelsFromDiscord({ linkRule }: FromDiscordProps) {
-  const { exemptChannels } = await linkRule
-  return <ExemptChannelsSection channels={exemptChannels} />
+  const { exemptChannels, exemptableChannels } = await linkRule
+  return (
+    <ExemptChannelsSection
+      channels={exemptChannels}
+      form={<StatefulAddExemptChannelForm groups={exemptableChannels} />}
+      list={<StatefulExemptChannelList channels={exemptChannels} />}
+    />
+  )
 }
 
 async function ActionFromDiscord({ linkRule }: FromDiscordProps) {

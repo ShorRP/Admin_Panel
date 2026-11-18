@@ -105,7 +105,7 @@ A Discord role whose members the link rule lets post any link. The staff role is
 _Avoid_: allowed role, bypass role
 
 **Exempt channel**:
-A channel of the Discord server where the link rule lets any member post any link.
+A text channel, an announcement channel or a category of the Discord server where the link rule lets any member post any link.
 _Avoid_: allowed channel, links channel
 
 **Sanction**:

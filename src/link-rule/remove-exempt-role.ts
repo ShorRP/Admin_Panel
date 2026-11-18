@@ -6,12 +6,12 @@ import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
 import {
   NO_ROLE_TO_REMOVE_REFUSAL,
-  noRuleRefusal,
   STAFF_ROLE_REFUSAL,
 } from "./exempt-role-refusals"
 import { linkRuleOf } from "./link-rule"
 import { exemptRoleRemovalReason } from "./link-rule-reason"
-import { TYPED_ROLE } from "./typed-role"
+import { noRuleRefusal } from "./no-rule-refusal"
+import { TYPED_CHOICE } from "./typed-choice"
 import {
   failure,
   success,
@@ -25,7 +25,7 @@ export async function removeExemptRole(
   staffMember: StaffMember,
   formData: FormData
 ): Promise<WriteResult<RoleFields>> {
-  const role = TYPED_ROLE.parse(formData.get("role"))
+  const role = TYPED_CHOICE.parse(formData.get("role"))
   const fields = { role }
   if (role === "") {
     return failure(NO_ROLE_TO_REMOVE_REFUSAL, fields)
@@ -40,7 +40,7 @@ export async function removeExemptRole(
     ])
     const rule = linkRuleOf(rules)
     if (rule === undefined) {
-      return failure(noRuleRefusal("retire"), fields)
+      return failure(noRuleRefusal("retire", "le rôle"), fields)
     }
     const name = roles.find(({ id }) => id === role)?.name ?? role
     if (rule.exempt_roles.includes(role)) {

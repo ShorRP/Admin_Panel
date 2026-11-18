@@ -6,6 +6,7 @@ import { ExemptChannelsSection } from "./exempt-channels-section"
 import { ExemptRolesSection } from "./exempt-roles-section"
 import { LinkRuleActionSection } from "./link-rule-action-section"
 import { OtherExceptionsSection } from "./other-exceptions-section"
+import type { ExemptChannel } from "./read-link-rule"
 
 function texts(html: string) {
   return Array.from(html.matchAll(/>([^<]+)</g), ([, text]) => text)
@@ -103,31 +104,39 @@ test("with no exempt role, the section says so, and keeps the form and the list"
   ])
 })
 
-test("the exempt channels are listed with their #, a channel that Discord does not list as « Salon introuvable »", () => {
-  const html = renderToStaticMarkup(
+function exemptChannels(channels: ExemptChannel[]) {
+  return renderToStaticMarkup(
     <ExemptChannelsSection
-      channels={[
-        { id: "1", name: "galerie" },
-        { id: "2", name: null },
-      ]}
+      channels={channels}
+      form={<b>the form</b>}
+      list={<b>the list</b>}
     />
   )
+}
+
+test("the exempt channels come under their title, with the form to add one, then say that a link is allowed in them, over their list", () => {
+  const html = exemptChannels([
+    { id: "1", name: "galerie", category: false },
+    { id: "2", name: "Jeux", category: true },
+  ])
 
   expect(texts(html)).toEqual([
     "Salons exemptés",
+    "the form",
     "Un lien est permis dans ces salons.",
-    "#galerie",
-    "Salon introuvable",
+    "the list",
   ])
-  expect(listItems(html)).toEqual(["#galerie", "Salon introuvable"])
+  expect(html).toMatch(/<section[^>]*aria-labelledby="exempt-channels"/)
 })
 
-test("with no exempt channel, the section says that a link is blocked in every channel", () => {
-  const html = renderToStaticMarkup(<ExemptChannelsSection channels={[]} />)
+test("with no exempt channel, the section says that a link is blocked in every channel, and keeps the form and the list", () => {
+  const html = exemptChannels([])
 
   expect(texts(html)).toEqual([
     "Salons exemptés",
+    "the form",
     "Aucun salon exempté : un lien est bloqué dans tous les salons.",
+    "the list",
   ])
 })
 

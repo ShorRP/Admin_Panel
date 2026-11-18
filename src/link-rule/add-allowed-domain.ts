@@ -7,12 +7,12 @@ import type { StaffMember } from "@/staff/staff-member"
 import {
   alreadyAllowedRefusal,
   fullListRefusal,
-  noRuleRefusal,
 } from "./allowed-domain-refusals"
 import { allowedDomainsOf, allowListEntriesOf } from "./allowed-domains"
 import { MAX_ALLOW_LIST_ENTRIES } from "./limits"
 import { allowListOf, linkRuleOf, withAllowList } from "./link-rule"
 import { domainAdditionReason } from "./link-rule-reason"
+import { noRuleRefusal } from "./no-rule-refusal"
 import { submittedDomain } from "./submitted-domain"
 import {
   failure,
@@ -36,7 +36,7 @@ export async function addAllowedDomain(
   return await unlessDiscordUnavailable(fields, async () => {
     const rule = linkRuleOf(await discord.listAutoModerationRules())
     if (rule === undefined) {
-      return failure(noRuleRefusal("ajoute"), fields)
+      return failure(noRuleRefusal("ajoute", "le domaine"), fields)
     }
     const allowList = allowListOf(rule)
     const { domains, otherExceptions } = allowedDomainsOf(allowList)

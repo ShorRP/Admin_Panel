@@ -116,6 +116,8 @@ const MAX_ALLOW_LIST_ENTRY_LENGTH = 60
 
 const MAX_EXEMPT_ROLES = 20
 
+const MAX_EXEMPT_CHANNELS = 50
+
 const MAX_AUTO_MODERATION_TIMEOUT_S = 2_419_200
 
 const MAX_CUSTOM_MESSAGE_LENGTH = 300
@@ -378,12 +380,13 @@ function checkTrigger(
 
 function checkActions(
   actions: APIAutoModerationAction[] | undefined,
-  exemptRoles: Snowflake[] | undefined,
+  exempt: { roles?: Snowflake[]; channels?: Snowflake[] },
   method: HttpMethod,
   route: DiscordRoute
 ) {
   if (
-    (exemptRoles?.length ?? 0) > MAX_EXEMPT_ROLES ||
+    (exempt.roles?.length ?? 0) > MAX_EXEMPT_ROLES ||
+    (exempt.channels?.length ?? 0) > MAX_EXEMPT_CHANNELS ||
     (actions ?? []).some(
       ({ metadata }) =>
         (metadata?.duration_seconds ?? 0) > MAX_AUTO_MODERATION_TIMEOUT_S ||
@@ -1096,7 +1099,12 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
   ) {
     const route = ROUTES.autoModerationRules
     checkTrigger(rule.trigger_metadata, "POST", route)
-    checkActions(rule.actions, rule.exempt_roles, "POST", route)
+    checkActions(
+      rule.actions,
+      { roles: rule.exempt_roles, channels: rule.exempt_channels },
+      "POST",
+      route
+    )
     if (
       rule.trigger_type === AutoModerationRuleTriggerType.Keyword &&
       this.rules.filter(
@@ -1136,7 +1144,12 @@ export class FakeDiscord implements DiscordApi, DiscordOAuth {
       throw new DiscordError({ method: "PATCH", route, status: 404 })
     }
     checkTrigger(changes.trigger_metadata, "PATCH", route)
-    checkActions(changes.actions, changes.exempt_roles, "PATCH", route)
+    checkActions(
+      changes.actions,
+      { roles: changes.exempt_roles, channels: changes.exempt_channels },
+      "PATCH",
+      route
+    )
     const modified: APIAutoModerationRule = structuredClone({
       ...rule,
       name: changes.name ?? rule.name,
