@@ -8,6 +8,7 @@ import type { DiscordApi } from "@/discord/discord-api"
 import type { StaffMember } from "@/staff/staff-member"
 import { linkRuleOf, withAction } from "./link-rule"
 import {
+  ACTION_SET_IN_DISCORD,
   LINK_RULE_ACTION_IDS,
   linkRuleActionLabel,
   linkRuleActionOf,
@@ -25,9 +26,6 @@ import {
 } from "./write-result"
 
 const ACTION = z.enum(LINK_RULE_ACTION_IDS, { error: "Choisis une action." })
-
-const NOT_THE_PANELS_REFUSAL =
-  "L’action de la règle des liens n’est pas l’une de celles du panel : elle se change dans Discord."
 
 export async function changeLinkRuleAction(
   discord: DiscordApi,
@@ -52,7 +50,7 @@ export async function changeLinkRuleAction(
     }
     const current = linkRuleActionOf(rule)
     if (current === null) {
-      return failure(NOT_THE_PANELS_REFUSAL, fields)
+      return failure(ACTION_SET_IN_DISCORD, fields)
     }
     requireRightTo(staffMember, current)
     const label = quoted(linkRuleActionLabel(to))

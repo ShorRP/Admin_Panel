@@ -245,7 +245,7 @@ test("an action of the rule that is neither the panel's nor an alert, left by a 
   expect(result).toEqual({
     ok: false,
     message:
-      "L’action de la règle des liens n’est pas l’une de celles du panel : elle se change dans Discord.",
+      "Cette action n’est pas l’une de celles du panel : elle se change dans Discord.",
     action: "timeout-1h",
   })
   expect(await discord.listAutoModerationRules()).toEqual(before)
@@ -267,7 +267,7 @@ test("a timeout that is neither of an hour nor of a day, set in Discord, is not 
   expect(result).toMatchObject({
     ok: false,
     message:
-      "L’action de la règle des liens n’est pas l’une de celles du panel : elle se change dans Discord.",
+      "Cette action n’est pas l’une de celles du panel : elle se change dans Discord.",
     action: "block",
   })
   expect(await discord.listAutoModerationRules()).toEqual(before)

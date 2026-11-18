@@ -9,7 +9,7 @@ import { ExemptChannelsSection } from "@/link-rule/exempt-channels-section"
 import { ExemptChannelsSkeleton } from "@/link-rule/exempt-channels-skeleton"
 import { ExemptRolesSection } from "@/link-rule/exempt-roles-section"
 import { ExemptRolesSkeleton } from "@/link-rule/exempt-roles-skeleton"
-import { actionChoicesOf } from "@/link-rule/link-rule-action"
+import { changeableActionOf } from "@/link-rule/link-rule-action"
 import { LinkRuleActionSection } from "@/link-rule/link-rule-action-section"
 import { LinkRuleActionSkeleton } from "@/link-rule/link-rule-action-skeleton"
 import { LinkRuleSwitchCard } from "@/link-rule/link-rule-switch-card"
@@ -149,17 +149,17 @@ async function ActionFromDiscord({
   staffMember,
 }: FromDiscordProps & { staffMember: Promise<StaffMember> }) {
   const { action } = await linkRule
-  const choices = actionChoicesOf(await staffMember, action)
+  const changeable = changeableActionOf(await staffMember, action)
   return (
     <LinkRuleActionSection
       action={action}
       form={
-        action !== null && choices.length > 0 ? (
+        changeable === null ? null : (
           <StatefulChangeLinkRuleActionForm
-            choices={choices}
-            current={action}
+            choices={changeable.choices}
+            current={changeable.current}
           />
-        ) : null
+        )
       }
     />
   )

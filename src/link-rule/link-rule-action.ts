@@ -51,6 +51,9 @@ const FIELDS: Record<LinkRuleActionId, ActionFields> = {
   },
 }
 
+export const ACTION_SET_IN_DISCORD =
+  "Cette action n’est pas l’une de celles du panel : elle se change dans Discord."
+
 export function linkRuleActionLabel(id: LinkRuleActionId) {
   return FIELDS[id].label
 }
@@ -64,15 +67,15 @@ function mayUse(rights: LinkRuleActionRights, id: LinkRuleActionId) {
   }
 }
 
-export function actionChoicesOf(
+export function changeableActionOf(
   rights: LinkRuleActionRights,
   current: LinkRuleActionId | null
-): LinkRuleActionId[] {
+) {
   if (current === null || !mayUse(rights, current)) {
-    return []
+    return null
   }
-  const usable = LINK_RULE_ACTION_IDS.filter((id) => mayUse(rights, id))
-  return usable.some((id) => id !== current) ? usable : []
+  const choices = LINK_RULE_ACTION_IDS.filter((id) => mayUse(rights, id))
+  return choices.some((id) => id !== current) ? { current, choices } : null
 }
 
 export function requireRightTo(

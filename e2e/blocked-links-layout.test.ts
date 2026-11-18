@@ -180,13 +180,17 @@ async function expectActionRow(region: Locator, screen: Screen, side: Box) {
   const controlPx = screen === DESKTOP ? DESKTOP_CONTROL_PX : MIN_TARGET_PX
   const choice = await boxOf(region.getByLabel("Changer l’action"))
   const change = await boxOf(region.getByRole("button", { name: "Changer" }))
+  const section = await boxOf(region)
   expect(Math.round(choice.height)).toBe(controlPx)
   expect(Math.round(change.height)).toBe(controlPx)
+  expect(choice.x).toBe(section.x)
   if (screen.choiceOnOneLine) {
     expect(Math.round(change.y)).toBe(Math.round(choice.y))
     expect(change.x).toBeGreaterThanOrEqual(choice.x + choice.width)
+    expect(change.x + change.width).toBeCloseTo(section.x + section.width, 0)
   } else {
-    expect([change.x, change.width]).toEqual([choice.x, choice.width])
+    expect([change.x, change.width]).toEqual([section.x, section.width])
+    expect(choice.width).toBe(section.width)
     expect(change.y).toBeGreaterThanOrEqual(choice.y + choice.height)
   }
   expect(choice.x).toBeGreaterThanOrEqual(side.x)

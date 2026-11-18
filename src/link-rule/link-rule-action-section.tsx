@@ -1,7 +1,11 @@
 import type { ReactNode } from "react"
 
 import { Overline } from "@/ui/overline"
-import { linkRuleActionLabel, type LinkRuleActionId } from "./link-rule-action"
+import {
+  ACTION_SET_IN_DISCORD,
+  linkRuleActionLabel,
+  type LinkRuleActionId,
+} from "./link-rule-action"
 import { SECTION_CLASSES, SECTION_SENTENCE_CLASSES } from "./link-rule-layout"
 
 const LABEL_ID = "link-rule-action"
@@ -20,10 +24,7 @@ export function LinkRuleActionSection({
       <section aria-labelledby={LABEL_ID} className={SECTION_CLASSES}>
         <Overline id={LABEL_ID}>Action</Overline>
         <p className="text-[0.9375rem] font-medium">Réglée dans Discord</p>
-        <p className={SECTION_SENTENCE_CLASSES}>
-          Cette action n’est pas l’une de celles du panel : elle se change dans
-          Discord.
-        </p>
+        <p className={SECTION_SENTENCE_CLASSES}>{ACTION_SET_IN_DISCORD}</p>
       </section>
     )
   }
