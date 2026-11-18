@@ -4,7 +4,7 @@ import {
   AutoModerationRuleTriggerType,
 } from "discord-api-types/v10"
 
-import { STAFF_ROLE_ID } from "../playwright.config"
+import { MODERATION_ROLE_ID, STAFF_ROLE_ID } from "../playwright.config"
 import { expect, test, type Locator } from "./fixtures"
 import { settle } from "./settle"
 
@@ -87,7 +87,7 @@ const SIDE_REGIONS = [
 
 test.use({
   discordState: {
-    members: [{ user: ALDIS, roles: [STAFF_ROLE_ID] }],
+    members: [{ user: ALDIS, roles: [STAFF_ROLE_ID, MODERATION_ROLE_ID] }],
     roles: [
       { id: STAFF_ROLE_ID, name: "Staff" },
       { id: GUARD_ROLE_ID, name: "G".repeat(90) },
@@ -176,6 +176,23 @@ async function expectChoiceRow(
   }
 }
 
+async function expectActionRow(region: Locator, screen: Screen, side: Box) {
+  const controlPx = screen === DESKTOP ? DESKTOP_CONTROL_PX : MIN_TARGET_PX
+  const choice = await boxOf(region.getByLabel("Changer l’action"))
+  const change = await boxOf(region.getByRole("button", { name: "Changer" }))
+  expect(Math.round(choice.height)).toBe(controlPx)
+  expect(Math.round(change.height)).toBe(controlPx)
+  if (screen.choiceOnOneLine) {
+    expect(Math.round(change.y)).toBe(Math.round(choice.y))
+    expect(change.x).toBeGreaterThanOrEqual(choice.x + choice.width)
+  } else {
+    expect([change.x, change.width]).toEqual([choice.x, choice.width])
+    expect(change.y).toBeGreaterThanOrEqual(choice.y + choice.height)
+  }
+  expect(choice.x).toBeGreaterThanOrEqual(side.x)
+  expect(change.x + change.width).toBeLessThanOrEqual(side.x + side.width)
+}
+
 for (const screen of [...SCREENS, DESKTOP]) {
   test.describe(`at ${screen.width} px`, () => {
     test.use({
@@ -186,8 +203,8 @@ for (const screen of [...SCREENS, DESKTOP]) {
 
     test(
       screen.columns === 1
-        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and the choice of a channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
-        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role and the choice of a channel, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
+        ? "the sections stack in one column, the switch and its state first, beside the rail from 768 px, and the button of the switch is 44 px high, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel and the choice of an action, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll"
+        : "the switch and the domains take the main column and the roles, the channels, the action and the other exceptions the side column, beside the sidebar, and the button of the switch is 44 px high at the finger and 38 px with a mouse, the field to add a domain and its button stacked under 640 px and on one line from it, a cross of 44 px at the finger and 28 px with a mouse beside each domain, the choice of a role, the choice of a channel and the choice of an action, each with its button, stacked in the side column and in a single column under 448 px, on one line in a single column of 448 px or more, the list of exempt roles and the list of exempt channels under them, a cross of the same size beside each exempt role but the staff role, which has none, and beside each exempt channel, a domain, a role and a channel of a long name wrapping inside their column with no sideways scroll",
       async ({ page, logIn, checkAccessibility }) => {
         await logIn(ALDIS)
         await page.goto("/blocked-links")
@@ -299,6 +316,11 @@ for (const screen of [...SCREENS, DESKTOP]) {
             firstSide
           )
         }
+        await expectActionRow(
+          page.getByRole("region", { name: "Action" }),
+          screen,
+          firstSide
+        )
         await checkAccessibility()
       }
     )

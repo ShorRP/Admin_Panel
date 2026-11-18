@@ -1,6 +1,6 @@
 # Blocked links
 
-The reference behind `.claude/rules/blocked-links.md`: what the exempt channels of the link rule are, what was measured on Discord for them and what stays open. The rule says what to do; this file says how it was known. #484 wrote the exempt channels; ADR 0011 holds the rest of the link rule's trials.
+The reference behind `.claude/rules/blocked-links.md`: what the exempt roles, the exempt channels and the action of the link rule are, what was measured on Discord for them and what stays open. The rule says what to do; this file says how it was known. #483 wrote the exempt roles, #484 the exempt channels and #485 the action; ADR 0011 holds the rest of the link rule's trials.
 
 ## Exempt channels
 
@@ -27,3 +27,39 @@ The reference behind `.claude/rules/blocked-links.md`: what the exempt channels 
 - What Discord answers to a 51st exempt channel: not measured.
 - Whether Discord keeps in a rule the ID of a channel that was deleted, and then refuses with the 400 above any write that sends it again: not tried. A removal sends the list without it, so the cross of a « Salon introuvable » chip is the way out, but an add or a removal of another channel beside it could meet that 400, which would be a panel error (inferred).
 - Whether exempting a category exempts the channels it holds, and a text channel its threads: the ticket decides the first, and neither is documented or tried (inferred).
+
+## Exempt roles
+
+### Forms
+
+Moved here from `.claude/rules/blocked-links.md`, **Forms**, with their marks, when #485 needed the room.
+
+- « Rôles exemptés » holds `StatefulAddExemptRoleForm` and `StatefulExemptRoleList`, each with its own `useActionState`, and its section takes both as props. The choice is a `NativeSelect` named `role`, whose value is the role's ID, with a first choice « Choisir un rôle » and the roles by hierarchy (`rolesByHierarchy`) that the rule does not exempt, `readLinkRule`'s `exemptableRoles`, without @everyone and the roles an integration manages; The staff role has no cross and the section says so (`staffRoleId` of the settings); the other chips, a role Discord no longer lists included, have the same cross as a domain, that of a role Discord no longer lists named « Retirer « Rôle supprimé » (ID) » so that two of them differ for assistive technologies (#483). With no role left to choose, the choice reads « Aucun autre rôle » and is disabled with its button (decided by the agent on 2026-11-17, on #483, for Gilles to review).
+- While the rule does not exist the form stays and refuses, as the domains' does (decided by the agent on 2026-11-17, on #483, for Gilles to review).
+
+## Action
+
+### Facts
+
+- Discord documents, for a rule's actions, `BLOCK_MESSAGE` with a `custom_message`, "additional explanation that will be shown to members whenever their message is blocked", of a "maximum of 150 characters", `SEND_ALERT_MESSAGE`, which "logs user content to a specified channel", and `TIMEOUT`, of "a maximum of 2419200 seconds (4 weeks)". "A `TIMEOUT` action can only be set up for `KEYWORD` and `MENTION_SPAM` rules", which the link rule is, and "The `MODERATE_MEMBERS` permission is required to use the `TIMEOUT` action type". The page states no maximum number of actions on a rule (https://docs.discord.com/developers/resources/auto-moderation, read 2026-11-18 through a fetch tool's summary, #485).
+- The panel's application holds Timeout Members already (`docs/discord.md:70`), so that a timeout of the link rule asks for no new permission, as the blocked words' do (ADR 0002).
+- The notice of an exclusion is 121 characters for an hour and 119 for a day, the block sentence taking 73 (`String.prototype.length`, 2026-11-18, #485), under the documented 150.
+- The contract suite creates a keyword rule that blocks with a notice and times out, reads it back, and checks the edges of the limits above (`src/discord/discord-api-contract.ts`, **AutoMod** of `docs/discord.md`).
+
+### Decisions
+
+(decided by the agent on 2026-11-18, on #485, for Gilles to review)
+
+- **The three actions are a table**, `FIELDS` of `link-rule-action.ts`: label, right, timeout and notice. `newLinkRule` takes its block from it, so that the rule's first notice and « Bloquer seulement » are one text. The table is the link rule's own and imports nothing of `src/blocked-words/`, whose actions are a rule each, where this one rule holds one action at a time.
+- **A write sends `actions` alone** (`withAction`): the new block, with the action's notice, and its timeout come first, then every action that is neither a block nor a timeout, in the order Discord held it, so that `SEND_ALERT_MESSAGE` and whatever else #486 or Discord put there leaves a change unchanged (`change-link-rule-action.test.ts` puts the alert before, between and after, through five changes).
+- **A rule whose action is not one of the three is not changed.** `linkRuleActionOf` reads it as none: a block with another timeout, a timeout with no block, a block with an action that is neither a timeout nor an alert beside it. The section keeps « Réglée dans Discord », as #481 wrote it, and a forced write is refused in French with the action as typed, since writing would drop what the staff set in Discord, a notice, a duration or an action, that the page cannot show.
+- **The notice follows the action when the action changes**, as the ticket says, and a change to the action the rule already has writes nothing and succeeds, so a notice that the staff reworded in Discord stays until the action changes, as two staff members who press together do not fail each other (`.claude/rules/blocked-links.md`, **Writes**).
+- **The right** is checked twice, as blocked words' is: the chosen action before anything is read, so that a forced form throws even with the rule missing, then the action the rule has, on the rules read back, so that no one without a moderation role leaves an exclusion. `actionChoicesOf` offers nothing to such a staff member, « Bloquer seulement » being the only action theirs, so the section shows the action with no field and no button and says that an exclusion asks for a moderation role. It offers nothing for an action set in Discord either.
+- **With the rule missing** the form stays for a moderator and refuses, in the message of the other sections (`noRuleRefusal`), with the action as typed: creating the rule stays « Activer »'s.
+- **The reason** is `changement de l’action de la règle des liens, de « Bloquer seulement » à « Exclusion 1 heure »`, in the panel's format, so that the audit log attributes it and names both actions; it lists as a link line, generic (`.claude/rules/audit-log.md`, **The link rule's lines**).
+- **A rule that is cut keeps its action changeable**: the write touches `actions` alone, so that `enabled` stays as it was.
+
+### Open
+
+- A PATCH of `actions` on the link rule's regex rule, which Discord accepts: not tried on the test Discord server, `src/discord/` being unchanged and the contract suite not run for #485. The contract's rule is made with keywords and its edge checks are refusals.
+- Whether AutoMod's timeout spares the members whom a timeout by the panel cannot reach, the owner, a member with Administrator or a higher role (`docs/discord.md:27`): not documented, not tried.

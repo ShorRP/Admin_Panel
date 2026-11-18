@@ -1,25 +1,51 @@
+import type { ReactNode } from "react"
+
 import { Overline } from "@/ui/overline"
 import { linkRuleActionLabel, type LinkRuleActionId } from "./link-rule-action"
 import { SECTION_CLASSES, SECTION_SENTENCE_CLASSES } from "./link-rule-layout"
 
 const LABEL_ID = "link-rule-action"
 
+const WHAT_HAPPENS = "Ce qui arrive à un message qui contient un lien bloqué."
+
 export function LinkRuleActionSection({
   action,
+  form,
 }: {
   action: LinkRuleActionId | null
+  form: ReactNode
 }) {
+  if (action === null) {
+    return (
+      <section aria-labelledby={LABEL_ID} className={SECTION_CLASSES}>
+        <Overline id={LABEL_ID}>Action</Overline>
+        <p className="text-[0.9375rem] font-medium">Réglée dans Discord</p>
+        <p className={SECTION_SENTENCE_CLASSES}>
+          Cette action n’est pas l’une de celles du panel : elle se change dans
+          Discord.
+        </p>
+      </section>
+    )
+  }
   return (
     <section aria-labelledby={LABEL_ID} className={SECTION_CLASSES}>
       <Overline id={LABEL_ID}>Action</Overline>
-      <p className="text-[0.9375rem] font-medium">
-        {action === null ? "Réglée dans Discord" : linkRuleActionLabel(action)}
-      </p>
-      <p className={SECTION_SENTENCE_CLASSES}>
-        {action === null
-          ? "Cette action n’est pas l’une de celles du panel : elle se change dans Discord."
-          : "Ce qui arrive à un message qui contient un lien bloqué."}
-      </p>
+      {form === null ? (
+        <>
+          <p className="text-[0.9375rem] font-medium">
+            {linkRuleActionLabel(action)}
+          </p>
+          <p className={SECTION_SENTENCE_CLASSES}>
+            {WHAT_HAPPENS} Choisir ou quitter une exclusion demande un rôle de
+            modération.
+          </p>
+        </>
+      ) : (
+        <>
+          {form}
+          <p className={SECTION_SENTENCE_CLASSES}>{WHAT_HAPPENS}</p>
+        </>
+      )}
     </section>
   )
 }
