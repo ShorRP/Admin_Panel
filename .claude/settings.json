@@ -27,6 +27,18 @@
       }
     ]
   },
+  "extraKnownMarketplaces": {
+    "agent-workflow": {
+      "source": {
+        "source": "github",
+        "repo": "PothieuG/agent-workflow"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true,
+    "agent-workflow@agent-workflow": true
+  },
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "600000"
   }
